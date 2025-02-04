@@ -183,23 +183,30 @@ function handleTouchEnd(e) {
 }
 
 // 各ステッチ記号の取得
+// function getStitchSymbol(type) {
+//   switch (type) {
+//     case 'knit': return '─';
+//     case 'purl': return '○';
+//     case 'yo': return '△';
+//     case 'right_up_two_one': return '↗2';
+//     case 'left_up_two_one': return '↖2';
+//     case 'purl_left_up_two_one': return '↰2';
+//     case 'middle_up_three_one': return '⇧3';
+//     case 'right_up_three_one': return '↗3';
+//     case 'left_up_three_one': return '↖3';
+//     case 'right_up_two_cross': return '↗2×';
+//     case 'left_up_two_cross': return '↖2×';
+//     case 'slip_stitch': return '∿';
+//     case 'twist_stitch': return '↻';
+//     default: return '';
+//   }
+// }
+
 function getStitchSymbol(type) {
-  switch (type) {
-    case 'knit': return '─';
-    case 'purl': return '○';
-    case 'yo': return '△';
-    case 'right_up_two_one': return '↗2';
-    case 'left_up_two_one': return '↖2';
-    case 'purl_left_up_two_one': return '↰2';
-    case 'middle_up_three_one': return '⇧3';
-    case 'right_up_three_one': return '↗3';
-    case 'left_up_three_one': return '↖3';
-    case 'right_up_two_cross': return '↗2×';
-    case 'left_up_two_cross': return '↖2×';
-    case 'slip_stitch': return '∿';
-    case 'twist_stitch': return '↻';
-    default: return '';
+  if (type === 'empty') {
+    return '';
   }
+  return `<img src="svg/${type}.svg" style="width: 90%; height:90%;" alt="${type}" />`;
 }
 
 // 画像保存機能（html2canvas 必須）

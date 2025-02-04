@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="850.5" height="850.5" viewBox="0 0 850.5 850.5">
+<defs>
+<clipPath id="clip-0">
+<path clip-rule="nonzero" d="M 51 57 L 847 57 L 847 850.5 L 51 850.5 Z M 51 57 "/>
+</clipPath>
+<clipPath id="clip-1">
+<path clip-rule="nonzero" d="M 310 422 L 736 422 L 736 850.5 L 310 850.5 Z M 310 422 "/>
+</clipPath>
+</defs>
+<path fill-rule="evenodd" fill="rgb(100%, 100%, 100%)" fill-opacity="1" d="M 0 850.5 L 850.5 850.5 L 850.5 0 L 0 0 Z M 0 850.5 "/>
+<path fill="none" stroke-width="6.0009" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgb(0%, 0%, 0%)" stroke-opacity="1" stroke-miterlimit="10" d="M 650.5 823.5 L 25.5 199.859375 " transform="matrix(1, 0, 0, -1, 0, 850.5)"/>
+<path fill="none" stroke-width="6.0009" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgb(0%, 0%, 0%)" stroke-opacity="1" stroke-miterlimit="10" d="M 394.179688 565.351562 L 138.75 823.5 " transform="matrix(1, 0, 0, -1, 0, 850.5)"/>
+<g clip-path="url(#clip-0)">
+<path fill="none" stroke-width="6.0009" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgb(0%, 0%, 0%)" stroke-opacity="1" stroke-miterlimit="10" d="M 761.5 708 L 136.5 84.359375 " transform="matrix(1, 0, 0, -1, 0, 850.5)"/>
+</g>
+<path fill="none" stroke-width="6.0009" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgb(0%, 0%, 0%)" stroke-opacity="1" stroke-miterlimit="10" d="M 761.679688 199.351562 L 506.25 457.5 " transform="matrix(1, 0, 0, -1, 0, 850.5)"/>
+<g clip-path="url(#clip-1)">
+<path fill="none" stroke-width="6.0009" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgb(0%, 0%, 0%)" stroke-opacity="1" stroke-miterlimit="10" d="M 650.679688 84.597656 L 395.25 342.75 " transform="matrix(1, 0, 0, -1, 0, 850.5)"/>
+</g>
+<path fill="none" stroke-width="6.0009" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgb(0%, 0%, 0%)" stroke-opacity="1" stroke-miterlimit="10" d="M 281.589844 454.019531 L 27.75 705 " transform="matrix(1, 0, 0, -1, 0, 850.5)"/>
+</svg>
