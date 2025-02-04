@@ -4,183 +4,66 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>棒針編み図エディタ</title>
-  <style>
-    /* 基本設定と変数 */
-    :root {
-      --cell-size: 30px; /* セルのサイズ。スマホ用はメディアクエリで調整 */
-    }
-    * {
-      box-sizing: border-box;
-    }
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background-color: #f0f0f0;
-      padding: 10px;
-    }
-
-    /* ツールバーのスタイル: レスポンシブ対応 */
-    #toolbar {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      align-items: center;
-      margin-bottom: 15px;
-    }
-    #toolbar input,
-    #toolbar select,
-    #toolbar button {
-      font-size: 16px;
-    }
-
-    button {
-      padding: 8px 12px;
-      cursor: pointer;
-      background-color: #4CAF50;
-      color: #fff;
-      border: none;
-      border-radius: 4px;
-      transition: background-color 0.3s;
-    }
-    button:hover {
-      background-color: #45a049;
-    }
-
-    /* グリッドコンテナ: レスポンシブ対応のスクロール設定 */
-    #grid-wrapper {
-      background-color: #fff;
-      padding: 10px;
-      border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      display: inline-block;
-    }
-
-    /* セルのスタイル */
-    .cell {
-      width: var(--cell-size);
-      height: var(--cell-size);
-      border: 1px solid #ddd;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      cursor: pointer;
-      transition: background-color 0.2s;
-    }
-
-    /* ステッチ記号のスタイル */
-    .stitch-symbol {
-      pointer-events: none;
-      font-size: calc(var(--cell-size) * 0.8);
-      line-height: 1;
-    }
-
-    /* グリッドサイズ入力欄 */
-    #grid-rows-input,
-    #grid-cols-input {
-      width: 60px;
-      height: 30px;
-    }
-
-    /* カラーピッカー */
-    #color-picker {
-      width: 30px;
-      height: 30px;
-      border: none;
-      padding: 0;
-    }
-
-    /* スマホ用メディアクエリ */
-    @media (max-width: 480px) {
-      :root {
-        --cell-size: 25px;
-      }
-      #toolbar input,
-      #toolbar select,
-      #toolbar button {
-        font-size: 14px;
-      }
-      #grid-rows-input,
-      #grid-cols-input {
-        width: 50px;
-        height: 25px;
-      }
-    }
-
-    /* 上下の列番号ラベル（#grid-top-labels と #grid-bottom-labels） */
-    #grid-top-labels, #grid-bottom-labels {
-      display: grid;
-      grid-template-columns: repeat(20, var(--cell-size)); /* JS側で numCols に応じて更新 */
-      gap: 0;
-    }
-    #grid-top-labels div, #grid-bottom-labels div {
-      width: var(--cell-size);
-      height: var(--cell-size);
-      border: 1px solid #ddd;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      background-color: #e0e0e0;
-    }
-
-    /* 左右の行番号ラベル（#grid-left-labels と #grid-right-labels） */
-    #grid-left-labels, #grid-right-labels {
-      display: grid;
-      grid-template-rows: repeat(20, var(--cell-size)); /* JS側で numRows に応じて更新 */
-      gap: 0;
-    }
-    #grid-left-labels div, #grid-right-labels div {
-      width: var(--cell-size);
-      height: var(--cell-size);
-      border: 1px solid #ddd;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      background-color: #e0e0e0;
-    }
-
-    #grid-container {
-      display: grid;
-      gap: 0; /* セルの間に余白が欲しい場合はここで調整できます */
-    }
-  </style>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div id="toolbar">
-    <input type="color" id="color-picker" value="#ff0000">
-    <select id="stitch-type">
-      <option value="knit">表目</option>
-      <option value="purl">裏目</option>
-      <option value="yo">かけ目</option>
-      <option value="right_up_two_one">右上2目一度</option>
-      <option value="left_up_two_one">左上2目一度</option>
-      <option value="purl_left_up_two_one">裏目の左上2目一度</option>
-      <option value="middle_up_three_one">中上3目一度</option>
-      <option value="right_up_three_one">右上3目一度</option>
-      <option value="left_up_three_one">左上3目一度</option>
-      <option value="right_up_two_cross">右上2目交差</option>
-      <option value="left_up_two_cross">左上2目交差</option>
-      <option value="slip_stitch">すべり目</option>
-      <option value="twist_stitch">ねじり目</option>
-    </select>
-    <label for="grid-rows-input">行数:</label>
-    <input type="number" id="grid-rows-input" value="20" min="1">
-    <label for="grid-cols-input">列数:</label>
-    <input type="number" id="grid-cols-input" value="20" min="1">
-    <button id="update-grid-size">グリッド更新</button>
-    <button onclick="downloadChart()">画像保存</button>
-    <button onclick="clearGrid()">全体クリア</button>
-  </div>
+    <div id="toolbar">
+        <!-- 一般設定グループ -->
+        <div class="toolbar-group">
+        <input type="color" id="color-picker" value="#ff0000">
+        <select id="stitch-type">
+            <option value="knit">表目</option>
+            <option value="purl">裏目</option>
+            <option value="yo">かけ目</option>
+            <option value="right_up_two_one">右上2目一度</option>
+            <option value="left_up_two_one">左上2目一度</option>
+            <option value="purl_left_up_two_one">裏目の左上2目一度</option>
+            <option value="middle_up_three_one">中上3目一度</option>
+            <option value="right_up_three_one">右上3目一度</option>
+            <option value="left_up_three_one">左上3目一度</option>
+            <option value="right_up_two_cross">右上2目交差</option>
+            <option value="left_up_two_cross">左上2目交差</option>
+            <option value="slip_stitch">すべり目</option>
+            <option value="twist_stitch">ねじり目</option>
+        </select>
+        <label for="grid-rows-input">行数:</label>
+        <input type="number" id="grid-rows-input" value="20" min="1">
+        <label for="grid-cols-input">列数:</label>
+        <input type="number" id="grid-cols-input" value="20" min="1">
+        <button id="update-grid-size">グリッド更新</button>
+        </div>
+
+        <!-- 行・列追加グループ -->
+        <div class="toolbar-group">
+        <button onclick="addRowTop()">上に行を追加</button>
+        <button onclick="addRowBottom()">下に行を追加</button>
+        <button onclick="addColumnLeft()">左に列を追加</button>
+        <button onclick="addColumnRight()">右に列を追加</button>
+        </div>
+
+        <!-- 行・列削除グループ -->
+        <div class="toolbar-group">
+        <button onclick="removeRowTop()">上から行を削除</button>
+        <button onclick="removeRowBottom()">下から行を削除</button>
+        <button onclick="removeColumnLeft()">左から列を削除</button>
+        <button onclick="removeColumnRight()">右から列を削除</button>
+        </div>
+
+        <!-- その他操作グループ -->
+        <div class="toolbar-group">
+        <button onclick="downloadChart()">画像保存</button>
+        <button onclick="clearGrid()">全体クリア</button>
+        </div>
+    </div>
+
   <div id="grid-wrapper">
-    <!-- 上側のラベル行：左と右は隙間用 -->
+    <!-- 上側のラベル行 -->
     <div style="display: flex;">
       <div style="width: var(--cell-size); height: var(--cell-size);"></div>
       <div id="grid-top-labels"></div>
       <div style="width: var(--cell-size); height: var(--cell-size);"></div>
     </div>
-    <!-- 中央部分：左側ラベル、グリッド本体、右側ラベル -->
+    <!-- 中央部分 -->
     <div style="display: flex;">
       <div id="grid-left-labels"></div>
       <div id="grid-container"></div>
@@ -194,276 +77,7 @@
     </div>
   </div>
 
-  <script>
-    let numRows = 20; // 行数
-    let numCols = 20; // 列数
-    let selectedColor = '#ff0000';
-    let selectedStitch = 'knit';
-    let grid = [];
-    let touchTimer = null; // 長押し判定用タイマー
-
-    // 保存されたグリッドの状態を読み出す関数
-    function loadGridState() {
-      const saved = localStorage.getItem('knittingChartData');
-      if (saved) {
-        try {
-          const data = JSON.parse(saved);
-          if (data && data.numRows && data.numCols && data.grid) {
-            numRows = data.numRows;
-            numCols = data.numCols;
-            grid = data.grid;
-            // 入力欄にも反映
-            document.getElementById('grid-rows-input').value = numRows;
-            document.getElementById('grid-cols-input').value = numCols;
-          }
-        } catch (e) {
-          console.error("保存されたデータの読み込みに失敗しました", e);
-        }
-      }
-    }
-
-    // 現在のグリッド状態を localStorage に保存する関数
-    function saveGridState() {
-      const data = { numRows, numCols, grid };
-      localStorage.setItem('knittingChartData', JSON.stringify(data));
-    }
-
-    // グリッドの初期化
-    function initGrid() {
-      const container = document.getElementById('grid-container');
-      container.innerHTML = '';
-      container.style.gridTemplateColumns = `repeat(${numCols}, var(--cell-size))`;
-      
-      // grid が未定義またはサイズが変わっている場合は新規作成
-      if (!grid || grid.length !== numRows) {
-        grid = [];
-        for (let i = 0; i < numRows; i++) {
-          grid[i] = [];
-          for (let j = 0; j < numCols; j++) {
-            grid[i][j] = { type: 'empty', color: '#ffffff' };
-          }
-        }
-      }
-      
-      // グリッド上の各セルを生成する
-      for (let i = 0; i < numRows; i++) {
-        for (let j = 0; j < numCols; j++) {
-          const cell = document.createElement('div');
-          cell.className = 'cell';
-          cell.dataset.row = i;
-          cell.dataset.col = j;
-          cell.addEventListener('click', handleCellClick);
-          // PC用：右クリックでセルをクリア
-          cell.addEventListener('contextmenu', clearCell);
-          // スマホ用：長押しでセルをクリア
-          cell.addEventListener('touchstart', handleTouchStart);
-          cell.addEventListener('touchend', handleTouchEnd);
-          cell.appendChild(createStitchSymbol(grid[i][j].type));
-          container.appendChild(cell);
-          // セルの見た目を更新（色など）
-          updateCellDisplay(cell);
-        }
-      }
-      // ラベルの更新
-      updateGridLabels();
-      // グリッド状態を保存
-      saveGridState();
-    }
-
-    // セルに表示するステッチ記号の作成
-    function createStitchSymbol(type) {
-      const symbol = document.createElement('div');
-      symbol.className = 'stitch-symbol';
-      symbol.innerHTML = getStitchSymbol(type);
-      return symbol;
-    }
-
-    // セルクリック時の処理
-    function handleCellClick(e) {
-        const cell = e.currentTarget;
-        const row = parseInt(cell.dataset.row);
-        const col = parseInt(cell.dataset.col);
-
-        // すでに同じ記号がセットされている場合はクリア、それ以外の場合は新たな記号をセット
-        if (grid[row][col].type === selectedStitch) {
-            grid[row][col] = { type: 'empty', color: '#ffffff' };
-        } else {
-            grid[row][col] = {
-            type: selectedStitch,
-            color: selectedColor
-            };
-        }
-        updateCellDisplay(cell);
-        saveGridState();
-    }
-
-    // セルの表示更新
-    function updateCellDisplay(cell) {
-      const symbol = cell.querySelector('.stitch-symbol');
-      const cellData = grid[cell.dataset.row][cell.dataset.col];
-      symbol.innerHTML = getStitchSymbol(cellData.type);
-      symbol.style.color = cellData.color;
-    }
-
-    // 右クリックでセルをクリアする処理
-    function clearCell(e) {
-      e.preventDefault(); // コンテキストメニューを表示させない
-      const cell = e.currentTarget;
-      const row = parseInt(cell.dataset.row);
-      const col = parseInt(cell.dataset.col);
-      grid[row][col] = { type: 'empty', color: '#ffffff' };
-      updateCellDisplay(cell);
-      saveGridState();
-    }
-
-    // スマホ用：タッチ開始で長押しタイマーを開始
-    function handleTouchStart(e) {
-      const cell = e.currentTarget;
-      // 長押し判定（800ms以上でクリア）
-      touchTimer = setTimeout(() => {
-        clearCell(e);
-      }, 800);
-    }
-
-    // スマホ用：タッチ解除でタイマーをクリア
-    function handleTouchEnd(e) {
-      clearTimeout(touchTimer);
-    }
-
-    // 各ステッチ記号の取得
-    function getStitchSymbol(type) {
-      switch (type) {
-        case 'knit': return '─';
-        case 'purl': return '○';
-        case 'yo': return '△';
-        case 'right_up_two_one': return '↗2';
-        case 'left_up_two_one': return '↖2';
-        case 'purl_left_up_two_one': return '↰2';
-        case 'middle_up_three_one': return '⇧3';
-        case 'right_up_three_one': return '↗3';
-        case 'left_up_three_one': return '↖3';
-        case 'right_up_two_cross': return '↗2×';
-        case 'left_up_two_cross': return '↖2×';
-        case 'slip_stitch': return '∿';
-        case 'twist_stitch': return '↻';
-        default: return '';
-      }
-    }
-
-    // 画像保存機能（html2canvas 必須）
-    function downloadChart() {
-      html2canvas(document.querySelector("#grid-container")).then(canvas => {
-        const link = document.createElement('a');
-        link.download = 'knitting-chart.png';
-        link.href = canvas.toDataURL();
-        link.click();
-      });
-    }
-
-    // 全体クリア機能
-    function clearGrid() {
-      // 全体クリア時は、グリッドを空にして再生成
-      grid = [];
-      initGrid();
-      saveGridState();
-    }
-
-    // グリッドサイズ更新関数（行数・列数を個別に更新）
-    function updateGridSize() {
-      const rowsInput = document.getElementById('grid-rows-input');
-      const colsInput = document.getElementById('grid-cols-input');
-      const newRows = parseInt(rowsInput.value);
-      const newCols = parseInt(colsInput.value);
-      if (!isNaN(newRows) && newRows > 0 && !isNaN(newCols) && newCols > 0) {
-        numRows = newRows;
-        numCols = newCols;
-        // サイズ変更時は新たにグリッドを初期化
-        initGrid();
-        saveGridState();
-      } else {
-        alert('正しい行数・列数を入力してください');
-      }
-    }
-
-    // 各イベントリスナーの設定
-    document.getElementById('color-picker').addEventListener('input', (e) => {
-      selectedColor = e.target.value;
-    });
-    document.getElementById('stitch-type').addEventListener('change', (e) => {
-      selectedStitch = e.target.value;
-    });
-    document.getElementById('update-grid-size').addEventListener('click', updateGridSize);
-
-    // ページ読み込み時に保存済みのデータがあれば読み込み、グリッドを生成
-    loadGridState();
-    initGrid();
-
-    function updateGridLabels() {
-      // 上側の列番号ラベル
-      const topLabels = document.getElementById("grid-top-labels");
-      topLabels.innerHTML = "";
-      topLabels.style.display = "grid";
-      topLabels.style.gridTemplateColumns = `repeat(${numCols}, var(--cell-size))`;
-      for (let j = 0; j < numCols; j++) {
-        const label = document.createElement("div");
-        label.textContent = j + 1;
-        label.style.border = "1px solid #ddd";
-        label.style.display = "flex";
-        label.style.justifyContent = "center";
-        label.style.alignItems = "center";
-        label.style.backgroundColor = "#e0e0e0";
-        topLabels.appendChild(label);
-      }
-      
-      // 下側の列番号ラベル
-      const bottomLabels = document.getElementById("grid-bottom-labels");
-      bottomLabels.innerHTML = "";
-      bottomLabels.style.display = "grid";
-      bottomLabels.style.gridTemplateColumns = `repeat(${numCols}, var(--cell-size))`;
-      for (let j = 0; j < numCols; j++) {
-        const label = document.createElement("div");
-        label.textContent = j + 1;
-        label.style.border = "1px solid #ddd";
-        label.style.display = "flex";
-        label.style.justifyContent = "center";
-        label.style.alignItems = "center";
-        label.style.backgroundColor = "#e0e0e0";
-        bottomLabels.appendChild(label);
-      }
-      
-      // 左側の行番号ラベル
-      const leftLabels = document.getElementById("grid-left-labels");
-      leftLabels.innerHTML = "";
-      leftLabels.style.display = "grid";
-      leftLabels.style.gridTemplateRows = `repeat(${numRows}, var(--cell-size))`;
-      for (let i = 0; i < numRows; i++) {
-        const label = document.createElement("div");
-        label.textContent = i + 1;
-        label.style.border = "1px solid #ddd";
-        label.style.display = "flex";
-        label.style.justifyContent = "center";
-        label.style.alignItems = "center";
-        label.style.backgroundColor = "#e0e0e0";
-        leftLabels.appendChild(label);
-      }
-      
-      // 右側の行番号ラベル
-      const rightLabels = document.getElementById("grid-right-labels");
-      rightLabels.innerHTML = "";
-      rightLabels.style.display = "grid";
-      rightLabels.style.gridTemplateRows = `repeat(${numRows}, var(--cell-size))`;
-      for (let i = 0; i < numRows; i++) {
-        const label = document.createElement("div");
-        label.textContent = i + 1;
-        label.style.border = "1px solid #ddd";
-        label.style.display = "flex";
-        label.style.justifyContent = "center";
-        label.style.alignItems = "center";
-        label.style.backgroundColor = "#e0e0e0";
-        rightLabels.appendChild(label);
-      }
-    }
-  </script>
+  <script src="scripts.js"></script>
   <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 </body>
 </html>
