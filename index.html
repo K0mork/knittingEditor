@@ -47,15 +47,15 @@
     }
 
     /* グリッドコンテナ: レスポンシブ対応のスクロール設定 */
-    #grid-container {
+    #grid-wrapper {
       background-color: #fff;
       padding: 10px;
       border-radius: 8px;
       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      display: grid;
-      grid-template-columns: repeat(20, var(--cell-size)); /* 列数はJSで更新 */
-      gap: 0;
-      overflow: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      display: inline-block;
     }
 
     /* セルのスタイル */
@@ -108,6 +108,43 @@
         height: 25px;
       }
     }
+
+    /* 上下の列番号ラベル（#grid-top-labels と #grid-bottom-labels） */
+    #grid-top-labels, #grid-bottom-labels {
+      display: grid;
+      grid-template-columns: repeat(20, var(--cell-size)); /* JS側で numCols に応じて更新 */
+      gap: 0;
+    }
+    #grid-top-labels div, #grid-bottom-labels div {
+      width: var(--cell-size);
+      height: var(--cell-size);
+      border: 1px solid #ddd;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: #e0e0e0;
+    }
+
+    /* 左右の行番号ラベル（#grid-left-labels と #grid-right-labels） */
+    #grid-left-labels, #grid-right-labels {
+      display: grid;
+      grid-template-rows: repeat(20, var(--cell-size)); /* JS側で numRows に応じて更新 */
+      gap: 0;
+    }
+    #grid-left-labels div, #grid-right-labels div {
+      width: var(--cell-size);
+      height: var(--cell-size);
+      border: 1px solid #ddd;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: #e0e0e0;
+    }
+
+    #grid-container {
+      display: grid;
+      gap: 0; /* セルの間に余白が欲しい場合はここで調整できます */
+    }
   </style>
 </head>
 <body>
@@ -136,7 +173,26 @@
     <button onclick="downloadChart()">画像保存</button>
     <button onclick="clearGrid()">全体クリア</button>
   </div>
-  <div id="grid-container"></div>
+  <div id="grid-wrapper">
+    <!-- 上側のラベル行：左と右は隙間用 -->
+    <div style="display: flex;">
+      <div style="width: var(--cell-size); height: var(--cell-size);"></div>
+      <div id="grid-top-labels"></div>
+      <div style="width: var(--cell-size); height: var(--cell-size);"></div>
+    </div>
+    <!-- 中央部分：左側ラベル、グリッド本体、右側ラベル -->
+    <div style="display: flex;">
+      <div id="grid-left-labels"></div>
+      <div id="grid-container"></div>
+      <div id="grid-right-labels"></div>
+    </div>
+    <!-- 下側のラベル行 -->
+    <div style="display: flex;">
+      <div style="width: var(--cell-size); height: var(--cell-size);"></div>
+      <div id="grid-bottom-labels"></div>
+      <div style="width: var(--cell-size); height: var(--cell-size);"></div>
+    </div>
+  </div>
 
   <script>
     let numRows = 20; // 行数
@@ -176,7 +232,6 @@
     function initGrid() {
       const container = document.getElementById('grid-container');
       container.innerHTML = '';
-      // 入力された列数に合わせて grid-template-columns を更新
       container.style.gridTemplateColumns = `repeat(${numCols}, var(--cell-size))`;
       
       // grid が未定義またはサイズが変わっている場合は新規作成
@@ -209,6 +264,8 @@
           updateCellDisplay(cell);
         }
       }
+      // ラベルの更新
+      updateGridLabels();
       // グリッド状態を保存
       saveGridState();
     }
@@ -340,6 +397,72 @@
     // ページ読み込み時に保存済みのデータがあれば読み込み、グリッドを生成
     loadGridState();
     initGrid();
+
+    function updateGridLabels() {
+      // 上側の列番号ラベル
+      const topLabels = document.getElementById("grid-top-labels");
+      topLabels.innerHTML = "";
+      topLabels.style.display = "grid";
+      topLabels.style.gridTemplateColumns = `repeat(${numCols}, var(--cell-size))`;
+      for (let j = 0; j < numCols; j++) {
+        const label = document.createElement("div");
+        label.textContent = j + 1;
+        label.style.border = "1px solid #ddd";
+        label.style.display = "flex";
+        label.style.justifyContent = "center";
+        label.style.alignItems = "center";
+        label.style.backgroundColor = "#e0e0e0";
+        topLabels.appendChild(label);
+      }
+      
+      // 下側の列番号ラベル
+      const bottomLabels = document.getElementById("grid-bottom-labels");
+      bottomLabels.innerHTML = "";
+      bottomLabels.style.display = "grid";
+      bottomLabels.style.gridTemplateColumns = `repeat(${numCols}, var(--cell-size))`;
+      for (let j = 0; j < numCols; j++) {
+        const label = document.createElement("div");
+        label.textContent = j + 1;
+        label.style.border = "1px solid #ddd";
+        label.style.display = "flex";
+        label.style.justifyContent = "center";
+        label.style.alignItems = "center";
+        label.style.backgroundColor = "#e0e0e0";
+        bottomLabels.appendChild(label);
+      }
+      
+      // 左側の行番号ラベル
+      const leftLabels = document.getElementById("grid-left-labels");
+      leftLabels.innerHTML = "";
+      leftLabels.style.display = "grid";
+      leftLabels.style.gridTemplateRows = `repeat(${numRows}, var(--cell-size))`;
+      for (let i = 0; i < numRows; i++) {
+        const label = document.createElement("div");
+        label.textContent = i + 1;
+        label.style.border = "1px solid #ddd";
+        label.style.display = "flex";
+        label.style.justifyContent = "center";
+        label.style.alignItems = "center";
+        label.style.backgroundColor = "#e0e0e0";
+        leftLabels.appendChild(label);
+      }
+      
+      // 右側の行番号ラベル
+      const rightLabels = document.getElementById("grid-right-labels");
+      rightLabels.innerHTML = "";
+      rightLabels.style.display = "grid";
+      rightLabels.style.gridTemplateRows = `repeat(${numRows}, var(--cell-size))`;
+      for (let i = 0; i < numRows; i++) {
+        const label = document.createElement("div");
+        label.textContent = i + 1;
+        label.style.border = "1px solid #ddd";
+        label.style.display = "flex";
+        label.style.justifyContent = "center";
+        label.style.alignItems = "center";
+        label.style.backgroundColor = "#e0e0e0";
+        rightLabels.appendChild(label);
+      }
+    }
   </script>
   <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 </body>
