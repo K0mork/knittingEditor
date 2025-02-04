@@ -45,11 +45,13 @@ function updateGridLabels() {
   
     for (let j = 0; j < numCols; j++) {
       const topLabel = document.createElement('div');
-      topLabel.textContent = j + 1;
+      // 右から左へ番号を割り当てる（右端を1にする）
+      topLabel.textContent = numCols - j;
       gridTopLabels.appendChild(topLabel);
   
       const bottomLabel = document.createElement('div');
-      bottomLabel.textContent = j + 1;
+      // 右から左へ番号を割り当てる（右端を1にする）
+      bottomLabel.textContent = numCols - j;
       gridBottomLabels.appendChild(bottomLabel);
     }
   
@@ -64,14 +66,16 @@ function updateGridLabels() {
   
     for (let i = 0; i < numRows; i++) {
       const leftLabel = document.createElement('div');
-      leftLabel.textContent = i + 1;
+      // 下から上へ番号を割り当てる（下端を1にする）
+      leftLabel.textContent = numRows - i;
       gridLeftLabels.appendChild(leftLabel);
   
       const rightLabel = document.createElement('div');
-      rightLabel.textContent = i + 1;
+      // 下から上へ番号を割り当てる（下端を1にする）
+      rightLabel.textContent = numRows - i;
       gridRightLabels.appendChild(rightLabel);
     }
-  }
+}
 
 // グリッドの初期化
 function initGrid() {
