@@ -223,15 +223,21 @@
 
     // セルクリック時の処理
     function handleCellClick(e) {
-      const cell = e.currentTarget;
-      const row = parseInt(cell.dataset.row);
-      const col = parseInt(cell.dataset.col);
-      grid[row][col] = {
-        type: selectedStitch,
-        color: selectedColor
-      };
-      updateCellDisplay(cell);
-      saveGridState();
+        const cell = e.currentTarget;
+        const row = parseInt(cell.dataset.row);
+        const col = parseInt(cell.dataset.col);
+
+        // すでに同じ記号がセットされている場合はクリア、それ以外の場合は新たな記号をセット
+        if (grid[row][col].type === selectedStitch) {
+            grid[row][col] = { type: 'empty', color: '#ffffff' };
+        } else {
+            grid[row][col] = {
+            type: selectedStitch,
+            color: selectedColor
+            };
+        }
+        updateCellDisplay(cell);
+        saveGridState();
     }
 
     // セルの表示更新
