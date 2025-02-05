@@ -3,6 +3,7 @@ let numCols = 20; // 列数
 let selectedColor = '#ff0000';
 let selectedStitch = 'knit';
 let grid = [];
+let touchTimer = null; // 長押し判定用タイマー
 
 // 保存されたグリッドの状態を読み出す関数
 function loadGridState() {
@@ -96,7 +97,7 @@ function handleCellTouchMove(e) {
   }
 }
 
-// グリッドの初期化
+// グリッドの初期化（initGrid）の修正部分
 function initGrid() {
   const container = document.getElementById('grid-container');
   container.innerHTML = '';
@@ -126,20 +127,29 @@ function initGrid() {
       cell.dataset.row = i;
       cell.dataset.col = j;
 
-      // 列番号に応じた背景色のクラス
-      cell.classList.add(j % 2 === 0 ? 'even-col' : 'odd-col');
+      // 列番号に応じたクラスを追加：偶数列と奇数列で背景色を設定
+      if (j % 2 === 0) {
+        cell.classList.add('even-col');
+      } else {
+        cell.classList.add('odd-col');
+      }
 
       cell.addEventListener('click', handleCellClick);
-      cell.addEventListener('contextmenu', clearCell); // 必要なら右クリックでのクリアも残す
-
-      // 【ここでは touch イベントの登録は削除】
+      cell.addEventListener('contextmenu', clearCell);
+      cell.addEventListener('touchstart', handleTouchStart);
+      cell.addEventListener('touchend', handleTouchEnd);
+      // 追加: タッチ移動時のイベントリスナー
+      cell.addEventListener('touchmove', handleCellTouchMove);
 
       cell.appendChild(createStitchSymbol(grid[i][j].type));
       container.appendChild(cell);
+      // セルの見た目更新
       updateCellDisplay(cell);
     }
   }
+  // 数字ラベルも更新（行・列の番号を表示）
   updateGridLabels();
+
   saveGridState();
 }
 
@@ -178,16 +188,16 @@ function updateCellDisplay(cell) {
   symbol.style.color = cellData.color;
 }
 
-// // 右クリックでセルをクリアする処理
-// function clearCell(e) {
-//   e.preventDefault(); // コンテキストメニューを表示させない
-//   const cell = e.currentTarget;
-//   const row = parseInt(cell.dataset.row);
-//   const col = parseInt(cell.dataset.col);
-//   grid[row][col] = { type: 'empty', color: '#ffffff' };
-//   updateCellDisplay(cell);
-//   saveGridState();
-// }
+// 右クリックでセルをクリアする処理
+function clearCell(e) {
+  e.preventDefault(); // コンテキストメニューを表示させない
+  const cell = e.currentTarget;
+  const row = parseInt(cell.dataset.row);
+  const col = parseInt(cell.dataset.col);
+  grid[row][col] = { type: 'empty', color: '#ffffff' };
+  updateCellDisplay(cell);
+  saveGridState();
+}
 
 // スマホ用：タッチ開始で長押しタイマーを開始
 function handleTouchStart(e) {
@@ -413,73 +423,3 @@ function addRowTop() {
     initGrid();
     saveGridState();
   }
-
-
-
-// ============================
-// 以下、ドラッグによる記号入力の実装
-// ============================
-
-// ドラッグ中の状態を管理するフラグ
-let isDragging = false;
-
-// ドラッグ中にセルへ記号を適用する共通処理
-function applyStitchToCell(cell) {
-  const row = parseInt(cell.dataset.row);
-  const col = parseInt(cell.dataset.col);
-  if (grid[row][col].type !== selectedStitch) {
-    grid[row][col] = {
-      type: selectedStitch,
-      color: selectedColor
-    };
-    updateCellDisplay(cell);
-    saveGridState();
-  }
-}
-
-
-// グリッドコンテナに pointer イベントを設定
-const gridContainer = document.getElementById('grid-container');
-
-gridContainer.addEventListener('pointerdown', (e) => {
-  // クリック・タッチ開始時に対象セルを取得
-  let cell = e.target;
-  if (!cell.classList.contains('cell')) {
-    cell = cell.closest('.cell');
-  }
-  if (cell) {
-    isDragging = true;
-    applyStitchToCell(cell);
-  }
-});
-
-gridContainer.addEventListener('pointermove', (e) => {
-  if (!isDragging) return;
-  // 指の位置から要素を取得
-  const element = document.elementFromPoint(e.clientX, e.clientY);
-  if (!element) return;
-  let cell = element;
-  if (!cell.classList.contains('cell')) {
-    cell = cell.closest('.cell');
-  }
-  if (cell) {
-    applyStitchToCell(cell);
-  }
-});
-
-// ドラッグ終了時にフラグをリセット
-gridContainer.addEventListener('pointerup', () => {
-  isDragging = false;
-});
-gridContainer.addEventListener('pointercancel', () => {
-  isDragging = false;
-});
-
-// イベントリスナーの設定（カラーピッカー、ステッチタイプ、グリッドサイズ更新など）
-document.getElementById('color-picker').addEventListener('input', (e) => {
-  selectedColor = e.target.value;
-});
-document.getElementById('stitch-type').addEventListener('change', (e) => {
-  selectedStitch = e.target.value;
-});
-document.getElementById('update-grid-size').addEventListener('click', updateGridSize);
