@@ -79,14 +79,25 @@ function updateGridLabels() {
 
 // タッチムーブ時の処理関数
 function handleCellTouchMove(e) {
-  // 標準のスクロール動作を抑止（必要に応じて）
-  e.preventDefault();
-  // 長押しタイマーをクリアして、長押しによるクリア操作をキャンセル
-  clearTimeout(touchTimer);
   const cell = e.currentTarget;
+  const startX = parseFloat(cell.dataset.startX);
+  const startY = parseFloat(cell.dataset.startY);
+  const currentX = e.touches[0].clientX;
+  const currentY = e.touches[0].clientY;
+  
+  // スクロールと判断する閾値（例：10px）
+  const threshold = 5;
+  if (Math.abs(currentX - startX) > threshold || Math.abs(currentY - startY) > threshold) {
+    // ユーザーがスクロールしている場合：長押しタイマーをクリアし、スクロールを許可する
+    clearTimeout(touchTimer);
+    return;
+  }
+  
+  // 軽微な移動の場合のみセルの操作実行
+  e.preventDefault(); // ※ここで preventDefault() を呼ぶと、移動が小さい場合にスクロールキャンセルします
+  clearTimeout(touchTimer);
   const row = parseInt(cell.dataset.row);
   const col = parseInt(cell.dataset.col);
-  // すでに同じ記号が設定されている場合は何もしない
   if (grid[row][col].type !== selectedStitch) {
     grid[row][col] = {
       type: selectedStitch,
@@ -139,7 +150,7 @@ function initGrid() {
       cell.addEventListener('touchstart', handleTouchStart);
       cell.addEventListener('touchend', handleTouchEnd);
       // 追加: タッチ移動時のイベントリスナー
-      cell.addEventListener('touchmove', handleCellTouchMove);
+      cell.addEventListener('touchmove', handleCellTouchMove, { passive: false });
 
       cell.appendChild(createStitchSymbol(grid[i][j].type));
       container.appendChild(cell);
@@ -202,36 +213,19 @@ function clearCell(e) {
 // スマホ用：タッチ開始で長押しタイマーを開始
 function handleTouchStart(e) {
   const cell = e.currentTarget;
-  // 長押し判定（800ms以上でクリア）
-  touchTimer = setTimeout(() => {
-    clearCell(e);
-  }, 800);
+  // タッチ開始位置を記録
+  cell.dataset.startX = e.touches[0].clientX;
+  cell.dataset.startY = e.touches[0].clientY;
+  // // 長押し判定（800ms以上でクリア）
+  // touchTimer = setTimeout(() => {
+  //   clearCell(e);
+  // }, 800);
 }
 
 // スマホ用：タッチ解除でタイマーをクリア
 function handleTouchEnd(e) {
   clearTimeout(touchTimer);
 }
-
-// 各ステッチ記号の取得
-// function getStitchSymbol(type) {
-//   switch (type) {
-//     case 'knit': return '─';
-//     case 'purl': return '○';
-//     case 'yo': return '△';
-//     case 'right_up_two_one': return '↗2';
-//     case 'left_up_two_one': return '↖2';
-//     case 'purl_left_up_two_one': return '↰2';
-//     case 'middle_up_three_one': return '⇧3';
-//     case 'right_up_three_one': return '↗3';
-//     case 'left_up_three_one': return '↖3';
-//     case 'right_up_two_cross': return '↗2×';
-//     case 'left_up_two_cross': return '↖2×';
-//     case 'slip_stitch': return '∿';
-//     case 'twist_stitch': return '↻';
-//     default: return '';
-//   }
-// }
 
 function getStitchSymbol(type) {
   if (type === 'empty') {
