@@ -128,3 +128,57 @@ button:hover {
   display: grid;
   gap: 0;
 }
+
+.custom-dropdown {
+  position: relative;
+  display: inline-block;
+  cursor: pointer;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 4px 8px; /* 左右のパディングを増やす */
+  background-color: #fff;
+  min-width: 250px; /* 最低幅を指定してテキスト領域が狭くならないようにする */
+}
+
+.custom-dropdown-selected {
+  display: flex;
+  align-items: center;
+  gap: 10px; /* アイコンと文字の間隔を広げる */
+  white-space: nowrap; /* テキストが自動改行されないようにする */
+}
+
+.dropdown-icon {
+  display: inline-block;
+  width: 32px;   /* アイコンサイズを大きく設定 */
+  height: 32px;  /* アイコンサイズを大きく設定 */
+  vertical-align: middle;
+}
+
+.dropdown-name {
+  vertical-align: middle;
+  font-size: 18px; /* 必要に応じてフォントサイズを調整 */
+}
+
+.custom-dropdown-options {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 1000;
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  width: 100%;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.custom-dropdown-option {
+  padding: 4px 8px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.custom-dropdown-option:hover {
+  background-color: #f0f0f0;
+}

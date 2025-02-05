@@ -7,58 +7,52 @@
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-    <div id="toolbar">
-        <!-- 一般設定グループ -->
-        <div class="toolbar-group">
-            <input type="color" id="color-picker" value="#ff0000">
-            <select id="stitch-type">
-                <option value="knit">表目</option>
-                <option value="purl">裏目</option>
-                <option value="yo">かけ目</option>
-                <option value="right_up_two_one">右上2目一度</option>
-                <option value="left_up_two_one">左上2目一度</option>
-                <option value="purl_left_up_two_one">裏目の左上2目一度</option>
-                <option value="middle_up_three_one">中上3目一度</option>
-                <option value="right_up_three_one">右上3目一度</option>
-                <option value="left_up_three_one">左上3目一度</option>
-                <option value="right_up_two_cross">右上2目交差</option>
-                <option value="left_up_two_cross">左上2目交差</option>
-                <option value="slip_stitch">すべり目</option>
-                <option value="twist_stitch">ねじり目</option>
-            </select>
+  <div id="toolbar">
+    <!-- 一般設定グループ -->
+    <div class="toolbar-group">
+      <input type="color" id="color-picker" value="#ff0000">
+      <!-- カスタム記号選択ドロップダウン -->
+      <div id="stitch-type-dropdown" class="custom-dropdown">
+        <div id="selected-stitch" class="custom-dropdown-selected">
+          <!-- 初期表示：アイコンと名称 -->
+          <span class="dropdown-icon"></span>
+          <span class="dropdown-name">表目</span>
         </div>
-
-        <!-- グリッド設定グループ -->
-        <div class="toolbar-group">
-            <label for="grid-rows-input">行数:</label>
-            <input type="number" id="grid-rows-input" value="20" min="1">
-            <label for="grid-cols-input">列数:</label>
-            <input type="number" id="grid-cols-input" value="20" min="1">
-            <button id="update-grid-size">グリッド更新</button>
-        </div>
-
-        <!-- 行・列追加グループ -->
-        <div class="toolbar-group">
-            <button id="add-row-top">上に追加</button>
-            <button id="add-row-bottom">下に追加</button>
-            <button id="add-col-left">左に追加</button>
-            <button id="add-col-right">右に追加</button>
-        </div>
-
-        <!-- 行・列削除グループ -->
-        <div class="toolbar-group">
-            <button id="remove-row-top">上を削除</button>
-            <button id="remove-row-bottom">下を削除</button>
-            <button id="remove-col-left">左を削除</button>
-            <button id="remove-col-right">右を削除</button>
-        </div>
-
-        <!-- その他操作グループ -->
-        <div class="toolbar-group">
-            <button id="download-chart">画像保存</button>
-            <button id="clear-grid">全体クリア</button>
-        </div>
+        <div id="stitch-options" class="custom-dropdown-options" style="display: none;"></div>
+      </div>
     </div>
+
+    <!-- グリッド設定グループ -->
+    <div class="toolbar-group">
+      <label for="grid-rows-input">行数:</label>
+      <input type="number" id="grid-rows-input" value="20" min="1">
+      <label for="grid-cols-input">列数:</label>
+      <input type="number" id="grid-cols-input" value="20" min="1">
+      <button id="update-grid-size">グリッド更新</button>
+    </div>
+
+    <!-- 行・列追加グループ -->
+    <div class="toolbar-group">
+      <button id="add-row-top">上に追加</button>
+      <button id="add-row-bottom">下に追加</button>
+      <button id="add-col-left">左に追加</button>
+      <button id="add-col-right">右に追加</button>
+    </div>
+
+    <!-- 行・列削除グループ -->
+    <div class="toolbar-group">
+      <button id="remove-row-top">上を削除</button>
+      <button id="remove-row-bottom">下を削除</button>
+      <button id="remove-col-left">左を削除</button>
+      <button id="remove-col-right">右を削除</button>
+    </div>
+
+    <!-- その他操作グループ -->
+    <div class="toolbar-group">
+      <button id="download-chart">画像保存</button>
+      <button id="clear-grid">全体クリア</button>
+    </div>
+  </div>
 
   <div id="grid-wrapper">
     <!-- 上側のラベル行 -->
