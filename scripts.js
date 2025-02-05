@@ -77,7 +77,27 @@ function updateGridLabels() {
     }
 }
 
-// グリッドの初期化
+// タッチムーブ時の処理関数
+function handleCellTouchMove(e) {
+  // 標準のスクロール動作を抑止（必要に応じて）
+  e.preventDefault();
+  // 長押しタイマーをクリアして、長押しによるクリア操作をキャンセル
+  clearTimeout(touchTimer);
+  const cell = e.currentTarget;
+  const row = parseInt(cell.dataset.row);
+  const col = parseInt(cell.dataset.col);
+  // すでに同じ記号が設定されている場合は何もしない
+  if (grid[row][col].type !== selectedStitch) {
+    grid[row][col] = {
+      type: selectedStitch,
+      color: selectedColor
+    };
+    updateCellDisplay(cell);
+    saveGridState();
+  }
+}
+
+// グリッドの初期化（initGrid）の修正部分
 function initGrid() {
   const container = document.getElementById('grid-container');
   container.innerHTML = '';
@@ -107,7 +127,7 @@ function initGrid() {
       cell.dataset.row = i;
       cell.dataset.col = j;
 
-      // 列番号に応じたクラスを追加：偶数列（0,2,4...）と奇数列（1,3,5...）で背景色を変える
+      // 列番号に応じたクラスを追加：偶数列と奇数列で背景色を設定
       if (j % 2 === 0) {
         cell.classList.add('even-col');
       } else {
@@ -118,6 +138,9 @@ function initGrid() {
       cell.addEventListener('contextmenu', clearCell);
       cell.addEventListener('touchstart', handleTouchStart);
       cell.addEventListener('touchend', handleTouchEnd);
+      // 追加: タッチ移動時のイベントリスナー
+      cell.addEventListener('touchmove', handleCellTouchMove);
+
       cell.appendChild(createStitchSymbol(grid[i][j].type));
       container.appendChild(cell);
       // セルの見た目更新
