@@ -1,0 +1,130 @@
+:root {
+  --cell-size: 30px;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background-color: #f0f0f0;
+  padding: 10px;
+}
+#toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+  margin-bottom: 15px;
+}
+.toolbar-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+#toolbar input,
+#toolbar select,
+#toolbar button {
+  font-size: 16px;
+}
+button {
+  padding: 8px 12px;
+  cursor: pointer;
+  background-color: #4CAF50;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  transition: background-color 0.3s;
+}
+button:hover {
+  background-color: #45a049;
+}
+#grid-wrapper {
+  background-color: #fff;
+  padding: 10px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  display: inline-block;
+  gap: 10px;
+}
+.cell {
+  width: var(--cell-size);
+  height: var(--cell-size);
+  border: 1px solid #ddd;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.cell.even-col {
+  background-color: #e8e8e8;
+}
+.cell.odd-col {
+  background-color: #ffffff;
+}
+.stitch-symbol {
+  pointer-events: none;
+  font-size: calc(var(--cell-size) * 0.8);
+  line-height: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+#grid-rows-input,
+#grid-cols-input {
+  width: 60px;
+  height: 30px;
+}
+#color-picker {
+  width: 30px;
+  height: 30px;
+  border: none;
+  padding: 0;
+}
+@media (max-width: 480px) {
+  :root {
+    --cell-size: 25px;
+  }
+  #toolbar input,
+  #toolbar select,
+  #toolbar button {
+    font-size: 14px;
+  }
+  #grid-rows-input,
+  #grid-cols-input {
+    width: 50px;
+    height: 25px;
+  }
+}
+#grid-top-labels, #grid-bottom-labels {
+  display: grid;
+  gap: 0;
+}
+#grid-top-labels div, #grid-bottom-labels div {
+  width: var(--cell-size);
+  height: var(--cell-size);
+  border: 1px solid #ddd;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #e0e0e0;
+}
+#grid-left-labels, #grid-right-labels {
+  display: grid;
+  gap: 0;
+}
+#grid-left-labels div, #grid-right-labels div {
+  width: var(--cell-size);
+  height: var(--cell-size);
+  border: 1px solid #ddd;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #e0e0e0;
+}
+#grid-container {
+  display: grid;
+  gap: 0;
+}

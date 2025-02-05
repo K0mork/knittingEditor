@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>棒針編み図エディタ</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
     <div id="toolbar">
@@ -30,33 +30,33 @@
 
         <!-- グリッド設定グループ -->
         <div class="toolbar-group">
-        <label for="grid-rows-input">行数:</label>
-        <input type="number" id="grid-rows-input" value="20" min="1">
-        <label for="grid-cols-input">列数:</label>
-        <input type="number" id="grid-cols-input" value="20" min="1">
-        <button id="update-grid-size">グリッド更新</button>
+            <label for="grid-rows-input">行数:</label>
+            <input type="number" id="grid-rows-input" value="20" min="1">
+            <label for="grid-cols-input">列数:</label>
+            <input type="number" id="grid-cols-input" value="20" min="1">
+            <button id="update-grid-size">グリッド更新</button>
         </div>
 
         <!-- 行・列追加グループ -->
         <div class="toolbar-group">
-        <button onclick="addRowTop()">上に追加</button>
-        <button onclick="addRowBottom()">下に追加</button>
-        <button onclick="addColumnLeft()">左に追加</button>
-        <button onclick="addColumnRight()">右に追加</button>
+            <button id="add-row-top">上に追加</button>
+            <button id="add-row-bottom">下に追加</button>
+            <button id="add-col-left">左に追加</button>
+            <button id="add-col-right">右に追加</button>
         </div>
 
         <!-- 行・列削除グループ -->
         <div class="toolbar-group">
-        <button onclick="removeRowTop()">上を削除</button>
-        <button onclick="removeRowBottom()">下を削除</button>
-        <button onclick="removeColumnLeft()">左を削除</button>
-        <button onclick="removeColumnRight()">右を削除</button>
+            <button id="remove-row-top">上を削除</button>
+            <button id="remove-row-bottom">下を削除</button>
+            <button id="remove-col-left">左を削除</button>
+            <button id="remove-col-right">右を削除</button>
         </div>
 
         <!-- その他操作グループ -->
         <div class="toolbar-group">
-        <button onclick="downloadChart()">画像保存</button>
-        <button onclick="clearGrid()">全体クリア</button>
+            <button id="download-chart">画像保存</button>
+            <button id="clear-grid">全体クリア</button>
         </div>
     </div>
 
@@ -81,7 +81,7 @@
     </div>
   </div>
 
-  <script src="scripts.js"></script>
   <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+  <script type="module" src="js/main.js"></script>
 </body>
 </html>
