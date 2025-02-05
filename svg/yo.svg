@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="850.5" height="850.5" viewBox="0 0 850.5 850.5">
 <path fill-rule="evenodd" fill="rgb(100%, 100%, 100%)" fill-opacity="1" d="M 0 850.5 L 850.5 850.5 L 850.5 0 L 0 0 Z M 0 850.5 "/>
-<path fill="none" stroke-width="6.0009" stroke-linecap="butt" stroke-linejoin="round" stroke="rgb(0%, 0%, 0%)" stroke-opacity="1" stroke-miterlimit="10" d="M 87.75 425.25 C 87.75 611.648438 238.851562 762.75 425.25 762.75 C 611.648438 762.75 762.75 611.648438 762.75 425.25 C 762.75 238.851562 611.648438 87.75 425.25 87.75 C 238.851562 87.75 87.75 238.851562 87.75 425.25 Z M 87.75 425.25 " transform="matrix(1, 0, 0, -1, 0, 850.5)"/>
+<path fill="none" stroke-width="100.01" stroke-linecap="butt" stroke-linejoin="round" stroke="rgb(0%, 0%, 0%)" stroke-opacity="1" stroke-miterlimit="10" d="M 88.125 424.878906 C 88.125 611.269531 239.230469 762.378906 425.621094 762.378906 C 612.019531 762.378906 763.121094 611.269531 763.121094 424.878906 C 763.121094 238.480469 612.019531 87.375 425.621094 87.375 C 239.230469 87.375 88.125 238.480469 88.125 424.878906 Z M 88.125 424.878906 " transform="matrix(1, 0, 0, -1, 0, 850.5)"/>
 </svg>

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="850.5" height="850.5" viewBox="0 0 850.5 850.5">
 <path fill-rule="evenodd" fill="rgb(100%, 100%, 100%)" fill-opacity="1" d="M 0 850.5 L 850.5 850.5 L 850.5 0 L 0 0 Z M 0 850.5 "/>
-<path fill="none" stroke-width="6.0009" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgb(0%, 0%, 0%)" stroke-opacity="1" stroke-miterlimit="10" d="M 425.25 765 L 425.25 82.9375 " transform="matrix(1, 0, 0, -1, 0, 850.5)"/>
+<path fill="none" stroke-width="100.01" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgb(0%, 0%, 0%)" stroke-opacity="1" stroke-miterlimit="10" d="M 425.628906 766.128906 L 425.628906 84.0625 " transform="matrix(1, 0, 0, -1, 0, 850.5)"/>
 </svg>

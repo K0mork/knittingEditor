@@ -69,13 +69,24 @@
     cursor: pointer;
     transition: background-color 0.2s;
   }
+
+/* セルの背景色を列ごとに交互に設定 */
+.cell.even-col {
+  background-color: #e8e8e8;
+}
+.cell.odd-col {
+  background-color: #ffffff;
+}
   
   /* ステッチ記号のスタイル */
-  .stitch-symbol {
-    pointer-events: none;
-    font-size: calc(var(--cell-size) * 0.8);
-    line-height: 1;
-  }
+.stitch-symbol {
+  pointer-events: none;
+  font-size: calc(var(--cell-size) * 0.8);
+  line-height: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
   
   /* グリッドサイズ入力欄 */
   #grid-rows-input,

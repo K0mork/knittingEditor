@@ -79,48 +79,56 @@ function updateGridLabels() {
 
 // グリッドの初期化
 function initGrid() {
-    const container = document.getElementById('grid-container');
-    container.innerHTML = '';
-    container.style.gridTemplateColumns = `repeat(${numCols}, var(--cell-size))`;
-  
-    // gridが未定義なら空の配列を作成
-    if (!grid) {
-      grid = [];
-    }
-    // 各行・列について既存の内容を保持しつつ不足分を補う処理
-    for (let i = 0; i < numRows; i++) {
-      if (!grid[i]) {
-        grid[i] = [];
-      }
-      for (let j = 0; j < numCols; j++) {
-        if (!grid[i][j]) {
-          grid[i][j] = { type: 'empty', color: '#ffffff' };
-        }
-      }
-    }
-  
-    // グリッド本体のセル生成
-    for (let i = 0; i < numRows; i++) {
-      for (let j = 0; j < numCols; j++) {
-        const cell = document.createElement('div');
-        cell.className = 'cell';
-        cell.dataset.row = i;
-        cell.dataset.col = j;
-        cell.addEventListener('click', handleCellClick);
-        cell.addEventListener('contextmenu', clearCell);
-        cell.addEventListener('touchstart', handleTouchStart);
-        cell.addEventListener('touchend', handleTouchEnd);
-        cell.appendChild(createStitchSymbol(grid[i][j].type));
-        container.appendChild(cell);
-        // セルの見た目更新
-        updateCellDisplay(cell);
-      }
-    }
-    // 数字ラベルも更新（行・列の番号を表示）
-    updateGridLabels();
-  
-    saveGridState();
+  const container = document.getElementById('grid-container');
+  container.innerHTML = '';
+  container.style.gridTemplateColumns = `repeat(${numCols}, var(--cell-size))`;
+
+  // gridが未定義なら空の配列を作成
+  if (!grid) {
+    grid = [];
   }
+  // 各行・列について既存の内容を保持しつつ不足分を補う処理
+  for (let i = 0; i < numRows; i++) {
+    if (!grid[i]) {
+      grid[i] = [];
+    }
+    for (let j = 0; j < numCols; j++) {
+      if (!grid[i][j]) {
+        grid[i][j] = { type: 'empty', color: '#ffffff' };
+      }
+    }
+  }
+
+  // グリッド本体のセル生成
+  for (let i = 0; i < numRows; i++) {
+    for (let j = 0; j < numCols; j++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.dataset.row = i;
+      cell.dataset.col = j;
+
+      // 列番号に応じたクラスを追加：偶数列（0,2,4...）と奇数列（1,3,5...）で背景色を変える
+      if (j % 2 === 0) {
+        cell.classList.add('even-col');
+      } else {
+        cell.classList.add('odd-col');
+      }
+
+      cell.addEventListener('click', handleCellClick);
+      cell.addEventListener('contextmenu', clearCell);
+      cell.addEventListener('touchstart', handleTouchStart);
+      cell.addEventListener('touchend', handleTouchEnd);
+      cell.appendChild(createStitchSymbol(grid[i][j].type));
+      container.appendChild(cell);
+      // セルの見た目更新
+      updateCellDisplay(cell);
+    }
+  }
+  // 数字ラベルも更新（行・列の番号を表示）
+  updateGridLabels();
+
+  saveGridState();
+}
 
 // セルに表示するステッチ記号の作成
 function createStitchSymbol(type) {
@@ -206,7 +214,7 @@ function getStitchSymbol(type) {
   if (type === 'empty') {
     return '';
   }
-  return `<img src="svg/${type}.svg" style="width: 90%; height:90%;" alt="${type}" />`;
+  return `<img src="svg/${type}.svg" style="width: 100%; height:100%;" alt="${type}" />`;
 }
 
 // 画像保存機能（html2canvas 必須）
