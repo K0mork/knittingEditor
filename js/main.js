@@ -58,15 +58,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const optionDiv = document.createElement('div');
     optionDiv.classList.add('custom-dropdown-option');
     optionDiv.dataset.stitch = option.value;
-    // gridManager の getStitchSymbol を利用してSVGアイコンを取得
     const iconHTML = gridManager.getStitchSymbol(option.value);
     optionDiv.innerHTML = `<span class="dropdown-icon">${iconHTML}</span><span class="dropdown-name">${option.name}</span>`;
     optionDiv.addEventListener('click', () => {
-      // gridManager の選択記号を更新
       gridManager.setSelectedStitch(option.value);
-      // ヘッダ部分の表示を更新
       selectedStitchDiv.innerHTML = `<span class="dropdown-icon">${iconHTML}</span><span class="dropdown-name">${option.name}</span>`;
-      // オプションを非表示にする
       stitchOptionsDiv.style.display = 'none';
     });
     stitchOptionsDiv.appendChild(optionDiv);
@@ -81,7 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // ドロップダウン以外をクリックしたときにオプションリストを閉じる処理
+  // ドロップダウン以外クリック時にオプションリストを閉じる処理
   document.addEventListener('click', (event) => {
     if (!stitchDropdown.contains(event.target)) {
       stitchOptionsDiv.style.display = 'none';
@@ -103,6 +99,38 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('remove-col-left').addEventListener('click', () => gridManager.removeColumnLeft());
   document.getElementById('remove-col-right').addEventListener('click', () => gridManager.removeColumnRight());
   document.getElementById('clear-grid').addEventListener('click', () => gridManager.clearGrid());
+
+// 行間に行を追加する処理
+// 表示されている行番号（下から上に大きくなる：最下部が1、最上部がnumRows）を入力してもらい
+// 入力された番号の上に新しい行が挿入される（内部インデックス = numRows - 入力値）
+document.getElementById('insert-row-between').addEventListener('click', () => {
+  const input = prompt("挿入したい行番号を入力してください。入力された行番号の上に新しい行が挿入されます");
+  if (input === null) return;
+  const enteredLabel = parseInt(input, 10);
+  if (isNaN(enteredLabel) || enteredLabel < 1 || enteredLabel > gridManager.numRows) {
+    alert("1から" + gridManager.numRows + "までの有効な行番号を入力してください。");
+    return;
+  }
+  // 表示上の行番号は「下から上」で減少するので、内部インデックスは numRows - 入力値
+  const insertIndex = gridManager.numRows - enteredLabel;
+  gridManager.insertRowAt(insertIndex);
+});
+
+// 列間に列を追加する処理
+// 表示されている列番号は右から左に大きくなっており（最右が1、最左がnumCols）
+// 入力された番号に対して、対象セルの左側に新たな列を挿入する
+document.getElementById('insert-col-between').addEventListener('click', () => {
+  const input = prompt("挿入したい列番号を入力してください。入力された列番号の左に新しい列が挿入されます");
+  if (input === null) return;
+  const enteredLabel = parseInt(input, 10);
+  if (isNaN(enteredLabel) || enteredLabel < 1 || enteredLabel > gridManager.numCols) {
+    alert("1から" + gridManager.numCols + "までの有効な列番号を入力してください。");
+    return;
+  }
+  // 表示上の列番号は「右から左」で減少するので、対象の内部インデックスは numCols - 入力値
+  const insertIndex = gridManager.numCols - enteredLabel;
+  gridManager.insertColumnAt(insertIndex);
+});
 
   // 画像保存機能
   document.getElementById('download-chart').addEventListener('click', () => {

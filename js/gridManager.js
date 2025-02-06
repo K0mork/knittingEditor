@@ -534,6 +534,31 @@ export class GridManager {
       }
       this.renderGrid();
     }
+
+  // 指定した位置に新しい行を挿入する
+  // userInput（自然な順番、1～numRows）が与えられた場合、上側の行番号が n なら
+  // 内部インデックスは n-1; その次に挿入するため、splice の位置は n とする
+  insertRowAt(index) {
+    // index は内部インデックス（ユーザー入力の場合は「上側の行番号」をそのまま利用）
+    const newRow = [];
+    for (let j = 0; j < this.numCols; j++) {
+      newRow.push({ type: 'empty', color: '#ffffff' });
+    }
+    // splice(index, 0, ...) で index 番目の前に新行を挿入
+    this.grid.splice(index, 0, newRow);
+    this.numRows++;
+    this.renderGrid();
+  }
+
+  // 指定した位置に新しい列を挿入する
+  insertColumnAt(index) {
+    for (let i = 0; i < this.numRows; i++) {
+      // 各行で index 番目に新しいセルを挿入
+      this.grid[i].splice(index, 0, { type: 'empty', color: '#ffffff' });
+    }
+    this.numCols++;
+    this.renderGrid();
+  }
   
     setSelectedColor(color) {
       this.selectedColor = color;
