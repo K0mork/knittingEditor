@@ -208,126 +208,170 @@ export class GridManager {
   
     // 修正後のセルタップ時の処理（多セル記号の場合、右隣のセルも同時に処理）
     handleCellClick(e) {
-      const cell = e.currentTarget;
-      const row = parseInt(cell.dataset.row);
-      const col = parseInt(cell.dataset.col);
+      let cell = e.currentTarget;
+      let row = parseInt(cell.dataset.row);
+      let col = parseInt(cell.dataset.col);
 
-      // erase が選択されている場合は単一セルに対して処理を行う
-      if (this.selectedStitch === 'erase') {
-        if (this.grid[row][col].type === 'erase') {
+      // ① クリックされたセルが縦方向の継続セルの場合、まずそのセルをクリアしてから
+      // 上方向に走査し、メインセル（verticalSpan を持つセル）の位置に切り替える
+      if (this.grid[row][col].isContinuationVertical) {
           this.grid[row][col] = this._createEmptyCell();
-        } else {
-          this.grid[row][col] = { type: 'erase', color: '#ffffff' };
-        }
-        this.renderGrid();
-        return;
+          for (let r = row; r >= 0; r--) {
+              if (this.grid[r][col].verticalSpan) {
+                  row = r;
+                  break;
+              }
+          }
       }
 
-      // --- クリックされたセルが継続セルの場合は、必ず左隣のメインセルに切り替える ---
+      // ② クリックされたセルが縦方向の多セル記号のメインセルである場合、
+      // つながっている継続セルもクリアする（※新規配置時に上書きできるようにするため）
+      if (this.grid[row][col].verticalSpan) {
+          const vSpan = this.grid[row][col].verticalSpan;
+          const groupType = this.grid[row][col].type;
+          for (let offset = 0; offset < vSpan; offset++) {
+              this.grid[row + offset][col] = this._createEmptyCell();
+          }
+          this.renderGrid();
+          // もし既存グループと選択記号が同じであれば、トグル動作としてここで終了
+          if (groupType === this.selectedStitch) {
+              return;
+          }
+          // 異なる場合は、クリア後に新たな記号配置処理へ進む
+      }
+
+      // ③ クリックされたセルが横方向の継続セルの場合は、左隣のメインセルに切り替える
       if (this.grid[row][col].isContinuation) {
-        if (col > 0) {
-          col = col - 1;
-        }
+          if (col > 0) {
+              col = col - 1;
+          }
       }
-      // ------------------------------------------------------------------------
 
-      // すべり目の場合の処理
-      if (this.selectedStitch === 'slip_stitch') {
-        const vSpan = this.getRequiredCellVerticalSpan(this.selectedStitch);
-        if (row > this.numRows - vSpan) {
-          alert(`このセルは最下部に近いため、縦に${vSpan}セル分の配置ができません`);
-          return;
-        }
-        // 同じすべり目が既に配置されている場合はトグルで削除
-        if (this.grid[row][col].type === this.selectedStitch && this.grid[row][col].verticalSpan === vSpan) {
-          this.grid[row][col] = this._createEmptyCell();
-          for (let offset = 1; offset < vSpan; offset++) {
-            this.grid[row + offset][col] = this._createEmptyCell();
+      // ④ 'erase'（消去）の場合は単一セルとして処理
+      if (this.selectedStitch === 'erase') {
+          if (this.grid[row][col].type === 'erase') {
+              this.grid[row][col] = this._createEmptyCell();
+          } else {
+              this.grid[row][col] = { type: 'erase', color: '#ffffff' };
           }
           this.renderGrid();
           return;
-        } else {
-          // 新規配置前に対象セルをクリア
-          for (let offset = 0; offset < vSpan; offset++) {
-            this.grid[row + offset][col] = this._createEmptyCell();
-          }
-          this.grid[row][col] = {
-            type: this.selectedStitch,
-            color: this.selectedColor,
-            verticalSpan: vSpan
-          };
-          for (let offset = 1; offset < vSpan; offset++) {
-            this.grid[row + offset][col] = {
-              type: 'empty',
-              color: 'transparent',
-              isContinuationVertical: true
-            };
-          }
-        }
-        this.renderGrid();
-        return;
       }
-      
-      // その他（横方向の多セル記号／単セル）の場合
+
+      // ⑤ すべり目（縦方向多セル記号）の場合の処理
+      if (this.selectedStitch === 'slip_stitch') {
+          const vSpan = this.getRequiredCellVerticalSpan(this.selectedStitch);
+          if (row > this.numRows - vSpan) {
+              alert(`このセルは最下部に近いため、縦に${vSpan}セル分の配置ができません`);
+              return;
+          }
+          // 既に同じすべり目が設置されている場合はトグルで削除
+          if (this.grid[row][col].type === this.selectedStitch && this.grid[row][col].verticalSpan === vSpan) {
+              this.grid[row][col] = this._createEmptyCell();
+              for (let offset = 1; offset < vSpan; offset++) {
+                  this.grid[row + offset][col] = this._createEmptyCell();
+              }
+              this.renderGrid();
+              return;
+          } else {
+              // 新規配置前に対象セル（メイン＋継続セル）をクリアする
+              for (let offset = 0; offset < vSpan; offset++) {
+                  this.grid[row + offset][col] = this._createEmptyCell();
+              }
+              this.grid[row][col] = {
+                  type: this.selectedStitch,
+                  color: this.selectedColor,
+                  verticalSpan: vSpan
+              };
+              for (let offset = 1; offset < vSpan; offset++) {
+                  this.grid[row + offset][col] = {
+                      type: 'empty',
+                      color: 'transparent',
+                      isContinuationVertical: true
+                  };
+              }
+              this.renderGrid();
+              return;
+          }
+      }
+
+      // ⑥ その他（横方向の多セル記号／単セル）の場合
       const span = this.getRequiredCellSpan(this.selectedStitch);
       if (span > 1) {
-        // まず、クリックされたセルが継続セルの場合はメインセル位置を取得
-        let mainCol = col;
-        if (this.grid[row][col].isContinuation) {
-          mainCol = col - 1;
-        }
-        // トグル動作：既に同じ記号・同じマルチ情報ならば、その領域全体を消す
-        if (this.grid[row][mainCol].type === this.selectedStitch && this.grid[row][mainCol].multi === span) {
-          for (let offset = 0; offset < span; offset++) {
-            this.grid[row][mainCol + offset] = this._createEmptyCell();
+          let mainCol = col;
+          if (this.grid[row][col].isContinuation) {
+              mainCol = col - 1;
           }
-          this.renderGrid();
-          return;
-        }
-
-        // トグル対象でなければ、配置予定の領域と重複する既存の多セルグループを全てクリアする
-        const newStart = col;
-        const newEnd = col + span - 1;
-        for (let c = 0; c < this.numCols; c++) {
-          if (this.grid[row][c].multi && this.grid[row][c].multi > 1) {
-            const groupSpan = this.grid[row][c].multi;
-            const groupStart = c;
-            const groupEnd = c + groupSpan - 1;
-            // グループの区間と新規配置区間が交差しているか？
-            if (groupEnd >= newStart && groupStart <= newEnd) {
-              for (let offset = 0; offset < groupSpan; offset++) {
-                this.grid[row][c + offset] = this._createEmptyCell();
+          
+          // ★ ここで、新たに配置される横方向領域内の各セルが縦方向の多セル記号のメインセルであれば、そのグループをクリア
+          for (let c = mainCol; c < mainCol + span; c++) {
+              if (this.grid[row][c].verticalSpan) {
+                  const vSpan = this.grid[row][c].verticalSpan;
+                  for (let offset = 0; offset < vSpan; offset++) {
+                      this.grid[row + offset][c] = this._createEmptyCell();
+                  }
               }
-            }
           }
-        }
 
-        if (col > this.numCols - span) {
-          alert(`このセルは右端のため、${span}セル分の記号を配置できません`);
-          return;
-        }
-        // 新規配置前に対象区画（メインセル＋右側の継続セル）を完全にクリアする
-        for (let offset = 0; offset < span; offset++) {
-          this.grid[row][col + offset] = this._createEmptyCell();
-        }
-        // 新しい記号を配置（メインセルに記号オブジェクト、右側は継続セルとしてフラグをセット）
-        this.grid[row][col] = { type: this.selectedStitch, color: this.selectedColor, multi: span };
-        for (let offset = 1; offset < span; offset++) {
-          this.grid[row][col + offset] = { type: 'empty', color: 'transparent', isContinuation: true };
-        }
-      } else {
-        // 単セルの場合（erase 以外は既存処理）
-        if (this.grid[row][col].multi && this.grid[row][col].multi > 1) {
-          let oldSpan = this.grid[row][col].multi;
-          for (let offset = 0; offset < oldSpan; offset++) {
-            this.grid[row][col + offset] = this._createEmptyCell();
+          // トグル動作：既に同じ記号（かつ multi 情報が同じ）ならばグループ全体を消す
+          if (this.grid[row][mainCol].type === this.selectedStitch && this.grid[row][mainCol].multi === span) {
+              for (let offset = 0; offset < span; offset++) {
+                  this.grid[row][mainCol + offset] = this._createEmptyCell();
+              }
+              this.renderGrid();
+              return;
           }
-        }
-        if (this.grid[row][col].type === this.selectedStitch) {
-          this.grid[row][col] = this._createEmptyCell();
-        } else {
-          this.grid[row][col] = { type: this.selectedStitch, color: this.selectedColor };
-        }
+
+          // 既存の横方向多セルグループと重複する部分のクリア
+          const newStart = mainCol;
+          const newEnd = mainCol + span - 1;
+          for (let c = 0; c < this.numCols; c++) {
+              if (this.grid[row][c].multi && this.grid[row][c].multi > 1) {
+                  const groupSpan = this.grid[row][c].multi;
+                  const groupStart = c;
+                  const groupEnd = c + groupSpan - 1;
+                  if (groupEnd >= newStart && groupStart <= newEnd) {
+                      for (let offset = 0; offset < groupSpan; offset++) {
+                          this.grid[row][c + offset] = this._createEmptyCell();
+                      }
+                  }
+              }
+          }
+
+          if (mainCol > this.numCols - span) {
+              alert(`このセルは右端のため、${span}セル分の記号を配置できません`);
+              return;
+          }
+          // 新規配置前に対象区画（メインセル＋右側の継続セル）を完全にクリアする
+          for (let offset = 0; offset < span; offset++) {
+              this.grid[row][mainCol + offset] = this._createEmptyCell();
+          }
+          // 新たに記号を配置
+          this.grid[row][mainCol] = { type: this.selectedStitch, color: this.selectedColor, multi: span };
+          for (let offset = 1; offset < span; offset++) {
+              this.grid[row][mainCol + offset] = { type: 'empty', color: 'transparent', isContinuation: true };
+          }
+      } else {
+          // 単セルの場合、もし対象セルが縦方向の多セル（すべり目）のグループに属していたらグループ全体を先にクリアする
+          if (this.grid[row][col].verticalSpan) {
+              const vSpan = this.grid[row][col].verticalSpan;
+              for (let offset = 0; offset < vSpan; offset++) {
+                  this.grid[row + offset][col] = this._createEmptyCell();
+              }
+          }
+          // 既存の横方向多セルの場合のクリア
+          if (this.grid[row][col].multi && this.grid[row][col].multi > 1) {
+              let oldSpan = this.grid[row][col].multi;
+              for (let offset = 0; offset < oldSpan; offset++) {
+                  this.grid[row][col + offset] = this._createEmptyCell();
+              }
+          }
+          // 単セルトグル動作
+          if (this.grid[row][col].type === this.selectedStitch) {
+              this.grid[row][col] = this._createEmptyCell();
+          } else {
+              this.grid[row][col] = { type: this.selectedStitch, color: this.selectedColor };
+          }
       }
       this.renderGrid();
     }
