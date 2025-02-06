@@ -1,44 +1,8 @@
 import { loadGridState, saveGridState } from './storage.js';
 import { GridManager } from './gridManager.js';
+import { showNumberPrompt } from './prompt.js';
+import { getStitchSymbol } from './stitchSymbols.js';
 
-// 数字入力用モーダルを表示する関数
-function showNumberPrompt(message, min, max, callback) {
-  const modal = document.getElementById('number-prompt-modal');
-  const messageElem = modal.querySelector('.number-prompt-message');
-  const inputElem = modal.querySelector('#number-prompt-input');
-  const okBtn = modal.querySelector('#number-prompt-ok');
-  const cancelBtn = modal.querySelector('#number-prompt-cancel');
-
-  messageElem.textContent = message;
-  inputElem.value = '';
-  inputElem.min = min;
-  inputElem.max = max;
-  modal.style.display = 'flex';
-  inputElem.focus();
-
-  function cleanup() {
-    modal.style.display = 'none';
-    cancelBtn.removeEventListener('click', onCancel);
-    okBtn.removeEventListener('click', onOk);
-  }
-
-  function onOk() {
-    const value = parseInt(inputElem.value, 10);
-    if (isNaN(value)) {
-      alert('有効な数字を入力してください');
-      return;
-    }
-    cleanup();
-    callback(value);
-  }
-
-  function onCancel() {
-    cleanup();
-  }
-
-  okBtn.addEventListener('click', onOk);
-  cancelBtn.addEventListener('click', onCancel);
-}
 
 document.addEventListener('DOMContentLoaded', () => {
   // ローカルストレージからグリッド状態を読み込む
@@ -89,7 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // 初期表示用：初期値は 'knit'（表目）とする
   const defaultOption = stitchOptions.find(opt => opt.value === 'knit');
   if (defaultOption) {
-    const defaultIcon = gridManager.getStitchSymbol(defaultOption.value);
+    const defaultIcon = getStitchSymbol(defaultOption.value);
     selectedStitchDiv.innerHTML = `<span class="dropdown-icon">${defaultIcon}</span><span class="dropdown-name">${defaultOption.name}</span>`;
   }
 
@@ -98,7 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const optionDiv = document.createElement('div');
     optionDiv.classList.add('custom-dropdown-option');
     optionDiv.dataset.stitch = option.value;
-    const iconHTML = gridManager.getStitchSymbol(option.value);
+    const iconHTML = getStitchSymbol(option.value);
     optionDiv.innerHTML = `<span class="dropdown-icon">${iconHTML}</span><span class="dropdown-name">${option.name}</span>`;
     optionDiv.addEventListener('click', () => {
       gridManager.setSelectedStitch(option.value);
