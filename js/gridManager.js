@@ -26,10 +26,21 @@ export class GridManager {
       this._initializeGrid();
     }
   
-    // 指定の記号が横2マス分を使用するかどうか返すヘルパー
-    isMultiCellStitch(stitch) {
-      const multiStitchTypes = ['right_up_two_one', 'left_up_two_one', 'purl_left_up_two_one', 'right_up_two_cross', 'left_up_two_cross'];
-      return multiStitchTypes.includes(stitch);
+    // 選択した記号が必要とするセルの数（横方向のマス数）を返す
+    // 2セル分：右上2目一度，左上2目一度，裏目の左上2目一度，右上2目交差，左上2目交差
+    // 3セル分：中上3目一度，右上3目一度，左上3目一度
+    getRequiredCellSpan(stitch) {
+      const twoCellSymbols = ['right_up_two_one', 'left_up_two_one', 'purl_left_up_two_one', 'right_up_two_cross', 'left_up_two_cross'];
+      const threeCellSymbols = ['middle_up_three_one', 'right_up_three_one', 'left_up_three_one'];
+      if (twoCellSymbols.includes(stitch)) return 2;
+      if (threeCellSymbols.includes(stitch)) return 3;
+      return 1;
+    }
+  
+    // 新規追加：すべり目（slip_stitch）は縦に2マス分を使用するためのヘルパー
+    getRequiredCellVerticalSpan(stitch) {
+      if (stitch === 'slip_stitch') return 2;
+      return 1;
     }
   
     _initializeGrid() {
@@ -104,40 +115,59 @@ export class GridManager {
       const cellData = this.grid[row][col];
       const symbolElem = cell.querySelector('.stitch-symbol');
 
-      // 継続セルの場合は表示せず、クリック不可にする
-      if (cellData && cellData.isContinuation) {
-        cell.style.visibility = 'hidden';
-        cell.style.pointerEvents = 'none';
+      // 連続セルの場合は、merged-cell クラスを追加して背景を透明にし、内容は表示しない
+      if (cellData && (cellData.isContinuation || cellData.isContinuationVertical)) {
+        cell.classList.add("merged-cell");
+        // 連続セル内の要素は不要なためクリア
+        symbolElem.innerHTML = '';
         return;
       } else {
-        cell.style.visibility = 'visible';
+        // 連続セルでなければ、merged-cell クラスがあれば除去
+        cell.classList.remove("merged-cell");
       }
 
       let svgMarkup = this.getStitchSymbol(cellData.type);
       if (cellData && cellData.multi) {
-        // 多セル記号のメインセルの場合、横は2マス分、縦は1マス
+        // メインセルの場合（多セル記号の場合）は、横幅を span 個分（例：2または3）に拡大、縦は1マスに設定
+        let span = cellData.multi;
         symbolElem.innerHTML = svgMarkup;
-        symbolElem.style.width = `calc(2 * var(--cell-size))`;
+        symbolElem.style.width = `calc(${span} * var(--cell-size))`;
         symbolElem.style.height = '100%';
-        // 絶対配置にしてセル内の左上に表示（セルは相対配置）
         symbolElem.style.position = 'absolute';
         symbolElem.style.left = '0';
         symbolElem.style.top = '0';
         cell.style.position = 'relative';
-        // 右側の境界線を消して連結感を演出
+        // メインセルの右境界線を除去して連結感を演出
         cell.style.borderRight = 'none';
 
-        // SVG 要素に対してアスペクト比維持を無効化し、横に伸ばす
+        // SVG のアスペクト比維持を解除して横に伸ばす
+        const svgElem = symbolElem.querySelector('svg');
+        if (svgElem) {
+          svgElem.setAttribute('preserveAspectRatio', 'none');
+        }
+      } else if (cellData && cellData.verticalSpan) {
+        // すべり目（slip_stitch）の場合：縦に2マス、横は1マス
+        let vSpan = cellData.verticalSpan;
+        symbolElem.innerHTML = svgMarkup;
+        symbolElem.style.width = '100%';
+        symbolElem.style.height = `calc(${vSpan} * var(--cell-size))`;
+        symbolElem.style.position = 'absolute';
+        symbolElem.style.left = '0';
+        symbolElem.style.top = '0';
+        cell.style.position = 'relative';
+        // 下側の境界線を除去して連結感を演出
+        cell.style.borderBottom = 'none';
         const svgElem = symbolElem.querySelector('svg');
         if (svgElem) {
           svgElem.setAttribute('preserveAspectRatio', 'none');
         }
       } else {
-        // 通常セルの場合はそのまま1セル分のサイズで表示
+        // 通常セルはそのまま１セル分のサイズで表示
         symbolElem.innerHTML = svgMarkup;
         symbolElem.style.width = '100%';
         symbolElem.style.height = '100%';
         cell.style.borderRight = '';
+        cell.style.borderBottom = '';
         cell.style.position = '';
       }
       symbolElem.style.color = cellData.color || '#000000';
@@ -412,34 +442,70 @@ export class GridManager {
       const row = parseInt(cell.dataset.row);
       const col = parseInt(cell.dataset.col);
 
-      if (this.isMultiCellStitch(this.selectedStitch)) {
-        if (col >= this.numCols - 1) {
-          alert("このセルは右端のため、2セル分の記号を配置できません");
+      // すべり目（縦2マス）の場合
+      if (this.selectedStitch === 'slip_stitch') {
+        const vSpan = this.getRequiredCellVerticalSpan(this.selectedStitch); // -> 2
+        if (row > this.numRows - vSpan) {
+          alert(`このセルは最下部に近いため、縦に${vSpan}セル分の配置ができません`);
           return;
         }
-        // 既に多セル記号が配置されていれば削除
-        if (this.grid[row][col].type === this.selectedStitch && this.grid[row][col].multi) {
-          this.grid[row][col] = { type: 'empty', color: '#ffffff' };
-          if (this.grid[row][col+1] && this.grid[row][col+1].isContinuation) {
-            this.grid[row][col+1] = { type: 'empty', color: '#ffffff' };
-          }
-        } else {
-          // 右隣がすでに使用中の場合は配置できない
-          if (this.grid[row][col+1].type !== 'empty' || this.grid[row][col+1].isContinuation) {
-            alert("右隣のセルが使用中です");
+        // 下側のセルが空か確認
+        for (let offset = 1; offset < vSpan; offset++) {
+          if (this.grid[row + offset][col].type !== 'empty' || this.grid[row + offset][col].isContinuationVertical) {
+            alert("下側のセルが使用中です");
             return;
           }
-          this.grid[row][col] = { type: this.selectedStitch, color: this.selectedColor, multi: true };
-          this.grid[row][col+1] = { type: 'empty', color: '#ffffff', isContinuation: true };
         }
-      } else {
-        if (this.grid[row][col].type === this.selectedStitch) {
+        // 既に同じすべり目が配置されている場合は削除
+        if (this.grid[row][col].type === this.selectedStitch && this.grid[row][col].verticalSpan === vSpan) {
           this.grid[row][col] = { type: 'empty', color: '#ffffff' };
+          for (let offset = 1; offset < vSpan; offset++) {
+            this.grid[row + offset][col] = { type: 'empty', color: 'transparent' };
+          }
         } else {
-          this.grid[row][col] = { type: this.selectedStitch, color: this.selectedColor };
+          // 新しくすべり目を配置
+          this.grid[row][col] = { type: this.selectedStitch, color: this.selectedColor, verticalSpan: vSpan };
+          for (let offset = 1; offset < vSpan; offset++) {
+            this.grid[row + offset][col] = { type: 'empty', color: 'transparent', isContinuationVertical: true };
+          }
         }
+        this.renderGrid();
       }
-      this.renderGrid();
+      // それ以外は既存の横マルチセル／通常セルの処理
+      else {
+        const span = this.getRequiredCellSpan(this.selectedStitch);
+        if (span > 1) {
+          if (col > this.numCols - span) {
+            alert(`このセルは右端のため、${span}セル分の記号を配置できません`);
+            return;
+          }
+          // 右側のセルが使用中でないか確認
+          for (let offset = 1; offset < span; offset++) {
+            if (this.grid[row][col + offset].type !== 'empty' || this.grid[row][col + offset].isContinuation) {
+              alert("右側のセルが使用中です");
+              return;
+            }
+          }
+          if (this.grid[row][col].type === this.selectedStitch && this.grid[row][col].multi === span) {
+            this.grid[row][col] = { type: 'empty', color: '#ffffff' };
+            for (let offset = 1; offset < span; offset++) {
+              this.grid[row][col + offset] = { type: 'empty', color: 'transparent' };
+            }
+          } else {
+            this.grid[row][col] = { type: this.selectedStitch, color: this.selectedColor, multi: span };
+            for (let offset = 1; offset < span; offset++) {
+              this.grid[row][col + offset] = { type: 'empty', color: 'transparent', isContinuation: true };
+            }
+          }
+        } else {
+          if (this.grid[row][col].type === this.selectedStitch) {
+            this.grid[row][col] = { type: 'empty', color: '#ffffff' };
+          } else {
+            this.grid[row][col] = { type: this.selectedStitch, color: this.selectedColor };
+          }
+        }
+        this.renderGrid();
+      }
     }
   
     // 右クリック（またはコンテキストメニュー）によるセルクリア処理
@@ -451,15 +517,17 @@ export class GridManager {
 
       if (this.grid[row][col].isContinuation) {
         // 継続セルの場合は左側セルもクリア
-        if (col > 0 && this.isMultiCellStitch(this.grid[row][col-1].type)) {
+        if (col > 0 && this.getRequiredCellSpan(this.grid[row][col-1].type) > 1) {
           this.grid[row][col-1] = { type: 'empty', color: '#ffffff' };
-          this.grid[row][col] = { type: 'empty', color: '#ffffff' };
+          this.grid[row][col] = { type: 'empty', color: 'transparent' };
         }
-      } else if (this.isMultiCellStitch(this.grid[row][col].type) && this.grid[row][col].multi) {
+      } else if (this.getRequiredCellSpan(this.grid[row][col].type) > 1 && this.grid[row][col].multi) {
         // メインセルの場合は右隣の継続セルもクリア
         this.grid[row][col] = { type: 'empty', color: '#ffffff' };
-        if (col < this.numCols - 1 && this.grid[row][col+1].isContinuation) {
-          this.grid[row][col+1] = { type: 'empty', color: '#ffffff' };
+        for (let offset = 1; offset < this.getRequiredCellSpan(this.grid[row][col].type); offset++) {
+          if (col < this.numCols - offset && this.grid[row][col+offset].isContinuation) {
+            this.grid[row][col+offset] = { type: 'empty', color: 'transparent' };
+          }
         }
       } else {
         this.grid[row][col] = { type: 'empty', color: '#ffffff' };
@@ -488,15 +556,21 @@ export class GridManager {
       clearTimeout(this.touchTimer);
       const row = parseInt(cell.dataset.row);
       const col = parseInt(cell.dataset.col);
+      const span = this.getRequiredCellSpan(this.selectedStitch);
 
-      if (this.isMultiCellStitch(this.selectedStitch)) {
-        if (col >= this.numCols - 1) return;
-        if (!(this.grid[row][col].type === this.selectedStitch && this.grid[row][col].multi)) {
-          if (this.grid[row][col+1].type !== 'empty' || this.grid[row][col+1].isContinuation) {
-            return;
+      if (span > 1) {
+        if (col > this.numCols - span) return;
+        // 既にマルチセル記号が配置されていないか確認
+        if (!(this.grid[row][col].type === this.selectedStitch && this.grid[row][col].multi === span)) {
+          for (let offset = 1; offset < span; offset++) {
+            if (this.grid[row][col + offset].type !== 'empty' || this.grid[row][col + offset].isContinuation) {
+              return;
+            }
           }
-          this.grid[row][col] = { type: this.selectedStitch, color: this.selectedColor, multi: true };
-          this.grid[row][col+1] = { type: 'empty', color: '#ffffff', isContinuation: true };
+          this.grid[row][col] = { type: this.selectedStitch, color: this.selectedColor, multi: span };
+          for (let offset = 1; offset < span; offset++) {
+            this.grid[row][col + offset] = { type: 'empty', color: 'transparent', isContinuation: true };
+          }
           this.renderGrid();
         }
       } else {
