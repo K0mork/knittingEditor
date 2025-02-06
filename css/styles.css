@@ -182,3 +182,31 @@ button:hover {
 .custom-dropdown-option:hover {
   background-color: #f0f0f0;
 }
+
+.number-prompt-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 2000;
+}
+
+.number-prompt-content {
+  background: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 300px;
+  text-align: center;
+}
+
+.number-prompt-buttons {
+  margin-top: 10px;
+  display: flex;
+  justify-content: space-around;
+}

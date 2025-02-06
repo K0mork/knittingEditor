@@ -1,6 +1,45 @@
 import { loadGridState, saveGridState } from './storage.js';
 import { GridManager } from './gridManager.js';
 
+// 数字入力用モーダルを表示する関数
+function showNumberPrompt(message, min, max, callback) {
+  const modal = document.getElementById('number-prompt-modal');
+  const messageElem = modal.querySelector('.number-prompt-message');
+  const inputElem = modal.querySelector('#number-prompt-input');
+  const okBtn = modal.querySelector('#number-prompt-ok');
+  const cancelBtn = modal.querySelector('#number-prompt-cancel');
+
+  messageElem.textContent = message;
+  inputElem.value = '';
+  inputElem.min = min;
+  inputElem.max = max;
+  modal.style.display = 'flex';
+  inputElem.focus();
+
+  function cleanup() {
+    modal.style.display = 'none';
+    cancelBtn.removeEventListener('click', onCancel);
+    okBtn.removeEventListener('click', onOk);
+  }
+
+  function onOk() {
+    const value = parseInt(inputElem.value, 10);
+    if (isNaN(value)) {
+      alert('有効な数字を入力してください');
+      return;
+    }
+    cleanup();
+    callback(value);
+  }
+
+  function onCancel() {
+    cleanup();
+  }
+
+  okBtn.addEventListener('click', onOk);
+  cancelBtn.addEventListener('click', onCancel);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   // ローカルストレージからグリッド状態を読み込む
   const savedState = loadGridState();
@@ -104,62 +143,60 @@ document.addEventListener('DOMContentLoaded', () => {
 // 表示されている行番号（下から上に大きくなる：最下部が1、最上部がnumRows）を入力してもらい
 // 入力された番号の上に新しい行が挿入される（内部インデックス = numRows - 入力値）
 document.getElementById('insert-row-between').addEventListener('click', () => {
-  const input = prompt("挿入したい行番号を入力してください。入力された行番号の上に新しい行が挿入されます");
-  if (input === null) return;
-  const enteredLabel = parseInt(input, 10);
-  if (isNaN(enteredLabel) || enteredLabel < 1 || enteredLabel > gridManager.numRows) {
-    alert("1から" + gridManager.numRows + "までの有効な行番号を入力してください。");
-    return;
-  }
-  // 表示上の行番号は「下から上」で減少するので、内部インデックスは numRows - 入力値
-  const insertIndex = gridManager.numRows - enteredLabel;
-  gridManager.insertRowAt(insertIndex);
+  showNumberPrompt(
+    "挿入したい行番号を入力してください。（1～" + gridManager.numRows + "）\n※入力された行番号の上に新しい行が挿入されます",
+    1,
+    gridManager.numRows,
+    (enteredLabel) => {
+      // 表示上は下から上（最下部が1、最上部が numRows）なので内部インデックスは numRows - 入力値
+      const insertIndex = gridManager.numRows - enteredLabel;
+      gridManager.insertRowAt(insertIndex);
+    }
+  );
 });
 
 // 列間に列を追加する処理
 // 表示されている列番号は右から左に大きくなっており（最右が1、最左がnumCols）
 // 入力された番号に対して、対象セルの左側に新たな列を挿入する
 document.getElementById('insert-col-between').addEventListener('click', () => {
-  const input = prompt("挿入したい列番号を入力してください。入力された列番号の左に新しい列が挿入されます");
-  if (input === null) return;
-  const enteredLabel = parseInt(input, 10);
-  if (isNaN(enteredLabel) || enteredLabel < 1 || enteredLabel > gridManager.numCols) {
-    alert("1から" + gridManager.numCols + "までの有効な列番号を入力してください。");
-    return;
-  }
-  // 表示上の列番号は「右から左」で減少するので、対象の内部インデックスは numCols - 入力値
-  const insertIndex = gridManager.numCols - enteredLabel;
-  gridManager.insertColumnAt(insertIndex);
+  showNumberPrompt(
+    "挿入したい列番号を入力してください。（1～" + gridManager.numCols + "）\n※入力された列番号の左に新しい列が挿入されます",
+    1,
+    gridManager.numCols,
+    (enteredLabel) => {
+      // 表示上は右から左（最右が1、最左が numCols）なので対象の内部インデックスは numCols - 入力値
+      const insertIndex = gridManager.numCols - enteredLabel;
+      gridManager.insertColumnAt(insertIndex);
+    }
+  );
 });
 
 // 指定行削除ボタンのイベント設定
 document.getElementById('remove-row-at').addEventListener('click', () => {
-  const input = prompt("削除したい行番号を入力してください。\n入力された行番号に該当する行が削除されます。");
-  if (input === null) return; // キャンセル時は何もしない
-  const enteredLabel = parseInt(input, 10);
-  if (isNaN(enteredLabel) || enteredLabel < 1 || enteredLabel > gridManager.numRows) {
-    alert("1から" + gridManager.numRows + "までの有効な行番号を入力してください。");
-    return;
-  }
-  // 表示されている行番号は下から上（最下部が1、最上部が numRows）となっているので
-  // 内部インデックスは numRows - 入力値 となる
-  const deleteIndex = gridManager.numRows - enteredLabel;
-  gridManager.removeRowAt(deleteIndex);
+  showNumberPrompt(
+    "削除したい行番号を入力してください。（1～" + gridManager.numRows + "）",
+    1,
+    gridManager.numRows,
+    (enteredLabel) => {
+      // 表示上は下から上（最下部が1、最上部が numRows）なので内部インデックスは numRows - 入力値
+      const deleteIndex = gridManager.numRows - enteredLabel;
+      gridManager.removeRowAt(deleteIndex);
+    }
+  );
 });
 
 // 指定列削除ボタンのイベント設定
 document.getElementById('remove-col-at').addEventListener('click', () => {
-  const input = prompt("削除したい列番号を入力してください。\n入力された列番号に該当する列が削除されます。");
-  if (input === null) return;
-  const enteredLabel = parseInt(input, 10);
-  if (isNaN(enteredLabel) || enteredLabel < 1 || enteredLabel > gridManager.numCols) {
-    alert("1から" + gridManager.numCols + "までの有効な列番号を入力してください。");
-    return;
-  }
-  // 表示されている列番号は右から左（最右が1、最左が numCols）となるので
-  // 内部インデックスは numCols - 入力値 となる
-  const deleteIndex = gridManager.numCols - enteredLabel;
-  gridManager.removeColumnAt(deleteIndex);
+  showNumberPrompt(
+    "削除したい列番号を入力してください。（1～" + gridManager.numCols + "）",
+    1,
+    gridManager.numCols,
+    (enteredLabel) => {
+      // 表示上は右から左（最右が1、最左が numCols）なので内部インデックスは numCols - 入力値
+      const deleteIndex = gridManager.numCols - enteredLabel;
+      gridManager.removeColumnAt(deleteIndex);
+    }
+  );
 });
 
   // 画像保存機能
