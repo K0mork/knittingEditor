@@ -77,7 +77,8 @@ document.addEventListener('DOMContentLoaded', () => {
     { value: "left_up_two_cross", name: "左上2目交差" },
     { value: "slip_stitch", name: "すべり目" },
     { value: "twist_stitch", name: "ねじり目" },
-    { value: "purl_twisst_stitch", name: "ねじり裏目" }
+    { value: "purl_twisst_stitch", name: "ねじり裏目" },
+    { value: "erase", name: "白くする" }
   ];
 
   // カスタムドロップダウンの初期化

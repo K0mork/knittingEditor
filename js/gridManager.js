@@ -119,14 +119,20 @@ export class GridManager {
       const cellData = this.grid[row][col];
       const symbolElem = cell.querySelector('.stitch-symbol');
 
-      // 連続セルの場合は、merged-cell クラスを追加して背景を透明にし、内容は表示しない
+      // もしセルが erase 状態なら、背景と枠線を白にして記号表示をクリア
+      if (cellData.type === 'erase') {
+        cell.style.backgroundColor = '#ffffff';
+        cell.style.border = '1px solid #ffffff';
+        symbolElem.innerHTML = '';
+        return;
+      }
+
+      // 継続セル（連結されているセル）の処理
       if (cellData && (cellData.isContinuation || cellData.isContinuationVertical)) {
         cell.classList.add("merged-cell");
-        // 連続セル内の要素は不要なためクリア
         symbolElem.innerHTML = '';
         return;
       } else {
-        // 連続セルでなければ、merged-cell クラスがあれば除去
         cell.classList.remove("merged-cell");
       }
 
@@ -383,7 +389,7 @@ export class GridManager {
               <path fill="none" stroke="currentColor" stroke-width="100.01" stroke-linecap="butt" stroke-linejoin="miter"
                 stroke-opacity="1" stroke-miterlimit="10" d="M 603.050781 587.628906 L 607.128906 470.828125 C 605.539062 460.648438 601.460938 428.730469 597.609375 409.71875 C 593.75 390.710938 591.039062 374.410156 584.011719 356.761719 C 576.988281 339.101562 564.289062 318.730469 555.460938 303.789062 C 546.621094 288.859375 542.308594 278.898438 530.980469 267.128906 C 519.648438 255.359375 500.621094 241.550781 487.46875 233.179688 C 474.328125 224.800781 479.539062 226.390625 452.121094 216.878906 C 424.699219 207.371094 363.738281 186.101562 322.949219 176.140625 C 282.160156 166.179688 222.328125 158.710938 207.371094 157.128906" transform="matrix(1, 0, 0, -1, 0, 850.5)" />
               <path fill="none" stroke="currentColor" stroke-width="100.01" stroke-linecap="butt" stroke-linejoin="miter"
-                stroke-opacity="1" stroke-miterlimit="10" d="M 268.460938 580.878906 C 263.648438 559.769531 258.839844 538.671875 257.820312 518.96875 C 256.808594 499.28125 259.851562 482.398438 262.378906 462.699219 C 264.921875 443 268.71875 420.261719 273.019531 400.800781 C 277.328125 381.339844 279.609375 365.160156 288.21875 345.929688 C 296.839844 326.699219 313.550781 301.621094 324.699219 285.441406 C 335.851562 269.261719 344.960938 258.941406 355.101562 248.859375 C 365.230469 238.78125 370.039062 234.320312 385.5 224.941406 C 400.949219 215.558594 404.75 206.890625 447.808594 192.589844 C 490.871094 178.28125 608.660156 149.910156 636.378906 139.128906" transform="matrix(1, 0, 0, -1, 0, 850.5)" />
+                stroke-opacity="1" stroke-miterlimit="10" d="M 268.460938 580.878906 C 263.648438 559.769531 258.839844 538.671875 257.820312 518.96875 C 256.808594 499.28125 259.851562 482.398438 262.378906 462.699219 C 264.921875 443 268.71875 420.261719 273.019531 400.800781 C 277.328125 381.339844 279.609375 365.160156 288.21875 345.929688 C 296.839844 326.699219 313.550781 301.621094 324.699219 285.441406 C 335.851562 269.261719 344.960938 258.941406 355.101562 248.859375 C 365.230469 238.78125 370.039062 234.320312 385.5 224.941406 C 393.449219 215.558594 397.25 206.890625 440.308594 192.589844 C 483.371094 178.28125 601.160156 149.910156 636.378906 139.128906" transform="matrix(1, 0, 0, -1, 0, 850.5)" />
               <path fill="none" stroke="currentColor" stroke-width="100.01" stroke-linecap="butt" stroke-linejoin="miter"
                 stroke-opacity="1" stroke-miterlimit="10" d="M 267.371094 565.128906 C 270.539062 585.101562 273.710938 605.070312 279.589844 625.039062 C 285.46875 645.011719 293.160156 665.710938 302.660156 684.949219 C 312.171875 704.191406 327.550781 728.300781 336.601562 740.46875 C 345.648438 752.648438 351.300781 752.898438 356.960938 758.011719 C 362.609375 763.121094 364.871094 766.78125 370.53125 771.160156 C 376.179688 775.539062 383.648438 780.898438 390.890625 784.308594 C 398.128906 787.71875 406.5 789.910156 413.960938 791.621094 C 421.429688 793.320312 428.210938 795.03125 435.679688 794.539062 C 443.140625 794.050781 450.609375 790.890625 458.75 788.699219 C 466.898438 786.5 477.300781 784.558594 484.539062 781.390625 C 491.78125 778.21875 496.53125 773.839844 502.191406 769.699219 C 507.839844 765.558594 513.269531 761.179688 518.46875 756.550781 C 523.679688 751.921875 529.558594 746.808594 533.398438 741.941406 C 537.25 737.058594 537.929688 733.171875 541.550781 727.320312 C 545.171875 721.480469 551.050781 712.949219 555.121094 706.871094 C 559.191406 700.78125 562.808594 697.371094 565.980469 690.789062 C 569.148438 684.21875 574.121094 667.410156 574.121094 667.410156 C 576.839844 659.621094 579.550781 652.070312 582.269531 644.03125 C 584.980469 636 587.691406 627.960938 590.410156 619.191406 C 593.121094 610.421875 596.519531 599.710938 598.550781 591.429688 C 600.589844 583.148438 599.910156 579.980469 602.628906 569.511719" transform="matrix(1, 0, 0, -1, 0, 850.5)" />
               <path fill="none" stroke="currentColor" stroke-width="80.012" stroke-linecap="butt" stroke-linejoin="miter"
@@ -399,6 +405,13 @@ export class GridManager {
               stroke-opacity="1" stroke-miterlimit="10" d="M 88.125 424.878906 C 88.125 611.269531 239.230469 762.378906 425.621094 762.378906 C 612.019531 762.378906 763.121094 611.269531 763.121094 424.878906 C 763.121094 238.480469 612.019531 87.375 425.621094 87.375 C 239.230469 87.375 88.125 238.480469 88.125 424.878906 Z"
               transform="matrix(1, 0, 0, -1, 0, 850.5)" />
           </svg>
+          `;
+    
+        case 'erase':
+          return `
+            <svg viewBox="0 0 24 24" style="width:100%;height:100%;" xmlns="http://www.w3.org/2000/svg">
+              <rect width="24" height="24" fill="#ffffff" stroke="#000" stroke-width="2"/>
+            </svg>
           `;
     
         default:
@@ -442,9 +455,20 @@ export class GridManager {
   
     // 修正後のセルタップ時の処理（多セル記号の場合、右隣のセルも同時に処理）
     handleCellClick(e) {
-      let cell = e.currentTarget;
-      let row = parseInt(cell.dataset.row);
-      let col = parseInt(cell.dataset.col);
+      const cell = e.currentTarget;
+      const row = parseInt(cell.dataset.row);
+      const col = parseInt(cell.dataset.col);
+
+      // erase が選択されている場合は単一セルに対して処理を行う
+      if (this.selectedStitch === 'erase') {
+        if (this.grid[row][col].type === 'erase') {
+          this.grid[row][col] = { type: 'empty', color: '#ffffff' };
+        } else {
+          this.grid[row][col] = { type: 'erase', color: '#ffffff' };
+        }
+        this.renderGrid();
+        return;
+      }
 
       // --- クリックされたセルが継続セルの場合は、必ず左隣のメインセルに切り替える ---
       if (this.grid[row][col].isContinuation) {
@@ -454,7 +478,7 @@ export class GridManager {
       }
       // ------------------------------------------------------------------------
 
-      // すべり目（縦方向の複数セル）の場合
+      // すべり目の場合の処理
       if (this.selectedStitch === 'slip_stitch') {
         const vSpan = this.getRequiredCellVerticalSpan(this.selectedStitch);
         if (row > this.numRows - vSpan) {
@@ -490,74 +514,69 @@ export class GridManager {
         this.renderGrid();
         return;
       }
+      
       // その他（横方向の多セル記号／単セル）の場合
-      else {
-        const span = this.getRequiredCellSpan(this.selectedStitch);
-        // 横方向のマルチセル記号の場合
-        if (span > 1) {
-          // まず、クリックされたセルが継続セルの場合はメインセル位置を取得
-          let mainCol = col;
-          if (this.grid[row][col].isContinuation) {
-            mainCol = col - 1;
+      const span = this.getRequiredCellSpan(this.selectedStitch);
+      if (span > 1) {
+        // まず、クリックされたセルが継続セルの場合はメインセル位置を取得
+        let mainCol = col;
+        if (this.grid[row][col].isContinuation) {
+          mainCol = col - 1;
+        }
+        // トグル動作：既に同じ記号・同じマルチ情報ならば、その領域全体を消す
+        if (this.grid[row][mainCol].type === this.selectedStitch && this.grid[row][mainCol].multi === span) {
+          for (let offset = 0; offset < span; offset++) {
+            this.grid[row][mainCol + offset] = { type: 'empty', color: '#ffffff' };
           }
-          // トグル動作：既に同じ記号・同じマルチ情報ならば、その領域全体を消す
-          if (this.grid[row][mainCol].type === this.selectedStitch && this.grid[row][mainCol].multi === span) {
-            for (let offset = 0; offset < span; offset++) {
-              this.grid[row][mainCol + offset] = { type: 'empty', color: '#ffffff' };
-            }
-            this.renderGrid();
-            return;
-          }
-  
-          // トグル対象でなければ、配置予定の領域と重複する既存の多セルグループを全てクリアする
-          const newStart = col;
-          const newEnd = col + span - 1;
-          for (let c = 0; c < this.numCols; c++) {
-            if (this.grid[row][c].multi && this.grid[row][c].multi > 1) {
-              const groupSpan = this.grid[row][c].multi;
-              const groupStart = c;
-              const groupEnd = c + groupSpan - 1;
-              // グループの区間と新規配置区間が交差しているか？
-              if (groupEnd >= newStart && groupStart <= newEnd) {
-                for (let offset = 0; offset < groupSpan; offset++) {
-                  this.grid[row][c + offset] = { type: 'empty', color: '#ffffff' };
-                }
+          this.renderGrid();
+          return;
+        }
+
+        // トグル対象でなければ、配置予定の領域と重複する既存の多セルグループを全てクリアする
+        const newStart = col;
+        const newEnd = col + span - 1;
+        for (let c = 0; c < this.numCols; c++) {
+          if (this.grid[row][c].multi && this.grid[row][c].multi > 1) {
+            const groupSpan = this.grid[row][c].multi;
+            const groupStart = c;
+            const groupEnd = c + groupSpan - 1;
+            // グループの区間と新規配置区間が交差しているか？
+            if (groupEnd >= newStart && groupStart <= newEnd) {
+              for (let offset = 0; offset < groupSpan; offset++) {
+                this.grid[row][c + offset] = { type: 'empty', color: '#ffffff' };
               }
             }
           }
-  
-          if (col > this.numCols - span) {
-            alert(`このセルは右端のため、${span}セル分の記号を配置できません`);
-            return;
-          }
-          // 新規配置前に対象区画（メインセル＋右側の継続セル）を完全にクリアする
-          for (let offset = 0; offset < span; offset++) {
+        }
+
+        if (col > this.numCols - span) {
+          alert(`このセルは右端のため、${span}セル分の記号を配置できません`);
+          return;
+        }
+        // 新規配置前に対象区画（メインセル＋右側の継続セル）を完全にクリアする
+        for (let offset = 0; offset < span; offset++) {
+          this.grid[row][col + offset] = { type: 'empty', color: '#ffffff' };
+        }
+        // 新しい記号を配置（メインセルに記号オブジェクト、右側は継続セルとしてフラグをセット）
+        this.grid[row][col] = { type: this.selectedStitch, color: this.selectedColor, multi: span };
+        for (let offset = 1; offset < span; offset++) {
+          this.grid[row][col + offset] = { type: 'empty', color: 'transparent', isContinuation: true };
+        }
+      } else {
+        // 単セルの場合（erase 以外は既存処理）
+        if (this.grid[row][col].multi && this.grid[row][col].multi > 1) {
+          let oldSpan = this.grid[row][col].multi;
+          for (let offset = 0; offset < oldSpan; offset++) {
             this.grid[row][col + offset] = { type: 'empty', color: '#ffffff' };
           }
-          // 新しい記号を配置（メインセルに記号オブジェクト、右側は継続セルとしてフラグをセット）
-          this.grid[row][col] = { type: this.selectedStitch, color: this.selectedColor, multi: span };
-          for (let offset = 1; offset < span; offset++) {
-            this.grid[row][col + offset] = { type: 'empty', color: 'transparent', isContinuation: true };
-          }
         }
-        // 単セルの場合
-        else {
-          // もしクリックされたセルが以前の多セル記号の一部であれば、その領域全体をクリアする
-          if (this.grid[row][col].multi && this.grid[row][col].multi > 1) {
-            let oldSpan = this.grid[row][col].multi;
-            for (let offset = 0; offset < oldSpan; offset++) {
-              this.grid[row][col + offset] = { type: 'empty', color: '#ffffff' };
-            }
-          }
-          // 単セルの場合は、同じ記号があればクリア、なければ配置する
-          if (this.grid[row][col].type === this.selectedStitch) {
-            this.grid[row][col] = { type: 'empty', color: '#ffffff' };
-          } else {
-            this.grid[row][col] = { type: this.selectedStitch, color: this.selectedColor };
-          }
+        if (this.grid[row][col].type === this.selectedStitch) {
+          this.grid[row][col] = { type: 'empty', color: '#ffffff' };
+        } else {
+          this.grid[row][col] = { type: this.selectedStitch, color: this.selectedColor };
         }
-        this.renderGrid();
       }
+      this.renderGrid();
     }
   
     // 右クリック（またはコンテキストメニュー）によるセルクリア処理
@@ -627,7 +646,11 @@ export class GridManager {
         }
       } else {
         if (this.grid[row][col].type !== this.selectedStitch) {
-          this.grid[row][col] = { type: this.selectedStitch, color: this.selectedColor };
+          if (this.selectedStitch === 'erase') {
+            this.grid[row][col] = { type: 'erase', color: '#ffffff' };
+          } else {
+            this.grid[row][col] = { type: this.selectedStitch, color: this.selectedColor };
+          }
           this.renderGrid();
         }
       }
