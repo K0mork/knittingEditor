@@ -74,8 +74,8 @@ export class GridManager {
       cell.className = 'cell';
       cell.dataset.row = row;
       cell.dataset.col = col;
-      // 偶数・奇数列で背景色をクラス付与
-      cell.classList.add(col % 2 === 0 ? 'even-col' : 'odd-col');
+      // 横方向の縞模様：奇数・偶数行で背景色をクラス付与
+      cell.classList.add(row % 2 === 0 ? 'even-col' : 'odd-col');
   
       // イベント登録
       cell.addEventListener('click', (e) => this.handleCellClick(e));
