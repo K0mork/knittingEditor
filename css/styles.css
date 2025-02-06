@@ -210,3 +210,9 @@ button:hover {
   display: flex;
   justify-content: space-around;
 }
+
+.merged-cell {
+  pointer-events: none;
+  border: none;
+  background: transparent;
+}
