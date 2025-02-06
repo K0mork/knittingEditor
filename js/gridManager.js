@@ -567,4 +567,38 @@ export class GridManager {
     setSelectedStitch(stitch) {
       this.selectedStitch = stitch;
     }
+
+  // 指定の内部インデックスの行を削除するメソッド
+  removeRowAt(index) {
+    if (this.numRows <= 1) {
+      alert('最低1行は必要です');
+      return;
+    }
+    if (index < 0 || index >= this.numRows) {
+      alert('指定された行は存在しません');
+      return;
+    }
+    // 指定されたインデックスの行を削除
+    this.grid.splice(index, 1);
+    this.numRows--;
+    this.renderGrid();
+  }
+
+  // 指定の内部インデックスの列を削除するメソッド
+  removeColumnAt(index) {
+    if (this.numCols <= 1) {
+      alert('最低1列は必要です');
+      return;
+    }
+    if (index < 0 || index >= this.numCols) {
+      alert('指定された列は存在しません');
+      return;
+    }
+    // 各行に対して指定されたインデックスのセルを削除
+    for (let i = 0; i < this.numRows; i++) {
+      this.grid[i].splice(index, 1);
+    }
+    this.numCols--;
+    this.renderGrid();
+  }
   }

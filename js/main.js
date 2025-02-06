@@ -132,6 +132,36 @@ document.getElementById('insert-col-between').addEventListener('click', () => {
   gridManager.insertColumnAt(insertIndex);
 });
 
+// 指定行削除ボタンのイベント設定
+document.getElementById('remove-row-at').addEventListener('click', () => {
+  const input = prompt("削除したい行番号を入力してください。\n入力された行番号に該当する行が削除されます。");
+  if (input === null) return; // キャンセル時は何もしない
+  const enteredLabel = parseInt(input, 10);
+  if (isNaN(enteredLabel) || enteredLabel < 1 || enteredLabel > gridManager.numRows) {
+    alert("1から" + gridManager.numRows + "までの有効な行番号を入力してください。");
+    return;
+  }
+  // 表示されている行番号は下から上（最下部が1、最上部が numRows）となっているので
+  // 内部インデックスは numRows - 入力値 となる
+  const deleteIndex = gridManager.numRows - enteredLabel;
+  gridManager.removeRowAt(deleteIndex);
+});
+
+// 指定列削除ボタンのイベント設定
+document.getElementById('remove-col-at').addEventListener('click', () => {
+  const input = prompt("削除したい列番号を入力してください。\n入力された列番号に該当する列が削除されます。");
+  if (input === null) return;
+  const enteredLabel = parseInt(input, 10);
+  if (isNaN(enteredLabel) || enteredLabel < 1 || enteredLabel > gridManager.numCols) {
+    alert("1から" + gridManager.numCols + "までの有効な列番号を入力してください。");
+    return;
+  }
+  // 表示されている列番号は右から左（最右が1、最左が numCols）となるので
+  // 内部インデックスは numCols - 入力値 となる
+  const deleteIndex = gridManager.numCols - enteredLabel;
+  gridManager.removeColumnAt(deleteIndex);
+});
+
   // 画像保存機能
   document.getElementById('download-chart').addEventListener('click', () => {
     html2canvas(document.querySelector("#grid-wrapper")).then(canvas => {
