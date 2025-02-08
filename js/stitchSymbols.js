@@ -1,20 +1,43 @@
-export function getStitchSymbol(type) {
+export function getStitchSymbol(type, options = {}) {
+  // options.orientation: "square" (デフォルト)、"horizontal"（横長）、"vertical"（縦長）
+  const orientation = options.orientation || 'square';
+  let viewBox;
+  switch (orientation) {
+    case 'horizontal':
+      // 横長の場合：幅を2倍にする例。実際の比率はデザインに合わせて調整してください
+      viewBox = '0 0 1700 850.5';
+      break;
+    case 'vertical':
+      // 縦長の場合：高さを2倍にする例
+      viewBox = '0 0 850.5 1700';
+      break;
+    default:
+      viewBox = '0 0 850.5 850.5';
+  }
+  
+  // 共通のSVG属性設定
+  const commonSVGAttrs = `viewBox="${viewBox}" style="width:100%;height:100%;" fill="currentColor" xmlns="http://www.w3.org/2000/svg"`;
+
   switch (type) {
     case 'knit':
+      // ※ 以下はあくまで例です。横長・縦長に合わせたpathの座標や形状は、
+      //     実際にデザイン見直しの上、適宜調整してください
       return `
-        <svg viewBox="0 0 850.5 850.5" style="width:100%;height:100%;" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-          <path fill-rule="evenodd" fill="none" d="M 0,850.5 H 850.5 V 0 H 0 Z" />
+        <svg ${commonSVGAttrs}>
+          <!-- 大枠 -->
+          <path fill-rule="evenodd" fill="none" d="M 0,${orientation === 'vertical' ? '1700' : '850.5'} H ${orientation === 'horizontal' ? '1700' : '850.5'} V 0 H 0 Z" />
+          <!-- 針の線；横長の場合は中心が850以上になるよう調整 -->
           <path stroke="currentColor" stroke-width="100.01" stroke-linecap="butt" stroke-linejoin="miter"
-            stroke-opacity="1" stroke-miterlimit="10" d="M 425.62891,84.37109 V 766.4375" />
+            stroke-opacity="1" stroke-miterlimit="10" d="M ${orientation === 'horizontal' ? '850.62891' : '425.62891'},84.37109 V 766.4375" />
         </svg>
       `;
     case 'purl':
       return `
-        <svg viewBox="0 0 850.5 850.5" style="width:100%;height:100%;" version="1.1" xmlns="http://www.w3.org/2000/svg">
-          <path fill-rule="evenodd" fill="none" d="M 0 850.5 L 850.5 850.5 L 850.5 0 L 0 0 Z" />
+        <svg ${commonSVGAttrs}>
+          <path fill-rule="evenodd" fill="none" d="M 0 ${orientation === 'vertical' ? '1700' : '850.5'} L ${orientation === 'horizontal' ? '1700' : '850.5'} ${orientation === 'vertical' ? '1700' : '850.5'} L ${orientation === 'horizontal' ? '1700' : '850.5'} 0 L 0 0 Z" />
           <path fill="none" stroke="currentColor" stroke-width="100.01" stroke-linecap="butt" stroke-linejoin="miter"
             stroke-opacity="1" stroke-miterlimit="10" d="M 81.375 424.878906 L 770.230469 424.871094"
-            transform="matrix(1, 0, 0, -1, 0, 850.5)" />
+            transform="matrix(1, 0, 0, -1, 0, ${orientation === 'vertical' ? (orientation === 'vertical' ? '1700' : '850.5') : '850.5'})" />
         </svg>
       `;
     case 'left_up_three_one':

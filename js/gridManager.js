@@ -108,7 +108,7 @@ export class GridManager {
       const cellData = this.grid[row][col];
       const symbolElem = cell.querySelector('.stitch-symbol');
 
-      // もしセルが erase 状態なら、背景と枠線を白にして記号表示をクリア
+      // erase 状態の場合は記号表示をクリア
       if (cellData.type === 'erase') {
         cell.style.backgroundColor = '#ffffff';
         cell.style.border = '1px solid #ffffff';
@@ -116,18 +116,25 @@ export class GridManager {
         return;
       }
 
-      // 継続セル（連結されているセル）の処理
-      if (cellData && (cellData.isContinuation || cellData.isContinuationVertical)) {
-        cell.classList.add("merged-cell");
-        symbolElem.innerHTML = '';
-        return;
+      // 継続セルの処理：横方向と縦方向で区別する
+      if (cellData && cellData.isContinuation) {
+          // 横方向の継続セル：シンボルは非表示とし、左側の枠線のみ除去して連結感を演出
+          cell.classList.add("merged-cell-horizontal");
+          symbolElem.innerHTML = '';
+          return;
+      } else if (cellData && cellData.isContinuationVertical) {
+          // 縦方向の継続セルは従来通り全体の枠線を除去
+          cell.classList.add("merged-cell-vertical");
+          symbolElem.innerHTML = '';
+          return;
       } else {
-        cell.classList.remove("merged-cell");
+          cell.classList.remove("merged-cell-horizontal");
+          cell.classList.remove("merged-cell-vertical");
       }
 
       let svgMarkup = getStitchSymbol(cellData.type);
       if (cellData && cellData.multi) {
-        // メインセルの場合（多セル記号の場合）は、横幅を span 個分（例：2または3）に拡大、縦は1マスに設定
+        // メインセルの場合（横長記号の場合）：横幅を span 個分に拡大、縦は 1 マス
         let span = cellData.multi;
         symbolElem.innerHTML = svgMarkup;
         symbolElem.style.width = `calc(${span} * var(--cell-size))`;
@@ -137,7 +144,7 @@ export class GridManager {
         symbolElem.style.top = '0';
         cell.style.position = 'relative';
         // メインセルの右境界線を除去して連結感を演出
-        cell.style.borderRight = 'none';
+        // cell.style.borderRight = 'none';
 
         // SVG のアスペクト比維持を解除して横に伸ばす
         const svgElem = symbolElem.querySelector('svg');
@@ -145,7 +152,7 @@ export class GridManager {
           svgElem.setAttribute('preserveAspectRatio', 'none');
         }
       } else if (cellData && cellData.verticalSpan) {
-        // すべり目（slip_stitch）の場合：縦に2マス、横は1マス
+        // すべり目（slip_stitch）の場合：縦に複数セル分、横は1セル
         let vSpan = cellData.verticalSpan;
         symbolElem.innerHTML = svgMarkup;
         symbolElem.style.width = '100%';
@@ -154,14 +161,14 @@ export class GridManager {
         symbolElem.style.left = '0';
         symbolElem.style.top = '0';
         cell.style.position = 'relative';
-        // 下側の境界線を除去して連結感を演出
+        // 下側の境界線を除去
         cell.style.borderBottom = 'none';
         const svgElem = symbolElem.querySelector('svg');
         if (svgElem) {
           svgElem.setAttribute('preserveAspectRatio', 'none');
         }
       } else {
-        // 通常セルはそのまま１セル分のサイズで表示
+        // 通常セルの表示：1セル分のサイズ
         symbolElem.innerHTML = svgMarkup;
         symbolElem.style.width = '100%';
         symbolElem.style.height = '100%';
