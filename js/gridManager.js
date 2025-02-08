@@ -331,10 +331,31 @@ export class GridManager {
           let row = clickedRow;
           let col = clickedCol;
           const slipVSpan = this.getRequiredCellVerticalSpan(this.selectedStitch);
+
+          // もしタップされたセル（もしくは継続セルの場合は上方向に走査してメインセル）のすでり目が既に存在していれば削除して終了
+          let mainRow = row;
+          if (this.grid[row][col].isContinuationVertical) {
+              for (let r = row; r >= 0; r--) {
+                  if (this.grid[r][col].verticalSpan) {
+                      mainRow = r;
+                      break;
+                  }
+              }
+          }
+          if (this.grid[mainRow][col].type === 'slip_stitch' && this.grid[mainRow][col].verticalSpan === slipVSpan) {
+              // すでにすべり目がセットされている場合、グループ全体をクリアして終了
+              for (let offset = 0; offset < slipVSpan; offset++) {
+                  this.grid[mainRow + offset][col] = this._createEmptyCell();
+              }
+              this.renderGrid();
+              return;
+          }
+
           if (row > this.numRows - slipVSpan) {
               alert(`このセルは最下部に近いため、縦に${slipVSpan}セル分の配置ができません`);
               return;
           }
+
           // 対象となる縦領域内に重複する横方向グループがあれば、それらをクリアする
           for (let offset = 0; offset < slipVSpan; offset++) {
               let targetCell = this.grid[row + offset][col];
@@ -368,15 +389,7 @@ export class GridManager {
                   }
               }
           }
-          // 対象の縦領域をクリア
-          for (let offset = 0; offset < slipVSpan; offset++) {
-              this.grid[row + offset][col] = this._createEmptyCell();
-          }
-          // トグル動作：既に同じすべり目が配置されていれば終了
-          if (this.grid[row][col].type === this.selectedStitch && this.grid[row][col].verticalSpan === slipVSpan) {
-              this.renderGrid();
-              return;
-          }
+
           // 新たにすべり目を配置
           this.grid[row][col] = {
               type: this.selectedStitch,
