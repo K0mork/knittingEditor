@@ -558,20 +558,38 @@ export class GridManager {
   
     updateGridSize(newRows, newCols) {
       if (newRows > 0 && newCols > 0) {
-        if (newRows < this.numRows) {
+        const oldRows = this.numRows;
+        
+        // 行数の調整：増加の場合は上に追加、減少の場合は上から削除
+        if (newRows > oldRows) {
+          const diff = newRows - oldRows;
+          const newRowsArr = [];
+          for (let i = 0; i < diff; i++) {
+            newRowsArr.push(this._createEmptyRow(newCols));
+          }
+          // 既存のグリッドの上部に新しい行を追加
+          this.grid = newRowsArr.concat(this.grid);
+        } else if (newRows < oldRows) {
+          // gridの先頭から必要な行数だけを残す（上側が表示対象）
           this.grid = this.grid.slice(0, newRows);
         }
+        
+        // 各行の列数の調整
         for (let i = 0; i < newRows; i++) {
+          // 行が存在しない場合は初期化
           if (!this.grid[i]) {
             this.grid[i] = [];
           }
-          if (newCols < this.numCols) {
+          // 列を減らす場合は、行内の右側を削除
+          if (this.grid[i].length > newCols) {
             this.grid[i] = this.grid[i].slice(0, newCols);
           }
+          // 列を増やす場合は、右端に空セルを追加
           while (this.grid[i].length < newCols) {
             this.grid[i].push(this._createEmptyCell());
           }
         }
+        
         this.numRows = newRows;
         this.numCols = newCols;
         this.renderGrid();
