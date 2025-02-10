@@ -142,10 +142,13 @@ label {
   font-weight: bold;
 }
 
-/* フッターなど（必要に応じて追加） */
+/* フッターの基本スタイル */
 body > footer {
   text-align: center;
   padding: 20px;
   color: #777;
   font-size: 0.9em;
+  background-color: #fff;
+  border-top: 1px solid #ddd;
+  margin-top: 20px;
 }
