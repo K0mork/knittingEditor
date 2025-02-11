@@ -737,15 +737,14 @@ export class GridManager {
       this.renderGrid();
     }
 
-    // 修正後の getRequiredCellSpan 関数
+    // 修正後の getRequiredCellSpan 関数（purl_left_up_two_one を横1セルに変更）
     getRequiredCellSpan(stitch) {
       // 右目2目一度と左目2目一度は横幅1セルに変更
       if (stitch === 'right_up_two_one' || stitch === 'left_up_two_one') return 1;
+      // 裏目の左上2目一度も横1セルに変更
+      if (stitch === 'purl_left_up_two_one') return 1;
       if (stitch === 'right_up_two_cross' || stitch === 'left_up_two_cross') return 4;
-      // 他の2セル記号は、そのまま2セルとして処理（purl_left_up_two_one など）
-      const twoCellSymbols = ['purl_left_up_two_one'];
       const threeCellSymbols = ['middle_up_three_one', 'right_up_three_one', 'left_up_three_one'];
-      if (twoCellSymbols.includes(stitch)) return 2;
       if (threeCellSymbols.includes(stitch)) return 3;
       return 1;
     }
