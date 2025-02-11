@@ -24,6 +24,9 @@ export class GridManager {
       // タッチ用タイマー
       this.touchTimer = null;
   
+      // セル DOM 要素のキャッシュ用配列
+      this.cellElements = [];
+  
       // グリッド初期化
       this._initializeGrid();
     }
@@ -60,15 +63,31 @@ export class GridManager {
     }
   
     renderGrid() {
-      // グリッド本体の描画
-      this.container.innerHTML = '';
-      this.container.style.gridTemplateColumns = `repeat(${this.numCols}, var(--cell-size))`;
-  
-      for (let i = 0; i < this.numRows; i++) {
-        for (let j = 0; j < this.numCols; j++) {
-          const cell = this._createCell(i, j);
-          this.container.appendChild(cell);
-          this.updateCellDisplay(cell);
+      // グリッドのサイズが変化した場合は再構築し、そうでなければキャッシュ済みセルを更新する
+      if (!this.cellElements || this.cellElements.length !== this.numRows) {
+        // 再構築フェーズ
+        this.container.innerHTML = '';
+        this.cellElements = [];
+        this.container.style.gridTemplateColumns = `repeat(${this.numCols}, var(--cell-size))`;
+        const fragment = document.createDocumentFragment();
+        for (let i = 0; i < this.numRows; i++) {
+          this.cellElements[i] = [];
+          for (let j = 0; j < this.numCols; j++) {
+            const cell = this._createCell(i, j);
+            this.cellElements[i][j] = cell;
+            this.updateCellDisplay(cell);
+            fragment.appendChild(cell);
+          }
+        }
+        this.container.appendChild(fragment);
+      } else {
+        // 部分更新フェーズ：キャッシュ済みセルの表示だけを更新
+        for (let i = 0; i < this.numRows; i++) {
+          for (let j = 0; j < this.numCols; j++) {
+            if (this.cellElements[i] && this.cellElements[i][j]) {
+              this.updateCellDisplay(this.cellElements[i][j]);
+            }
+          }
         }
       }
       this.updateGridLabels();
