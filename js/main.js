@@ -167,10 +167,17 @@ document.getElementById('remove-col-at').addEventListener('click', () => {
   // 画像保存機能
   document.getElementById('download-chart').addEventListener('click', () => {
     html2canvas(document.querySelector("#grid-wrapper")).then(canvas => {
-      const link = document.createElement('a');
-      link.download = 'knitting-chart.png';
-      link.href = canvas.toDataURL();
-      link.click();
+      // Edge(旧版)向けのフォールバック処理
+      if (window.navigator.msSaveBlob) {
+        canvas.toBlob(blob => {
+          window.navigator.msSaveBlob(blob, 'knitting-chart.png');
+        });
+      } else {
+        const link = document.createElement('a');
+        link.download = 'knitting-chart.png';
+        link.href = canvas.toDataURL();
+        link.click();
+      }
     });
   });
 });
