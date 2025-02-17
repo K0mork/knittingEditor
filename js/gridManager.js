@@ -127,12 +127,24 @@ export class GridManager {
       const cellData = this.grid[row][col];
       const symbolElem = cell.querySelector('.stitch-symbol');
 
-      // erase 状態の場合は記号表示をクリア
       if (cellData.type === 'erase') {
         cell.style.backgroundColor = '#ffffff';
         cell.style.border = '1px solid #ffffff';
         symbolElem.innerHTML = '';
         return;
+      }
+      
+      // もしセルが空で、かつ bgColor が指定されていれば、その背景色・枠線を適用
+      if (cellData.type === 'empty' && cellData.bgColor) {
+        cell.style.backgroundColor = cellData.bgColor;
+        if (cellData.border) {
+            cell.style.border = cellData.border;
+        } else {
+            cell.style.border = ''; // 必要に応じたデフォルト値
+        }
+      } else {
+          // 既存の処理に沿った背景色の設定
+          cell.style.backgroundColor = '';
       }
 
       // 継続セルの処理：横方向と縦方向で区別する
@@ -296,10 +308,26 @@ export class GridManager {
           }
           
           // 単セルの場合、同じ記号ならトグル（=クリア）、異なるなら新たな記号を配置
-          if (this.grid[row][col].type === this.selectedStitch) {
-              this.grid[row][col] = this._createEmptyCell();
+          if (this.selectedStitch === 'erase') {
+            if (this.grid[row][col].type === 'erase') {
+              // 既に "erase" 状態の場合、セルをクリア（空セルに）し、行番号に応じた背景色と元のグリッド枠線を再現
+              const clearedCell = this._createEmptyCell();
+              const rowColor = this.getRowColor(row); // 行番号に応じた色を取得
+              clearedCell.bgColor = rowColor;          // 背景色の設定
+              clearedCell.border = '1px solid #ddd';
+              this.grid[row][col] = clearedCell;
           } else {
-              this.grid[row][col] = { type: this.selectedStitch, color: this.selectedColor };
+                // "erase" 状態を適用する場合の処理
+                this.grid[row][col] = { type: 'erase', color: '#ffffff' };
+            }
+            this.renderGrid();
+            return;
+        } else {
+              if (this.grid[row][col].type === this.selectedStitch) {
+                  this.grid[row][col] = this._createEmptyCell();
+              } else {
+                  this.grid[row][col] = { type: this.selectedStitch, color: this.selectedColor };
+              }
           }
           this.renderGrid();
           return;
@@ -772,5 +800,12 @@ export class GridManager {
     getRequiredCellVerticalSpan(stitch) {
       if (stitch === 'slip_stitch') return 2;
       return 1;
+    }
+
+    getRowColor(row) {
+      // 横方向の縞模様に基づいて背景色を設定する例
+      // ここでは偶数行と奇数行で異なる固定のカラーを使用しています。
+      return row % 2 === 0 ? '#e8e8e8' : '#ffffff';
+
     }
   }
