@@ -40,6 +40,28 @@ export function getStitchSymbol(type, options = {}) {
             transform="matrix(1, 0, 0, -1, 0, ${orientation === 'vertical' ? (orientation === 'vertical' ? '1700' : '850.5') : '850.5'})" />
         </svg>
       `;
+    case 'purl_left_cross':
+      return `
+        <svg viewBox="0 0 292.37134 297.73709" style="width:100%;height:100%;" xmlns="http://www.w3.org/2000/svg">
+          <g transform="matrix(0.26458332,0,0,0.26458333,2.9719517e-6,-1.1441273)">
+            <path d="M 0,0 3514652,3571336" transform="matrix(1.0498688e-4,0,0,1.0498688e-4,672.5172,691.9244)" fill="none" stroke="currentColor" stroke-width="1270000" stroke-linecap="butt" stroke-linejoin="miter" />
+            <path d="M 0,0 3633505,3692106" transform="matrix(1.0498688e-4,0,0,1.0498688e-4,145.34533,153.9088)" fill="none" stroke="currentColor" stroke-width="1270000" stroke-linecap="butt" stroke-linejoin="miter" />
+            <path d="M 0,0 8557913,8695935" transform="matrix(-1.0498688e-4,0,0,1.0498688e-4,1057.5095,169.9088)" fill="none" stroke="currentColor" stroke-width="1270000" stroke-linecap="butt" stroke-linejoin="miter" />
+            <path d="M 0,0 3744000,1" transform="matrix(1.0498688e-4,0,0,1.0498688e-4,0,58.157333)" fill="none" stroke="currentColor" stroke-width="1025520" stroke-linecap="butt" stroke-linejoin="miter" />
+          </g>
+        </svg>
+      `;
+    case 'purl_right_cross':
+      return `
+        <svg viewBox="0 0 297.2185 292.83938" style="width:100%;height:100%;" xmlns="http://www.w3.org/2000/svg">
+          <g transform="matrix(0.26458332,0,0,0.26458333,-2.7749147,-5.4572946)">
+            <path d="M 0,0 3514652,3571336" transform="matrix(0,1.0498688e-4,-1.0498688e-4,0,432.1932,710.91213)" fill="none" stroke="currentColor" stroke-width="1270000" stroke-linecap="butt" stroke-linejoin="miter" />
+            <path d="M 0,0 3633505,3692106" transform="matrix(0,1.0498688e-4,-1.0498688e-4,0,986.20867,167.74027)" fill="none" stroke="currentColor" stroke-width="1270000" stroke-linecap="butt" stroke-linejoin="miter" />
+            <path d="M 0,0 8557913,8695935" transform="matrix(0,-1.0498688e-4,-1.0498688e-4,0,970.2088,1079.9044)" fill="none" stroke="currentColor" stroke-width="1270000" stroke-linecap="butt" stroke-linejoin="miter" />
+            <path d="M 0,0 3744000,1" transform="matrix(1.0498688e-4,0,0,1.0498688e-4,740.76253,74.459067)" fill="none" stroke="currentColor" stroke-width="1025520" stroke-linecap="butt" stroke-linejoin="miter" />
+          </g>
+        </svg>
+      `;
     case 'left_cross':
       return `
         <svg viewBox="0 0 266.4873 270.53189" style="width:100%;height:100%;" xmlns="http://www.w3.org/2000/svg">

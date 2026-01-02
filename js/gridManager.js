@@ -797,7 +797,9 @@ export class GridManager {
         stitch === 'left_up_two_one' ||
         stitch === 'purl_left_up_two_one' ||
         stitch === 'right_cross' ||
-        stitch === 'left_cross'
+        stitch === 'left_cross' ||
+        stitch === 'purl_right_cross' ||
+        stitch === 'purl_left_cross'
       ) return 2;
       if (stitch === 'right_up_two_cross' || stitch === 'left_up_two_cross') return 4;
       // 新規3目交差は横6セル使用
