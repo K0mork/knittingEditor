@@ -612,7 +612,7 @@ export class GridManager {
       if (newRows > 0 && newCols > 0) {
         const oldRows = this.numRows;
         
-        // 行数の調整：増加の場合は上に追加、減少の場合は上から削除
+        // 段数の調整：増加の場合は上に追加、減少の場合は上から削除
         if (newRows > oldRows) {
           const diff = newRows - oldRows;
           const newRowsArr = [];
@@ -622,7 +622,7 @@ export class GridManager {
           // 既存のグリッドの上部に新しい行を追加
           this.grid = newRowsArr.concat(this.grid);
         } else if (newRows < oldRows) {
-          // gridの先頭から必要な行数だけを残す（上側が表示対象）
+          // gridの先頭から必要な段数だけを残す（上側が表示対象）
           this.grid = this.grid.slice(0, newRows);
         }
         
@@ -646,7 +646,7 @@ export class GridManager {
         this.numCols = newCols;
         this.renderGrid();
       } else {
-        alert('正しい行数・列数を入力してください');
+        alert('正しい段数・列数を入力してください');
       }
     }
   
