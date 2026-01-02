@@ -47,6 +47,8 @@ document.addEventListener('DOMContentLoaded', () => {
     { value: "left_cross", name: "左上交差" },
     { value: "purl_right_cross", name: "裏目右上交差" },
     { value: "purl_left_cross", name: "裏目左上交差" },
+    { value: "purl_right_up_two_cross", name: "裏目右上2×1交差" },
+    { value: "purl_left_up_two_cross", name: "裏目左上2×1交差" },
     { value: "middle_up_three_one", name: "中上3目一度" },
     { value: "right_up_three_one", name: "右上3目一度" },
     { value: "left_up_three_one", name: "左上3目一度" },
