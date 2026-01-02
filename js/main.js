@@ -3,6 +3,15 @@ import { GridManager } from './gridManager.js';
 import { showNumberPrompt } from './prompt.js';
 import { getStitchSymbol } from './stitchSymbols.js';
 
+// 簡易デバウンス（保存頻度を抑える）
+const debounce = (fn, wait = 200) => {
+  let timer = null;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), wait);
+  };
+};
+const saveGridStateDebounced = debounce(saveGridState, 200);
 
 document.addEventListener('DOMContentLoaded', () => {
   // ローカルストレージからグリッド状態を読み込む
@@ -13,9 +22,9 @@ document.addEventListener('DOMContentLoaded', () => {
     grid: savedState.grid,
     selectedColor: '#ff0000',
     selectedStitch: 'knit',
-    onStateChange: (state) => saveGridState(state)
+    onStateChange: (state) => saveGridStateDebounced(state)
   } : {
-    onStateChange: (state) => saveGridState(state)
+    onStateChange: (state) => saveGridStateDebounced(state)
   };
 
   // GridManager のインスタンスを生成しグリッドを初期化
@@ -34,11 +43,21 @@ document.addEventListener('DOMContentLoaded', () => {
     { value: "right_up_two_one", name: "右上2目一度" },
     { value: "left_up_two_one", name: "左上2目一度" },
     { value: "purl_left_up_two_one", name: "裏目の左上2目一度" },
+    { value: "right_cross", name: "右上交差" },
+    { value: "left_cross", name: "左上交差" },
+    { value: "purl_right_cross", name: "裏目右上交差" },
+    { value: "purl_left_cross", name: "裏目左上交差" },
+    { value: "purl_right_up_two_cross", name: "裏目右上2×1交差" },
+    { value: "purl_left_up_two_cross", name: "裏目左上2×1交差" },
+    { value: "purl_right_cross_twist_stitch", name: "裏目右上ねじり目交差" },
+    { value: "purl_left_cross_twist_stitch", name: "裏目左上ねじり目交差" },
     { value: "middle_up_three_one", name: "中上3目一度" },
     { value: "right_up_three_one", name: "右上3目一度" },
     { value: "left_up_three_one", name: "左上3目一度" },
     { value: "right_up_two_cross", name: "右上2目交差" },
     { value: "left_up_two_cross", name: "左上2目交差" },
+    { value: "right_up_three_cross", name: "右上3目交差" },
+    { value: "left_up_three_cross", name: "左上3目交差" },
     { value: "slip_stitch", name: "すべり目" },
     { value: "twist_stitch", name: "ねじり目" },
     { value: "purl_twisst_stitch", name: "ねじり裏目" },

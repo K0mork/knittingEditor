@@ -40,6 +40,98 @@ export function getStitchSymbol(type, options = {}) {
             transform="matrix(1, 0, 0, -1, 0, ${orientation === 'vertical' ? (orientation === 'vertical' ? '1700' : '850.5') : '850.5'})" />
         </svg>
       `;
+    case 'purl_left_up_two_cross':
+      return `
+        <svg viewBox="0 0 292.2113 287.35904" style="width:100%;height:100%;" xmlns="http://www.w3.org/2000/svg">
+          <g transform="matrix(0.26458332,0,0,0.26458333,2.9719517e-6,-13.106539)">
+            <path d="M 0,0 7936302,7919049" transform="matrix(-1.0498688e-4,0,0,1.0498688e-4,909.7092,103.3696)" fill="none" stroke="currentColor" stroke-width="1270000" stroke-linecap="butt" stroke-linejoin="miter" />
+            <path d="M 0,0 3243537,3278037" transform="matrix(-1.0498688e-4,0,0,-1.0498688e-4,493.10533,519.0676)" fill="none" stroke="currentColor" stroke-width="1270000" stroke-linecap="butt" stroke-linejoin="miter" />
+            <path d="M 0,0 7936302,7919049" transform="matrix(-1.0498688e-4,0,0,1.0498688e-4,1057.3316,257.03)" fill="none" stroke="currentColor" stroke-width="1270000" stroke-linecap="butt" stroke-linejoin="miter" />
+            <path d="M 0,0 3243537,3278037" transform="matrix(-1.0498688e-4,0,0,-1.0498688e-4,981.25653,1030.4638)" fill="none" stroke="currentColor" stroke-width="1270000" stroke-linecap="butt" stroke-linejoin="miter" />
+            <path d="M 0,0 4373404,1" transform="matrix(1.0498688e-4,0,0,1.0498688e-4,0,103.3696)" fill="none" stroke="currentColor" stroke-width="1025520" stroke-linecap="butt" stroke-linejoin="miter" />
+          </g>
+        </svg>
+      `;
+    case 'purl_right_up_two_cross':
+      return `
+        <svg viewBox="0 0 300.71798 295.46878" style="width:100%;height:100%;" xmlns="http://www.w3.org/2000/svg">
+          <g transform="matrix(0.26458332,0,0,0.26458333,0.72458185,-1.6233407)">
+            <path d="M 0,0 7901797,7867291" transform="matrix(1.0498688e-4,0,0,1.0498688e-4,198.3128,93.940267)" fill="none" stroke="currentColor" stroke-width="1270000" stroke-linecap="butt" stroke-linejoin="miter" />
+            <path d="M 0,0 7936302,7919049" transform="matrix(1.0498688e-4,0,0,1.0498688e-4,44.350547,244.27987)" fill="none" stroke="currentColor" stroke-width="1270000" stroke-linecap="butt" stroke-linejoin="miter" />
+            <path d="M 0,0 3260785,3174521" transform="matrix(-1.0498688e-4,0,0,1.0498688e-4,989.85987,141.03467)" fill="none" stroke="currentColor" stroke-width="1270000" stroke-linecap="butt" stroke-linejoin="miter" />
+            <path d="M 0,0 3260785,3174521" transform="matrix(-1.0498688e-4,0,0,1.0498688e-4,448.2752,706.61)" fill="none" stroke="currentColor" stroke-width="1270000" stroke-linecap="butt" stroke-linejoin="miter" />
+            <path d="M 0,0 4373404,1" transform="matrix(1.0498688e-4,0,0,1.0498688e-4,674.68333,59.968533)" fill="none" stroke="currentColor" stroke-width="1025520" stroke-linecap="butt" stroke-linejoin="miter" />
+          </g>
+        </svg>
+      `;
+    case 'purl_left_cross_twist_stitch':
+      return `
+        <svg viewBox="0 0 293.96902 293.67202" style="width:100%;height:100%;" xmlns="http://www.w3.org/2000/svg">
+          <g transform="matrix(0.26458332,0,0,0.26458333,-0.37083139,-0.64614626)">
+            <path d="m 5020574,0 51758,1483743 v 0 c -20128,129396 -71887,534838 -120770,776378 -48883,241540 -83389,448573 -172528,672860 -89139,224287 -250166,483079 -362309,672860 -112143,189781 -166777,316302 -310551,465827 -143774,149525 -385314,324929 -552091,431321 -166777,106392 -100642,86264 -448574,207034 -347932,120770 -1121433,391064 -1639018,517585 C 948906,5354129 189781,5449019 0,5469147" transform="matrix(7.4195453e-5,7.4278373e-5,-7.4278373e-5,7.4195453e-5,475.49933,247.32533)" fill="none" stroke="currentColor" stroke-width="1270000" stroke-linecap="butt" stroke-linejoin="miter" />
+            <path d="M 137564.8,0 C 76481.27,267881.3 15397.77,535763.6 2537.971,785786.9 -10321.83,1035810 28256.46,1250116 60405.96,1500138 c 32149.5,250022 80373.24,538740 135026.74,785786 54653.6,247046 83587.6,452423 192894.8,696493 109307.2,244071 321491.7,562551 462948.4,767927 141456.7,205377 257194.1,336341 385790.1,464329 128597,127988 189680,184540 385790,303599 196110,119059 244335,229188 790871,410752 546536,181565 2041474,541717 2488347,678634" transform="matrix(7.4195453e-5,7.4278373e-5,-7.4278373e-5,7.4195453e-5,516.2864,300.97307)" fill="none" stroke="currentColor" stroke-width="1270000" stroke-linecap="butt" stroke-linejoin="miter" />
+            <path d="m 0,2916725 c 40256,-253804 80513,-507608 155275,-761412 74762,-253805 172528,-516894 293298,-761413 120770,-244518 316302,-550941.4 431321,-705699.4 115019,-154758 186905,-157852.6 258792,-222851.3 71887,-64998.7 100642,-111427.3 172529,-167139.9 71887,-55712.6 166777,-123805.9 258792,-167138.8 92015,-43332.83 198407,-71190.19 293298,-92856.07 94891,-21665.88 181155,-43331.759 276046,-37141.354 94891,6190.405 189781,46427.504 293298,74283.784 103517,27856.24 235788,52617.94 327803,92855.04 92015,40237.1 152400,95950.7 224287,148568.6 71887,52617.9 140898,108330.5 207034,167138.8 66136,58808.3 140898,123808.1 189781,185711.1 48883,61902.9 57509,111426.2 103517,185710 46008,74283.7 120771,182615.5 172529,259994.5 51758,77380 97766,120712 138022,204282 40256,83569 103517,297136 103517,297136 34506,99045 69011,194995 103517,297136 34506,102140 69011,204281 103517,315707 34506,111427 77638,247615 103517,352850 25879,105236 17253,145474 51759,278566" transform="matrix(7.4195453e-5,7.4278373e-5,-7.4278373e-5,7.4195453e-5,726.6868,109.0656)" fill="none" stroke="currentColor" stroke-width="1270000" stroke-linecap="butt" stroke-linejoin="miter" />
+            <path d="M 0,0 2242591,2266444" transform="matrix(-1.0498688e-4,0,0,-1.0498688e-4,347.16813,352.74013)" fill="none" stroke="currentColor" stroke-width="1270000" stroke-linecap="butt" stroke-linejoin="miter" />
+            <path d="M 0,0 2242591,2266444" transform="matrix(-1.0498688e-4,0,0,-1.0498688e-4,1065.0765,1024.7679)" fill="none" stroke="currentColor" stroke-width="1270000" stroke-linecap="butt" stroke-linejoin="miter" />
+            <path d="M 0,0 4373404,1" transform="matrix(1.0498688e-4,0,0,1.0498688e-4,1.4015747,56.2752)" fill="none" stroke="currentColor" stroke-width="1025520" stroke-linecap="butt" stroke-linejoin="miter" />
+          </g>
+        </svg>
+      `;
+    case 'purl_right_cross_twist_stitch':
+      return `
+        <svg viewBox="0 0 286.55117 298.85922" style="width:100%;height:100%;" xmlns="http://www.w3.org/2000/svg">
+          <g transform="matrix(0.26458332,0,0,0.26458333,-7.0233737,-2.0838569)">
+            <path d="m 5020574,0 51758,1483743 v 0 c -20128,129396 -71887,534838 -120770,776378 -48883,241540 -83389,448573 -172528,672860 -89139,224287 -250166,483079 -362309,672860 -112143,189781 -166777,316302 -310551,465827 -143774,149525 -385314,324929 -552091,431321 -166777,106392 -100642,86264 -448574,207034 -347932,120770 -1121433,391064 -1639018,517585 C 948906,5354129 189781,5449019 0,5469147" transform="matrix(7.446044e-5,-7.4012747e-5,7.4012747e-5,7.446044e-5,226.98747,688.1256)" fill="none" stroke="currentColor" stroke-width="1270000" stroke-linecap="butt" stroke-linejoin="miter" />
+            <path d="M 137564.8,0 C 76481.27,267881.3 15397.77,535763.6 2537.971,785786.9 -10321.83,1035810 28256.46,1250116 60405.96,1500138 c 32149.5,250022 80373.24,538740 135026.84,785786 54653.5,247046 83587.5,452423 192894.7,696493 109307.2,244071 321491.7,562551 462948.4,767927 141456.7,205376 257194.1,336341 385790.1,464328 128598,127988 189680,184541 385790,303600 196110,119059 244335,229188 790871,410752 546536,181564 2041474,541716 2488347,678634" transform="matrix(7.446044e-5,-7.4012747e-5,7.4012747e-5,7.446044e-5,280.73533,647.4704)" fill="none" stroke="currentColor" stroke-width="1270000" stroke-linecap="butt" stroke-linejoin="miter" />
+            <path d="m 0,2916725 c 40256,-253805 80513,-507608 155275,-761412 74762,-253805 172528,-516894 293298,-761413 120770,-244518 316302,-550941.4 431321,-705699.4 115019,-154758 186905,-157852.6 258792,-222851.3 71887,-64998.7 100642,-111427.3 172529,-167139.9 71887,-55712.6 166777,-123805.9 258792,-167138.8 92015,-43332.83 198407,-71190.19 293298,-92856.07 94891,-21665.88 181155,-43331.759 276046,-37141.354 94891,6190.405 189781,46427.504 293298,74283.784 103517,27856.24 235788,52617.94 327803,92855.04 92015,40237.1 152400,95950.7 224287,148568.6 71887,52617.9 140898,108330.5 207034,167138.8 66136,58808.3 140898,123808.1 189781,185711.1 48883,61902.9 57509,111426.2 103517,185710 46008,74283.8 120771,182615.5 172529,259994.5 51758,77380 97766,120712 138022,204282 40256,83570 103517,297136 103517,297136 34506,99045 69011,194995 103517,297136 34506,102140 69011,204281 103517,315707 34506,111427 77638,247614 103517,352850 25879,105236 17253,145474 51759,278566" transform="matrix(7.446044e-5,-7.4012747e-5,7.4012747e-5,7.446044e-5,89.345267,436.5992)" fill="none" stroke="currentColor" stroke-width="1270000" stroke-linecap="butt" stroke-linejoin="miter" />
+            <path d="M 0,0 4373404,1" transform="matrix(1.0498688e-4,0,0,1.0498688e-4,650.42307,61.709067)" fill="none" stroke="currentColor" stroke-width="1025520" stroke-linecap="butt" stroke-linejoin="miter" />
+            <path d="M 0,0 2144321,2087593" transform="matrix(-1.0498688e-4,0,0,1.0498688e-4,1006.3496,124.98107)" fill="none" stroke="currentColor" stroke-width="1270000" stroke-linecap="butt" stroke-linejoin="miter" />
+            <path d="M 0,0 2338012,2276160" transform="matrix(-1.0498688e-4,0,0,1.0498688e-4,318.51,828.2872)" fill="none" stroke="currentColor" stroke-width="1270000" stroke-linecap="butt" stroke-linejoin="miter" />
+          </g>
+        </svg>
+      `;
+    case 'purl_left_cross':
+      return `
+        <svg viewBox="0 0 292.37134 297.73709" style="width:100%;height:100%;" xmlns="http://www.w3.org/2000/svg">
+          <g transform="matrix(0.26458332,0,0,0.26458333,2.9719517e-6,-1.1441273)">
+            <path d="M 0,0 3514652,3571336" transform="matrix(1.0498688e-4,0,0,1.0498688e-4,672.5172,691.9244)" fill="none" stroke="currentColor" stroke-width="1270000" stroke-linecap="butt" stroke-linejoin="miter" />
+            <path d="M 0,0 3633505,3692106" transform="matrix(1.0498688e-4,0,0,1.0498688e-4,145.34533,153.9088)" fill="none" stroke="currentColor" stroke-width="1270000" stroke-linecap="butt" stroke-linejoin="miter" />
+            <path d="M 0,0 8557913,8695935" transform="matrix(-1.0498688e-4,0,0,1.0498688e-4,1057.5095,169.9088)" fill="none" stroke="currentColor" stroke-width="1270000" stroke-linecap="butt" stroke-linejoin="miter" />
+            <path d="M 0,0 3744000,1" transform="matrix(1.0498688e-4,0,0,1.0498688e-4,0,58.157333)" fill="none" stroke="currentColor" stroke-width="1025520" stroke-linecap="butt" stroke-linejoin="miter" />
+          </g>
+        </svg>
+      `;
+    case 'purl_right_cross':
+      return `
+        <svg viewBox="0 0 297.2185 292.83938" style="width:100%;height:100%;" xmlns="http://www.w3.org/2000/svg">
+          <g transform="matrix(0.26458332,0,0,0.26458333,-2.7749147,-5.4572946)">
+            <path d="M 0,0 3514652,3571336" transform="matrix(0,1.0498688e-4,-1.0498688e-4,0,432.1932,710.91213)" fill="none" stroke="currentColor" stroke-width="1270000" stroke-linecap="butt" stroke-linejoin="miter" />
+            <path d="M 0,0 3633505,3692106" transform="matrix(0,1.0498688e-4,-1.0498688e-4,0,986.20867,167.74027)" fill="none" stroke="currentColor" stroke-width="1270000" stroke-linecap="butt" stroke-linejoin="miter" />
+            <path d="M 0,0 8557913,8695935" transform="matrix(0,-1.0498688e-4,-1.0498688e-4,0,970.2088,1079.9044)" fill="none" stroke="currentColor" stroke-width="1270000" stroke-linecap="butt" stroke-linejoin="miter" />
+            <path d="M 0,0 3744000,1" transform="matrix(1.0498688e-4,0,0,1.0498688e-4,740.76253,74.459067)" fill="none" stroke="currentColor" stroke-width="1025520" stroke-linecap="butt" stroke-linejoin="miter" />
+          </g>
+        </svg>
+      `;
+    case 'left_cross':
+      return `
+        <svg viewBox="0 0 266.4873 270.53189" style="width:100%;height:100%;" xmlns="http://www.w3.org/2000/svg">
+          <g transform="matrix(0.26458332,0,0,0.26458333,-19.174543,-16.847434)">
+            <path d="M 0,0 3514652,3571336" transform="matrix(1.0498688e-4,0,0,1.0498688e-4,647.15867,648.4528)" fill="none" stroke="currentColor" stroke-width="1270000" stroke-linecap="butt" stroke-linejoin="miter" />
+            <path d="M 0,0 3633505,3692106" transform="matrix(1.0498688e-4,0,0,1.0498688e-4,119.98676,110.4372)" fill="none" stroke="currentColor" stroke-width="1270000" stroke-linecap="butt" stroke-linejoin="miter" />
+            <path d="M 0,0 8557913,8695935" transform="matrix(-1.0498688e-4,0,0,1.0498688e-4,1032.1509,126.4372)" fill="none" stroke="currentColor" stroke-width="1270000" stroke-linecap="butt" stroke-linejoin="miter" />
+          </g>
+        </svg>
+      `;
+    case 'right_cross':
+      return `
+        <svg viewBox="0 0 270.53189 266.48739" style="width:100%;height:100%;" xmlns="http://www.w3.org/2000/svg">
+          <g transform="matrix(0.26458332,0,0,0.26458333,-17.152265,-18.869687)">
+            <path d="M 0,0 3514652,3571336" transform="matrix(0,1.0498688e-4,-1.0498688e-4,0,486.5328,662.00653)" fill="none" stroke="currentColor" stroke-width="1270000" stroke-linecap="butt" stroke-linejoin="miter" />
+            <path d="M 0,0 3633505,3692106" transform="matrix(0,1.0498688e-4,-1.0498688e-4,0,1040.5484,118.83453)" fill="none" stroke="currentColor" stroke-width="1270000" stroke-linecap="butt" stroke-linejoin="miter" />
+            <path d="M 0,0 8557913,8695935" transform="matrix(0,-1.0498688e-4,-1.0498688e-4,0,1024.5484,1030.9988)" fill="none" stroke="currentColor" stroke-width="1270000" stroke-linecap="butt" stroke-linejoin="miter" />
+          </g>
+        </svg>
+      `;
     case 'left_up_three_one':
       return `
         <svg viewBox="0 0 850.5 850.5" style="width:100%;height:100%;" version="1.1" xmlns="http://www.w3.org/2000/svg">
@@ -80,6 +172,30 @@ export function getStitchSymbol(type, options = {}) {
           <path fill="none" stroke="currentColor" stroke-width="100.01" stroke-linecap="butt" stroke-linejoin="miter"
             stroke-opacity="1" stroke-miterlimit="10" d="M 313.460938 425.140625 L 59.625 676.128906"
             transform="matrix(1, 0, 0, -1, 0, 850.5)" />
+        </svg>
+      `;
+    case 'left_up_three_cross':
+      return `
+        <svg viewBox="0 0 850.5 850.5" style="width:100%;height:100%;" xmlns="http://www.w3.org/2000/svg">
+          <path fill-rule="evenodd" fill="none" d="M 0 850.5 L 850.5 850.5 L 850.5 0 L 0 0 Z" />
+          <path fill="none" stroke="currentColor" stroke-width="20.002" stroke-linecap="butt" stroke-linejoin="miter" stroke-opacity="1" stroke-miterlimit="10" d="M 683.121094 794.628906 L 58.125000 170.988281" transform="matrix(1, 0, 0, -1, 0, 850.5)" />
+          <path fill="none" stroke="currentColor" stroke-width="20.002" stroke-linecap="butt" stroke-linejoin="miter" stroke-opacity="1" stroke-miterlimit="10" d="M 711.381138 766.306462 L 86.385044 142.665837" transform="matrix(1, 0, 0, -1, 0, 850.5)" />
+          <path fill="none" stroke="currentColor" stroke-width="20.002" stroke-linecap="butt" stroke-linejoin="miter" stroke-opacity="1" stroke-miterlimit="10" d="M 654.861050 822.951350 L 29.864956 199.310725" transform="matrix(1, 0, 0, -1, 0, 850.5)" />
+          <path fill="none" stroke="currentColor" stroke-width="20.002" stroke-linecap="butt" stroke-linejoin="miter" stroke-opacity="1" stroke-miterlimit="10" d="M 426.058594 536.468750 L 170.621094 794.628906" transform="matrix(1, 0, 0, -1, 0, 850.5)" />
+          <path fill="none" stroke="currentColor" stroke-width="20.002" stroke-linecap="butt" stroke-linejoin="miter" stroke-opacity="1" stroke-miterlimit="10" d="M 454.488158 564.603149 L 199.050658 822.763305" transform="matrix(1, 0, 0, -1, 0, 850.5)" />
+          <path fill="none" stroke="currentColor" stroke-width="20.002" stroke-linecap="butt" stroke-linejoin="miter" stroke-opacity="1" stroke-miterlimit="10" d="M 397.629030 508.334351 L 142.191530 766.494508" transform="matrix(1, 0, 0, -1, 0, 850.5)" />
+          <path fill="none" stroke="currentColor" stroke-width="20.002" stroke-linecap="butt" stroke-linejoin="miter" stroke-opacity="1" stroke-miterlimit="10" d="M 793.371094 679.128906 L 168.371094 55.484375" transform="matrix(1, 0, 0, -1, 0, 850.5)" />
+          <path fill="none" stroke="currentColor" stroke-width="20.002" stroke-linecap="butt" stroke-linejoin="miter" stroke-opacity="1" stroke-miterlimit="10" d="M 821.640735 650.803041 L 196.640735 27.158509" transform="matrix(1, 0, 0, -1, 0, 850.5)" />
+          <path fill="none" stroke="currentColor" stroke-width="20.002" stroke-linecap="butt" stroke-linejoin="miter" stroke-opacity="1" stroke-miterlimit="10" d="M 765.101453 707.454772 L 140.101453 83.810240" transform="matrix(1, 0, 0, -1, 0, 850.5)" />
+          <path fill="none" stroke="currentColor" stroke-width="20.002" stroke-linecap="butt" stroke-linejoin="miter" stroke-opacity="1" stroke-miterlimit="10" d="M 793.558594 170.468750 L 538.128906 428.628906" transform="matrix(1, 0, 0, -1, 0, 850.5)" />
+          <path fill="none" stroke="currentColor" stroke-width="20.002" stroke-linecap="butt" stroke-linejoin="miter" stroke-opacity="1" stroke-miterlimit="10" d="M 821.984676 198.606998 L 566.554988 456.767154" transform="matrix(1, 0, 0, -1, 0, 850.5)" />
+          <path fill="none" stroke="currentColor" stroke-width="20.002" stroke-linecap="butt" stroke-linejoin="miter" stroke-opacity="1" stroke-miterlimit="10" d="M 765.132512 142.330502 L 509.702824 400.490658" transform="matrix(1, 0, 0, -1, 0, 850.5)" />
+          <path fill="none" stroke="currentColor" stroke-width="20.002" stroke-linecap="butt" stroke-linejoin="miter" stroke-opacity="1" stroke-miterlimit="10" d="M 682.558594 55.722656 L 427.128906 313.878906" transform="matrix(1, 0, 0, -1, 0, 850.5)" />
+          <path fill="none" stroke="currentColor" stroke-width="20.002" stroke-linecap="butt" stroke-linejoin="miter" stroke-opacity="1" stroke-miterlimit="10" d="M 710.987073 83.858150 L 455.557385 342.014400" transform="matrix(1, 0, 0, -1, 0, 850.5)" />
+          <path fill="none" stroke="currentColor" stroke-width="20.002" stroke-linecap="butt" stroke-linejoin="miter" stroke-opacity="1" stroke-miterlimit="10" d="M 654.130115 27.587162 L 398.700427 285.743412" transform="matrix(1, 0, 0, -1, 0, 850.5)" />
+          <path fill="none" stroke="currentColor" stroke-width="20.002" stroke-linecap="butt" stroke-linejoin="miter" stroke-opacity="1" stroke-miterlimit="10" d="M 313.460938 425.140625 L 59.625000 676.128906" transform="matrix(1, 0, 0, -1, 0, 850.5)" />
+          <path fill="none" stroke="currentColor" stroke-width="20.002" stroke-linecap="butt" stroke-linejoin="miter" stroke-opacity="1" stroke-miterlimit="10" d="M 341.728023 453.402474 L 87.892085 704.390755" transform="matrix(1, 0, 0, -1, 0, 850.5)" />
+          <path fill="none" stroke="currentColor" stroke-width="20.002" stroke-linecap="butt" stroke-linejoin="miter" stroke-opacity="1" stroke-miterlimit="10" d="M 285.193852 396.878776 L 31.357914 647.867057" transform="matrix(1, 0, 0, -1, 0, 850.5)" />
         </svg>
       `;
     case 'left_up_two_one':
@@ -164,6 +280,30 @@ export function getStitchSymbol(type, options = {}) {
           <path fill="none" stroke="currentColor" stroke-width="100.01" stroke-linecap="butt" stroke-linejoin="miter"
             stroke-opacity="1" stroke-miterlimit="10" d="M 422.171875 310.878906 L 165.371094 60.875"
             transform="matrix(1, 0, 0, -1, 0, 850.5)" />
+        </svg>
+      `;
+    case 'right_up_three_cross':
+      return `
+        <svg viewBox="0 0 850.5 850.5" style="width:100%;height:100%;" xmlns="http://www.w3.org/2000/svg">
+          <path fill-rule="evenodd" fill="none" d="M 0 850.5 L 850.5 850.5 L 850.5 0 L 0 0 Z" />
+          <path fill="none" stroke="currentColor" stroke-width="20.002" stroke-linecap="butt" stroke-linejoin="miter" stroke-opacity="1" stroke-miterlimit="10" d="M 170.628906 793.128906 L 792.910156 173.558594" transform="matrix(1, 0, 0, -1, 0, 850.5)" />
+          <path fill="none" stroke="currentColor" stroke-width="20.002" stroke-linecap="butt" stroke-linejoin="miter" stroke-opacity="1" stroke-miterlimit="10" d="M 198.854188 821.477688 L 821.135438 201.907376" transform="matrix(1, 0, 0, -1, 0, 850.5)" />
+          <path fill="none" stroke="currentColor" stroke-width="20.002" stroke-linecap="butt" stroke-linejoin="miter" stroke-opacity="1" stroke-miterlimit="10" d="M 142.403624 764.780124 L 764.684874 145.209812" transform="matrix(1, 0, 0, -1, 0, 850.5)" />
+          <path fill="none" stroke="currentColor" stroke-width="20.002" stroke-linecap="butt" stroke-linejoin="miter" stroke-opacity="1" stroke-miterlimit="10" d="M 55.125 680.628906 L 680.121094 56.984375" transform="matrix(1, 0, 0, -1, 0, 850.5)" />
+          <path fill="none" stroke="currentColor" stroke-width="20.002" stroke-linecap="butt" stroke-linejoin="miter" stroke-opacity="1" stroke-miterlimit="10" d="M 83.381464 708.946608 L 708.377558 85.302077" transform="matrix(1, 0, 0, -1, 0, 850.5)" />
+          <path fill="none" stroke="currentColor" stroke-width="20.002" stroke-linecap="butt" stroke-linejoin="miter" stroke-opacity="1" stroke-miterlimit="10" d="M 26.868536 652.311204 L 651.864630 28.666673" transform="matrix(1, 0, 0, -1, 0, 850.5)" />
+          <path fill="none" stroke="currentColor" stroke-width="20.002" stroke-linecap="butt" stroke-linejoin="miter" stroke-opacity="1" stroke-miterlimit="10" d="M 311.921875 423.378906 L 55.125 173.378906" transform="matrix(1, 0, 0, -1, 0, 850.5)" />
+          <path fill="none" stroke="currentColor" stroke-width="20.002" stroke-linecap="butt" stroke-linejoin="miter" stroke-opacity="1" stroke-miterlimit="10" d="M 339.827094 394.715013 L 83.030219 144.715013" transform="matrix(1, 0, 0, -1, 0, 850.5)" />
+          <path fill="none" stroke="currentColor" stroke-width="20.002" stroke-linecap="butt" stroke-linejoin="miter" stroke-opacity="1" stroke-miterlimit="10" d="M 284.016656 452.042799 L 27.219781 202.042799" transform="matrix(1, 0, 0, -1, 0, 850.5)" />
+          <path fill="none" stroke="currentColor" stroke-width="20.002" stroke-linecap="butt" stroke-linejoin="miter" stroke-opacity="1" stroke-miterlimit="10" d="M 680.171875 793.128906 L 423.371094 543.128906" transform="matrix(1, 0, 0, -1, 0, 850.5)" />
+          <path fill="none" stroke="currentColor" stroke-width="20.002" stroke-linecap="butt" stroke-linejoin="miter" stroke-opacity="1" stroke-miterlimit="10" d="M 708.076877 764.464801 L 451.276096 514.464801" transform="matrix(1, 0, 0, -1, 0, 850.5)" />
+          <path fill="none" stroke="currentColor" stroke-width="20.002" stroke-linecap="butt" stroke-linejoin="miter" stroke-opacity="1" stroke-miterlimit="10" d="M 652.266873 821.793011 L 395.466092 571.793011" transform="matrix(1, 0, 0, -1, 0, 850.5)" />
+          <path fill="none" stroke="currentColor" stroke-width="20.002" stroke-linecap="butt" stroke-linejoin="miter" stroke-opacity="1" stroke-miterlimit="10" d="M 795.671875 680.628906 L 538.878906 430.628906" transform="matrix(1, 0, 0, -1, 0, 850.5)" />
+          <path fill="none" stroke="currentColor" stroke-width="20.002" stroke-linecap="butt" stroke-linejoin="miter" stroke-opacity="1" stroke-miterlimit="10" d="M 823.577312 651.965226 L 566.784343 401.965226" transform="matrix(1, 0, 0, -1, 0, 850.5)" />
+          <path fill="none" stroke="currentColor" stroke-width="20.002" stroke-linecap="butt" stroke-linejoin="miter" stroke-opacity="1" stroke-miterlimit="10" d="M 767.766438 709.292586 L 510.973469 459.292586" transform="matrix(1, 0, 0, -1, 0, 850.5)" />
+          <path fill="none" stroke="currentColor" stroke-width="20.002" stroke-linecap="butt" stroke-linejoin="miter" stroke-opacity="1" stroke-miterlimit="10" d="M 422.171875 310.878906 L 165.371094 60.875" transform="matrix(1, 0, 0, -1, 0, 850.5)" />
+          <path fill="none" stroke="currentColor" stroke-width="20.002" stroke-linecap="butt" stroke-linejoin="miter" stroke-opacity="1" stroke-miterlimit="10" d="M 450.077100 282.215019 L 193.276319 32.211113" transform="matrix(1, 0, 0, -1, 0, 850.5)" />
+          <path fill="none" stroke="currentColor" stroke-width="20.002" stroke-linecap="butt" stroke-linejoin="miter" stroke-opacity="1" stroke-miterlimit="10" d="M 394.266650 339.542793 L 137.465869 89.538887" transform="matrix(1, 0, 0, -1, 0, 850.5)" />
         </svg>
       `;
     case 'right_up_two_one':
