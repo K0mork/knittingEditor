@@ -792,8 +792,16 @@ export class GridManager {
     // それぞれの編み目が必要とする横方向セル数を返す
     getRequiredCellSpan(stitch) {
       // 2目一度系は横2セル使用
-      if (stitch === 'right_up_two_one' || stitch === 'left_up_two_one' || stitch === 'purl_left_up_two_one') return 2;
+      if (
+        stitch === 'right_up_two_one' ||
+        stitch === 'left_up_two_one' ||
+        stitch === 'purl_left_up_two_one' ||
+        stitch === 'right_cross' ||
+        stitch === 'left_cross'
+      ) return 2;
       if (stitch === 'right_up_two_cross' || stitch === 'left_up_two_cross') return 4;
+      // 新規3目交差は横6セル使用
+      if (stitch === 'right_up_three_cross' || stitch === 'left_up_three_cross') return 6;
       const threeCellSymbols = ['middle_up_three_one', 'right_up_three_one', 'left_up_three_one'];
       if (threeCellSymbols.includes(stitch)) return 3;
       return 1;
