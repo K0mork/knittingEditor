@@ -64,8 +64,11 @@ export class GridManager {
   
     renderGrid() {
       // グリッドのサイズが変化した場合は再構築し、そうでなければキャッシュ済みセルを更新する
-      if (!this.cellElements || this.cellElements.length !== this.numRows) {
-        // 再構築フェーズ
+      const needsRowRebuild = !this.cellElements || this.cellElements.length !== this.numRows;
+      const needsColRebuild = !needsRowRebuild && this.cellElements[0] && this.cellElements[0].length !== this.numCols;
+
+      if (needsRowRebuild || needsColRebuild) {
+        // 再構築フェーズ（行または列数が変わった場合）
         this.container.innerHTML = '';
         this.cellElements = [];
         this.container.style.gridTemplateColumns = `repeat(${this.numCols}, var(--cell-size))`;
@@ -537,10 +540,12 @@ export class GridManager {
         }
       } else if (this.getRequiredCellSpan(this.grid[row][col].type) > 1 && this.grid[row][col].multi) {
         // メインセルの場合は右隣の継続セルもクリア
-        this.grid[row][col] = this._createEmptyCell();
-        for (let offset = 1; offset < this.getRequiredCellSpan(this.grid[row][col].type); offset++) {
-          if (col < this.numCols - offset && this.grid[row][col + offset].isContinuation) {
+        const span = this.getRequiredCellSpan(this.grid[row][col].type);
+        for (let offset = 0; offset < span; offset++) {
+          if (col + offset < this.numCols && this.grid[row][col + offset].isContinuation) {
             this.grid[row][col + offset] = this._createEmptyCell();
+          } else if (offset === 0) {
+            this.grid[row][col] = this._createEmptyCell();
           }
         }
       } else {
@@ -784,12 +789,10 @@ export class GridManager {
       this.renderGrid();
     }
 
-    // 修正後の getRequiredCellSpan 関数（purl_left_up_two_one を横1セルに変更）
+    // それぞれの編み目が必要とする横方向セル数を返す
     getRequiredCellSpan(stitch) {
-      // 右目2目一度と左目2目一度は横幅1セルに変更
-      if (stitch === 'right_up_two_one' || stitch === 'left_up_two_one') return 1;
-      // 裏目の左上2目一度も横1セルに変更
-      if (stitch === 'purl_left_up_two_one') return 1;
+      // 2目一度系は横2セル使用
+      if (stitch === 'right_up_two_one' || stitch === 'left_up_two_one' || stitch === 'purl_left_up_two_one') return 2;
       if (stitch === 'right_up_two_cross' || stitch === 'left_up_two_cross') return 4;
       const threeCellSymbols = ['middle_up_three_one', 'right_up_three_one', 'left_up_three_one'];
       if (threeCellSymbols.includes(stitch)) return 3;

@@ -3,6 +3,15 @@ import { GridManager } from './gridManager.js';
 import { showNumberPrompt } from './prompt.js';
 import { getStitchSymbol } from './stitchSymbols.js';
 
+// 簡易デバウンス（保存頻度を抑える）
+const debounce = (fn, wait = 200) => {
+  let timer = null;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), wait);
+  };
+};
+const saveGridStateDebounced = debounce(saveGridState, 200);
 
 document.addEventListener('DOMContentLoaded', () => {
   // ローカルストレージからグリッド状態を読み込む
@@ -13,9 +22,9 @@ document.addEventListener('DOMContentLoaded', () => {
     grid: savedState.grid,
     selectedColor: '#ff0000',
     selectedStitch: 'knit',
-    onStateChange: (state) => saveGridState(state)
+    onStateChange: (state) => saveGridStateDebounced(state)
   } : {
-    onStateChange: (state) => saveGridState(state)
+    onStateChange: (state) => saveGridStateDebounced(state)
   };
 
   // GridManager のインスタンスを生成しグリッドを初期化
