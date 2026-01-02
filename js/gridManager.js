@@ -791,7 +791,7 @@ export class GridManager {
 
     // それぞれの編み目が必要とする横方向セル数を返す
     getRequiredCellSpan(stitch) {
-      // 2目一度系は横2セル使用
+      // 基本の2目一度・交差系は横2セル使用
       if (
         stitch === 'right_up_two_one' ||
         stitch === 'left_up_two_one' ||
@@ -800,11 +800,11 @@ export class GridManager {
         stitch === 'left_cross' ||
         stitch === 'purl_right_cross' ||
         stitch === 'purl_left_cross' ||
-        stitch === 'purl_right_up_two_cross' ||
-        stitch === 'purl_left_up_two_cross' ||
         stitch === 'purl_right_cross_twist_stitch' ||
         stitch === 'purl_left_cross_twist_stitch'
       ) return 2;
+      // 裏目2×1交差は横3セルに拡張
+      if (stitch === 'purl_right_up_two_cross' || stitch === 'purl_left_up_two_cross') return 3;
       if (stitch === 'right_up_two_cross' || stitch === 'left_up_two_cross') return 4;
       // 新規3目交差は横6セル使用
       if (stitch === 'right_up_three_cross' || stitch === 'left_up_three_cross') return 6;
