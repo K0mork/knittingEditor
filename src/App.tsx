@@ -227,6 +227,7 @@ export default function App() {
           {STITCHES.map((stitch) => <option key={stitch.key} value={stitch.key}>{stitch.name}</option>)}
         </select></label>
         <button className={mode === 'draw' ? 'active' : ''} onClick={() => { setMode('draw'); setSelection(undefined); }}>描く</button>
+        <button className={mode === 'erase' ? 'active' : ''} onClick={() => { setMode('erase'); setSelection(undefined); }}>消す</button>
         <button className={mode === 'select' ? 'active' : ''} onClick={() => { setMode('select'); setSelection(undefined); }}>範囲</button>
         {copiedBlock && <button className={mode === 'paste' ? 'active' : ''} onClick={() => { setPasteBlock(copiedBlock); setMode('paste'); setSelection(undefined); }}>貼付</button>}
       </section>
@@ -239,7 +240,7 @@ export default function App() {
       <section className="canvas-wrap">
         <BoardCanvas board={board} revision={revision} stitchKey={selectedStitch} color={selectedColor} mode={mode}
           selection={selection} pasteBlock={pasteBlock} onChange={changed} onSelectionChange={setSelection} onPasteComplete={handlePasteComplete} />
-        <div className="gesture-hint">1本指：描画　2本指：移動・拡大</div>
+        <div className="gesture-hint">1本指：{mode === 'erase' ? '消去' : mode === 'select' ? '範囲選択' : mode === 'paste' ? '貼り付け' : '描画'}　2本指：移動・拡大</div>
       </section>
 
       <nav className="action-bar" aria-label="操作メニュー">

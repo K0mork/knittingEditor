@@ -27,6 +27,33 @@ test('draws continuously and restores the board after reload', async ({ page }) 
   await expect(page.getByText('新しい編み図', { exact: false })).toBeVisible();
 });
 
+test('erases stitches continuously', async ({ page }) => {
+  const canvas = page.getByLabel('編み図編集盤面');
+  const box = await canvas.boundingBox();
+  await page.mouse.move(box!.x + 75, box!.y + 75);
+  await page.mouse.down();
+  await page.mouse.move(box!.x + 165, box!.y + 75, { steps: 6 });
+  await page.mouse.up();
+
+  await page.getByRole('button', { name: '消す' }).click();
+  await expect(page.getByText('1本指：消去', { exact: false })).toBeVisible();
+  await page.mouse.move(box!.x + 75, box!.y + 75);
+  await page.mouse.down();
+  await page.mouse.move(box!.x + 165, box!.y + 75, { steps: 6 });
+  await page.mouse.up();
+  await page.waitForTimeout(500);
+
+  const remaining = await page.evaluate(async () => {
+    const request = indexedDB.open('knitting-editor-v2');
+    const db = await new Promise<IDBDatabase>((resolve) => { request.onsuccess = () => resolve(request.result); });
+    const transaction = db.transaction('documents');
+    const get = transaction.objectStore('documents').getAll();
+    const documents = await new Promise<Array<{ cells: ArrayBuffer }>>((resolve) => { get.onsuccess = () => resolve(get.result); });
+    return new Uint32Array(documents[0].cells).filter(Boolean).length;
+  });
+  expect(remaining).toBe(0);
+});
+
 test('creates a block and exports backup and PDF', async ({ page }) => {
   await page.getByRole('button', { name: '範囲' }).click();
   const canvas = page.getByLabel('編み図編集盤面');

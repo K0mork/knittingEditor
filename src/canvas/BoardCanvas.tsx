@@ -3,7 +3,7 @@ import { Board, cellColor, cellStitchId, colorHex, type PatternBlock, type Point
 import { STITCH_BY_ID, STITCH_BY_KEY } from '../stitches/catalog';
 import { getColoredGlyph } from './glyphCache';
 
-export type CanvasMode = 'draw' | 'select' | 'paste';
+export type CanvasMode = 'draw' | 'erase' | 'select' | 'paste';
 
 interface Props {
   board: Board;
@@ -197,6 +197,15 @@ export function BoardCanvas(props: Props) {
     if (changed) propsRef.current.onChange();
   };
 
+  const applyErase = (from: Point, to: Point) => {
+    const { board } = propsRef.current;
+    let changed = false;
+    for (const point of rasterLine(from, to)) {
+      if (board.inBounds(point.row, point.col) && board.clearAt(point.row, point.col)) changed = true;
+    }
+    if (changed) propsRef.current.onChange();
+  };
+
   const handlePointerDown = (event: React.PointerEvent<HTMLCanvasElement>) => {
     event.currentTarget.setPointerCapture(event.pointerId);
     const position = eventPosition(event);
@@ -222,6 +231,8 @@ export function BoardCanvas(props: Props) {
       props.onSelectionChange({ top: cell.row, left: cell.col, bottom: cell.row, right: cell.col });
     } else if (props.mode === 'paste' && props.pasteBlock) {
       props.onPasteComplete(props.board.pasteBlock(props.pasteBlock, cell.row, cell.col));
+    } else if (props.mode === 'erase') {
+      applyErase(cell, cell);
     } else {
       strokeFootprintRef.current.clear();
       applyStroke(cell, cell);
@@ -253,6 +264,8 @@ export function BoardCanvas(props: Props) {
       props.onSelectionChange({ top: start.row, left: start.col, bottom: cell.row, right: cell.col });
     } else if (props.mode === 'draw') {
       applyStroke(lastCellRef.current, cell);
+    } else if (props.mode === 'erase') {
+      applyErase(lastCellRef.current, cell);
     }
     lastCellRef.current = cell;
     requestDraw();
@@ -290,7 +303,7 @@ export function BoardCanvas(props: Props) {
 
   return <canvas
     ref={canvasRef}
-    className="board-canvas"
+    className={`board-canvas mode-${props.mode}`}
     aria-label="編み図編集盤面"
     onContextMenu={(event) => event.preventDefault()}
     onPointerDown={handlePointerDown}
