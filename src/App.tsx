@@ -38,6 +38,7 @@ export default function App() {
   const [mode, setMode] = useState<CanvasMode>('draw');
   const [selection, setSelection] = useState<Rect>();
   const [pasteBlock, setPasteBlock] = useState<PatternBlock>();
+  const [copiedBlock, setCopiedBlock] = useState<PatternBlock>();
   const [panel, setPanel] = useState<'documents' | 'grid' | 'blocks' | 'export' | undefined>();
   const [busy, setBusy] = useState<BusyTask>();
   const [message, setMessage] = useState('');
@@ -126,8 +127,18 @@ export default function App() {
     notify('ブロックを保存しました');
   };
 
+  const copySelection = useCallback(() => {
+    if (!board || !selection) return;
+    const block = board.createBlock(selection, 'コピーした範囲');
+    setCopiedBlock(block);
+    setPasteBlock(block);
+    setSelection(undefined);
+    setMode('paste');
+    notify('貼り付ける左上のセルをタップしてください');
+  }, [board, selection]);
+
   const choosePasteBlock = (block: PatternBlock) => {
-    setPasteBlock(block); setMode('paste'); setSelection(undefined); setPanel(undefined);
+    setCopiedBlock(block); setPasteBlock(block); setMode('paste'); setSelection(undefined); setPanel(undefined);
     notify('貼り付ける左上のセルをタップしてください');
   };
 
@@ -135,6 +146,26 @@ export default function App() {
     if (ok) { changed(); setMode('draw'); setPasteBlock(undefined); notify('ブロックを貼り付けました'); }
     else notify('盤面からはみ出すため貼り付けできません');
   };
+
+  useEffect(() => {
+    const handleShortcut = (event: KeyboardEvent) => {
+      const target = event.target;
+      if (target instanceof HTMLElement && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))) return;
+      if (!(event.ctrlKey || event.metaKey)) return;
+      if (event.key.toLowerCase() === 'c' && selection) {
+        event.preventDefault();
+        copySelection();
+      } else if (event.key.toLowerCase() === 'v' && copiedBlock) {
+        event.preventDefault();
+        setPasteBlock(copiedBlock);
+        setMode('paste');
+        setSelection(undefined);
+        notify('貼り付ける左上のセルをタップしてください');
+      }
+    };
+    window.addEventListener('keydown', handleShortcut);
+    return () => window.removeEventListener('keydown', handleShortcut);
+  }, [selection, copiedBlock, copySelection]);
 
   const runPngExport = async (cellSize: number) => {
     if (!board || !activeDocument) return;
@@ -197,7 +228,13 @@ export default function App() {
         </select></label>
         <button className={mode === 'draw' ? 'active' : ''} onClick={() => { setMode('draw'); setSelection(undefined); }}>描く</button>
         <button className={mode === 'select' ? 'active' : ''} onClick={() => { setMode('select'); setSelection(undefined); }}>範囲</button>
+        {copiedBlock && <button className={mode === 'paste' ? 'active' : ''} onClick={() => { setPasteBlock(copiedBlock); setMode('paste'); setSelection(undefined); }}>貼付</button>}
       </section>
+
+      {selection && <div className="selection-actions" role="toolbar" aria-label="選択範囲の操作">
+        <button className="primary" onClick={copySelection}>コピーして貼付</button>
+        <button onClick={() => { setSelection(undefined); setMode('draw'); }}>解除</button>
+      </div>}
 
       <section className="canvas-wrap">
         <BoardCanvas board={board} revision={revision} stitchKey={selectedStitch} color={selectedColor} mode={mode}
@@ -225,7 +262,7 @@ export default function App() {
       </>}
       {panel === 'grid' && <GridControls board={board} changed={changed} mutateStructure={mutateStructure} promptIndex={promptIndex} notify={notify} />}
       {panel === 'blocks' && <>
-        {selection && <button className="primary" onClick={() => void saveSelectionAsBlock()}>選択範囲をブロック保存</button>}
+        {selection && <><button className="primary" onClick={copySelection}>保存せずコピーして貼付</button><button onClick={() => void saveSelectionAsBlock()}>選択範囲をブロック保存</button></>}
         {!selection && <button onClick={() => { setMode('select'); setPanel(undefined); }}>盤面で範囲を選択</button>}
         <div className="block-list">{blocks.length === 0 && <p>保存済みブロックはありません。</p>}{blocks.map((block) => <div key={block.id}><button onClick={() => choosePasteBlock(block)}>{block.name}<small>{block.rows}×{block.cols}</small></button><button onClick={() => void (async () => { await deleteBlock(block.id); await refreshBlocks(); })()}>削除</button></div>)}</div>
       </>}

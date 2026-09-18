@@ -51,6 +51,25 @@ test('creates a block and exports backup and PDF', async ({ page }) => {
   expect((await pdfDownload).suggestedFilename()).toMatch(/\.pdf$/);
 });
 
+test('copies and repeatedly pastes a selection without saving a block', async ({ page }) => {
+  await page.getByRole('button', { name: '範囲' }).click();
+  const canvas = page.getByLabel('編み図編集盤面');
+  const box = await canvas.boundingBox();
+  await page.mouse.move(box!.x + 75, box!.y + 75);
+  await page.mouse.down();
+  await page.mouse.move(box!.x + 135, box!.y + 135);
+  await page.mouse.up();
+  await page.getByRole('button', { name: 'コピーして貼付' }).click();
+  await expect(page.getByRole('button', { name: '貼付' })).toBeVisible();
+  await page.mouse.click(box!.x + 180, box!.y + 180);
+  await expect(page.getByText('ブロックを貼り付けました')).toBeVisible();
+  await page.getByRole('button', { name: '貼付' }).click();
+  await page.mouse.click(box!.x + 240, box!.y + 180);
+  await expect(page.getByText('ブロックを貼り付けました')).toBeVisible();
+  await page.getByRole('button', { name: 'ブロック' }).click();
+  await expect(page.getByText('保存済みブロックはありません。')).toBeVisible();
+});
+
 test('resizes to one million cells without creating cell DOM nodes', async ({ page }) => {
   await page.getByRole('button', { name: '盤面' }).click();
   await page.getByLabel('段数').fill('1000');

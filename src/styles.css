@@ -37,6 +37,7 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 .canvas-wrap { min-height: 0; position: relative; overflow: hidden; }
 .board-canvas { display: block; width: 100%; height: 100%; touch-action: none; user-select: none; cursor: crosshair; }
 .gesture-hint { position: absolute; right: 8px; bottom: 8px; padding: 5px 8px; border-radius: 12px; color: #526059; background: rgba(255,255,255,.88); font-size: .68rem; pointer-events: none; }
+.selection-actions { position: fixed; z-index: 8; left: 50%; bottom: calc(72px + env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; gap: 7px; width: max-content; max-width: calc(100% - 20px); padding: 7px; border: 1px solid var(--border); border-radius: 14px; background: rgba(255,254,249,.97); box-shadow: var(--shadow); }
 .action-bar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 8px max(8px, env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)); background: var(--paper); border-top: 1px solid var(--border); z-index: 3; }
 .action-bar button { font-weight: 700; }
 
@@ -82,6 +83,7 @@ footer { display: none; }
   .action-bar { grid-column: 2; grid-row: 2; grid-template: repeat(3, auto) 1fr / 1fr; align-content: start; border-left: 1px solid var(--border); border-top: 0; padding: 12px 8px; }
   .drawer { inset: 74px 0 0 auto; width: 390px; max-height: none; border-radius: 18px 0 0 18px; box-shadow: -12px 0 40px rgba(20, 38, 27, .2); }
   .toast { bottom: 24px; }
+  .selection-actions { bottom: 18px; }
 }
 
 @media (min-width: 1180px) {
