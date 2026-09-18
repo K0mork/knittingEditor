@@ -46,6 +46,7 @@ export function BoardCanvas(props: Props) {
   const viewportRef = useRef<Viewport>({ x: LABEL_SIZE + 8, y: LABEL_SIZE + 8, cell: 30 });
   const pointersRef = useRef(new Map<number, PointerPosition>());
   const gestureRef = useRef<{ distance: number; center: PointerPosition; viewport: Viewport } | undefined>(undefined);
+  const gestureBlockedRef = useRef(false);
   const lastCellRef = useRef<Point | undefined>(undefined);
   const selectionStartRef = useRef<Point | undefined>(undefined);
   const strokeFootprintRef = useRef(new Set<number>());
@@ -203,6 +204,7 @@ export function BoardCanvas(props: Props) {
     const cell = cellAt(position);
     lastCellRef.current = cell;
     if (pointersRef.current.size === 2) {
+      gestureBlockedRef.current = true;
       const [a, b] = [...pointersRef.current.values()];
       gestureRef.current = {
         distance: Math.hypot(a.x - b.x, a.y - b.y),
@@ -244,6 +246,7 @@ export function BoardCanvas(props: Props) {
       requestDraw();
       return;
     }
+    if (gestureBlockedRef.current) return;
     if (!pointersRef.current.has(event.pointerId) || !lastCellRef.current) return;
     if (props.mode === 'select' && selectionStartRef.current) {
       const start = selectionStartRef.current;
@@ -262,6 +265,7 @@ export function BoardCanvas(props: Props) {
       props.onSelectionChange(props.board.normalizeSelection(props.selection));
     }
     if (pointersRef.current.size === 0) {
+      gestureBlockedRef.current = false;
       lastCellRef.current = undefined;
       selectionStartRef.current = undefined;
       strokeFootprintRef.current.clear();

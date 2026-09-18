@@ -82,8 +82,8 @@ export default function App() {
   const changed = () => { setRevision((value) => value + 1); setDirty(true); };
   const notify = (text: string) => { setMessage(text); window.setTimeout(() => setMessage(''), 4500); };
 
-  const switchDocument = async (document: ChartDocument) => {
-    if (dirty && activeDocument && board) await saveDocument(activeDocument, board);
+  const switchDocument = async (document: ChartDocument, saveCurrent = true) => {
+    if (saveCurrent && dirty && activeDocument && board) await saveDocument(activeDocument, board);
     setActiveDocument(document);
     setBoard(boardFromDocument(document));
     setRevision((value) => value + 1);
@@ -220,7 +220,7 @@ export default function App() {
           <button onClick={() => void switchDocument(document)}>{document.name}<small>{document.rows}×{document.cols}</small></button>
           <div><button aria-label="名前変更" onClick={() => void (async () => { const name = prompt('新しい名前', document.name); if (name?.trim()) { await renameDocument(document.id, name.trim()); await refreshDocuments(); if (document.id === activeDocument.id) setActiveDocument({ ...activeDocument, name: name.trim() }); } })()}>名称</button>
           <button aria-label="複製" onClick={() => void (async () => { await duplicateDocument(document.id); await refreshDocuments(); })()}>複製</button>
-          <button aria-label="削除" disabled={documents.length === 1} onClick={() => void (async () => { if (confirm(`「${document.name}」を削除しますか？`)) { await deleteDocument(document.id); const remaining = await listDocuments(); setDocuments(remaining); if (document.id === activeDocument.id) await switchDocument(remaining[0]); } })()}>削除</button></div>
+          <button aria-label="削除" disabled={documents.length === 1} onClick={() => void (async () => { if (confirm(`「${document.name}」を削除しますか？`)) { await deleteDocument(document.id); const remaining = await listDocuments(); setDocuments(remaining); if (document.id === activeDocument.id) await switchDocument(remaining[0], false); } })()}>削除</button></div>
         </div>)}</div>
       </>}
       {panel === 'grid' && <GridControls board={board} changed={changed} mutateStructure={mutateStructure} promptIndex={promptIndex} notify={notify} />}
