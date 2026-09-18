@@ -27,8 +27,7 @@ test('draws continuously and restores the board after reload', async ({ page }) 
   await expect(page.getByText('新しい編み図', { exact: false })).toBeVisible();
 });
 
-test('creates a block and exports backup and PDF', async ({ page, browserName }) => {
-  test.skip(browserName === 'webkit', 'WebKit download handling is covered by the export smoke in Chromium');
+test('creates a block and exports backup and PDF', async ({ page }) => {
   await page.getByRole('button', { name: '範囲' }).click();
   const canvas = page.getByLabel('編み図編集盤面');
   const box = await canvas.boundingBox();
