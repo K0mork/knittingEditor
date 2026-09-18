@@ -2,29 +2,34 @@
 
 ## Project Structure & Module Organization
 
-This repository is a dependency-light, static knitting-chart editor. `index.html` defines the page structure and loads the application as ES modules. JavaScript lives in `js/`: `main.js` wires UI events, `gridManager.js` owns grid state and rendering, `stitchSymbols.js` contains SVG stitch definitions, `storage.js` handles browser persistence, and `prompt.js` implements numeric dialogs. Styling is split between base layout in `css/styles.css` and visual overrides in `css/theme.css`. Jekyll/GitHub Pages configuration is in `_config.yml`; `CNAME` defines the production domain.
+This repository is a Vite/React knitting-chart editor deployed as a static GitHub Pages site. Application code lives in `src/`: `model/` owns the packed board representation, `canvas/` renders and handles gestures, `storage/` manages IndexedDB and backups, `export/` creates PNG/PDF files, and `stitches/` defines symbols. Browser tests live in `tests/e2e/`; static SEO and domain files are in `public/`.
 
 ## Build, Test, and Development Commands
 
-No package installation or compile step is required. Run a local HTTP server from the repository root:
+Install pinned dependencies and start the development server:
 
 ```sh
-python3 -m http.server 8000
+npm ci
+npm run dev
 ```
 
-Then open `http://localhost:8000`. Do not open `index.html` directly, because browser restrictions around ES modules can differ under `file://`. Before committing JavaScript, check its syntax:
+Before committing, run the full local checks:
 
 ```sh
-for file in js/*.js; do node --check "$file"; done
+npm run typecheck
+npm test
+npm run build
+npm run check:dist
+npm run test:e2e
 ```
 
 ## Coding Style & Naming Conventions
 
-Use two-space indentation in HTML and CSS. Follow the surrounding JavaScript style when editing a file; newer modules use two spaces, while `gridManager.js` and `storage.js` retain four-space indentation. Use `camelCase` for functions and variables, `PascalCase` for classes, and kebab-case for HTML IDs and CSS classes. Keep DOM wiring in `main.js`, grid behavior in `GridManager`, and reusable stitch SVGs in `stitchSymbols.js`. Prefer `const`, explicit module imports, and small single-purpose functions.
+Use two-space indentation and strict TypeScript. Use `camelCase` for functions and variables, `PascalCase` for React components and classes, and kebab-case for CSS classes. Keep the board model independent from React and DOM APIs. Do not replace the packed typed-array model with per-cell objects or render individual cells as DOM nodes. Prefer explicit types, immutable React state, and small single-purpose functions.
 
 ## Testing Guidelines
 
-There is currently no automated test suite or coverage threshold. Perform manual regression testing in both mouse and touch-sized layouts. Verify grid resizing, row/column insertion and deletion, stitch and color selection, clear, PNG export, and state restoration after reload. For visual changes, check narrow and desktop widths and include before/after screenshots in the pull request.
+Vitest covers board and export logic; Playwright covers Chromium/WebKit at mobile and desktop sizes. Add unit tests for model rules and E2E tests for user workflows. Verify grid resizing, gestures, block copy/paste, persistence, migration, backup, PNG, and PDF behavior. For visual changes, check narrow and desktop widths and include screenshots in the pull request.
 
 ## Commit & Pull Request Guidelines
 
