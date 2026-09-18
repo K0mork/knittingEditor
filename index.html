@@ -1,146 +1,15 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
-<head>
-  <!-- Google tag (gtag.js) -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-VVE0G4ZFL4"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-
-    gtag('config', 'G-VVE0G4ZFL4');
-  </script>
-
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
-  <!-- メタタグ -->
-  <meta name="description" content="無料の棒針編み図エディタ。シンプルなUIと使いやすいツールで、オリジナルの編み図を作成できます。">
-  <meta name="keywords" content="棒針, 編み図, エディタ, 手芸, ハンドメイド">
-  <meta name="robots" content="index, follow">
-  <link rel="canonical" href="https://knittingeditor.com">
-  
-  <title>棒針編み図エディタ</title>
-  <link rel="stylesheet" href="css/styles.css">
-  <link rel="stylesheet" href="css/theme.css">
-</head>
-<body>
-  <header>
-    <h1>棒針編み図エディタ</h1>
-    <p>シンプルで使いやすい編み図作成ツール</p>
-  </header>
-
-  <div id="toolbar">
-    <!-- 一般設定グループ -->
-    <div class="toolbar-group">
-      <input type="color" id="color-picker" value="#ff0000">
-      <!-- カスタム記号選択ドロップダウン -->
-      <div id="stitch-type-dropdown" class="custom-dropdown">
-        <div id="selected-stitch" class="custom-dropdown-selected">
-          <!-- 初期表示：アイコンと名称 -->
-          <span class="dropdown-icon"></span>
-          <span class="dropdown-name">表目</span>
-        </div>
-        <div id="stitch-options" class="custom-dropdown-options" style="display: none;"></div>
-      </div>
-    </div>
-
-    <!-- グリッド設定グループ -->
-    <div class="toolbar-group">
-      <label for="grid-rows-input">段数:</label>
-      <input type="number" id="grid-rows-input" value="20" min="1">
-      <label for="grid-cols-input">列数:</label>
-      <input type="number" id="grid-cols-input" value="20" min="1">
-      <button id="update-grid-size">グリッド更新</button>
-    </div>
-
-    <!-- 行・列追加グループ -->
-    <div class="toolbar-group">
-      <button id="add-row-top">上に追加</button>
-      <button id="add-row-bottom">下に追加</button>
-      <button id="add-col-left">左に追加</button>
-      <button id="add-col-right">右に追加</button>
-    </div>
-
-    <!-- 行・列間追加グループ -->
-    <div class="toolbar-group">
-      <button id="insert-row-between">行間に行を追加</button>
-      <button id="insert-col-between">列間に列を追加</button>
-    </div>
-
-    <!-- 行・列削除グループ -->
-    <div class="toolbar-group">
-      <button id="remove-row-top">上を削除</button>
-      <button id="remove-row-bottom">下を削除</button>
-      <button id="remove-col-left">左を削除</button>
-      <button id="remove-col-right">右を削除</button>
-    </div>
-
-    <!-- 指定行・列削除グループ -->
-    <div class="toolbar-group">
-      <button id="remove-row-at">指定行削除</button>
-      <button id="remove-col-at">指定列削除</button>
-    </div>
-
-    <!-- その他操作グループ -->
-    <div class="toolbar-group">
-      <button id="download-chart">画像保存</button>
-      <button id="clear-grid">全体クリア</button>
-    </div>
-  </div>
-
-  <div id="grid-wrapper">
-    <!-- 上側のラベル行 -->
-    <div style="display: flex;">
-      <div style="width: var(--cell-size); height: var(--cell-size);"></div>
-      <div id="grid-top-labels"></div>
-      <div style="width: var(--cell-size); height: var(--cell-size);"></div>
-    </div>
-    <!-- 中央部分 -->
-    <div style="display: flex;">
-      <div id="grid-left-labels"></div>
-      <div id="grid-container"></div>
-      <div id="grid-right-labels"></div>
-    </div>
-    <!-- 下側のラベル行 -->
-    <div style="display: flex;">
-      <div style="width: var(--cell-size); height: var(--cell-size);"></div>
-      <div id="grid-bottom-labels"></div>
-      <div style="width: var(--cell-size); height: var(--cell-size);"></div>
-    </div>
-  </div>
-
-  <!-- 数字入力用のカスタムモーダル -->
-  <div id="number-prompt-modal" class="number-prompt-modal" style="display: none;">
-    <div class="number-prompt-content">
-      <div class="number-prompt-message"></div>
-      <input type="number" id="number-prompt-input" />
-      <div class="number-prompt-buttons">
-        <button id="number-prompt-cancel">キャンセル</button>
-        <button id="number-prompt-ok">OK</button>
-      </div>
-    </div>
-  </div>
-
-  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
-  <script type="module" src="js/main.js"></script>
-  
-  <!-- フッターの追加 -->
-  <footer>
-    <div class="privacy-section">
-      <h2>Googleアナリティクスについて</h2>
-      <p>当社のWebサイトでは、サービス品質向上のため、Google 社のサービスであるGoogle Analyticsを利用しお客様の訪問情報を取得しています。</p>
-      <p>当社が発行するCookieをもとにして、お客様の訪問履歴を収集・記録・分析します。</p>
-      <p>Google Analyticsにより収集・記録・分析されたお客様の情報には、特定の個人を識別する情報は一切含まれません。それらの情報は、Google社により同社のプライバシーポリシーに基づいて管理されます。</p>
-      <p>Google Analyticsの利用規約、Google社のプライバシーポリシーについては、以下のリンクをご覧ください。</p>
-      <p>
-        <a href="https://marketingplatform.google.com/about/analytics/terms/jp/" target="_blank">Google Analytics利用規約</a>
-      </p>
-      <p>
-        <a href="https://policies.google.com/privacy?hl=ja" target="_blank">Googleのプライバシーポリシー</a>
-      </p>
-    </div>
-    <p>&copy; 2025 棒針編み図エディタ All Rights Reserved.</p>
-  </footer>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="theme-color" content="#3d7a4a" />
+    <meta name="description" content="スマホで快適に使える棒針編み図エディタ。編み目記号、色、パターンブロックを編集してPNG・PDFに保存できます。" />
+    <link rel="canonical" href="https://knittingeditor.com/" />
+    <title>棒針編み図エディタ</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>
