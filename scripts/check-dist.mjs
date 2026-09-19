@@ -1,7 +1,7 @@
 import { readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 
-const required = ['index.html', 'robots.txt', 'sitemap.xml'];
+const required = ['index.html', 'robots.txt', 'sitemap.xml', 'favicon.svg', 'guide/index.html'];
 for (const file of required) await stat(join('dist', file));
 const assets = await readdir(join('dist', 'assets'));
 if (!assets.some((file) => file.startsWith('pdf.worker-') && file.endsWith('.js'))) throw new Error('PDF Workerが出力されていません');

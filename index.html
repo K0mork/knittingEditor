@@ -4,12 +4,57 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
     <meta name="theme-color" content="#3d7a4a" />
-    <meta name="description" content="スマホで快適に使える棒針編み図エディタ。編み目記号、色、パターンブロックを編集してPNG・PDFに保存できます。" />
+    <meta name="description" content="無料で使えるブラウザ版の棒針編み図エディタ。スマホ・PCで編み目記号や色を編集し、PNG・PDF出力、パターン保存、端末内自動保存ができます。" />
+    <meta property="og:title" content="棒針編み図エディタ｜無料・ブラウザで編み図作成" />
+    <meta property="og:description" content="スマホ・PCのブラウザで使える無料の棒針編み図エディタ。編み目記号や色を編集し、PNG・PDFに保存できます。" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://knittingeditor.com/" />
+    <meta property="og:locale" content="ja_JP" />
+    <meta name="twitter:card" content="summary" />
     <link rel="canonical" href="https://knittingeditor.com/" />
-    <title>棒針編み図エディタ</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="help" href="/guide/" />
+    <title>棒針編み図エディタ｜無料・ブラウザで編み図作成</title>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "@id": "https://knittingeditor.com/#website",
+            "url": "https://knittingeditor.com/",
+            "name": "棒針編み図エディタ",
+            "inLanguage": "ja"
+          },
+          {
+            "@type": "WebApplication",
+            "@id": "https://knittingeditor.com/#app",
+            "name": "棒針編み図エディタ",
+            "url": "https://knittingeditor.com/",
+            "description": "スマホ・PCのブラウザで棒針編みの編み図を作成できる無料のWebアプリケーション。",
+            "applicationCategory": "DesignApplication",
+            "operatingSystem": "Any",
+            "browserRequirements": "JavaScriptを有効にしたモダンブラウザ",
+            "isAccessibleForFree": true,
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "JPY"
+            },
+            "inLanguage": "ja"
+          }
+        ]
+      }
+    </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <main>
+        <h1>無料で使える棒針編み図エディタ</h1>
+        <p>ブラウザだけで棒針編みの編み図を作成できます。編み目記号や色の編集、パターンブロック、PNG・PDF出力、端末内自動保存に対応しています。</p>
+        <p><a href="/guide/">棒針編み図エディタの使い方</a></p>
+      </main>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
