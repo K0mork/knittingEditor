@@ -8,6 +8,14 @@
 - 検証: `npm run typecheck`、`npm test`（13件）、`npm run build`、`npm run check:dist`、`npm run test:e2e`（Chromium mobile・WebKit mobile・Chromium desktop、36件）を実行し、すべて成功。
 - デプロイ影響: なし。テストのみの追加で `dist/` の生成物は変わらない。
 
+## 2026-09-20 — 検索流入向けのメタデータと使い方ページを追加
+
+- 影響: トップページの `title` と description を検索意図に合わせ、Open Graph / Twitter Card と `WebSite`・`WebApplication` の構造化データを追加した。JavaScript実行前のHTMLに主要な説明とガイドへのリンクを含め、静的な使い方ページ `/guide/` とfaviconを追加し、エディタのヘッダーに「使い方」への導線を置いた。sitemapに `/guide/` を追加し、`check:dist` でSEO関連ファイルの存在も検査するようにした。エディタの機能と保存形式は変更していない。
+- 主なファイル: `index.html`, `public/guide/index.html`, `public/favicon.svg`, `public/sitemap.xml`, `scripts/check-dist.mjs`, `src/App.tsx`, `src/styles.css`
+- テスト: このコミット自体には自動テストを追加していない。レビューでSEO面とガイドページのブラウザ検証が不足していると指摘されたため、`tests/e2e/seo.spec.ts` を別コミットで追加した。
+- 検証: PR #4 のCI（run `35453463106`）と、マージ後の `main`（コミット `8388cf49`、run `35476210888`）で `npm run typecheck`、`npm test`、`npm run build`、`npm run check:dist`、`npm run test:e2e` がすべて成功した。ローカルでの個別実行は行っていない。
+- デプロイ影響: 2026-09-20にコミット `8388cf49` を含む `main` をデプロイした。GitHub Actions「Test and deploy Pages」run `35476210888` のテスト・ビルド・デプロイはすべて成功。本番 `https://knittingeditor.com/` で新しい `title`、JSON-LD、JavaScript実行前の `h1` とガイドへのリンク、`/guide/` の直接表示（HTTP 200）、`/favicon.svg` の配信（`image/svg+xml`）、sitemapへの2URL掲載を確認した。ブラウザでヘッダーの「使い方」から `/guide/` へ遷移することも確認済み。Search Consoleでの `/guide/` のインデックス登録は後日確認する。
+
 ## 2026-09-19 — 編集から出力までの利用分析を追加
 
 - 影響: GA4でエディタ準備、初回編集、機能パネル、編み目選択、新規作成、ブロック利用、PNG/PDF出力、バックアップ、処理失敗を分析できるようにした。編み図名・ファイル名・文書IDは送信せず、自動テストでは計測を無効化する。表示と操作手順は変更しない。
