@@ -34,4 +34,14 @@ describe('Board', () => {
     const board = new Board(1000, 1000);
     expect(board.cells.byteLength).toBe(4_000_000);
   });
+
+  it('clamps a selection made entirely outside the board', () => {
+    const board = new Board(10, 10);
+    expect(board.normalizeSelection({ top: -3, left: -4, bottom: -1, right: -2 })).toEqual({
+      top: 0, left: 0, bottom: 0, right: 0,
+    });
+    expect(board.normalizeSelection({ top: 12, left: 13, bottom: 15, right: 16 })).toEqual({
+      top: 9, left: 9, bottom: 9, right: 9,
+    });
+  });
 });

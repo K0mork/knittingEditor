@@ -130,11 +130,13 @@ export class Board {
   removeColumn(index: number): void { this.transformStructure('col', index, false); }
 
   normalizeSelection(rect: Rect): Rect {
+    const clampRow = (row: number) => Math.max(0, Math.min(this.rows - 1, row));
+    const clampCol = (col: number) => Math.max(0, Math.min(this.cols - 1, col));
     const normalized: Rect = {
-      top: Math.max(0, Math.min(rect.top, rect.bottom)),
-      left: Math.max(0, Math.min(rect.left, rect.right)),
-      bottom: Math.min(this.rows - 1, Math.max(rect.top, rect.bottom)),
-      right: Math.min(this.cols - 1, Math.max(rect.left, rect.right)),
+      top: clampRow(Math.min(rect.top, rect.bottom)),
+      left: clampCol(Math.min(rect.left, rect.right)),
+      bottom: clampRow(Math.max(rect.top, rect.bottom)),
+      right: clampCol(Math.max(rect.left, rect.right)),
     };
     let changed = true;
     while (changed) {

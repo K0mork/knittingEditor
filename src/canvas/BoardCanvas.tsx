@@ -227,6 +227,11 @@ export function BoardCanvas(props: Props) {
       return;
     }
     if (props.mode === 'select') {
+      if (!props.board.inBounds(cell.row, cell.col)) {
+        props.onSelectionChange(undefined);
+        requestDraw();
+        return;
+      }
       selectionStartRef.current = cell;
       props.onSelectionChange({ top: cell.row, left: cell.col, bottom: cell.row, right: cell.col });
     } else if (props.mode === 'paste' && props.pasteBlock) {
