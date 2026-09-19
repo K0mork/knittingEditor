@@ -248,7 +248,10 @@ export default function App() {
   return <div className="app-shell">
     <header className="app-header">
       <div><h1>棒針編み図エディタ</h1><p>{activeDocument.name}{dirty ? '（保存中…）' : ''}</p></div>
-      <button className="header-document" onClick={() => togglePanel('documents')}>編み図</button>
+      <div className="header-actions">
+        <a className="header-guide" href="/guide/">使い方</a>
+        <button className="header-document" onClick={() => togglePanel('documents')}>編み図</button>
+      </div>
     </header>
 
     <main className="workspace">
