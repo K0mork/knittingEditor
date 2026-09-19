@@ -44,6 +44,8 @@ export default function App() {
   const [message, setMessage] = useState('');
   const [dirty, setDirty] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const activeDocumentIdRef = useRef<string | undefined>(undefined);
+  const editGenerationRef = useRef(0);
 
   const refreshDocuments = useCallback(async () => setDocuments(await listDocuments()), []);
   const refreshBlocks = useCallback(async () => setBlocks(await listBlocks()), []);
@@ -53,6 +55,7 @@ export default function App() {
       const initialized = await initializeStorage();
       const document = initialized.documents.find((item) => item.id === initialized.activeId) ?? initialized.documents[0];
       setDocuments(initialized.documents);
+      activeDocumentIdRef.current = document.id;
       setActiveDocument(document);
       setBoard(boardFromDocument(document));
       setBlocks(await listBlocks());
@@ -61,10 +64,14 @@ export default function App() {
 
   useEffect(() => {
     if (!dirty || !activeDocument || !board) return;
+    const documentId = activeDocument.id;
+    const editGeneration = editGenerationRef.current;
     const timer = window.setTimeout(() => {
       void saveDocument(activeDocument, board).then((saved) => {
-        setActiveDocument(saved);
-        setDirty(false);
+        if (activeDocumentIdRef.current === documentId) {
+          setActiveDocument((current) => current?.id === documentId ? saved : current);
+          if (editGenerationRef.current === editGeneration) setDirty(false);
+        }
         void refreshDocuments();
       }).catch(() => setMessage('自動保存に失敗しました。バックアップを保存してください。'));
     }, 400);
@@ -80,11 +87,16 @@ export default function App() {
     return () => window.removeEventListener('beforeunload', handler);
   }, [dirty]);
 
-  const changed = () => { setRevision((value) => value + 1); setDirty(true); };
+  const changed = () => {
+    editGenerationRef.current += 1;
+    setRevision((value) => value + 1);
+    setDirty(true);
+  };
   const notify = (text: string) => { setMessage(text); window.setTimeout(() => setMessage(''), 4500); };
 
   const switchDocument = async (document: ChartDocument, saveCurrent = true) => {
     if (saveCurrent && dirty && activeDocument && board) await saveDocument(activeDocument, board);
+    activeDocumentIdRef.current = document.id;
     setActiveDocument(document);
     setBoard(boardFromDocument(document));
     setRevision((value) => value + 1);

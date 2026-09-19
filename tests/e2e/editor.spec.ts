@@ -20,11 +20,25 @@ test('draws continuously and restores the board after reload', async ({ page }) 
     const db = await new Promise<IDBDatabase>((resolve) => { request.onsuccess = () => resolve(request.result); });
     const transaction = db.transaction('documents');
     const get = transaction.objectStore('documents').getAll();
-    return await new Promise<number>((resolve) => { get.onsuccess = () => resolve(get.result[0].cells.byteLength); });
+    return await new Promise<{ bytes: number; filled: number }>((resolve) => { get.onsuccess = () => {
+      const cells = new Uint32Array(get.result[0].cells);
+      resolve({ bytes: cells.byteLength, filled: cells.filter(Boolean).length });
+    }; });
   });
-  expect(storedBefore).toBe(1600);
+  expect(storedBefore.bytes).toBe(1600);
+  expect(storedBefore.filled).toBeGreaterThan(0);
   await page.reload();
   await expect(page.getByText('新しい編み図', { exact: false })).toBeVisible();
+  const storedAfter = await page.evaluate(async () => {
+    const request = indexedDB.open('knitting-editor-v2');
+    const db = await new Promise<IDBDatabase>((resolve) => { request.onsuccess = () => resolve(request.result); });
+    const transaction = db.transaction('documents');
+    const get = transaction.objectStore('documents').getAll();
+    return await new Promise<number>((resolve) => { get.onsuccess = () => {
+      resolve(new Uint32Array(get.result[0].cells).filter(Boolean).length);
+    }; });
+  });
+  expect(storedAfter).toBe(storedBefore.filled);
 });
 
 test('erases stitches continuously', async ({ page }) => {
