@@ -7,7 +7,7 @@
 - GA4設定: Search Consoleを連携し、イベントデータ保持を14か月に変更した。8個のイベントスコープ カスタムディメンションを登録済み。`chart_exported` のキーイベント化は初回の本番イベント受信後に行う。
 - テスト: `src/analytics.test.ts` に本番限定の初期化、重複防止、イベント送信、初回編集の一度だけの送信、低カーディナリティ区分のテストを追加した。
 - 検証: `npm run typecheck`、`npm test`（13件）、`npm run build`、`npm run check:dist`、`npm run test:e2e`（Chromium mobile・WebKit mobile・Chromium desktop、15件）を実行し、すべて成功。
-- デプロイ影響: 静的アプリの更新あり。デプロイ後にGA4 DebugViewまたはリアルタイムでイベントとパラメータを確認し、`chart_exported` のキーイベント集計を確認する必要がある。
+- デプロイ影響: 2026-09-19にコミット `7e5ee7e` を含む `main` をデプロイした。GitHub Actions「Test and deploy Pages」run `35448658273` のテスト・ビルド・デプロイはすべて成功。本番 `https://knittingeditor.com/` で生成物 `index-D3vfZDcQ.js` の配信、エディタ起動、保存パネル表示、PNG保存操作に画面上のエラーがないことを確認した。自動操作は計測対象外のため、GA4のイベント受信と `chart_exported` のキーイベント化は通常利用者の初回イベント受信後に確認する。
 
 ## 2026-09-19 — 盤外からの無効な範囲選択を防止
 
