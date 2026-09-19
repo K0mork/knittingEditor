@@ -1,8 +1,10 @@
 import 'fake-indexeddb/auto';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { cellStitchId } from '../model/Board';
+import { Board, cellStitchId } from '../model/Board';
 import { STITCH_BY_KEY } from '../stitches/catalog';
-import { boardFromDocument, initializeStorage } from './database';
+import {
+  boardFromDocument, createDocument, exportBackup, importBackup, initializeStorage, saveDocument,
+} from './database';
 
 describe('legacy migration', () => {
   beforeAll(() => {
@@ -26,5 +28,23 @@ describe('legacy migration', () => {
     const board = boardFromDocument(documents[0]);
     expect(cellStitchId(board.valueAt(0, 0))).toBe(STITCH_BY_KEY.get('knit')!.id);
     expect(board.anchorAt(1, 2)).toEqual({ row: 1, col: 1 });
+  });
+});
+
+describe('backup restore', () => {
+  it('round-trips the board and returns the restored document', async () => {
+    const source = await createDocument('復元テスト', 3, 4);
+    const board = new Board(3, 4);
+    board.place(1, 2, 'knit', '#123456', false);
+    await saveDocument(source, board);
+
+    const backup = await exportBackup([source.id]);
+    const result = await importBackup(backup);
+
+    expect(result.count).toBe(1);
+    expect(result.documents[0].id).not.toBe(source.id);
+    expect(result.documents[0].name).toBe('復元テスト（復元）');
+    const restored = boardFromDocument(result.documents[0]);
+    expect(restored.valueAt(1, 2)).toBe(board.valueAt(1, 2));
   });
 });

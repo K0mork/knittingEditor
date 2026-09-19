@@ -71,8 +71,16 @@ test('creates a block and exports backup and PDF', async ({ page }) => {
   await page.getByRole('button', { name: '保存' }).click();
   const backupDownload = page.waitForEvent('download');
   await page.getByRole('button', { name: 'この編み図' }).click();
-  expect((await backupDownload).suggestedFilename()).toMatch(/\.knit$/);
+  const backup = await backupDownload;
+  expect(backup.suggestedFilename()).toMatch(/\.knit$/);
 
+  const backupPath = await backup.path();
+  expect(backupPath).not.toBeNull();
+  await page.locator('input[type="file"]').setInputFiles(backupPath!);
+  await expect(page.getByText('1件の編み図を復元しました')).toBeVisible();
+  await expect(page.locator('.app-header p')).toHaveText('新しい編み図（復元）');
+
+  await page.getByRole('button', { name: '保存' }).click();
   const pdfDownload = page.waitForEvent('download');
   await page.getByRole('button', { name: 'PDFを保存' }).click();
   expect((await pdfDownload).suggestedFilename()).toMatch(/\.pdf$/);

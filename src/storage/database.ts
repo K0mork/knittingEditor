@@ -30,6 +30,11 @@ interface BackupPayload {
   blocks: PatternBlock[];
 }
 
+export interface ImportBackupResult {
+  count: number;
+  documents: ChartDocument[];
+}
+
 const DB_NAME = 'knitting-editor-v2';
 const LEGACY_KEY = 'knittingChartData';
 let databasePromise: Promise<IDBPDatabase<KnittingDB>> | undefined;
@@ -178,30 +183,32 @@ export async function exportBackup(documentIds?: string[]): Promise<Blob> {
     documents: documents.map((item) => ({ ...item, cells: bytesToBase64(new Uint8Array(item.cells)) })),
     blocks,
   };
-  return new Blob([gzipSync(strToU8(JSON.stringify(payload), true))], { type: 'application/gzip' });
+  return new Blob([gzipSync(strToU8(JSON.stringify(payload)))], { type: 'application/gzip' });
 }
 
-export async function importBackup(file: Blob): Promise<number> {
+export async function importBackup(file: Blob): Promise<ImportBackupResult> {
   const payload = JSON.parse(strFromU8(gunzipSync(new Uint8Array(await file.arrayBuffer())))) as BackupPayload;
   if (payload.format !== 'knitting-editor' || payload.version !== 2 || !Array.isArray(payload.documents)) {
     throw new Error('対応していないバックアップ形式です');
   }
-  const db = await database();
-  const transaction = db.transaction(['documents', 'blocks'], 'readwrite');
-  for (const item of payload.documents) {
+  const now = Date.now();
+  const restoredDocuments = payload.documents.map((item): ChartDocument => {
     Board.validateSize(item.rows, item.cols);
+    if (typeof item.cells !== 'string') throw new Error('盤面データが破損しています');
     const bytes = base64ToBytes(item.cells);
     if (bytes.byteLength !== item.rows * item.cols * Uint32Array.BYTES_PER_ELEMENT) throw new Error('盤面データが破損しています');
-    const id = crypto.randomUUID();
-    await transaction.objectStore('documents').put({
-      ...item, id, name: `${item.name}（復元）`, cells: bytes.slice().buffer as ArrayBuffer,
-      createdAt: Date.now(), updatedAt: Date.now(),
-    });
-  }
+    return {
+      ...item, id: crypto.randomUUID(), name: `${item.name}（復元）`, cells: bytes.slice().buffer as ArrayBuffer,
+      createdAt: now, updatedAt: now,
+    };
+  });
+  const db = await database();
+  const transaction = db.transaction(['documents', 'blocks'], 'readwrite');
+  for (const document of restoredDocuments) await transaction.objectStore('documents').put(document);
   for (const block of payload.blocks ?? []) {
     if (block.rows < 1 || block.cols < 1 || !Array.isArray(block.anchors)) continue;
     await transaction.objectStore('blocks').put({ ...block, id: crypto.randomUUID(), name: `${block.name}（復元）` });
   }
   await transaction.done;
-  return payload.documents.length;
+  return { count: restoredDocuments.length, documents: restoredDocuments };
 }

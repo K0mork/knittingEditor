@@ -197,15 +197,29 @@ export default function App() {
     if (!activeDocument) return;
     setBusy('バックアップを処理中');
     try {
+      if (dirty && board) {
+        const saved = await saveDocument(activeDocument, board);
+        setActiveDocument(saved);
+        setDirty(false);
+        await refreshDocuments();
+      }
       const blob = await exportBackup(all ? undefined : [activeDocument.id]);
       downloadBlob(blob, all ? 'knitting-editor-backup.knit' : `${activeDocument.name}.knit`);
-    } finally { setBusy(undefined); }
+    } catch (error) { notify(error instanceof Error ? error.message : String(error)); }
+    finally { setBusy(undefined); }
   };
 
   const restore = async (file?: File) => {
     if (!file) return;
     setBusy('バックアップを処理中');
-    try { const count = await importBackup(file); await refreshDocuments(); await refreshBlocks(); notify(`${count}件の編み図を復元しました`); }
+    try {
+      if (dirty && activeDocument && board) await saveDocument(activeDocument, board);
+      const result = await importBackup(file);
+      await refreshDocuments();
+      await refreshBlocks();
+      if (result.documents[0]) await switchDocument(result.documents[0], false);
+      notify(`${result.count}件の編み図を復元しました`);
+    }
     catch (error) { notify(error instanceof Error ? error.message : String(error)); }
     finally { setBusy(undefined); }
   };
