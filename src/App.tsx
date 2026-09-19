@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { boardSizeBucket, countBucket, trackAnalyticsEvent, trackFirstEdit } from './analytics';
 import { BoardCanvas, type CanvasMode } from './canvas/BoardCanvas';
 import { Board, type PatternBlock, type Rect } from './model/Board';
 import { STITCHES, stitchSvg } from './stitches/catalog';
@@ -10,22 +11,7 @@ import {
 import { downloadBlob, renderPdf, renderPng, validatePngSize } from './export/exporters';
 
 type BusyTask = 'PNGを生成中' | 'PDFを生成中' | 'バックアップを処理中';
-
-function Analytics() {
-  useEffect(() => {
-    if (!import.meta.env.PROD) return;
-    const script = document.createElement('script');
-    script.async = true;
-    script.src = 'https://www.googletagmanager.com/gtag/js?id=G-VVE0G4ZFL4';
-    document.head.appendChild(script);
-    const dataLayer = ((window as unknown as { dataLayer?: unknown[] }).dataLayer ??= []);
-    const gtag = (...args: unknown[]) => dataLayer.push(args);
-    gtag('js', new Date());
-    gtag('config', 'G-VVE0G4ZFL4');
-    return () => { script.remove(); };
-  }, []);
-  return null;
-}
+type Panel = 'documents' | 'grid' | 'blocks' | 'export';
 
 export default function App() {
   const [documents, setDocuments] = useState<ChartDocument[]>([]);
@@ -39,7 +25,7 @@ export default function App() {
   const [selection, setSelection] = useState<Rect>();
   const [pasteBlock, setPasteBlock] = useState<PatternBlock>();
   const [copiedBlock, setCopiedBlock] = useState<PatternBlock>();
-  const [panel, setPanel] = useState<'documents' | 'grid' | 'blocks' | 'export' | undefined>();
+  const [panel, setPanel] = useState<Panel>();
   const [busy, setBusy] = useState<BusyTask>();
   const [message, setMessage] = useState('');
   const [dirty, setDirty] = useState(false);
@@ -59,7 +45,11 @@ export default function App() {
       setActiveDocument(document);
       setBoard(boardFromDocument(document));
       setBlocks(await listBlocks());
-    })().catch((error) => setMessage(error instanceof Error ? error.message : String(error)));
+      trackAnalyticsEvent('editor_ready', { document_count_bucket: countBucket(initialized.documents.length) });
+    })().catch((error) => {
+      trackAnalyticsEvent('operation_failed', { operation_name: 'editor_init' });
+      setMessage(error instanceof Error ? error.message : String(error));
+    });
   }, []);
 
   useEffect(() => {
@@ -88,11 +78,17 @@ export default function App() {
   }, [dirty]);
 
   const changed = () => {
+    trackFirstEdit();
     editGenerationRef.current += 1;
     setRevision((value) => value + 1);
     setDirty(true);
   };
   const notify = (text: string) => { setMessage(text); window.setTimeout(() => setMessage(''), 4500); };
+  const togglePanel = (nextPanel: Panel) => {
+    const opening = panel !== nextPanel;
+    setPanel(opening ? nextPanel : undefined);
+    if (opening) trackAnalyticsEvent('feature_opened', { feature_name: nextPanel });
+  };
 
   const switchDocument = async (document: ChartDocument, saveCurrent = true) => {
     if (saveCurrent && dirty && activeDocument && board) await saveDocument(activeDocument, board);
@@ -136,6 +132,7 @@ export default function App() {
     await saveBlock(block);
     await refreshBlocks();
     setSelection(undefined); setMode('draw');
+    trackAnalyticsEvent('block_saved', { board_size_bucket: boardSizeBucket(block.rows, block.cols) });
     notify('ブロックを保存しました');
   };
 
@@ -155,7 +152,7 @@ export default function App() {
   };
 
   const handlePasteComplete = (ok: boolean) => {
-    if (ok) { changed(); setMode('draw'); setPasteBlock(undefined); notify('ブロックを貼り付けました'); }
+    if (ok) { changed(); setMode('draw'); setPasteBlock(undefined); trackAnalyticsEvent('block_pasted'); notify('ブロックを貼り付けました'); }
     else notify('盤面からはみ出すため貼り付けできません');
   };
 
@@ -184,16 +181,22 @@ export default function App() {
     const validation = validatePngSize(board, cellSize);
     if (!validation.valid) { notify(`${validation.reason}。PDF保存をおすすめします。`); return; }
     setBusy('PNGを生成中');
-    try { downloadBlob(await renderPng(board, cellSize), `${activeDocument.name}.png`); }
-    catch (error) { notify(error instanceof Error ? error.message : String(error)); }
+    try {
+      downloadBlob(await renderPng(board, cellSize), `${activeDocument.name}.png`);
+      trackAnalyticsEvent('chart_exported', { export_format: 'png', board_size_bucket: boardSizeBucket(board.rows, board.cols) });
+    }
+    catch (error) { trackAnalyticsEvent('operation_failed', { operation_name: 'png_export' }); notify(error instanceof Error ? error.message : String(error)); }
     finally { setBusy(undefined); }
   };
 
   const runPdfExport = async (layout: 'single' | 'tiled', orientation: 'portrait' | 'landscape', cellMillimeters: number) => {
     if (!board || !activeDocument) return;
     setBusy('PDFを生成中');
-    try { downloadBlob(await renderPdf(board, { layout, orientation, cellMillimeters }), `${activeDocument.name}.pdf`); }
-    catch (error) { notify(error instanceof Error ? error.message : String(error)); }
+    try {
+      downloadBlob(await renderPdf(board, { layout, orientation, cellMillimeters }), `${activeDocument.name}.pdf`);
+      trackAnalyticsEvent('chart_exported', { export_format: 'pdf', pdf_layout: layout, board_size_bucket: boardSizeBucket(board.rows, board.cols) });
+    }
+    catch (error) { trackAnalyticsEvent('operation_failed', { operation_name: 'pdf_export' }); notify(error instanceof Error ? error.message : String(error)); }
     finally { setBusy(undefined); }
   };
 
@@ -203,6 +206,7 @@ export default function App() {
     const document = await createDocument(name.trim());
     await refreshDocuments();
     await switchDocument(document);
+    trackAnalyticsEvent('chart_created');
   };
 
   const backup = async (all: boolean) => {
@@ -217,7 +221,8 @@ export default function App() {
       }
       const blob = await exportBackup(all ? undefined : [activeDocument.id]);
       downloadBlob(blob, all ? 'knitting-editor-backup.knit' : `${activeDocument.name}.knit`);
-    } catch (error) { notify(error instanceof Error ? error.message : String(error)); }
+      trackAnalyticsEvent('backup_exported', { backup_scope: all ? 'all' : 'current' });
+    } catch (error) { trackAnalyticsEvent('operation_failed', { operation_name: 'backup_export' }); notify(error instanceof Error ? error.message : String(error)); }
     finally { setBusy(undefined); }
   };
 
@@ -230,9 +235,10 @@ export default function App() {
       await refreshDocuments();
       await refreshBlocks();
       if (result.documents[0]) await switchDocument(result.documents[0], false);
+      trackAnalyticsEvent('backup_restored', { document_count_bucket: countBucket(result.count) });
       notify(`${result.count}件の編み図を復元しました`);
     }
-    catch (error) { notify(error instanceof Error ? error.message : String(error)); }
+    catch (error) { trackAnalyticsEvent('operation_failed', { operation_name: 'backup_restore' }); notify(error instanceof Error ? error.message : String(error)); }
     finally { setBusy(undefined); }
   };
 
@@ -240,16 +246,15 @@ export default function App() {
   if (!board || !activeDocument) return <main className="loading">編み図を読み込んでいます…</main>;
 
   return <div className="app-shell">
-    <Analytics />
     <header className="app-header">
       <div><h1>棒針編み図エディタ</h1><p>{activeDocument.name}{dirty ? '（保存中…）' : ''}</p></div>
-      <button className="header-document" onClick={() => setPanel(panel === 'documents' ? undefined : 'documents')}>編み図</button>
+      <button className="header-document" onClick={() => togglePanel('documents')}>編み図</button>
     </header>
 
     <main className="workspace">
       <section className="primary-tools" aria-label="編集ツール">
         <label className="color-tool"><span>色</span><input aria-label="記号の色" type="color" value={selectedColor} onChange={(event) => setSelectedColor(event.target.value)} /></label>
-        <label className="stitch-tool"><span dangerouslySetInnerHTML={{ __html: stitchSvg(currentStitch.key) }} /><select aria-label="編み目記号" value={selectedStitch} onChange={(event) => { setSelectedStitch(event.target.value); setMode('draw'); }}>
+        <label className="stitch-tool"><span dangerouslySetInnerHTML={{ __html: stitchSvg(currentStitch.key) }} /><select aria-label="編み目記号" value={selectedStitch} onChange={(event) => { setSelectedStitch(event.target.value); setMode('draw'); trackAnalyticsEvent('stitch_selected', { stitch_key: event.target.value }); }}>
           {STITCHES.map((stitch) => <option key={stitch.key} value={stitch.key}>{stitch.name}</option>)}
         </select></label>
         <button className={mode === 'draw' ? 'active' : ''} onClick={() => { setMode('draw'); setSelection(undefined); }}>描く</button>
@@ -270,9 +275,9 @@ export default function App() {
       </section>
 
       <nav className="action-bar" aria-label="操作メニュー">
-        <button onClick={() => setPanel(panel === 'grid' ? undefined : 'grid')}>盤面</button>
-        <button onClick={() => setPanel(panel === 'blocks' ? undefined : 'blocks')}>ブロック</button>
-        <button onClick={() => setPanel(panel === 'export' ? undefined : 'export')}>保存</button>
+        <button onClick={() => togglePanel('grid')}>盤面</button>
+        <button onClick={() => togglePanel('blocks')}>ブロック</button>
+        <button onClick={() => togglePanel('export')}>保存</button>
       </nav>
     </main>
 
