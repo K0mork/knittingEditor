@@ -1,5 +1,13 @@
 # Development Log
 
+## 2026-09-20 — SEOと使い方ページのブラウザテストを追加
+
+- 影響: 実行時の動作は変更しない。`/` のメタデータ、構造化データ、JavaScript実行前の説明文、`/guide/` ページ、sitemapとfaviconの配信を自動検証するようにした。
+- 主なファイル: `tests/e2e/seo.spec.ts`
+- テスト: Playwrightに7件のテストを追加した。JavaScript実行前のHTML（`page.request.get('/')`）、title・canonical・OGP・Twitter Card・favicon、`WebSite` と `WebApplication` のJSON-LD、React描画後にフォールバックの `h1` が重複しないこと、ヘッダーの「使い方」からの遷移、`/guide/` への直接アクセスとそのメタデータ、sitemapとfaviconの配信を確認する。追加したテストはindex.htmlのtitleとフォールバックのリンクを削除し `public/guide/` を退避した状態で実際に失敗することを確認済み。
+- 検証: `npm run typecheck`、`npm test`（13件）、`npm run build`、`npm run check:dist`、`npm run test:e2e`（Chromium mobile・WebKit mobile・Chromium desktop、36件）を実行し、すべて成功。
+- デプロイ影響: なし。テストのみの追加で `dist/` の生成物は変わらない。
+
 ## 2026-09-19 — 編集から出力までの利用分析を追加
 
 - 影響: GA4でエディタ準備、初回編集、機能パネル、編み目選択、新規作成、ブロック利用、PNG/PDF出力、バックアップ、処理失敗を分析できるようにした。編み図名・ファイル名・文書IDは送信せず、自動テストでは計測を無効化する。表示と操作手順は変更しない。
