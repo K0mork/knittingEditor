@@ -87,7 +87,8 @@
 
 ## M6: TestFlight・App Store（P0）
 
-- [ ] アイコン、起動画面、App Storeスクリーンショットを用意する
+- [x] AppIcon 1024px資産を用意する（起動画面・App Storeスクリーンショットは別途必要）
+- [ ] 起動画面とApp Storeスクリーンショットを用意する
 - [x] アプリ内プライバシーポリシーとサポート導線を用意する
 - [x] App Privacyを「端末内のみ」の実装と一致させる
 - [x] Privacy Manifestと利用API理由を確認する

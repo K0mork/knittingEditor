@@ -11,6 +11,14 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-20: AppIcon資産を追加
+
+- 変更: 編み目記号と編み針をモチーフにした1024×1024のAppIcon PNGを`App/Assets.xcassets/AppIcon.appiconset`へ追加した。既存UIの深緑・クリーム・テラコッタ配色に合わせ、iOSのマスクを前提に角丸を画像へ焼き込んでいない。
+- 主なファイル: `App/Assets.xcassets/AppIcon.appiconset/Contents.json`、`App/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png`、`TODO.md`
+- テスト: `sips`で1024×1024寸法を確認し、XcodeGen後のSimulator向けbuild-for-testingでasset catalogを含むアプリをコンパイルする。
+- 未実施: 実機ホーム画面での見え方、起動画面、App Storeスクリーンショット、App Store Connect登録は未実施。AppIconは提出候補であり、最終ブランド承認は別途必要。
+- 配布影響: アプリbundleへAppIconを追加した。署名、TestFlight、App Store提出は行っていない。
+
 ## 2026-09-20: Release ArchiveをCIへ追加
 
 - 変更: 手書き`Info.plist`へ`$(PRODUCT_BUNDLE_IDENTIFIER)`を明示し、`generic/platform=iOS`向け署名なしRelease Archiveで発生していた`Archive Missing Bundle Identifier`を解消した。CIに独立した`release-archive` jobを追加し、Archive内のapp bundleへローカル資産・Privacy Manifest・外部参照検査を適用する。
