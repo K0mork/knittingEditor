@@ -104,8 +104,19 @@ describe('stitch catalog', () => {
     const left = getGlyphDefinition('purl_left_cross_twist_stitch')!;
     const rightOver = right.primitives[3];
     const leftOver = left.primitives[3];
-    expect(rightOver).toMatchObject({ kind: 'line', from: { x: 150 }, to: { x: 121 } });
-    expect(leftOver).toMatchObject({ kind: 'line', from: { x: 50 }, to: { x: 79 } });
+    expect(rightOver).toMatchObject({ kind: 'cubic', start: { x: 160 } });
+    expect(leftOver).toMatchObject({ kind: 'cubic', start: { x: 40 } });
+    expect(right.primitives.some((primitive) => primitive.kind === 'ellipse')).toBe(false);
+    expect(left.primitives.some((primitive) => primitive.kind === 'ellipse')).toBe(false);
+  });
+
+  it('draws the twist as a crossed loop rather than an open omega shape', () => {
+    const twist = getGlyphDefinition('twist_stitch')!;
+    expect(twist.primitives).toHaveLength(1);
+    expect(twist.primitives[0]).toMatchObject({ kind: 'cubic', start: { x: 17, y: 82 } });
+    if (twist.primitives[0].kind === 'cubic') {
+      expect(twist.primitives[0].curves.at(-1)?.to).toEqual({ x: 83, y: 82 });
+    }
   });
 
   it('keeps every vector primitive inside its drawing box', () => {

@@ -105,27 +105,34 @@ function cable(leftCount: number, rightCount: number, direction: 'right' | 'left
 function twist(): GlyphDefinition {
   return glyph(1, 1, [{
     kind: 'cubic',
-    start: point(28, 84),
+    start: point(17, 82),
     curves: [
-      { control1: point(38, 72), control2: point(30, 62), to: point(29, 48) },
-      { control1: point(27, 27), control2: point(36, 16), to: point(50, 16) },
-      { control1: point(65, 16), control2: point(74, 29), to: point(70, 49) },
-      { control1: point(67, 67), control2: point(56, 77), to: point(39, 77) },
-      { control1: point(48, 78), control2: point(59, 80), to: point(72, 84) },
+      { control1: point(30, 83), control2: point(43, 77), to: point(58, 64) },
+      { control1: point(75, 49), control2: point(71, 16), to: point(51, 14) },
+      { control1: point(31, 12), control2: point(25, 44), to: point(40, 63) },
+      { control1: point(50, 76), control2: point(65, 82), to: point(83, 82) },
     ],
   }]);
 }
 
 function twistCross(direction: 'right' | 'left'): GlyphDefinition {
-  const primitives: GlyphPrimitive[] = [
-    line(150, 86, 116, 61),
-    line(84, 39, 50, 14),
-    line(34, 14, 66, 14),
-    line(50, 86, 79, 65),
-    { kind: 'ellipse', cx: 100, cy: 50, rx: 23, ry: 19 },
-    line(121, 35, 150, 14),
+  const leftPrimitives: GlyphPrimitive[] = [
+    line(160, 84, 116, 61),
+    line(84, 39, 40, 16),
+    line(143, 90, 177, 90),
+    {
+      kind: 'cubic',
+      start: point(40, 84),
+      curves: [
+        { control1: point(65, 70), control2: point(84, 59), to: point(105, 48) },
+        { control1: point(122, 38), control2: point(128, 24), to: point(117, 22) },
+        { control1: point(104, 20), control2: point(91, 34), to: point(93, 46) },
+        { control1: point(96, 60), control2: point(111, 61), to: point(122, 51) },
+        { control1: point(136, 39), control2: point(148, 25), to: point(160, 16) },
+      ],
+    },
   ];
-  return glyph(2, 1, direction === 'right' ? mirror(primitives, 2 * GLYPH_CELL) : primitives);
+  return glyph(2, 1, direction === 'right' ? mirror(leftPrimitives, 2 * GLYPH_CELL) : leftPrimitives);
 }
 
 const glyphs: Record<string, GlyphDefinition> = {
