@@ -11,6 +11,14 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-20: ローカル起動画面背景を設定
+
+- 変更: `UILaunchScreen`の`UIColorName`を`LaunchBackground`へ設定し、asset catalogへ既存アプリ配色の深緑背景を追加した。起動画面を外部資産やネットワークへ依存させない。
+- 主なファイル: `App/Info.plist`、`App/Assets.xcassets/LaunchBackground.colorset/Contents.json`、`TODO.md`
+- テスト: XcodeGen後のSimulator向けbuild-for-testingでasset catalogとInfo.plistをコンパイルする。`plutil -lint App/Info.plist`に成功。
+- 未実施: 実機の起動遷移・Safe Area目視、App Storeスクリーンショットは未実施。
+- 配布影響: 起動画面のbundle内背景色のみ追加。署名・TestFlight・App Store提出は行っていない。
+
 ## 2026-09-20: AppIcon資産を追加
 
 - 変更: 編み目記号と編み針をモチーフにした1024×1024のAppIcon PNGを`App/Assets.xcassets/AppIcon.appiconset`へ追加した。既存UIの深緑・クリーム・テラコッタ配色に合わせ、iOSのマスクを前提に角丸を画像へ焼き込んでいない。
