@@ -70,6 +70,11 @@ describe('stitch catalog', () => {
     }
   });
 
+  it('draws directional three-stitch decreases with three distinct lines', () => {
+    expect(getGlyphDefinition('right_up_three_one')?.primitives).toHaveLength(3);
+    expect(getGlyphDefinition('left_up_three_one')?.primitives).toHaveLength(3);
+  });
+
   it('keeps every vector primitive inside its drawing box', () => {
     for (const stitch of STITCHES.filter((item) => item.renderKind === 'glyph')) {
       const glyph = getGlyphDefinition(stitch.key)!;

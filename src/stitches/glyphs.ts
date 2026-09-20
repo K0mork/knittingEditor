@@ -56,6 +56,7 @@ function glyph(width: number, height: number, primitives: GlyphPrimitive[], stro
 
 const rightTwoDecrease = [line(22, 14, 80, 86), line(18, 84, 55, 49)];
 const middleThreeDecrease = [line(50, 12, 50, 88), line(16, 82, 50, 50), line(84, 82, 50, 50)];
+const rightThreeDecrease = [line(50, 12, 50, 88), line(16, 82, 50, 50), line(20, 14, 82, 86)];
 
 interface CableOptions { purlUnder?: boolean }
 
@@ -143,8 +144,8 @@ const glyphs: Record<string, GlyphDefinition> = {
   purl_right_cross_twist_stitch: twistCross('right'),
   purl_left_cross_twist_stitch: twistCross('left'),
   middle_up_three_one: glyph(3, 1, scale(middleThreeDecrease, 3, 1)),
-  right_up_three_one: glyph(3, 1, scale([...middleThreeDecrease, line(20, 14, 82, 86)], 3, 1)),
-  left_up_three_one: glyph(3, 1, scale(mirror([...middleThreeDecrease, line(20, 14, 82, 86)], GLYPH_CELL), 3, 1)),
+  right_up_three_one: glyph(3, 1, scale(rightThreeDecrease, 3, 1)),
+  left_up_three_one: glyph(3, 1, scale(mirror(rightThreeDecrease, GLYPH_CELL), 3, 1)),
   right_up_two_cross: cable(2, 2, 'right'),
   left_up_two_cross: cable(2, 2, 'left'),
   right_up_three_cross: cable(3, 3, 'right'),
