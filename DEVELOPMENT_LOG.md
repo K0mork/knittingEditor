@@ -19,6 +19,14 @@
 - 未実施: 端末destinationでの起動、XCTest／XCUITest、Files／共有、機内モード通信監視は未実施。Apple Developer Team／署名設定とXcodeから認識可能な実機destinationが必要。
 - 配布影響: なし。署名、インストール、TestFlight、App Storeへの配布は行っていない。
 
+## 2026-09-20: XCUITestの保存導線スモークを追加
+
+- 変更: XCUITestへ、起動後にWebView内の「保存」パネルを開き、「この編み図」「全データ」「復元」ボタンが公開されることを確認するテストを追加した。既存の実装が起動確認だけだったため、編集・再起動復元の完了扱いをTODOから分離した。
+- 主なファイル: `UITests/KnittingEditorUITests/KnittingEditorUITests.swift`、`TODO.md`
+- テスト: `xcodegen generate`とiOS Simulator／iphoneos SDK向け`build-for-testing`でUIテストtargetのコンパイル成功を確認した。
+- 未実施: 起動済みSimulatorがなく、XCUITestの実行、編集操作、アプリ再起動後の復元、Files／共有は未実施。
+- 配布影響: テストコードとTODOの精度のみ変更。署名・配布物は変更しない。
+
 ## 2026-09-20: M3 `.knit`相互運用fixtureを固定
 
 - 変更: Web版出力とアプリ版搬送で共有するgzip JSONの最小`.knit` fixtureを追加した。Webの`importBackup`はfixtureを実際に復元し、Swift単体テストは同じバイト列を型付き`exportFile`メッセージへ包んでも変化しないことを検証する。アプリ側でpayloadを再シリアライズしない方針を`docs/NATIVE_BRIDGE.md`へ明記した。
