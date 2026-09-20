@@ -96,6 +96,7 @@ final class KnittingEditorUITests: XCTestCase {
             .matching(NSPredicate(format: "label CONTAINS %@", "記号1個"))
             .firstMatch
         XCTAssertTrue(editedCanvas.waitForExistence(timeout: 10))
+        waitForDocumentSave(named: "M2切替A", in: webView)
 
         documents.tap()
         newDocument.tap()
@@ -115,6 +116,7 @@ final class KnittingEditorUITests: XCTestCase {
                 .firstMatch
                 .waitForExistence(timeout: 10)
         )
+        waitForDocumentSave(named: "M2切替B", in: webView)
         documents.tap()
         let documentA = app.buttons
             .matching(NSPredicate(format: "label BEGINSWITH %@", "M2切替A"))
@@ -140,7 +142,6 @@ final class KnittingEditorUITests: XCTestCase {
                 .firstMatch
                 .waitForExistence(timeout: 10)
         )
-        waitForDocumentSave(named: "アプリ更新復元fixture", in: webView)
     }
 
     func testSeedDocumentForAppUpdateProbe() throws {
@@ -173,6 +174,7 @@ final class KnittingEditorUITests: XCTestCase {
                 .firstMatch
                 .waitForExistence(timeout: 10)
         )
+        waitForDocumentSave(named: "アプリ更新復元fixture", in: webView)
     }
 
     func testUpdatedAppRestoresSeedDocument() throws {
@@ -285,14 +287,22 @@ final class KnittingEditorUITests: XCTestCase {
 
     private func waitForDocumentSave(named name: String, in webView: XCUIElement) {
         let saved = webView.descendants(matching: .staticText)
-            .matching(NSPredicate(format: "label == %@", name))
+            .matching(NSPredicate(format: "label BEGINSWITH %@", name))
             .firstMatch
         XCTAssertTrue(saved.waitForExistence(timeout: 15), webView.debugDescription)
 
         let saving = webView.descendants(matching: .staticText)
-            .matching(NSPredicate(format: "label == %@", "\(name)（保存中…）"))
+            .matching(NSPredicate(format: "label CONTAINS %@", "（保存中…）"))
             .firstMatch
-        XCTAssertFalse(saving.exists, webView.debugDescription)
+        let savedExpectation = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == false"),
+            object: saving
+        )
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [savedExpectation], timeout: 15),
+            .completed,
+            webView.debugDescription
+        )
     }
 
     private func assertDisappears(_ element: XCUIElement, from app: XCUIApplication) {
