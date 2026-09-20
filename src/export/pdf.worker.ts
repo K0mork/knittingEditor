@@ -1,14 +1,13 @@
 /// <reference lib="webworker" />
 import { Zlib, strToU8, zlibSync } from 'fflate';
-import { STITCH_BY_ID } from '../stitches/catalog';
+import { STITCH_BY_ID, STITCHES } from '../stitches/catalog';
+import { GLYPH_CELL, glyphPdfCommands } from '../stitches/glyphs';
 import { cellColor, cellStitchId } from '../model/Board';
 
-interface GlyphMask { id: number; width: number; height: number; size: number; data: ArrayBuffer }
 export interface PdfRequest {
   rows: number;
   cols: number;
   cells: ArrayBuffer;
-  glyphs: GlyphMask[];
   layout: 'single' | 'tiled';
   orientation: 'portrait' | 'landscape';
   cellMillimeters: number;
@@ -76,21 +75,14 @@ export function buildPdf(request: PdfRequest): Uint8Array {
   objects.push(new Uint8Array());
   objects.push(ascii('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'));
 
-  const imageRefs = new Map<number, number>();
-  for (const glyph of request.glyphs) {
-    const ref = objects.length + 1;
-    imageRefs.set(glyph.id, ref);
-    const compressed = zlibSync(new Uint8Array(glyph.data), { level: 9 });
-    objects.push(streamObject(`/Type /XObject /Subtype /Image /Width ${glyph.size} /Height ${glyph.size} /ImageMask true /BitsPerComponent 1 /Decode [0 1]`, compressed));
-  }
-
   const formRefs = new Map<number, number>();
-  for (const glyph of request.glyphs) {
-    const imageRef = imageRefs.get(glyph.id)!;
-    const formContent = zlibSync(ascii('q 1 0 0 1 0 0 cm /Im Do Q'), { level: 9 });
+  for (const stitch of STITCHES.filter((item) => item.renderKind === 'glyph')) {
+    const glyph = glyphPdfCommands(stitch.key);
+    if (!glyph) continue;
+    const formContent = zlibSync(ascii(glyph.commands), { level: 9 });
     const ref = objects.length + 1;
-    formRefs.set(glyph.id, ref);
-    objects.push(streamObject(`/Type /XObject /Subtype /Form /BBox [0 0 1 1] /Resources << /XObject << /Im ${imageRef} 0 R >> >>`, formContent));
+    formRefs.set(stitch.id, ref);
+    objects.push(streamObject(`/Type /XObject /Subtype /Form /BBox [0 0 ${glyph.width} ${glyph.height}]`, formContent));
   }
 
   const xObjectResources = [...formRefs].map(([id, ref]) => `/S${id} ${ref} 0 R`).join(' ');
@@ -131,7 +123,8 @@ export function buildPdf(request: PdfRequest): Uint8Array {
           const blue = (color & 255) / 255;
           const x = originX + localCol * cellSize;
           const y = originY + (tile.rows - localRow - stitch.height) * cellSize;
-          rowCommands += `${red.toFixed(3)} ${green.toFixed(3)} ${blue.toFixed(3)} rg q ${(cellSize * stitch.width).toFixed(3)} 0 0 ${(cellSize * stitch.height).toFixed(3)} ${x.toFixed(3)} ${y.toFixed(3)} cm /S${stitchId} Do Q\n`;
+          const scale = cellSize / GLYPH_CELL;
+          rowCommands += `${red.toFixed(3)} ${green.toFixed(3)} ${blue.toFixed(3)} RG ${red.toFixed(3)} ${green.toFixed(3)} ${blue.toFixed(3)} rg q ${scale.toFixed(5)} 0 0 ${scale.toFixed(5)} ${x.toFixed(3)} ${y.toFixed(3)} cm /S${stitchId} Do Q\n`;
         }
         if (rowCommands) yield rowCommands;
       }

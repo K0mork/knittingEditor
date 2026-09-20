@@ -1,5 +1,13 @@
 # Development Log
 
+## 2026-09-20 — 棒針編目記号をJIS基準の共通ベクター定義へ変更
+
+- 影響: JIS L 0201の「棒針編目」を基準に25項目を再分類し、規格表に直接ある記号を「JIS」、備考2の裏目付票を適用したものを「JIS派生」、複数目交差・ねじり目交差を「拡張」、白くするを「補助・JIS外」としてパレットに明示した。減目は消費目数とは分けて1マス、すべり目も1マス占有へ修正し、永続IDは維持した。画面・PNG・PDFは同じ論理座標のベクター定義を使い、PDFの128px画像引き伸ばしを廃止した。
+- 主なファイル: `src/stitches/glyphs.ts`, `src/stitches/catalog.ts`, `src/canvas/BoardCanvas.tsx`, `src/export/exporters.ts`, `src/export/pdf.worker.ts`, `src/App.tsx`, `src/styles.css`
+- テスト: 記号のJIS区分、盤面占有と消費目数の分離、共通SVG/PDFベクター形状、減目・すべり目の端配置、PDFから画像マスクがなくなったこと、パレットの区分件数と表示を追加・更新した。
+- 検証: `npm run typecheck`、`npm test`（21件）、`npm run build`、`npm run check:dist`、`npm run test:e2e`（Chromium mobile・WebKit mobile・Chromium desktop、39件）を順に実行し、すべて成功。さらに一時QA用PDFを生成し、`pdftoppm -png -r 150` で描画して全記号の向き・線幅・クリッピングがないことを確認した。ローカルUIを390×844とデスクトップ幅で目視確認した。
+- デプロイ影響: なし。ユーザー確認用のローカルプレビューのみ。承認後にデプロイする場合は、GitHub Actionsのテスト・デプロイ成功と本番の記号パレット、盤面、PNG/PDF出力を確認する必要がある。
+
 ## 2026-09-20 — 編み目記号の互換性・PDF白塗り・選択UIを改善
 
 - 影響: 保存済み編み図で使う記号IDを明示的な永続値に変更し、バックアップへ記号カタログ版を記録するようにした。旧キー `purl_twisst_stitch` は互換名として読込みを維持する。「白くする」は消去とは別の記号として残し、PDFでもセルを白く塗ってグリッドを隠すよう修正した。従来の文字だけの選択欄を、記号画像・名称・占有目数を分類表示するパレットへ変更した。記号図形そのものは変更していない。

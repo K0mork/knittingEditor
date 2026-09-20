@@ -7,11 +7,8 @@ import { buildPdf, type PdfRequest } from './pdf.worker';
 function request(rows: number, cols: number, dense: boolean): PdfRequest {
   const cells = new Uint32Array(rows * cols);
   if (dense) cells.fill(packCell(STITCH_BY_KEY.get('knit')!.id, 0x111111));
-  const mask = new Uint8Array(128 * 128 / 8);
-  mask.fill(0xaa);
   return {
     rows, cols, cells: cells.buffer,
-    glyphs: [{ id: STITCH_BY_KEY.get('knit')!.id, width: 1, height: 1, size: 128, data: mask.buffer }],
     layout: 'single', orientation: 'portrait', cellMillimeters: 5,
   };
 }
@@ -36,7 +33,8 @@ describe('PDF worker', () => {
     expect(text.startsWith('%PDF-1.7')).toBe(true);
     expect(text.endsWith('%%EOF\n')).toBe(true);
     expect(text).toContain('/Subtype /Form');
-    expect(text).toContain('/ImageMask true');
+    expect(text).not.toContain('/ImageMask true');
+    expect(decodedStreams(pdf).join('\n')).toMatch(/50 12 m 50 88 l/);
   });
 
   it('keeps a dense one-million-cell PDF compact', () => {

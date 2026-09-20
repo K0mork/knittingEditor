@@ -72,7 +72,13 @@ test('selects a stitch from the visual palette and places white-out data', async
   await page.getByRole('button', { name: '編み目記号を選ぶ' }).click();
   const picker = page.getByRole('dialog', { name: '編み目記号' });
   await expect(picker).toBeVisible();
+  await expect(picker.getByText('JIS L 0201「棒針編目」を基準にしています')).toBeVisible();
   await expect(picker.locator('.stitch-option-symbol svg')).toHaveCount(25);
+  await expect(picker.locator('.stitch-standard.jis')).toHaveCount(12);
+  await expect(picker.locator('.stitch-standard.jis-derived')).toHaveCount(4);
+  await expect(picker.locator('.stitch-standard.extension')).toHaveCount(8);
+  await expect(picker.locator('.stitch-standard.utility')).toHaveCount(1);
+  await expect(picker.getByRole('button', { name: /右上2目一度 1×1マス · 2→1目 JIS/ })).toBeVisible();
   await picker.getByRole('button', { name: /白くする/ }).click();
   await expect(page.locator('.stitch-tool-name')).toHaveText('白くする');
 

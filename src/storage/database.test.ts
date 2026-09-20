@@ -41,7 +41,7 @@ describe('backup restore', () => {
 
     const backup = await exportBackup([source.id]);
     const payload = JSON.parse(strFromU8(gunzipSync(new Uint8Array(await backup.arrayBuffer())))) as { stitchCatalogVersion?: number };
-    expect(payload.stitchCatalogVersion).toBe(1);
+    expect(payload.stitchCatalogVersion).toBe(2);
     const result = await importBackup(backup);
 
     expect(result.count).toBe(1);

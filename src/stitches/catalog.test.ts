@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { STITCHES, STITCH_BY_KEY, stitchSvg } from './catalog';
+import { getGlyphDefinition, glyphPdfCommands } from './glyphs';
 
 const EXPECTED_IDS = {
   knit: 1,
@@ -42,6 +43,30 @@ describe('stitch catalog', () => {
       expect(stitch.height).toBeGreaterThan(0);
       expect(stitch.svg).toMatch(/<svg\b[^>]*viewBox="[^"]+"/);
       expect(stitch.svg).toContain('</svg>');
+    }
+  });
+
+  it('records JIS status and keeps non-standard symbols explicit', () => {
+    expect(STITCH_BY_KEY.get('knit')).toMatchObject({ standardStatus: 'jis', standardReference: 'JIS 2010' });
+    expect(STITCH_BY_KEY.get('purl_twist_stitch')).toMatchObject({ standardStatus: 'jis-derived' });
+    expect(STITCH_BY_KEY.get('right_up_three_cross')).toMatchObject({ standardStatus: 'extension' });
+    expect(STITCH_BY_KEY.get('erase')).toMatchObject({ standardStatus: 'utility', renderKind: 'whiteout' });
+  });
+
+  it('separates chart span from stitch consumption', () => {
+    expect(STITCH_BY_KEY.get('right_up_two_one')).toMatchObject({ width: 1, height: 1, consumes: 2, produces: 1 });
+    expect(STITCH_BY_KEY.get('middle_up_three_one')).toMatchObject({ width: 1, height: 1, consumes: 3, produces: 1 });
+    expect(STITCH_BY_KEY.get('slip_stitch')).toMatchObject({ width: 1, height: 1, consumes: 1, produces: 1 });
+    expect(STITCH_BY_KEY.get('right_up_three_cross')).toMatchObject({ width: 6, height: 1, consumes: 6, produces: 6 });
+  });
+
+  it('uses proportional vector geometry for screen and PDF', () => {
+    for (const stitch of STITCHES.filter((item) => item.renderKind === 'glyph')) {
+      const glyph = getGlyphDefinition(stitch.key)!;
+      expect(glyph.width).toBe(stitch.width * 100);
+      expect(glyph.height).toBe(stitch.height * 100);
+      expect(glyph.primitives.length).toBeGreaterThan(0);
+      expect(glyphPdfCommands(stitch.key)?.commands).toContain(' S Q');
     }
   });
 

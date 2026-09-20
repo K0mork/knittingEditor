@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Board, cellColor, cellStitchId, colorHex, type PatternBlock, type Point, type Rect } from '../model/Board';
 import { STITCH_BY_ID, STITCH_BY_KEY } from '../stitches/catalog';
-import { getColoredGlyph } from './glyphCache';
+import { drawGlyph } from '../stitches/glyphs';
 
 export type CanvasMode = 'draw' | 'erase' | 'select' | 'paste';
 
@@ -115,15 +115,7 @@ export function BoardCanvas(props: Props) {
           context.fillRect(x, y, view.cell, view.cell);
           continue;
         }
-        const image = getColoredGlyph(
-          stitch.key,
-          colorHex(cellColor(value)),
-          stitch.width * view.cell,
-          stitch.height * view.cell,
-          requestDraw,
-        );
-        if (!image) continue;
-        context.drawImage(image, x + 1, y + 1, stitch.width * view.cell - 2, stitch.height * view.cell - 2);
+        drawGlyph(context, stitch.key, x, y, view.cell, colorHex(cellColor(value)));
       }
     }
 
