@@ -11,6 +11,13 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-21: Simulator配布スクリーンショットを再撮影
+
+- 変更: iPhone 16／iPad (10th generation) Simulatorから、アプリを一度削除して再インストールした初期状態のスクリーンショットを`docs/screenshots/`へ再保存した。画面仕様・アプリ本体は変更していない。
+- テスト: `xcrun simctl io <UDID> screenshot`で各PNGを取得し、iPhone 16は1179×2556、iPadは1640×2360であることを`file`で確認した。画像を目視し、個人データやテスト記号が含まれないことを確認した。
+- 未実施: 実機／TestFlightの最終スクリーンショット、起動画面の実機目視、App Store Connect登録。
+- 配布影響: 候補素材を最新Web記号定義に揃えた。App Store提出用の最終素材とは扱わず、実機／TestFlight確認を残す。
+
 ## 2026-09-21: ローカルWebのランタイム通信API検出を追加
 
 - 変更: 固定originのWebViewへ`fetch`、`XMLHttpRequest`、`WebSocket`、`EventSource`の呼び出しを記録するテスト用スクリプトを注入し、エディタ起動後に要求が空であることをSwift XCTestで検証する。既存の生成bundle静的検査と組み合わせ、外部通信を追加しない方針をCIで回帰検証する。
