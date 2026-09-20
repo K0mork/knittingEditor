@@ -75,6 +75,14 @@
 - 未実施: 実機のFiles・共有先アプリ、AirDrop、TestFlight。
 - 配布影響: iPadのファイル出力確認UIのみ変更。ファイル形式、保存先、共有データは変更しない。
 
+## 2026-09-20: WebKit delegateのSwift並行性注釈を修正
+
+- 変更: Xcode 27 SDKの`WKNavigationDelegate`要求に合わせ、navigation policy callbackへ`@MainActor @Sendable`を明示した。
+- 主なファイル: `App/WebViewContainer.swift`
+- テスト: `xcodebuild build-for-testing`でWebKit delegate警告が消え、iPhone 16 SimulatorのXCTest 11件が成功した。
+- 未実施: 実機、TestFlight、App Store署名。
+- 配布影響: ナビゲーション許可処理の型注釈のみ。許可するURL schemeの方針は変更しない。
+
 ## 2026-09-20: AppIcon・起動画面を含むRelease Archiveを再検証
 
 - 変更: コード変更はない。AppIconと`LaunchBackground`追加後の提出候補bundleをRelease Archiveから再検査した。
