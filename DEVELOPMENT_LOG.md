@@ -11,6 +11,14 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-20: M6プライバシー、サポート、審査準備を追加
+
+- 変更: `PrivacyInfo.xcprivacy`をアプリバンドルへ追加し、トラッキングなし・収集データなし・宣言対象APIなしを明記した。アプリ内ヘルプへ端末内処理、アプリ削除時のデータ消失、GitHub Issuesサポート導線を追加した。ユーザーがリンクを選んだ場合だけSwift側でSafariを開く。App Review 4.2向け審査メモとApp Store提出チェックリストを追加した。
+- 主なファイル: `App/PrivacyInfo.xcprivacy`、`App/WebViewContainer.swift`、`Web/public/guide/index.html`、`docs/APP_REVIEW_NOTES.md`、`docs/APP_STORE_CHECKLIST.md`
+- テスト: `plutil -lint`で生成アプリ内Privacy Manifestを検証成功、`scripts/check-app-bundle.sh`成功、`xcodegen generate`とiOS Simulator SDK向け`xcodebuild ... build`成功。Web 6ファイル29テスト、Viteビルドも成功。
+- 未実施: アイコン最終デザイン、起動画面の目視、実機スクリーンショット、Apple Developer Team／署名、TestFlight内部テスト、実機クラッシュ・メモリ・出力時間、App Store Connect入力と提出は未実施。これらはAppleアカウントと実機が必要。
+- 配布影響: Privacy Manifestと外部サポートリンクの導線を追加した。TestFlight・App Storeへの提出は行っていない。
+
 ## 2026-09-20: M5 CI、XCUITest、ローカル資産検査を追加
 
 - 変更: Web単体テストとViteビルド、Swift単体テスト、iPhone／iPad Simulator matrix、起動XCUITestをGitHub Actionsへ追加した。XcodeGenでUIテストターゲットを生成し、生成アプリバンドルにHTML／assets／guideが存在し、分析タグやアプリ外部ホストが含まれないことを検査する`check-app-bundle.sh`を追加した。全26記号のSVG／PDF glyph定義回帰テストも追加した。

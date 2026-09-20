@@ -26,6 +26,8 @@ targets:
       - path: AppResources/Web
         type: folder
         buildPhase: resources
+    resources:
+      - path: App/PrivacyInfo.xcprivacy
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.k0mork.knittingEditor

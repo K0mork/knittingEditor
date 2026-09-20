@@ -60,7 +60,7 @@ scripts/check-app-bundle.sh /path/to/knittingEditor.app
 
 公開中の`https://knittingeditor.com/`は読み込みません。Viteのアプリ用ビルドをXcodeバンドルへ格納し、HTML、JavaScript、記号、WorkerをローカルURLから読み込みます。
 
-M0の初期コンテナは`knitting-local://bundle/index.html`という固定originを`WKURLSchemeHandler`で提供します。`WKWebsiteDataStore.default()`を使い、実行時に外部URLを許可しません。M1以降の`AppResources/Web/`は`Web/`のViteビルド成果物であり、Canvas、Pointer Events、Blob、IndexedDB、module Worker、全26記号を含むWeb編集画面を同梱します。M3では型付きブリッジを通じてFiles・共有シート・ネイティブ保存を接続しています。実機での往復確認は未実施です。
+M0の初期コンテナは`knitting-local://bundle/index.html`という固定originを`WKURLSchemeHandler`で提供します。`WKWebsiteDataStore.default()`を使い、実行時に外部URLを許可しません。M1以降の`AppResources/Web/`は`Web/`のViteビルド成果物であり、Canvas、Pointer Events、Blob、IndexedDB、module Worker、全26記号を含むWeb編集画面を同梱します。M3では型付きブリッジを通じてFiles・共有シート・ネイティブ保存を接続し、M6ではPrivacy Manifestとアプリ内のプライバシー／サポート説明を追加しています。実機での往復確認は未実施です。
 
 ## 4. Web版から再利用する範囲
 

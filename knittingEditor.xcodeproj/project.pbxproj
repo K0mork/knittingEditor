@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		2A22B31E4E848E4416DE5D2E /* KnittingEditorUTType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E89D10B53EB561502464406 /* KnittingEditorUTType.swift */; };
 		2E279AF776F175B3F77DA1A5 /* Web in Resources */ = {isa = PBXBuildFile; fileRef = F41441F8FD8454433D85E51C /* Web */; };
+		3169FE3B0B8F832ABA6E5440 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 105A34342230A6B324A75809 /* PrivacyInfo.xcprivacy */; };
 		399AE0908FE88F56457A7A54 /* WebViewContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E643EAB3D8627886E3EDCB9 /* WebViewContainer.swift */; };
 		72A7C34CF22FD0138A1E8FE7 /* KnittingEditorUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 049604E8F16625AD6FE9AA3F /* KnittingEditorUITests.swift */; };
 		80BB0B545C49794374C7C699 /* KnittingEditorApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79CFD1A36C16A062BF1E7D49 /* KnittingEditorApp.swift */; };
@@ -39,6 +40,7 @@
 		02EEF60A275DC7E5B3AFEC1E /* LocalWebSchemeHandlerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalWebSchemeHandlerTests.swift; sourceTree = "<group>"; };
 		049604E8F16625AD6FE9AA3F /* KnittingEditorUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnittingEditorUITests.swift; sourceTree = "<group>"; };
 		07781248F43F310A19A846F2 /* knittingEditorTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = knittingEditorTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		105A34342230A6B324A75809 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		23B041EDB211844299152088 /* knittingEditor.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = knittingEditor.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2DA6B84D7E98986674AF1841 /* NativeBridgeMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeBridgeMessage.swift; sourceTree = "<group>"; };
 		4E643EAB3D8627886E3EDCB9 /* WebViewContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebViewContainer.swift; sourceTree = "<group>"; };
@@ -114,6 +116,7 @@
 				9E89D10B53EB561502464406 /* KnittingEditorUTType.swift */,
 				F2454BC6D34F2448DF141412 /* LocalWebSchemeHandler.swift */,
 				2DA6B84D7E98986674AF1841 /* NativeBridgeMessage.swift */,
+				105A34342230A6B324A75809 /* PrivacyInfo.xcprivacy */,
 				4E643EAB3D8627886E3EDCB9 /* WebViewContainer.swift */,
 			);
 			path = App;
@@ -228,6 +231,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3169FE3B0B8F832ABA6E5440 /* PrivacyInfo.xcprivacy in Resources */,
 				2E279AF776F175B3F77DA1A5 /* Web in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

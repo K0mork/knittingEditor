@@ -1,5 +1,6 @@
 import Observation
 import SwiftUI
+import UIKit
 import UniformTypeIdentifiers
 import WebKit
 
@@ -149,12 +150,18 @@ struct WebViewContainer: UIViewRepresentable {
             decidePolicyFor navigationAction: WKNavigationAction,
             decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
         ) {
-            guard let url = navigationAction.request.url,
-                  url.scheme == LocalWebSchemeHandler.scheme else {
+            guard let url = navigationAction.request.url else {
                 decisionHandler(.cancel)
                 return
             }
-            decisionHandler(.allow)
+            if url.scheme == LocalWebSchemeHandler.scheme {
+                decisionHandler(.allow)
+            } else if ["http", "https", "mailto"].contains(url.scheme?.lowercased()) {
+                UIApplication.shared.open(url)
+                decisionHandler(.cancel)
+            } else {
+                decisionHandler(.cancel)
+            }
         }
 
         func webView(
