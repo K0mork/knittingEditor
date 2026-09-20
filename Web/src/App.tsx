@@ -10,7 +10,8 @@ import {
   exportBackup, importBackup, initializeStorage, listBlocks, listDocuments,
   renameDocument, saveBlock, saveDocument, setSetting, type ChartDocument,
 } from './storage/database';
-import { downloadBlob, renderPdf, renderPng, validatePngSize } from './export/exporters';
+import { renderPdf, renderPng, saveBlob, validatePngSize } from './export/exporters';
+import { listenNativeBackupSelected, listenNativeError, requestNativeBackupOpen } from './nativeBridge';
 
 type BusyTask = 'PNGを生成中' | 'PDFを生成中' | 'バックアップを処理中';
 type Panel = 'documents' | 'grid' | 'blocks' | 'export';
@@ -209,7 +210,7 @@ export default function App() {
     if (!validation.valid) { notify(`${validation.reason}。PDF保存をおすすめします。`); return; }
     setBusy('PNGを生成中');
     try {
-      downloadBlob(await renderPng(board, cellSize), `${activeDocument.name}.png`);
+      await saveBlob(await renderPng(board, cellSize), `${activeDocument.name}.png`);
       trackAnalyticsEvent('chart_exported', { export_format: 'png', board_size_bucket: boardSizeBucket(board.rows, board.cols) });
     }
     catch (error) { trackAnalyticsEvent('operation_failed', { operation_name: 'png_export' }); notify(error instanceof Error ? error.message : String(error)); }
@@ -220,7 +221,7 @@ export default function App() {
     if (!board || !activeDocument) return;
     setBusy('PDFを生成中');
     try {
-      downloadBlob(await renderPdf(board, { layout, orientation, cellMillimeters }), `${activeDocument.name}.pdf`);
+      await saveBlob(await renderPdf(board, { layout, orientation, cellMillimeters }), `${activeDocument.name}.pdf`);
       trackAnalyticsEvent('chart_exported', { export_format: 'pdf', pdf_layout: layout, board_size_bucket: boardSizeBucket(board.rows, board.cols) });
     }
     catch (error) { trackAnalyticsEvent('operation_failed', { operation_name: 'pdf_export' }); notify(error instanceof Error ? error.message : String(error)); }
@@ -247,7 +248,7 @@ export default function App() {
         await refreshDocuments();
       }
       const blob = await exportBackup(all ? undefined : [activeDocument.id]);
-      downloadBlob(blob, all ? 'knitting-editor-backup.knit' : `${activeDocument.name}.knit`);
+      await saveBlob(blob, all ? 'knitting-editor-backup.knit' : `${activeDocument.name}.knit`);
       trackAnalyticsEvent('backup_exported', { backup_scope: all ? 'all' : 'current' });
     } catch (error) { trackAnalyticsEvent('operation_failed', { operation_name: 'backup_export' }); notify(error instanceof Error ? error.message : String(error)); }
     finally { setBusy(undefined); }
@@ -268,6 +269,18 @@ export default function App() {
     catch (error) { trackAnalyticsEvent('operation_failed', { operation_name: 'backup_restore' }); notify(error instanceof Error ? error.message : String(error)); }
     finally { setBusy(undefined); }
   };
+
+  useEffect(() => listenNativeBackupSelected(({ filename, dataBase64 }) => {
+    try {
+      const binary = atob(dataBase64);
+      const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+      void restore(new File([bytes], filename, { type: 'application/gzip' }));
+    } catch {
+      notify('バックアップを読み込めませんでした');
+    }
+  }), [restore]);
+
+  useEffect(() => listenNativeError(notify), []);
 
   const currentStitch = useMemo(() => STITCHES.find((item) => item.key === selectedStitch)!, [selectedStitch]);
   if (!board || !activeDocument) return <main className="loading">編み図を読み込んでいます…</main>;
@@ -359,7 +372,7 @@ export default function App() {
         {!selection && <button onClick={() => { setMode('select'); setPanel(undefined); }}>盤面で範囲を選択</button>}
         <div className="block-list">{blocks.length === 0 && <p>保存済みブロックはありません。</p>}{blocks.map((block) => <div key={block.id}><button onClick={() => choosePasteBlock(block)}>{block.name}<small>{block.rows}×{block.cols}</small></button><button onClick={() => void (async () => { await deleteBlock(block.id); await refreshBlocks(); })()}>削除</button></div>)}</div>
       </>}
-      {panel === 'export' && <ExportControls board={board} onPng={runPngExport} onPdf={runPdfExport} onBackup={backup} onRestore={() => fileInputRef.current?.click()} />}
+      {panel === 'export' && <ExportControls board={board} onPng={runPngExport} onPdf={runPdfExport} onBackup={backup} onRestore={() => { if (!requestNativeBackupOpen()) fileInputRef.current?.click(); }} />}
     </aside>}
 
     <input ref={fileInputRef} hidden type="file" accept=".knit,application/gzip" onChange={(event) => { void restore(event.target.files?.[0]); event.target.value = ''; }} />

@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { describe, expect, it } from 'vitest';
-import { gunzipSync, strFromU8 } from 'fflate';
+import { gunzipSync, gzipSync, strFromU8, strToU8 } from 'fflate';
 import { Board } from '../model/Board';
 import {
   boardFromDocument, createDocument, exportBackup, importBackup, saveDocument,
@@ -23,5 +23,16 @@ describe('backup restore', () => {
     expect(result.documents[0].name).toBe('復元テスト（復元）');
     const restored = boardFromDocument(result.documents[0]);
     expect(restored.valueAt(1, 2)).toBe(board.valueAt(1, 2));
+  });
+
+  it('rejects malformed gzip data before touching IndexedDB', async () => {
+    await expect(importBackup(new Blob([new Uint8Array([1, 2, 3])]))).rejects.toThrow();
+  });
+
+  it('rejects a backup from a newer stitch catalog', async () => {
+    const backup = gzipSync(strToU8(JSON.stringify({
+      format: 'knitting-editor', version: 2, stitchCatalogVersion: 4, documents: [], blocks: [],
+    })));
+    await expect(importBackup(new Blob([backup]))).rejects.toThrow('新しい記号カタログ');
   });
 });

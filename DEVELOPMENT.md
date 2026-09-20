@@ -41,7 +41,7 @@ SwiftUI application
     └── PNG / PDF generators
 ```
 
-初期実装では`project.yml`をXcodeGen 2.46.0で生成し、生成物の`knittingEditor.xcodeproj`もリポジトリへ保存します。SwiftUIの入口は`App/KnittingEditorApp.swift`、ローカルWebコンテナは`App/WebViewContainer.swift`と`App/LocalWebSchemeHandler.swift`です。Web資産は`AppResources/Web/`に置き、ビルド時にアプリバンドルへコピーします。
+初期実装では`project.yml`をXcodeGen 2.46.0で生成し、生成物の`knittingEditor.xcodeproj`もリポジトリへ保存します。SwiftUIの入口は`App/KnittingEditorApp.swift`、ローカルWebコンテナは`App/WebViewContainer.swift`と`App/LocalWebSchemeHandler.swift`です。型付きファイル連携は`App/NativeBridgeMessage.swift`、`.knit`のUTTypeは`App/KnittingEditorUTType.swift`で定義します。Web資産は`AppResources/Web/`に置き、ビルド時にアプリバンドルへコピーします。
 
 対象OSは技術検証の初期値としてiOS 17.0以上、iPhone・iPad（`TARGETED_DEVICE_FAMILY=1,2`）に決定しました。実機での対応端末確認はM0の未完了項目です。
 
@@ -57,7 +57,7 @@ xcodebuild -project knittingEditor.xcodeproj -scheme knittingEditor \
 
 公開中の`https://knittingeditor.com/`は読み込みません。Viteのアプリ用ビルドをXcodeバンドルへ格納し、HTML、JavaScript、記号、WorkerをローカルURLから読み込みます。
 
-M0の初期コンテナは`knitting-local://bundle/index.html`という固定originを`WKURLSchemeHandler`で提供します。`WKWebsiteDataStore.default()`を使い、実行時に外部URLを許可しません。M1以降の`AppResources/Web/`は`Web/`のViteビルド成果物であり、Canvas、Pointer Events、Blob、IndexedDB、module Worker、全26記号を含むWeb編集画面を同梱します。Files・共有シート・ネイティブ保存はM3で接続します。
+M0の初期コンテナは`knitting-local://bundle/index.html`という固定originを`WKURLSchemeHandler`で提供します。`WKWebsiteDataStore.default()`を使い、実行時に外部URLを許可しません。M1以降の`AppResources/Web/`は`Web/`のViteビルド成果物であり、Canvas、Pointer Events、Blob、IndexedDB、module Worker、全26記号を含むWeb編集画面を同梱します。M3では型付きブリッジを通じてFiles・共有シート・ネイティブ保存を接続しています。実機での往復確認は未実施です。
 
 ## 4. Web版から再利用する範囲
 

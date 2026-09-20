@@ -12,6 +12,9 @@ struct KnittingEditorApp: App {
                     guard phase == .background || phase == .inactive else { return }
                     webViewModel.flushPendingSave()
                 }
+                .onOpenURL { url in
+                    webViewModel.handleIncomingURL(url)
+                }
         }
     }
 }

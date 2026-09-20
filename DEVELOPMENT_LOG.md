@@ -11,6 +11,15 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-20: M3 JavaScript–Swiftファイル連携を追加
+
+- 変更: PNG、PDF、`.knit`をBase64付きのversion 1メッセージでSwiftへ渡し、iOS側でFiles保存または共有シートを選べるようにした。`.knit`のDocument Picker、Files／AirDrop／他アプリからの`onOpenURL`受け入れ、独自UTType／Document Typeを追加した。Web側の通常ブラウザでは従来のdownload／file inputへフォールバックする。
+- 主なファイル: `App/WebViewContainer.swift`、`App/NativeBridgeMessage.swift`、`App/KnittingEditorUTType.swift`、`App/Info.plist`、`Web/src/nativeBridge.ts`、`Web/src/export/exporters.ts`、`Web/src/App.tsx`、`docs/NATIVE_BRIDGE.md`
+- 安全策: Swift側で許可MIME、ファイル名、128 MiB上限を検証し、Web側でgzip圧縮前32 MiB、解凍後256 MiB、件数上限を検証する。新しいカタログと不正gzipのテストを追加した。
+- テスト: WebのVitest 5ファイル27テスト成功、`npm run build`成功。Swiftの`NativeBridgeMessageTests`を追加し、XcodeGen再生成とiOS Simulator SDK向け`xcodebuild ... build`成功。
+- 未実施: 起動済みSimulatorがなく、Files／AirDrop／共有先、外部`.knit`の実機往復、WebViewの実行時ブリッジ表示は未確認。端末を用意したM5でXCUITestと機内モード試験が必要。
+- 配布影響: `.knit`をFilesや他アプリから開くDocument Typeが追加された。署名、App Store Connect、TestFlight配布は行っていない。
+
 ## 2026-09-20: M2コミットのGitHub push再試行
 
 - 変更: M2コミット`7d23982`のpushを実行した。

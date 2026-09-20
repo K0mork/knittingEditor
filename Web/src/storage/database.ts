@@ -1,5 +1,5 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
-import { gzipSync, gunzipSync, strFromU8, strToU8 } from 'fflate';
+import { Gunzip, gzipSync, strFromU8, strToU8 } from 'fflate';
 import { Board, type PatternBlock } from '../model/Board';
 import { STITCH_CATALOG_VERSION } from '../stitches/catalog';
 
@@ -37,6 +37,12 @@ export interface ImportBackupResult {
 }
 
 const DB_NAME = 'knitting-editor-v2';
+export const BACKUP_LIMITS = {
+  maxCompressedBytes: 32 * 1024 * 1024,
+  maxDecompressedBytes: 256 * 1024 * 1024,
+  maxDocuments: 500,
+  maxBlocks: 5_000,
+} as const;
 let databasePromise: Promise<IDBPDatabase<KnittingDB>> | undefined;
 
 function database(): Promise<IDBPDatabase<KnittingDB>> {
@@ -148,6 +154,25 @@ function base64ToBytes(encoded: string): Uint8Array {
   return bytes;
 }
 
+function gunzipWithLimit(data: Uint8Array): Uint8Array {
+  if (data.byteLength > BACKUP_LIMITS.maxCompressedBytes) throw new Error('バックアップファイルが大きすぎます');
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  const gunzip = new Gunzip((chunk) => {
+    total += chunk.byteLength;
+    if (total > BACKUP_LIMITS.maxDecompressedBytes) throw new Error('解凍後のバックアップが大きすぎます');
+    chunks.push(chunk.slice());
+  });
+  gunzip.push(data, true);
+  const result = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    result.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return result;
+}
+
 export async function exportBackup(documentIds?: string[]): Promise<Blob> {
   const documents = (await listDocuments()).filter((item) => !documentIds || documentIds.includes(item.id));
   const blocks = documentIds ? [] : await listBlocks();
@@ -160,9 +185,12 @@ export async function exportBackup(documentIds?: string[]): Promise<Blob> {
 }
 
 export async function importBackup(file: Blob): Promise<ImportBackupResult> {
-  const payload = JSON.parse(strFromU8(gunzipSync(new Uint8Array(await file.arrayBuffer())))) as BackupPayload;
+  const payload = JSON.parse(strFromU8(gunzipWithLimit(new Uint8Array(await file.arrayBuffer())))) as BackupPayload;
   if (payload.format !== 'knitting-editor' || payload.version !== 2 || !Array.isArray(payload.documents)) {
     throw new Error('対応していないバックアップ形式です');
+  }
+  if (payload.documents.length > BACKUP_LIMITS.maxDocuments || (payload.blocks?.length ?? 0) > BACKUP_LIMITS.maxBlocks) {
+    throw new Error('バックアップ内の件数が安全上限を超えています');
   }
   if ((payload.stitchCatalogVersion ?? 1) > STITCH_CATALOG_VERSION) {
     throw new Error('新しい記号カタログで作成されたバックアップです。アプリを更新してください');

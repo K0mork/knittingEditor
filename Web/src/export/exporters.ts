@@ -1,6 +1,7 @@
 import { Board, cellColor, cellStitchId, colorHex } from '../model/Board';
 import { STITCH_BY_ID } from '../stitches/catalog';
 import { drawGlyph } from '../stitches/glyphs';
+import { saveBlobWithNativeBridge } from '../nativeBridge';
 
 const PNG_MAX_SIDE = 16_384;
 const PNG_MAX_PIXELS = 64_000_000;
@@ -85,4 +86,9 @@ export function downloadBlob(blob: Blob, filename: string): void {
   const link = document.createElement('a');
   link.href = url; link.download = filename; link.click();
   setTimeout(() => URL.revokeObjectURL(url), 30_000);
+}
+
+export async function saveBlob(blob: Blob, filename: string): Promise<void> {
+  if (await saveBlobWithNativeBridge(blob, filename)) return;
+  downloadBlob(blob, filename);
 }

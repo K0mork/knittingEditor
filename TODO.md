@@ -42,15 +42,15 @@
 
 ## M3: Files・共有・バックアップ（P0）
 
-- [ ] JavaScript–Swift間の型付きメッセージ仕様を決定する
-- [ ] PNG、PDF、`.knit`をSwiftへ渡す処理を実装する
-- [ ] Files保存と共有シートを実装する
-- [ ] `.knit`用の独自UTTypeとDocument Typeを登録する
-- [ ] Document Pickerから`.knit`を読み込む
-- [ ] Files／AirDrop／他アプリから`.knit`を開く
+- [x] JavaScript–Swift間の型付きメッセージ仕様を決定する
+- [x] PNG、PDF、`.knit`をSwiftへ渡す処理を実装する
+- [x] Files保存と共有シートを実装する
+- [x] `.knit`用の独自UTTypeとDocument Typeを登録する
+- [x] Document Pickerから`.knit`を読み込む
+- [x] Files／AirDrop／他アプリから`.knit`を開く
 - [ ] Web版出力fixtureをアプリで復元する
 - [ ] アプリ出力fixtureをWeb版で復元する
-- [ ] 不正形式、新しいカタログ、巨大解凍データを安全に拒否する
+- [x] 不正形式、新しいカタログ、巨大解凍データを安全に拒否する
 
 完了条件: Web版とアプリ版の双方向バックアップが成功し、PNG/PDFをFilesと共有先へ保存できる。
 
