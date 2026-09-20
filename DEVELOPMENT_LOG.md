@@ -99,6 +99,14 @@
 - 未実施: 実機の大規模出力、メモリ警告、実際のFiles保存・共有先選択。
 - 配布影響: テストコードのみ。PNG／PDF出力仕様は変更しない。
 
+## 2026-09-20: READMEの進捗表記をTODOと同期
+
+- 変更: READMEの「実装済み」表記を、Simulatorで確認済みの範囲と、実機・署名・TestFlight・App Store Connectに依存する未完了P0へ分離した。
+- 主なファイル: `README.md`
+- テスト: 文書変更のみ。`git diff --check`を実行する。
+- 未実施: Apple Developerアカウントを必要とする提出工程。
+- 配布影響: 実装・bundle・保存形式は変更しない。
+
 ## 2026-09-20: AppIcon・起動画面を含むRelease Archiveを再検証
 
 - 変更: コード変更はない。AppIconと`LaunchBackground`追加後の提出候補bundleをRelease Archiveから再検査した。
