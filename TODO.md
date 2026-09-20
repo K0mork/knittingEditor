@@ -31,7 +31,7 @@
 
 ## M2: 保存・ライフサイクル（P0）
 
-- [ ] IndexedDBの自動保存と編み図切替を検証する
+- [x] IndexedDBの自動保存と編み図切替を検証する（iPhone 16／iPad (10th generation) Simulator。実機は別途）
 - [x] scene phase変化をJavaScriptへ通知する
 - [x] バックグラウンド移行時に保留中の保存をflushする
 - [x] 保存完了、保存失敗、復旧案内を定義する
