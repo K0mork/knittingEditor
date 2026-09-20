@@ -11,6 +11,14 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-21: CIアプリ更新matrixのSimulator UUID解決を修正
+
+- 変更: GitHub Actionsの`app-update` jobで、iPad名の括弧をUUID抽出の区切り文字にしていたため端末を見失い、iPhoneではseed後に別runtimeのShutdown端末へinstallしていた。端末名を文字列として照合し、UUID形式を抽出し、seed後はBooted端末へ再解決するよう`simulate-app-update.sh`を修正した。
+- 主なファイル: `scripts/simulate-app-update.sh`
+- テスト: ローカルiPhone 16／iPad 10で更新シミュレーションを再実行済み。変更後のGitHub Actions `app-update` matrixはpush後に確認する。
+- 未実施: 修正後CI、署名済み実機のApp Store更新、Apple Developer署名、TestFlight。
+- 配布影響: アプリ本体・保存形式・Bundle IDは変更せず、検証スクリプトの端末選択だけを修正した。
+
 ## 2026-09-21: `.knit`相互運用のnative bridge ready通知と出力往復を検証
 
 - 変更: WebViewのReact側がバックアップイベント購読を完了したことを`webReady`メッセージでSwiftへ通知し、起動・更新直後に届いたOpen URLをready後まで保持するようにした。アプリWeb bundleの`exportBackup`出力をnative bridgeのgzip payloadへ通し、同じpayloadをWebの`importBackup`へ戻す往復テストも追加した。

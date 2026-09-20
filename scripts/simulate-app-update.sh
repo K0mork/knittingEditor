@@ -9,10 +9,18 @@ work_dir="${TMPDIR:-/tmp}/knitting-editor-app-update-${simulator_name//[^[:alnum
 updated_derived_data="$work_dir/updated-derived-data"
 probe_marker="/tmp/knitting-editor-app-update-probe"
 
-if [[ -n "${SIMULATOR_UDID:-}" ]]; then
-  simulator_udid="$SIMULATOR_UDID"
-else
-  simulator_udid="$(xcrun simctl list devices available | awk -F '[()]' -v name="$simulator_name" '$0 ~ name && $0 ~ /Booted|Shutdown/ { print $2; exit }')"
+find_simulator_udid() {
+  local device_list="$1"
+  while IFS= read -r line; do
+    [[ "$line" == *"$simulator_name"* ]] || continue
+    printf '%s\n' "$line" | grep -Eo '[[:xdigit:]]{8}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{12}' | head -n 1
+    return 0
+  done <<< "$device_list"
+}
+
+simulator_udid="${SIMULATOR_UDID:-}"
+if [[ -z "$simulator_udid" ]]; then
+  simulator_udid="$(find_simulator_udid "$(xcrun simctl list devices available)")"
 fi
 if [[ -z "$simulator_udid" ]]; then
   echo "Simulatorが見つかりません: $simulator_name" >&2
@@ -41,7 +49,7 @@ echo "[2/4] version 1でfixtureを保存"
 echo "[3/4] version 2を同一Bundle IDでビルドして上書きインストール"
 (
   cd "$project_root"
-  xcodebuild build-for-testing \
+xcodebuild build-for-testing \
     -project knittingEditor.xcodeproj \
     -scheme knittingEditor \
     -sdk iphonesimulator \
@@ -51,6 +59,12 @@ echo "[3/4] version 2を同一Bundle IDでビルドして上書きインスト�
     CODE_SIGNING_ALLOWED=NO
 )
 updated_app="$updated_derived_data/Build/Products/Debug-iphonesimulator/knittingEditor.app"
+if [[ -z "${SIMULATOR_UDID:-}" ]]; then
+  booted_udid="$(find_simulator_udid "$(xcrun simctl list devices booted)")"
+  if [[ -n "$booted_udid" ]]; then
+    simulator_udid="$booted_udid"
+  fi
+fi
 xcrun simctl install "$simulator_udid" "$updated_app"
 updated_xctestrun="$(find "$updated_derived_data/Build/Products" -name '*.xctestrun' -print -quit)"
 if [[ -z "$updated_xctestrun" ]]; then
