@@ -35,6 +35,14 @@
 - 未実施: 変更後のGitHub Actions再実行、Apple Developer署名、実機、TestFlight。
 - 配布影響: UIテストの要素検索だけを変更。Document Pickerの実装、保存形式、アプリ動作は変更しない。
 
+## 2026-09-21: CI iPad保存パネルの表示待機を延長
+
+- 変更: GitHub Actions run `35519959005`で、iPadの保存ボタン押下後に「この編み図」ボタンがWebView遅延で5秒以内に公開されず、バックアップUIテストが失敗したため、該当待機を15秒へ延長した。
+- 主なファイル: `UITests/KnittingEditorUITests/KnittingEditorUITests.swift`
+- テスト: 変更後のGitHub Actions再実行で、Document Pickerを含むiPad／iPhone matrix、Web、Release Archiveの成功を確認する。
+- 未実施: 変更後のGitHub Actions再実行、Apple Developer署名、実機、TestFlight。
+- 配布影響: UIテストの待機時間のみ。保存パネル、Document Picker、バックアップ形式は変更しない。
+
 ## 2026-09-21: Xcode 15.4 CI iPhoneのgzipバックアップUIテストを明示的に除外
 
 - 変更: Xcode 15.4のiPhone SimulatorでWebKitが`.knit` gzip生成中に無応答となる既知のCI環境差を検出し、そのUIテストだけを`XCTSkip`する。iPadの同一`.knit`導線、iPhone／iPadのPNG・PDFネイティブ保存導線は継続実行する。

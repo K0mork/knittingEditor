@@ -157,7 +157,7 @@ final class KnittingEditorUITests: XCTestCase {
         save.tap()
 
         let currentDocument = app.buttons["この編み図"]
-        XCTAssertTrue(currentDocument.waitForExistence(timeout: 5))
+        XCTAssertTrue(currentDocument.waitForExistence(timeout: 15))
         currentDocument.tap()
 
         XCTAssertTrue(app.buttons["ファイルに保存"].waitForExistence(timeout: 10))
