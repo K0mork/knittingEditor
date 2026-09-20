@@ -43,6 +43,14 @@
 - 未実施: 変更後のGitHub Actions再実行、Apple Developer署名、実機、TestFlight。
 - 配布影響: UIテストの待機時間のみ。保存パネル、Document Picker、バックアップ形式は変更しない。
 
+## 2026-09-21: iPad Simulatorの主要UI待機を15秒へ統一
+
+- 変更: GitHub Actions run `35520373440`で、iPad SimulatorのWebView初期化遅延により「保存」ボタンが5秒以内に公開されない実行が確認されたため、保存・文書・ダイアログ操作に使う主要要素のXCUITest待機上限を15秒へ統一した。
+- 主なファイル: `UITests/KnittingEditorUITests/KnittingEditorUITests.swift`
+- テスト: 変更後のGitHub Actions再実行で、Web、Release Archive、iPhone／iPad Simulator matrixの成功を確認する。
+- 未実施: 変更後のGitHub Actions再実行、Apple Developer署名、実機、TestFlight。
+- 配布影響: UIテストの待機時間のみ。アプリ実装、保存パネル、Document Picker、バックアップ形式は変更しない。
+
 ## 2026-09-21: Xcode 15.4 CI iPhoneのgzipバックアップUIテストを明示的に除外
 
 - 変更: Xcode 15.4のiPhone SimulatorでWebKitが`.knit` gzip生成中に無応答となる既知のCI環境差を検出し、そのUIテストだけを`XCTSkip`する。iPadの同一`.knit`導線、iPhone／iPadのPNG・PDFネイティブ保存導線は継続実行する。

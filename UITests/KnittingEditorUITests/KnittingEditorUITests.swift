@@ -19,10 +19,10 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 15))
 
         let save = app.buttons["保存"]
-        XCTAssertTrue(save.waitForExistence(timeout: 5))
+        XCTAssertTrue(save.waitForExistence(timeout: 15))
         save.tap()
 
-        XCTAssertTrue(app.buttons["この編み図"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["この編み図"].waitForExistence(timeout: 15))
         XCTAssertTrue(app.buttons["全データ"].exists)
         XCTAssertTrue(app.buttons["復元"].exists)
     }
@@ -37,10 +37,10 @@ final class KnittingEditorUITests: XCTestCase {
         documents.tap()
 
         let newDocument = app.buttons["新しい編み図"]
-        XCTAssertTrue(newDocument.waitForExistence(timeout: 5))
+        XCTAssertTrue(newDocument.waitForExistence(timeout: 15))
         newDocument.tap()
         let nameField = app.textFields["入力"]
-        XCTAssertTrue(nameField.waitForExistence(timeout: 5))
+        XCTAssertTrue(nameField.waitForExistence(timeout: 15))
         nameField.tap()
         nameField.typeText("再起動復元テスト")
         app.buttons["決定"].tap()
@@ -78,10 +78,10 @@ final class KnittingEditorUITests: XCTestCase {
         documents.tap()
 
         let newDocument = app.buttons["新しい編み図"]
-        XCTAssertTrue(newDocument.waitForExistence(timeout: 5))
+        XCTAssertTrue(newDocument.waitForExistence(timeout: 15))
         newDocument.tap()
         let nameField = app.textFields["入力"]
-        XCTAssertTrue(nameField.waitForExistence(timeout: 5))
+        XCTAssertTrue(nameField.waitForExistence(timeout: 15))
         nameField.tap()
         nameField.typeText("M2切替A")
         app.buttons["決定"].tap()
@@ -99,7 +99,7 @@ final class KnittingEditorUITests: XCTestCase {
 
         documents.tap()
         newDocument.tap()
-        XCTAssertTrue(nameField.waitForExistence(timeout: 5))
+        XCTAssertTrue(nameField.waitForExistence(timeout: 15))
         nameField.tap()
         nameField.typeText("M2切替B")
         app.buttons["決定"].tap()
@@ -120,7 +120,7 @@ final class KnittingEditorUITests: XCTestCase {
         let documentA = app.buttons
             .matching(NSPredicate(format: "label BEGINSWITH %@", "M2切替A"))
             .firstMatch
-        XCTAssertTrue(documentA.waitForExistence(timeout: 5))
+        XCTAssertTrue(documentA.waitForExistence(timeout: 15))
         documentA.tap()
         XCTAssertTrue(
             webView.otherElements
@@ -133,7 +133,7 @@ final class KnittingEditorUITests: XCTestCase {
         let documentB = app.buttons
             .matching(NSPredicate(format: "label BEGINSWITH %@", "M2切替B"))
             .firstMatch
-        XCTAssertTrue(documentB.waitForExistence(timeout: 5))
+        XCTAssertTrue(documentB.waitForExistence(timeout: 15))
         documentB.tap()
         XCTAssertTrue(
             webView.otherElements
@@ -153,7 +153,7 @@ final class KnittingEditorUITests: XCTestCase {
 
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 15))
         let save = app.buttons["保存"]
-        XCTAssertTrue(save.waitForExistence(timeout: 5))
+        XCTAssertTrue(save.waitForExistence(timeout: 15))
         save.tap()
 
         let currentDocument = app.buttons["この編み図"]
@@ -185,17 +185,17 @@ final class KnittingEditorUITests: XCTestCase {
 
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 15))
         let save = app.buttons["保存"]
-        XCTAssertTrue(save.waitForExistence(timeout: 5))
+        XCTAssertTrue(save.waitForExistence(timeout: 15))
         save.tap()
 
         let png = app.buttons["PNGを保存"]
-        XCTAssertTrue(png.waitForExistence(timeout: 5))
+        XCTAssertTrue(png.waitForExistence(timeout: 15))
         png.tap()
         XCTAssertTrue(app.buttons["ファイルに保存"].waitForExistence(timeout: 15))
         app.buttons["キャンセル"].tap()
 
         let pdf = app.buttons["PDFを保存"]
-        XCTAssertTrue(pdf.waitForExistence(timeout: 5))
+        XCTAssertTrue(pdf.waitForExistence(timeout: 15))
         pdf.tap()
         XCTAssertTrue(app.buttons["ファイルに保存"].waitForExistence(timeout: 15))
         app.buttons["キャンセル"].tap()
