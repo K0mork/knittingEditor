@@ -83,6 +83,14 @@
 - 未実施: 実機、TestFlight、App Store署名。
 - 配布影響: ナビゲーション許可処理の型注釈のみ。許可するURL schemeの方針は変更しない。
 
+## 2026-09-20: App Storeスクリーンショット下書きを保存
+
+- 変更: 初期データを消去したiOS 18.2のiPhone 16／iPad (10th generation) Simulatorから、App Store画面確認用PNGを`docs/screenshots/`へ保存し、取得条件を`docs/SCREENSHOTS.md`へ記録した。
+- 主なファイル: `docs/screenshots/iphone-16-editor-simulator.png`、`docs/screenshots/ipad-10-editor-simulator.png`、`docs/SCREENSHOTS.md`、`TODO.md`、`docs/APP_STORE_CHECKLIST.md`
+- テスト: `sips`で1179×2556／1640×2360の解像度を確認し、画像を目視確認した。
+- 未実施: 起動画面の撮影、実機・TestFlightでの最終スクリーンショット、App Store Connect登録。
+- 配布影響: ドキュメント用の下書き画像を追加した。アプリbundleや実行時挙動は変更しない。
+
 ## 2026-09-20: AppIcon・起動画面を含むRelease Archiveを再検証
 
 - 変更: コード変更はない。AppIconと`LaunchBackground`追加後の提出候補bundleをRelease Archiveから再検査した。

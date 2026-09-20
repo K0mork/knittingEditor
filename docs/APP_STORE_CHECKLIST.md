@@ -6,6 +6,7 @@
 - [ ] AppIconの最終デザインと全サイズを登録する。
 - [ ] 起動画面を確認する。
 - [ ] iPhone／iPadの実機スクリーンショットを撮影する。
+- [x] iPhone 16／iPad (10th generation) Simulatorのスクリーンショット下書きを`docs/screenshots/`へ保存する。
 - [x] `App/PrivacyInfo.xcprivacy`を同梱し、収集データなし・トラッキングなしと一致させる。
 - [x] アプリ内ヘルプへプライバシーとサポート導線を同梱する。
 - [x] 公開Privacy Policy本文を`docs/PRIVACY_POLICY.md`へ用意する。
