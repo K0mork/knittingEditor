@@ -11,6 +11,14 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-20: M3 `.knit`相互運用fixtureを固定
+
+- 変更: Web版出力とアプリ版搬送で共有するgzip JSONの最小`.knit` fixtureを追加した。Webの`importBackup`はfixtureを実際に復元し、Swift単体テストは同じバイト列を型付き`exportFile`メッセージへ包んでも変化しないことを検証する。アプリ側でpayloadを再シリアライズしない方針を`docs/NATIVE_BRIDGE.md`へ明記した。
+- 主なファイル: `test-fixtures/knitting-editor-v2-interop.knit.b64`、`Web/src/storage/database.test.ts`、`Tests/KnittingEditorAppTests/NativeBridgeMessageTests.swift`、`project.yml`、`docs/NATIVE_BRIDGE.md`
+- テスト: Webのfixture復元テストとSwiftのfixture搬送テストを追加した。
+- 未実施: Files／AirDrop／共有先を使うWeb→アプリ→Webの実機往復は未実施。利用可能な起動済みSimulator／実機がなく、TestFlightも未配布のため、M3のTODO完了項目は維持する。
+- 配布影響: テストfixtureとテストコードの追加のみ。App Store提出物や本番データ形式は変更しない。
+
 ## 2026-09-20: M6プライバシー、サポート、審査準備を追加
 
 - 変更: `PrivacyInfo.xcprivacy`をアプリバンドルへ追加し、トラッキングなし・収集データなし・宣言対象APIなしを明記した。アプリ内ヘルプへ端末内処理、アプリ削除時のデータ消失、GitHub Issuesサポート導線を追加した。ユーザーがリンクを選んだ場合だけSwift側でSafariを開く。App Review 4.2向け審査メモとApp Store提出チェックリストを追加した。

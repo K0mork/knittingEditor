@@ -9,6 +9,9 @@ export default defineConfig({
     sourcemap: true,
     chunkSizeWarningLimit: 900,
   },
+  server: {
+    fs: { allow: ['..'] },
+  },
   test: {
     environment: 'jsdom',
     include: ['src/**/*.test.ts'],
