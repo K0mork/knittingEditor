@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>棒針編み図エディタ</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="app-shell">
+    <h1>棒針編み図エディタ</h1>
+    <p class="subtitle">ローカルWeb資産の起動確認</p>
+
+    <section class="status-card" aria-labelledby="status-heading">
+      <h2 id="status-heading">M0 技術検証</h2>
+      <ul id="capabilities" class="capabilities" aria-live="polite"></ul>
+    </section>
+
+    <section class="counter-card" aria-labelledby="counter-heading">
+      <h2 id="counter-heading">IndexedDB 永続化確認</h2>
+      <p>保存回数: <strong id="save-count">読み込み中</strong></p>
+      <button id="save-button" type="button">試験データを保存</button>
+      <p id="save-status" class="status" role="status"></p>
+    </section>
+
+    <canvas id="pointer-canvas" width="320" height="160" aria-label="Pointer EventsとCanvasの確認"></canvas>
+  </main>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

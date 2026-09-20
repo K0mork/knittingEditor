@@ -41,7 +41,23 @@ SwiftUI application
     └── PNG / PDF generators
 ```
 
+初期実装では`project.yml`をXcodeGen 2.46.0で生成し、生成物の`knittingEditor.xcodeproj`もリポジトリへ保存します。SwiftUIの入口は`App/KnittingEditorApp.swift`、ローカルWebコンテナは`App/WebViewContainer.swift`と`App/LocalWebSchemeHandler.swift`です。Web資産は`AppResources/Web/`に置き、ビルド時にアプリバンドルへコピーします。
+
+対象OSは技術検証の初期値としてiOS 17.0以上、iPhone・iPad（`TARGETED_DEVICE_FAMILY=1,2`）に決定しました。実機での対応端末確認はM0の未完了項目です。
+
+プロジェクト生成とコンパイルの基本コマンドは次のとおりです。
+
+```sh
+xcodegen generate --spec project.yml
+xcodebuild -project knittingEditor.xcodeproj -scheme knittingEditor \
+  -sdk iphonesimulator -configuration Debug CODE_SIGNING_ALLOWED=NO build
+xcodebuild -project knittingEditor.xcodeproj -scheme knittingEditor \
+  -sdk iphonesimulator -configuration Debug CODE_SIGNING_ALLOWED=NO build-for-testing
+```
+
 公開中の`https://knittingeditor.com/`は読み込みません。Viteのアプリ用ビルドをXcodeバンドルへ格納し、HTML、JavaScript、記号、WorkerをローカルURLから読み込みます。
+
+M0の初期コンテナは`knitting-local://bundle/index.html`という固定originを`WKURLSchemeHandler`で提供します。`WKWebsiteDataStore.default()`を使い、実行時に外部URLを許可しません。現在の`AppResources/Web/`はCanvas、Pointer Events、Blob、IndexedDB、module Workerを確認する小さな技術検証画面です。実際のWeb版編集資産への置換はM1で行います。
 
 ## 4. Web版から再利用する範囲
 

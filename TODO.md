@@ -5,9 +5,9 @@
 ## M0: 技術検証・基盤（P0）
 
 - [ ] Apple Developer Team、Bundle ID、アプリ名、署名方法を決定する
-- [ ] 対象iOS・iPadOSの下限と対応端末を決定する
-- [ ] SwiftUIユニバーサルアプリのXcodeプロジェクトを作成する
-- [ ] ローカルWeb資産を読み込む`WKWebView`の最小実装を作る
+- [x] 対象iOS・iPadOSの下限と対応端末を決定する（iOS 17.0以上、iPhone・iPad）
+- [x] SwiftUIユニバーサルアプリのXcodeプロジェクトを作成する
+- [x] ローカルWeb資産を読み込む`WKWebView`の最小実装を作る
 - [ ] ローカルoriginと永続`WKWebsiteDataStore`の更新耐性を確認する
 - [ ] module Worker、Blob、Canvas、IndexedDB、Pointer Eventsの実機PoCを行う
 - [ ] 機内モードで起動でき、外部通信がないことを確認する

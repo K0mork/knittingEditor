@@ -1,0 +1,42 @@
+name: knittingEditor
+
+options:
+  bundleIdPrefix: com.k0mork
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+  developmentLanguage: ja
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    TARGETED_DEVICE_FAMILY: "1,2"
+    SUPPORTS_MACCATALYST: NO
+
+targets:
+  knittingEditor:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+      - path: AppResources/Web
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.k0mork.knittingEditor
+        INFOPLIST_FILE: App/Info.plist
+        CODE_SIGN_STYLE: Automatic
+    scheme:
+      testTargets:
+        - knittingEditorTests
+
+  knittingEditorTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests/KnittingEditorAppTests
+    dependencies:
+      - target: knittingEditor
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.k0mork.knittingEditor.tests

@@ -34,7 +34,7 @@ Web版 `/Users/komorikouki/git/knittingEditor` は参照元です。ユーザー
 ```text
 App/                 SwiftUI entry point and lifecycle
 AppBridge/           WKWebView and typed native bridge
-AppResources/Web/    generated local web bundle; do not edit directly
+AppResources/Web/    generated local web bundle; M0の技術検証fixtureのみ直接編集可。M1以降は生成物を直接編集しない
 Web/                 app-specific React/TypeScript source
 Tests/               Swift unit tests
 UITests/             XCUITest
