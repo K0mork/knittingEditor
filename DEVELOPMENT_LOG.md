@@ -15,7 +15,7 @@
 
 - 変更: 保存待機ヘルパーを文書名の完全一致から見出しの接頭辞一致へ変更した。入力欄の既定値が文書名へ続く実装に合わせ、文書切替テストではA/Bそれぞれの編集直後、アプリ更新seedでは編集直後に保存完了を待つようにした。誤っていた文書切替テストへのfixture名待機も除去した。
 - 主なファイル: `UITests/KnittingEditorUITests/KnittingEditorUITests.swift`
-- テスト: iPhone／iPad UIテスト、アプリ更新probe、webテスト、Release archive検証を実行する。
+- テスト: `xcodebuild -project knittingEditor.xcodeproj -scheme knittingEditor -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.2' -only-testing:knittingEditorUITests/KnittingEditorUITests/testDocumentSwitchAutosavesEachDocument -only-testing:knittingEditorUITests/KnittingEditorUITests/testEditAndRelaunchRestoresLocalDocument test CODE_SIGNING_ALLOWED=NO`で2件成功・0 failures。`scripts/simulate-app-update.sh`をiPhone 16とローカルiPad 10 Simulatorで実行し、version 1保存・version 2上書き・IndexedDB復元が成功した。GitHub Actions run `35543109794`でWeb、iPhone／iPad UIテスト、iPhone／iPad app-update、Release Archiveの全6ジョブが成功した。
 - 未実施: 実機の保存完了・アプリ更新、Apple Developer署名、TestFlight。Simulatorの保存待機成功だけでは実機ゲートを完了にしない。
 - 配布影響: アプリ本体、保存形式、Bundle ID、外部通信方針は変更しない。UIテストの保存完了判定だけを実際のアクセシビリティ見出しへ合わせる。
 
