@@ -35,6 +35,14 @@
 - 未実施: 機内モード中の実機／Simulatorで通信要求を監視する試験は未実施。M5の実行時オフライン項目は未完了のままにする。
 - 配布影響: bundle生成設定とCI検査のみ。外部通信機能は追加していない。
 
+## 2026-09-20: M4 Canvasのアクセシビリティ情報を追加
+
+- 変更: Canvasをフォーカス可能な`role=application`として公開し、盤面寸法、現在の編集モード、選択範囲を`aria-label`で示す説明を追加した。盤面操作の説明を視覚的に隠した補助文へ分離し、編み図名の保存中状態と処理中・通知メッセージにライブリージョン属性を付与した。
+- 主なファイル: `Web/src/canvas/BoardCanvas.tsx`、`Web/src/App.tsx`、`Web/src/styles.css`、`TODO.md`
+- テスト: `(cd Web && npm test)`と`npm run build`を実行する。DOMの読み上げ順、VoiceOver、Dynamic Typeは実機で確認していない。
+- 未実施: iPhone／iPad実機のVoiceOverフォーカス順、外付け入力、Dynamic Type、Canvasジェスチャーは未実施。M4の実機項目は維持する。
+- 配布影響: Web UIのアクセシビリティ属性と非表示説明のみ変更。権限や外部通信は追加していない。
+
 ## 2026-09-20: M6プライバシー、サポート、審査準備を追加
 
 - 変更: `PrivacyInfo.xcprivacy`をアプリバンドルへ追加し、トラッキングなし・収集データなし・宣言対象APIなしを明記した。アプリ内ヘルプへ端末内処理、アプリ削除時のデータ消失、GitHub Issuesサポート導線を追加した。ユーザーがリンクを選んだ場合だけSwift側でSafariを開く。App Review 4.2向け審査メモとApp Store提出チェックリストを追加した。

@@ -302,7 +302,7 @@ export default function App() {
 
   return <div className="app-shell">
     <header className="app-header">
-      <div><h1>棒針編み図エディタ</h1><p>{activeDocument.name}{dirty ? '（保存中…）' : ''}</p></div>
+      <div><h1>棒針編み図エディタ</h1><p aria-live="polite" aria-atomic="true">{activeDocument.name}{dirty ? '（保存中…）' : ''}</p></div>
       <div className="header-actions">
         <a className="header-guide" href="/guide/">使い方</a>
         <button className="header-document" onClick={() => togglePanel('documents')}>編み図</button>
@@ -392,8 +392,8 @@ export default function App() {
 
     <input ref={fileInputRef} hidden type="file" accept=".knit,application/gzip" onChange={(event) => { void restore(event.target.files?.[0]); event.target.value = ''; }} />
     {dialog && <AppDialog request={dialog} onResolve={resolveDialog} />}
-    {busy && <div className="busy" role="status"><span className="spinner" />{busy}</div>}
-    {message && <div className="toast" role="status">{message}</div>}
+    {busy && <div className="busy" role="status" aria-live="polite"><span className="spinner" />{busy}</div>}
+    {message && <div className="toast" role="status" aria-live="polite" aria-atomic="true">{message}</div>}
     <footer><span>© 2026 棒針編み図エディタ</span><a href="/guide/">使い方</a></footer>
   </div>;
 }

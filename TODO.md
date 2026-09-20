@@ -63,6 +63,7 @@
 - [ ] Apple Pencilを通常入力として確認する
 - [x] `prompt`／`confirm`をアプリ内ダイアログへ置換する
 - [ ] VoiceOverラベル、フォーカス順、状態通知を整える
+- [x] Canvasと保存状態へアクセシブルな名前・状態通知を付与する（実機VoiceOver確認は別途必要）
 - [ ] Dynamic Typeと44 pt以上の操作領域を確認する
 - [ ] 大規模PNG/PDFの上限とエラー表示を実機検証する
 
