@@ -15,9 +15,16 @@
 
 - 変更: 固定originのWebViewへ`fetch`、`XMLHttpRequest`、`WebSocket`、`EventSource`の呼び出しを記録するテスト用スクリプトを注入し、エディタ起動後に要求が空であることをSwift XCTestで検証する。既存の生成bundle静的検査と組み合わせ、外部通信を追加しない方針をCIで回帰検証する。
 - 主なファイル: `Tests/KnittingEditorAppTests/LocalWebSchemeHandlerTests.swift`、`TODO.md`
-- テスト: XcodeBuildMCPでiPhone 16 Simulator（1件成功、2026-09-21）とiPad (10th generation) Simulator（1件成功、2026-09-21）を実行した。GitHub Actionsでは次のCIで実行する。機内モードそのもの、実機の通信監視は別の配布前ゲートとして残す。
-- 未実施: 変更後CI、機内モード実機、Apple Developer署名、TestFlight。
+- テスト: XcodeBuildMCPでiPhone 16 Simulator（1件成功、2026-09-21）とiPad (10th generation) Simulator（1件成功、2026-09-21）を実行した。GitHub Actionsでの結果は直後のCI記録に分けて記載する。機内モードそのもの、実機の通信監視は別の配布前ゲートとして残す。
+- 未実施: 機内モード実機、Apple Developer署名、TestFlight。
 - 配布影響: アプリ本体のWeb実装・外部通信設定は変更せず、テスト用JavaScript注入だけを追加した。
+
+## 2026-09-21: ランタイム通信検出テストを含むCI成功
+
+- 変更: `204a4e0`のSwift XCTestへ追加したローカルWebランタイム通信検出をCIで実行した。
+- テスト: GitHub Actions run `35527185136`でWeb、Swift/XCUITestのiPhone 16／iPad (10th generation) matrix、同一Bundle IDのアプリ更新復元、Release Archive、bundle検査が全て成功した。
+- 未実施: 機内モード実機、Files／AirDrop実機、Apple Developer署名、TestFlight。
+- 配布影響: 外部通信を追加せず、CIでの回帰検出範囲を拡張した。
 
 ## 2026-09-21: CI全matrix成功を確認
 
