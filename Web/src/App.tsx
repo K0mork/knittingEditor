@@ -26,6 +26,50 @@ type DialogRequest =
   | { kind: 'confirm'; title: string; resolve: (value: boolean) => void };
 const STITCH_CATEGORY_ORDER: StitchCategory[] = ['basic', 'decrease', 'cable', 'twist', 'utility'];
 
+function useModalFocus<T extends HTMLElement>(onEscape: () => void, initialSelector?: string) {
+  const ref = useRef<T | null>(null);
+  const escapeRef = useRef(onEscape);
+  escapeRef.current = onEscape;
+
+  useEffect(() => {
+    const root = ref.current;
+    if (!root) return;
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : undefined;
+    const focusable = () => Array.from(root.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
+    )).filter((element) => !element.hidden && element.getClientRects().length > 0);
+    const initial = initialSelector ? root.querySelector<HTMLElement>(initialSelector) : undefined;
+    const frame = requestAnimationFrame(() => (initial ?? focusable()[0])?.focus());
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        escapeRef.current();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const elements = focusable();
+      if (elements.length === 0) return;
+      const first = elements[0];
+      const last = elements[elements.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    root.addEventListener('keydown', handleKeyDown);
+    return () => {
+      cancelAnimationFrame(frame);
+      root.removeEventListener('keydown', handleKeyDown);
+      previous?.focus();
+    };
+  }, [initialSelector]);
+
+  return ref;
+}
+
 export default function App() {
   const [documents, setDocuments] = useState<ChartDocument[]>([]);
   const [activeDocument, setActiveDocument] = useState<ChartDocument>();
@@ -346,7 +390,7 @@ export default function App() {
 
   return <div className="app-shell">
     <header className="app-header">
-      <div><h1>棒針編み図エディタ</h1><p aria-live="polite" aria-atomic="true">{activeDocument.name}{dirty ? '（保存中…）' : ''}</p></div>
+      <div className="app-title"><h1>棒針編み図エディタ</h1><p aria-live="polite" aria-atomic="true">{activeDocument.name}{dirty ? '（保存中…）' : ''}</p></div>
       <div className="header-actions">
         <a className="header-guide" href="/guide/">使い方</a>
         <button className="header-document" onClick={() => togglePanel('documents')}>編み図</button>
@@ -370,30 +414,13 @@ export default function App() {
       {stitchPickerOpen && <div className="stitch-picker-backdrop" onMouseDown={(event) => {
         if (event.target === event.currentTarget) setStitchPickerOpen(false);
       }}>
-        <section className="stitch-picker" role="dialog" aria-modal="true" aria-labelledby="stitch-picker-title">
-          <div className="stitch-picker-heading"><div><h2 id="stitch-picker-title">編み目記号</h2><p>記号を選ぶと描画モードになります</p></div><button onClick={() => setStitchPickerOpen(false)}>閉じる</button></div>
-          {STITCH_CATEGORY_ORDER.map((category) => <div className="stitch-category" key={category}>
-            <h3>{STITCH_CATEGORY_LABELS[category]}</h3>
-            <div className="stitch-grid">
-              {STITCHES.filter((stitch) => stitch.category === category).map((stitch) => <button
-                className={stitch.key === selectedStitch ? 'stitch-option selected' : 'stitch-option'}
-                key={stitch.key}
-                aria-pressed={stitch.key === selectedStitch}
-                onClick={() => {
-                  setSelectedStitch(stitch.key);
-                  setMode('draw');
-                  setSelection(undefined);
-                  setStitchPickerOpen(false);
-                  trackAnalyticsEvent('stitch_selected', { stitch_key: stitch.key });
-                }}
-              >
-                <span className="stitch-option-symbol" aria-hidden="true" dangerouslySetInnerHTML={{ __html: stitch.svg }} />
-                <span className="stitch-option-name">{stitch.name}</span>
-                <small>{stitch.width}×{stitch.height}目</small>
-              </button>)}
-            </div>
-          </div>)}
-        </section>
+        <StitchPicker onClose={() => setStitchPickerOpen(false)} selectedStitch={selectedStitch} onSelect={(key) => {
+          setSelectedStitch(key);
+          setMode('draw');
+          setSelection(undefined);
+          setStitchPickerOpen(false);
+          trackAnalyticsEvent('stitch_selected', { stitch_key: key });
+        }} />
       </div>}
 
       {selection && <div className="selection-actions" role="toolbar" aria-label="選択範囲の操作">
@@ -459,6 +486,32 @@ function GridControls({ board, changed, mutateStructure, promptIndex, confirmAct
   </div>;
 }
 
+function StitchPicker({ onClose, selectedStitch, onSelect }: {
+  onClose: () => void;
+  selectedStitch: string;
+  onSelect: (key: string) => void;
+}) {
+  const pickerRef = useModalFocus<HTMLElement>(onClose, '.stitch-picker-heading button');
+  return <section ref={pickerRef} className="stitch-picker" role="dialog" aria-modal="true" aria-labelledby="stitch-picker-title" aria-describedby="stitch-picker-description">
+    <div className="stitch-picker-heading"><div><h2 id="stitch-picker-title">編み目記号</h2><p id="stitch-picker-description">記号を選ぶと描画モードになります。Escapeで閉じます。</p></div><button onClick={onClose}>閉じる</button></div>
+    {STITCH_CATEGORY_ORDER.map((category) => <div className="stitch-category" key={category}>
+      <h3>{STITCH_CATEGORY_LABELS[category]}</h3>
+      <div className="stitch-grid">
+        {STITCHES.filter((stitch) => stitch.category === category).map((stitch) => <button
+          className={stitch.key === selectedStitch ? 'stitch-option selected' : 'stitch-option'}
+          key={stitch.key}
+          aria-pressed={stitch.key === selectedStitch}
+          onClick={() => onSelect(stitch.key)}
+        >
+          <span className="stitch-option-symbol" aria-hidden="true" dangerouslySetInnerHTML={{ __html: stitch.svg }} />
+          <span className="stitch-option-name">{stitch.name}</span>
+          <small>{stitch.width}×{stitch.height}目</small>
+        </button>)}
+      </div>
+    </div>)}
+  </section>;
+}
+
 function ExportControls({ board, onPng, onPdf, onBackup, onRestore }: {
   board: Board; onPng: (size: number) => void; onPdf: (layout: 'single' | 'tiled', orientation: 'portrait' | 'landscape', mm: number) => void;
   onBackup: (all: boolean) => void; onRestore: () => void;
@@ -485,14 +538,16 @@ function AppDialog({ request, onResolve }: {
 }) {
   const [value, setValue] = useState(request.kind === 'prompt' ? request.defaultValue : '');
   useEffect(() => { setValue(request.kind === 'prompt' ? request.defaultValue : ''); }, [request]);
+  const dialogRef = useModalFocus<HTMLElement>(() => onResolve(request.kind === 'prompt' ? null : false), request.kind === 'prompt' ? 'input' : 'button.primary');
   return <div className="app-dialog-backdrop" role="presentation" onMouseDown={(event) => {
     if (event.target === event.currentTarget) onResolve(request.kind === 'prompt' ? null : false);
   }}>
-    <section className="app-dialog" role="dialog" aria-modal="true" aria-labelledby="app-dialog-title" onKeyDown={(event) => {
-      if (event.key === 'Escape') onResolve(request.kind === 'prompt' ? null : false);
+    <section ref={dialogRef} className="app-dialog" role="dialog" aria-modal="true" aria-labelledby="app-dialog-title" aria-describedby="app-dialog-description" onKeyDown={(event) => {
+      if (event.key === 'Enter' && request.kind === 'prompt' && event.target instanceof HTMLInputElement) onResolve(value);
     }}>
       <h2 id="app-dialog-title">{request.title}</h2>
-      {request.kind === 'prompt' && <input autoFocus aria-label="入力" value={value} onChange={(event) => setValue(event.target.value)} />}
+      <p id="app-dialog-description" className="visually-hidden">入力を確認して決定またはキャンセルを選択してください。Escapeでキャンセルできます。</p>
+      {request.kind === 'prompt' && <input aria-label="入力" value={value} onChange={(event) => setValue(event.target.value)} />}
       <div className="app-dialog-actions">
         <button onClick={() => onResolve(request.kind === 'prompt' ? null : false)}>キャンセル</button>
         <button className="primary" autoFocus={request.kind === 'confirm'} onClick={() => onResolve(request.kind === 'prompt' ? value : true)}>決定</button>

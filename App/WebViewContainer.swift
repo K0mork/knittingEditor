@@ -267,20 +267,24 @@ struct WebViewContainer: UIViewRepresentable {
             let alertStyle: UIAlertController.Style = UIDevice.current.userInterfaceIdiom == .pad ? .alert : .actionSheet
             let alert = UIAlertController(title: "ファイルを保存", message: filename, preferredStyle: alertStyle)
             alert.addAction(UIAlertAction(title: "ファイルに保存", style: .default) { [weak self, weak presenter] _ in
-                guard let self, let presenter, let pendingExportURL = self.pendingExportURL else { return }
-                let picker = UIDocumentPickerViewController(forExporting: [pendingExportURL], asCopy: true)
-                picker.delegate = self
-                presenter.present(picker, animated: true)
+                DispatchQueue.main.async { [weak self, weak presenter] in
+                    guard let self, let presenter, let pendingExportURL = self.pendingExportURL else { return }
+                    let picker = UIDocumentPickerViewController(forExporting: [pendingExportURL], asCopy: true)
+                    picker.delegate = self
+                    presenter.present(picker, animated: true)
+                }
             })
             alert.addAction(UIAlertAction(title: "共有", style: .default) { [weak self, weak presenter] _ in
-                guard let self, let presenter, let pendingExportURL = self.pendingExportURL else { return }
-                let activity = UIActivityViewController(activityItems: [pendingExportURL], applicationActivities: nil)
-                activity.completionWithItemsHandler = { [weak self] _, _, _, _ in self?.cleanupPendingExport() }
-                if let popover = activity.popoverPresentationController {
-                    popover.sourceView = self.webView
-                    popover.sourceRect = self.webView?.bounds ?? .zero
+                DispatchQueue.main.async { [weak self, weak presenter] in
+                    guard let self, let presenter, let pendingExportURL = self.pendingExportURL else { return }
+                    let activity = UIActivityViewController(activityItems: [pendingExportURL], applicationActivities: nil)
+                    activity.completionWithItemsHandler = { [weak self] _, _, _, _ in self?.cleanupPendingExport() }
+                    if let popover = activity.popoverPresentationController {
+                        popover.sourceView = self.webView
+                        popover.sourceRect = self.webView?.bounds ?? .zero
+                    }
+                    presenter.present(activity, animated: true)
                 }
-                presenter.present(activity, animated: true)
             })
             alert.addAction(UIAlertAction(title: "キャンセル", style: .cancel) { [weak self] _ in self?.cleanupPendingExport() })
             if let popover = alert.popoverPresentationController {

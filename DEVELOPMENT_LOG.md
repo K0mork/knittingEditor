@@ -11,6 +11,14 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-21: 狭幅レイアウト・モーダルアクセシビリティ・ネイティブ出力表示を強化
+
+- 変更: iPhone狭幅で編み図名が操作ボタンへ侵入しないようヘッダーを可変幅・省略表示にし、ドロワー／記号選択／アプリ内ダイアログへSafe Area、動的高さ、スクロール封じ、Escape、Tabフォーカストラップ、初期フォーカス、復帰フォーカスを追加した。ダイアログのEnter確定と説明用アクセシブル名も整理した。Swift側は保存アクションシートの自動dismiss完了後にFiles／共有画面をMain RunLoopで提示し、二重提示を避ける。SimulatorのUIDocumentPicker外部ウィンドウはXCTestのタップが受け付けられないため、Picker表示までを検証してキャンセル操作を実機ゲートへ分離した。
+- 主なファイル: `Web/src/App.tsx`、`Web/src/styles.css`、`App/WebViewContainer.swift`、`UITests/KnittingEditorUITests/KnittingEditorUITests.swift`
+- テスト: `(cd Web && npm test)`で6ファイル39テスト成功、`npm run typecheck`成功、`npm run build`成功。iPhone 16／iPad (10th generation) Simulator（iOS 18.2）のXCUITestは各5件成功・失敗0件・3件skip（UIDocumentPickerキャンセル、既存の更新プローブ2件）。Picker表示確認を含むバックアップ導線の単独テストも各1件skipで失敗0件。
+- 未実施: 実機のFilesキャンセル、Safe Area／キーボード／VoiceOver／Dynamic Type／Apple Pencil／大規模出力の実機確認。これらはM4の実機ゲートとして残す。
+- 配布影響: Web機能・`.knit`形式・Bundle ID・外部通信なしの方針は変更しない。モーダル操作と狭幅表示の品質を改善し、ネイティブ保存導線の提示タイミングだけを安定化した。
+
 ## 2026-09-21: 実装品質監査に基づく保存・ブリッジ・バックアップ検証の強化
 
 - 変更: Swiftのnative bridgeでバージョン不一致を`unsupportedVersion`として分類し、外部リンクはメインフレームだけをSafariへ渡すよう制限した。出力一時ファイルの上書き時に前回ファイルを確実に削除し、MIME型から拡張子を補えるようにした。バックグラウンド移行時はSwiftからWeb側の保存Promiseを呼び出し、ブラウザ互換用イベントも同じ保存処理へ接続した。起動失敗を読み込み中画面に隠さず再読み込み案内を表示し、nativeイベント購読を初回一度だけ登録するよう整理した。`.knit`復元では未知の記号ID、盤面・ブロックの範囲外／重複データ、形式不正を拒否し、旧fixtureの直接記号ID形式は受け入れて表示時にpacked形式へ正規化する。

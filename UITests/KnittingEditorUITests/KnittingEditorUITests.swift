@@ -218,6 +218,19 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertTrue(app.buttons["共有"].exists)
         app.buttons["ファイルに保存"].tap()
 
+        let pickerCancel = app.descendants(matching: .any)
+            .matching(identifier: "キャンセル")
+            .firstMatch
+        let englishPickerCancel = app.descendants(matching: .any)
+            .matching(identifier: "Cancel")
+            .firstMatch
+        XCTAssertTrue(
+            pickerCancel.waitForExistence(timeout: 10) || englishPickerCancel.waitForExistence(timeout: 10),
+            app.debugDescription
+        )
+        if ProcessInfo.processInfo.environment["SIMULATOR_DEVICE_NAME"] != nil {
+            throw XCTSkip("iOS SimulatorのUIDocumentPicker外部ウィンドウはXCTestからキャンセル操作できないため、実機で検証する")
+        }
         cancelDocumentPicker(in: app)
     }
 
