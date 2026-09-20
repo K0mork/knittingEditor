@@ -11,6 +11,14 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-21: GitHub ActionsをNode 24対応版へ更新
+
+- 変更: CIの`actions/checkout`をv7、`actions/setup-node`をv7へ更新した。GitHub Actionsの現行runnerでv4がNode.js 20非推奨警告を出していたため、公式アクションのNode24実行版へ揃える。
+- 主なファイル: `.github/workflows/ci.yml`
+- テスト: 変更後CIのWeb、iPhone／iPad、アプリ更新probe、Release Archive全ジョブを確認し、Node.js非推奨警告が消えることを確認する。
+- 未実施: 実機・Apple Developer署名・TestFlight。CIアクション更新のみで、アプリ挙動は変更しない。
+- 配布影響: アプリ本体、保存形式、Bundle ID、外部通信方針は変更しない。CI実行環境のNodeランタイムだけを更新する。
+
 ## 2026-09-21: M0の配布識別子決定状態を分離
 
 - 変更: コード、CI、Archive検査、実機チェックリストで既に`com.k0mork.knittingEditor`へ固定しているBundle IDをTODO上で完了扱いにし、未決定のApple Developer Team・署名方法・App Store表示名から分離した。表示名は既存の英語内部名と日本語の提出案が一致していないため、最終決定までは変更しない。
