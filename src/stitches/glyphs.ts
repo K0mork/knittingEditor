@@ -117,18 +117,15 @@ function twist(): GlyphDefinition {
 
 function twistCross(direction: 'right' | 'left'): GlyphDefinition {
   const leftPrimitives: GlyphPrimitive[] = [
-    line(160, 84, 116, 61),
-    line(84, 39, 40, 16),
-    line(143, 90, 177, 90),
+    line(24, 16, 77, 40),
+    line(128, 61, 176, 84),
+    line(110, 84, 144, 84),
     {
       kind: 'cubic',
-      start: point(40, 84),
+      start: point(38, 79),
       curves: [
-        { control1: point(65, 70), control2: point(84, 59), to: point(105, 48) },
-        { control1: point(122, 38), control2: point(128, 24), to: point(117, 22) },
-        { control1: point(104, 20), control2: point(91, 34), to: point(93, 46) },
-        { control1: point(96, 60), control2: point(111, 61), to: point(122, 51) },
-        { control1: point(136, 39), control2: point(148, 25), to: point(160, 16) },
+        { control1: point(64, 85), control2: point(180, 34), to: point(155, 16) },
+        { control1: point(128, 4), control2: point(61, 58), to: point(78, 88) },
       ],
     },
   ];

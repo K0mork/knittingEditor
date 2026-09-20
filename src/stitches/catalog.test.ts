@@ -104,19 +104,49 @@ describe('stitch catalog', () => {
     const left = getGlyphDefinition('purl_left_cross_twist_stitch')!;
     const rightOver = right.primitives[3];
     const leftOver = left.primitives[3];
-    expect(rightOver).toMatchObject({ kind: 'cubic', start: { x: 160 } });
-    expect(leftOver).toMatchObject({ kind: 'cubic', start: { x: 40 } });
+    expect(rightOver).toMatchObject({
+      kind: 'cubic',
+      start: { x: 162, y: 79 },
+      curves: [
+        { control1: { x: 136, y: 85 }, control2: { x: 20, y: 34 }, to: { x: 45, y: 16 } },
+        { control1: { x: 72, y: 4 }, control2: { x: 139, y: 58 }, to: { x: 122, y: 88 } },
+      ],
+    });
+    expect(leftOver).toMatchObject({
+      kind: 'cubic',
+      start: { x: 38, y: 79 },
+      curves: [
+        { control1: { x: 64, y: 85 }, control2: { x: 180, y: 34 }, to: { x: 155, y: 16 } },
+        { control1: { x: 128, y: 4 }, control2: { x: 61, y: 58 }, to: { x: 78, y: 88 } },
+      ],
+    });
+    expect(left.primitives.slice(0, 3)).toEqual([
+      { kind: 'line', from: { x: 24, y: 16 }, to: { x: 77, y: 40 } },
+      { kind: 'line', from: { x: 128, y: 61 }, to: { x: 176, y: 84 } },
+      { kind: 'line', from: { x: 110, y: 84 }, to: { x: 144, y: 84 } },
+    ]);
     expect(right.primitives.some((primitive) => primitive.kind === 'ellipse')).toBe(false);
     expect(left.primitives.some((primitive) => primitive.kind === 'ellipse')).toBe(false);
   });
 
-  it('draws the twist as a crossed loop rather than an open omega shape', () => {
+  it('keeps the approved twist and purl-twist geometry unchanged', () => {
     const twist = getGlyphDefinition('twist_stitch')!;
-    expect(twist.primitives).toHaveLength(1);
-    expect(twist.primitives[0]).toMatchObject({ kind: 'cubic', start: { x: 17, y: 82 } });
-    if (twist.primitives[0].kind === 'cubic') {
-      expect(twist.primitives[0].curves.at(-1)?.to).toEqual({ x: 83, y: 82 });
-    }
+    const purlTwist = getGlyphDefinition('purl_twist_stitch')!;
+    const approvedTwist = {
+      kind: 'cubic',
+      start: { x: 17, y: 82 },
+      curves: [
+        { control1: { x: 30, y: 83 }, control2: { x: 43, y: 77 }, to: { x: 58, y: 64 } },
+        { control1: { x: 75, y: 49 }, control2: { x: 71, y: 16 }, to: { x: 51, y: 14 } },
+        { control1: { x: 31, y: 12 }, control2: { x: 25, y: 44 }, to: { x: 40, y: 63 } },
+        { control1: { x: 50, y: 76 }, control2: { x: 65, y: 82 }, to: { x: 83, y: 82 } },
+      ],
+    };
+    expect(twist.primitives).toEqual([approvedTwist]);
+    expect(purlTwist.primitives).toEqual([
+      approvedTwist,
+      { kind: 'line', from: { x: 30, y: 94 }, to: { x: 70, y: 94 } },
+    ]);
   });
 
   it('keeps every vector primitive inside its drawing box', () => {
