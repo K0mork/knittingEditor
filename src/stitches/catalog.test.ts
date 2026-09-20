@@ -54,19 +54,43 @@ describe('stitch catalog', () => {
   });
 
   it('separates chart span from stitch consumption', () => {
-    expect(STITCH_BY_KEY.get('right_up_two_one')).toMatchObject({ width: 1, height: 1, consumes: 2, produces: 1 });
-    expect(STITCH_BY_KEY.get('middle_up_three_one')).toMatchObject({ width: 1, height: 1, consumes: 3, produces: 1 });
-    expect(STITCH_BY_KEY.get('slip_stitch')).toMatchObject({ width: 1, height: 1, consumes: 1, produces: 1 });
+    expect(STITCH_BY_KEY.get('right_up_two_one')).toMatchObject({ width: 2, height: 1, consumes: 2, produces: 1 });
+    expect(STITCH_BY_KEY.get('middle_up_three_one')).toMatchObject({ width: 3, height: 1, consumes: 3, produces: 1 });
+    expect(STITCH_BY_KEY.get('slip_stitch')).toMatchObject({ width: 1, height: 2, consumes: 1, produces: 1 });
     expect(STITCH_BY_KEY.get('right_up_three_cross')).toMatchObject({ width: 6, height: 1, consumes: 6, produces: 6 });
   });
 
-  it('uses proportional vector geometry for screen and PDF', () => {
+  it('uses the same vector geometry for screen and PDF without stretching operational footprints', () => {
     for (const stitch of STITCHES.filter((item) => item.renderKind === 'glyph')) {
       const glyph = getGlyphDefinition(stitch.key)!;
-      expect(glyph.width).toBe(stitch.width * 100);
-      expect(glyph.height).toBe(stitch.height * 100);
       expect(glyph.primitives.length).toBeGreaterThan(0);
       expect(glyphPdfCommands(stitch.key)?.commands).toContain(' S Q');
+    }
+    expect(getGlyphDefinition('right_up_three_one')).toMatchObject({ width: 100, height: 100 });
+    expect(STITCH_BY_KEY.get('right_up_three_one')).toMatchObject({ width: 3, height: 1 });
+    expect(getGlyphDefinition('slip_stitch')).toMatchObject({ width: 100, height: 100 });
+    expect(STITCH_BY_KEY.get('slip_stitch')).toMatchObject({ width: 1, height: 2 });
+  });
+
+  it('keeps every vector primitive inside its drawing box', () => {
+    for (const stitch of STITCHES.filter((item) => item.renderKind === 'glyph')) {
+      const glyph = getGlyphDefinition(stitch.key)!;
+      const points = glyph.primitives.flatMap((primitive) => {
+        if (primitive.kind === 'line') return [primitive.from, primitive.to];
+        if (primitive.kind === 'polyline') return primitive.points;
+        if (primitive.kind === 'ellipse') return [
+          { x: primitive.cx - primitive.rx, y: primitive.cy - primitive.ry },
+          { x: primitive.cx + primitive.rx, y: primitive.cy + primitive.ry },
+        ];
+        return [primitive.start, ...primitive.curves.flatMap((curve) => [curve.control1, curve.control2, curve.to])];
+      });
+      for (const point of points) {
+        expect(point.x, `${stitch.key} x`).toBeGreaterThanOrEqual(0);
+        expect(point.x, `${stitch.key} x`).toBeLessThanOrEqual(glyph.width);
+        expect(point.y, `${stitch.key} y`).toBeGreaterThanOrEqual(0);
+        expect(point.y, `${stitch.key} y`).toBeLessThanOrEqual(glyph.height);
+      }
+      expect(stitch.svg).not.toMatch(/NaN|Infinity/);
     }
   });
 

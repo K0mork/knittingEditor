@@ -19,12 +19,13 @@ describe('Board', () => {
     expect(cellStitchId(board.valueAt(2, 4))).toBe(STITCH_BY_KEY.get('knit')!.id);
   });
 
-  it('uses one chart cell for JIS decreases and slip stitches', () => {
+  it('keeps the established footprints for decreases and slip stitches', () => {
     const board = new Board(2, 3);
-    expect(board.place(0, 2, 'right_up_three_one', '#111111')).toBe(true);
-    expect(board.place(1, 2, 'slip_stitch', '#222222')).toBe(true);
-    expect(board.anchorAt(0, 2)).toEqual({ row: 0, col: 2 });
-    expect(board.anchorAt(1, 2)).toEqual({ row: 1, col: 2 });
+    expect(board.place(0, 0, 'right_up_three_one', '#111111')).toBe(true);
+    expect(board.place(0, 1, 'right_up_three_one', '#111111')).toBe(false);
+    board.clear();
+    expect(board.place(0, 2, 'slip_stitch', '#222222')).toBe(true);
+    expect(board.place(1, 2, 'slip_stitch', '#222222')).toBe(false);
   });
 
   it('expands block selection around multi-cell symbols and pastes exact blanks', () => {

@@ -47,14 +47,25 @@ interface CableOptions { purlUnder?: boolean }
 
 function cable(leftCount: number, rightCount: number, direction: 'right' | 'left', options: CableOptions = {}): GlyphDefinition {
   const width = (leftCount + rightCount) * GLYPH_CELL;
-  const leftLines = Array.from({ length: leftCount }, (_, index) => ({
-    from: point((index + 0.5) * GLYPH_CELL, 86),
-    to: point((rightCount + index + 0.5) * GLYPH_CELL, 14),
-  }));
-  const rightLines = Array.from({ length: rightCount }, (_, index) => ({
-    from: point((leftCount + index + 0.5) * GLYPH_CELL, 86),
-    to: point((index + 0.5) * GLYPH_CELL, 14),
-  }));
+  const margin = 22;
+  const rise = 68;
+  const run = width - margin * 2;
+  const length = Math.hypot(run, rise);
+  const normal = point(rise / length, run / length);
+  const spacing = leftCount + rightCount >= 6 ? 10 : 13;
+  const bundle = (count: number, risingRight: boolean) => Array.from({ length: count }, (_, index) => {
+    const offset = (index - (count - 1) / 2) * spacing;
+    const offsetX = normal.x * offset;
+    const offsetY = normal.y * offset * (risingRight ? 1 : -1);
+    const from = risingRight ? point(margin, 84) : point(width - margin, 84);
+    const to = risingRight ? point(width - margin, 16) : point(margin, 16);
+    return {
+      from: point(from.x + offsetX, from.y + offsetY),
+      to: point(to.x + offsetX, to.y + offsetY),
+    };
+  });
+  const leftLines = bundle(leftCount, true);
+  const rightLines = bundle(rightCount, false);
   const over = direction === 'right' ? leftLines : rightLines;
   const under = direction === 'right' ? rightLines : leftLines;
   const interpolate = (from: GlyphPoint, to: GlyphPoint, amount: number) => point(
@@ -70,7 +81,8 @@ function cable(leftCount: number, rightCount: number, direction: 'right' | 'left
   }
   for (const strand of over) primitives.push(line(strand.from.x, strand.from.y, strand.to.x, strand.to.y));
   if (options.purlUnder) {
-    for (const strand of under) primitives.push(line(strand.to.x - 16, strand.to.y, strand.to.x + 16, strand.to.y));
+    const top = under[Math.floor((under.length - 1) / 2)].to;
+    primitives.push(line(top.x - 17, top.y, top.x + 17, top.y));
   }
   return { width, height: GLYPH_CELL, strokeWidth: leftCount + rightCount >= 6 ? 7 : 9, primitives };
 }
@@ -90,16 +102,15 @@ function twist(): GlyphDefinition {
 }
 
 function twistCross(direction: 'right' | 'left'): GlyphDefinition {
-  const base = cable(1, 1, 'right', { purlUnder: true });
-  const loop: GlyphPrimitive = {
-    kind: 'cubic', start: point(72, 78), curves: [
-      { control1: point(87, 62), control2: point(84, 39), to: point(66, 34) },
-      { control1: point(48, 29), control2: point(36, 44), to: point(42, 59) },
-      { control1: point(49, 74), control2: point(66, 74), to: point(82, 64) },
-    ],
-  };
-  const primitives = [...base.primitives, loop];
-  return direction === 'right' ? { ...base, primitives } : { ...base, primitives: mirror(primitives, base.width) };
+  const primitives: GlyphPrimitive[] = [
+    line(150, 86, 116, 61),
+    line(84, 39, 50, 14),
+    line(34, 14, 66, 14),
+    line(50, 86, 79, 65),
+    { kind: 'ellipse', cx: 100, cy: 50, rx: 23, ry: 19 },
+    line(121, 35, 150, 14),
+  ];
+  return glyph(2, 1, direction === 'right' ? primitives : mirror(primitives, 2 * GLYPH_CELL));
 }
 
 const glyphs: Record<string, GlyphDefinition> = {
@@ -126,7 +137,7 @@ const glyphs: Record<string, GlyphDefinition> = {
   left_up_three_cross: cable(3, 3, 'left'),
   slip_stitch: glyph(1, 1, [polyline(16, 16, 50, 88, 84, 16)]),
   twist_stitch: twist(),
-  purl_twist_stitch: glyph(1, 1, [...twist().primitives, line(28, 86, 72, 86)]),
+  purl_twist_stitch: glyph(1, 1, [...twist().primitives, line(30, 94, 70, 94)]),
 };
 
 export function getGlyphDefinition(key: string): GlyphDefinition | undefined {

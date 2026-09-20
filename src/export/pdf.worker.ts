@@ -122,7 +122,8 @@ export function buildPdf(request: PdfRequest): Uint8Array {
           const green = ((color >> 8) & 255) / 255;
           const blue = (color & 255) / 255;
           const x = originX + localCol * cellSize;
-          const y = originY + (tile.rows - localRow - stitch.height) * cellSize;
+          const glyphHeight = stitch.glyph ? stitch.glyph.height / GLYPH_CELL : 1;
+          const y = originY + (tile.rows - localRow - glyphHeight) * cellSize;
           const scale = cellSize / GLYPH_CELL;
           rowCommands += `${red.toFixed(3)} ${green.toFixed(3)} ${blue.toFixed(3)} RG ${red.toFixed(3)} ${green.toFixed(3)} ${blue.toFixed(3)} rg q ${scale.toFixed(5)} 0 0 ${scale.toFixed(5)} ${x.toFixed(3)} ${y.toFixed(3)} cm /S${stitchId} Do Q\n`;
         }

@@ -3,7 +3,7 @@ import { boardSizeBucket, countBucket, trackAnalyticsEvent, trackFirstEdit } fro
 import { BoardCanvas, type CanvasMode } from './canvas/BoardCanvas';
 import { Board, type PatternBlock, type Rect } from './model/Board';
 import {
-  STITCHES, STITCH_CATEGORY_LABELS, STITCH_STANDARD_LABELS, type StitchCategory,
+  STITCHES, STITCH_CATEGORY_LABELS, type StitchCategory,
 } from './stitches/catalog';
 import {
   boardFromDocument, createDocument, deleteBlock, deleteDocument, duplicateDocument,
@@ -285,13 +285,7 @@ export default function App() {
         if (event.target === event.currentTarget) setStitchPickerOpen(false);
       }}>
         <section className="stitch-picker" role="dialog" aria-modal="true" aria-labelledby="stitch-picker-title">
-          <div className="stitch-picker-heading"><div><h2 id="stitch-picker-title">編み目記号</h2><p>JIS L 0201「棒針編目」を基準にしています</p></div><button onClick={() => setStitchPickerOpen(false)}>閉じる</button></div>
-          <div className="stitch-standard-guide">
-            <span><b>JIS</b> 規格表の記号</span>
-            <span><b>JIS派生</b> 規格の裏目付票を適用</span>
-            <span><b>拡張</b> 規格記号を組み合わせた非収載記号</span>
-            <span><b>補助・JIS外</b> 編集用機能</span>
-          </div>
+          <div className="stitch-picker-heading"><div><h2 id="stitch-picker-title">編み目記号</h2><p>記号を選ぶと描画モードになります</p></div><button onClick={() => setStitchPickerOpen(false)}>閉じる</button></div>
           {STITCH_CATEGORY_ORDER.map((category) => <div className="stitch-category" key={category}>
             <h3>{STITCH_CATEGORY_LABELS[category]}</h3>
             <div className="stitch-grid">
@@ -309,8 +303,7 @@ export default function App() {
               >
                 <span className="stitch-option-symbol" aria-hidden="true" dangerouslySetInnerHTML={{ __html: stitch.svg }} />
                 <span className="stitch-option-name">{stitch.name}</span>
-                <small>{stitch.width}×{stitch.height}マス{stitch.consumes !== stitch.produces ? ` · ${stitch.consumes}→${stitch.produces}目` : ''}</small>
-                <span className={`stitch-standard ${stitch.standardStatus}`} title={stitch.standardReference}>{STITCH_STANDARD_LABELS[stitch.standardStatus]}</span>
+                <small>{stitch.width}×{stitch.height}目</small>
               </button>)}
             </div>
           </div>)}
