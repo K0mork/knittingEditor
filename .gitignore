@@ -1,0 +1,33 @@
+# Xcode
+DerivedData/
+build/
+*.xcarchive
+*.ipa
+*.dSYM.zip
+xcuserdata/
+*.xcuserstate
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# Web tooling
+node_modules/
+dist/
+coverage/
+test-results/
+playwright-report/
+*.tsbuildinfo
+
+# Local files
+.DS_Store
+*.log
+*.tmp
+
+# Secrets and signing
+*.p8
+*.p12
+*.mobileprovision
+.env
+.env.*
+!.env.example
