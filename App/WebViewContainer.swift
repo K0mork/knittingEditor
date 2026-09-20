@@ -9,13 +9,19 @@ import WebKit
 final class WebViewModel {
     @ObservationIgnored weak var webView: WKWebView?
     private var pendingBackup: (data: Data, filename: String)?
+    private var webContentReady = false
 
     func attach(_ webView: WKWebView) {
-        self.webView = webView
-        if let pendingBackup {
-            self.pendingBackup = nil
-            dispatchBackup(pendingBackup.data, filename: pendingBackup.filename)
+        if self.webView !== webView {
+            webContentReady = false
         }
+        self.webView = webView
+        flushPendingBackupIfReady()
+    }
+
+    func webContentDidBecomeReady() {
+        webContentReady = true
+        flushPendingBackupIfReady()
     }
 
     func handleIncomingURL(_ url: URL) {
@@ -29,7 +35,7 @@ final class WebViewModel {
                 dispatchError("バックアップが大きすぎます")
                 return
             }
-            guard webView != nil else {
+            guard webView != nil, webContentReady else {
                 pendingBackup = (data: data, filename: url.lastPathComponent)
                 return
             }
@@ -63,6 +69,12 @@ final class WebViewModel {
         )
     }
 
+    private func flushPendingBackupIfReady() {
+        guard webContentReady, let pendingBackup else { return }
+        self.pendingBackup = nil
+        dispatchBackup(pendingBackup.data, filename: pendingBackup.filename)
+    }
+
     private func dispatchError(_ message: String) {
         guard let webView,
               let jsonData = try? JSONSerialization.data(withJSONObject: message),
@@ -82,7 +94,7 @@ struct WebViewContainer: UIViewRepresentable {
     let model: WebViewModel
 
     func makeCoordinator() -> Coordinator {
-        Coordinator()
+        Coordinator(model: model)
     }
 
     func makeUIView(context: Context) -> WKWebView {
@@ -119,8 +131,13 @@ struct WebViewContainer: UIViewRepresentable {
     @MainActor
     final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler, UIDocumentPickerDelegate {
         static let messageHandlerName = "knittingEditor"
+        private let model: WebViewModel
         private weak var webView: WKWebView?
         private var pendingExportURL: URL?
+
+        init(model: WebViewModel) {
+            self.model = model
+        }
 
         func attach(_ webView: WKWebView) {
             self.webView = webView
@@ -137,6 +154,8 @@ struct WebViewContainer: UIViewRepresentable {
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
             guard message.name == Self.messageHandlerName else { return }
             switch NativeBridgeMessage.decode(body: message.body) {
+            case .success(.webReady):
+                model.webContentDidBecomeReady()
             case .success(.openBackup):
                 DispatchQueue.main.async { [weak self] in
                     self?.presentBackupPicker()

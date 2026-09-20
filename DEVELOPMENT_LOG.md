@@ -11,6 +11,14 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-21: `.knit`相互運用のnative bridge ready通知と出力往復を検証
+
+- 変更: WebViewのReact側がバックアップイベント購読を完了したことを`webReady`メッセージでSwiftへ通知し、起動・更新直後に届いたOpen URLをready後まで保持するようにした。アプリWeb bundleの`exportBackup`出力をnative bridgeのgzip payloadへ通し、同じpayloadをWebの`importBackup`へ戻す往復テストも追加した。
+- 主なファイル: `App/WebViewContainer.swift`、`App/NativeBridgeMessage.swift`、`Web/src/nativeBridge.ts`、`Web/src/App.tsx`、`Web/src/storage/database.test.ts`、`Tests/KnittingEditorAppTests/NativeBridgeMessageTests.swift`、`docs/NATIVE_BRIDGE.md`、`TODO.md`
+- テスト: `(cd Web && npm test)`で6ファイル37テスト成功、`npm run build`成功。Swift `build-for-testing`成功。iPad SimulatorでNativeBridgeMessage 5件と固定origin更新耐性1件が成功。アプリ出力fixtureのbridge payload→Web復元テストが成功。
+- 未実施: 実機Files／AirDrop／共有先を使うWeb→アプリ→Web往復、Apple Developer署名、TestFlight。SimulatorのDocument Picker表示とは別に、外部Files providerの実保存はM3の残作業として保持する。
+- 配布影響: `.knit`形式、記号ID、IndexedDB schemaは変更しない。bridge version 1へready通知を追加し、外部通信や権限は追加していない。
+
 ## 2026-09-21: 同一Bundle IDのアプリ更新復元試験を追加
 
 - 変更: version 1でIndexedDBへ試験編み図を保存し、同一Bundle IDの`CURRENT_PROJECT_VERSION=2`ビルドをSimulatorへ上書きインストールした後、編み図と編集セルを復元できる専用XCUITestを追加した。通常のCIテストではskipし、`scripts/simulate-app-update.sh`からだけ実行する。iPhone／iPad matrixでも同じ試験を再現できるようCI jobを追加した。

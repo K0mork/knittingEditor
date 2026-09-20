@@ -7,6 +7,7 @@ enum NativeBridgeLimits {
 enum NativeBridgeMessage: Equatable {
     case exportFile(data: Data, filename: String, mimeType: String)
     case openBackup
+    case webReady
 
     enum MessageError: Error, Equatable {
         case invalidEnvelope
@@ -27,6 +28,8 @@ enum NativeBridgeMessage: Equatable {
         switch type {
         case "openBackup":
             return .success(.openBackup)
+        case "webReady":
+            return .success(.webReady)
         case "exportFile":
             guard let filename = dictionary["filename"] as? String,
                   let mimeType = dictionary["mimeType"] as? String,

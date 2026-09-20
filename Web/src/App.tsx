@@ -11,7 +11,7 @@ import {
   renameDocument, saveBlock, saveDocument, setSetting, type ChartDocument,
 } from './storage/database';
 import { renderPdf, renderPng, saveBlob, validatePngSize } from './export/exporters';
-import { listenNativeBackupSelected, listenNativeError, requestNativeBackupOpen } from './nativeBridge';
+import { listenNativeBackupSelected, listenNativeError, notifyNativeReady, requestNativeBackupOpen } from './nativeBridge';
 
 type BusyTask = 'PNGを生成中' | 'PDFを生成中' | 'バックアップを処理中';
 type Panel = 'documents' | 'grid' | 'blocks' | 'export';
@@ -285,17 +285,23 @@ export default function App() {
     finally { setBusy(undefined); }
   };
 
-  useEffect(() => listenNativeBackupSelected(({ filename, dataBase64 }) => {
-    try {
-      const binary = atob(dataBase64);
-      const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
-      void restore(new File([bytes], filename, { type: 'application/gzip' }));
-    } catch {
-      notify('バックアップを読み込めませんでした');
-    }
-  }), [restore]);
-
-  useEffect(() => listenNativeError(notify), []);
+  useEffect(() => {
+    const removeBackupListener = listenNativeBackupSelected(({ filename, dataBase64 }) => {
+      try {
+        const binary = atob(dataBase64);
+        const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+        void restore(new File([bytes], filename, { type: 'application/gzip' }));
+      } catch {
+        notify('バックアップを読み込めませんでした');
+      }
+    });
+    const removeErrorListener = listenNativeError(notify);
+    notifyNativeReady();
+    return () => {
+      removeBackupListener();
+      removeErrorListener();
+    };
+  }, [restore]);
 
   const currentStitch = useMemo(() => STITCHES.find((item) => item.key === selectedStitch)!, [selectedStitch]);
   if (!board || !activeDocument) return <main className="loading">編み図を読み込んでいます…</main>;

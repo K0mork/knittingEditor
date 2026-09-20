@@ -50,8 +50,8 @@
 - [x] Document Pickerから`.knit`を読み込む
 - [x] Files／AirDrop／他アプリから`.knit`を開く
 - [x] iPhone／iPad SimulatorでDocument Picker表示とキャンセル復帰を検証する（実機Files保存は別途）
-- [ ] Web版出力fixtureをアプリで復元する
-- [ ] アプリ出力fixtureをWeb版で復元する
+- [x] Web版出力fixtureをアプリで復元する（Web側のfixture復元、Swift bridgeの同一payload搬送、WebView ready後配送を検証）
+- [x] アプリ出力fixtureをWeb版で復元する（アプリWeb bundleのexport→native bridge payload→Web import往復を検証）
 - [x] 不正形式、新しいカタログ、巨大解凍データを安全に拒否する
 
 完了条件: Web版とアプリ版の双方向バックアップが成功し、PNG/PDFをFilesと共有先へ保存できる。

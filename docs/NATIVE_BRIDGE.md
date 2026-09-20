@@ -18,6 +18,8 @@ M3では、編集機能をWeb資産に残し、ファイル操作だけをiOSネ
 
 バックアップの読み込み要求は`{"version":1,"type":"openBackup"}`。Swift側は`UIDocumentPickerViewController`で`.knit`を選択し、読み取ったデータをWebViewへ返す。
 
+WebViewがReactのバックアップイベント購読まで完了したら、`{"version":1,"type":"webReady"}`を送る。Swift側はこの通知前に受け取ったOpen URLのバックアップを保持し、通知後に一度だけWebViewへ配送する。これにより、起動直後やアプリ更新直後のイベント取りこぼしを防ぐ。
+
 Swiftはファイル種別、ファイル名、Base64、128 MiBの上限を検証し、失敗時は`knittingEditorNativeError`イベントを発生させる。出力は一時ファイルを介して「ファイルに保存」または共有シートへ渡す。
 
 ## Swift → Web
@@ -41,7 +43,7 @@ Web側はBase64を`File`へ戻し、既存の`.knit`インポート検証を通�
 
 `test-fixtures/knitting-editor-v2-interop.knit.b64`をWeb側の`.knit`復元fixtureとして管理し、Swiftブリッジテストにも同じpayloadのBase64を固定する。アプリは`.knit`のgzip JSONを解釈・再シリアライズせず、そのバイト列をDocument Picker、`onOpenURL`、WebViewイベントの間で搬送する。このため、fixtureをWeb側で復元できることと、Swiftブリッジでバイト列が変わらないことを別々に検証する。
 
-このテストはFiles／AirDropを使った実機往復の代替ではない。実機またはTestFlightでの入出力確認が終わるまで、M3の完了条件は未達とする。
+Webのfixture復元、アプリWeb bundleのexport→bridge payload→import往復、Swiftのpayload保持、ready前後の配送方針を自動テストする。これはFiles／AirDropを使った実機往復の代替ではないため、実機またはTestFlightでの入出力確認は別の配布前ゲートとして残す。
 
 ## 未完了の実機確認
 

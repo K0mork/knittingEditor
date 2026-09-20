@@ -54,4 +54,11 @@ final class NativeBridgeMessageTests: XCTestCase {
             .failure(.invalidEnvelope)
         )
     }
+
+    func testDecodeWebReady() {
+        XCTAssertEqual(
+            NativeBridgeMessage.decode(body: ["version": 1, "type": "webReady"]),
+            .success(.webReady)
+        )
+    }
 }

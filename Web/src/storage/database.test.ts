@@ -1,7 +1,8 @@
 import 'fake-indexeddb/auto';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { gunzipSync, gzipSync, strFromU8, strToU8 } from 'fflate';
 import { Board } from '../model/Board';
+import { saveBlobWithNativeBridge } from '../nativeBridge';
 import {
   boardFromDocument, createDocument, exportBackup, importBackup, initializeStorage, listDocuments, saveDocument, setSetting,
 } from './database';
@@ -29,6 +30,23 @@ describe('backup restore', () => {
     expect(result.documents[0].name).toBe('復元テスト（復元）');
     const restored = boardFromDocument(result.documents[0]);
     expect(restored.valueAt(1, 2)).toBe(board.valueAt(1, 2));
+  });
+
+  it('round-trips an app export through the native bridge payload', async () => {
+    const source = await createDocument('アプリ出力fixture', 2, 3);
+    const postMessage = vi.fn();
+    window.webkit = { messageHandlers: { knittingEditor: { postMessage } } };
+
+    const backup = await exportBackup([source.id]);
+    await expect(saveBlobWithNativeBridge(backup, 'アプリ出力fixture.knit')).resolves.toBe(true);
+
+    const message = postMessage.mock.calls[0]?.[0] as { dataBase64?: string; mimeType?: string } | undefined;
+    expect(message?.mimeType).toBe('application/gzip');
+    const bridgedBytes = decodeBase64(message?.dataBase64 ?? '');
+    const restored = await importBackup(new Blob([bridgedBytes.buffer as ArrayBuffer], { type: 'application/gzip' }));
+    expect(restored.documents[0].name).toBe('アプリ出力fixture（復元）');
+
+    delete window.webkit;
   });
 
   it('rejects malformed gzip data before touching IndexedDB', async () => {

@@ -5,7 +5,7 @@ export interface NativeBackupDetail {
 
 interface NativeBridgeMessage {
   version: 1;
-  type: 'exportFile' | 'openBackup';
+  type: 'exportFile' | 'openBackup' | 'webReady';
   filename?: string;
   mimeType?: string;
   dataBase64?: string;
@@ -60,6 +60,17 @@ export function requestNativeBackupOpen(): boolean {
   if (!handler) return false;
   try {
     handler.postMessage({ version: 1, type: 'openBackup' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function notifyNativeReady(): boolean {
+  const handler = nativeHandler();
+  if (!handler) return false;
+  try {
+    handler.postMessage({ version: 1, type: 'webReady' });
     return true;
   } catch {
     return false;

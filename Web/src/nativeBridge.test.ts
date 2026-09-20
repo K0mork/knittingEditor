@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { listenNativeBackupSelected, requestNativeBackupOpen, saveBlobWithNativeBridge } from './nativeBridge';
+import { listenNativeBackupSelected, notifyNativeReady, requestNativeBackupOpen, saveBlobWithNativeBridge } from './nativeBridge';
 
 afterEach(() => {
   delete window.webkit;
@@ -18,6 +18,13 @@ describe('native bridge', () => {
     expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({
       version: 1, type: 'exportFile', filename: 'chart.pdf', mimeType: 'application/pdf', dataBase64: 'YWJj',
     }));
+  });
+
+  it('notifies native code after the WebView bridge is ready', () => {
+    const postMessage = vi.fn();
+    window.webkit = { messageHandlers: { knittingEditor: { postMessage } } };
+    expect(notifyNativeReady()).toBe(true);
+    expect(postMessage).toHaveBeenCalledWith({ version: 1, type: 'webReady' });
   });
 
   it('receives an app-selected backup through a validated custom event', () => {
