@@ -21,13 +21,17 @@ if [ ! -f "$APP_PATH/PrivacyInfo.xcprivacy" ]; then
 fi
 plutil -lint "$APP_PATH/PrivacyInfo.xcprivacy" >/dev/null
 
-if rg -n --hidden --glob '!*.map' 'googletagmanager|G-VVE0G4ZFL4|knittingeditor\.com' "$WEB_ROOT"; then
+external_matches=$(find "$WEB_ROOT" -type f ! -name '*.map' -exec grep -nE 'googletagmanager|G-VVE0G4ZFL4|knittingeditor\.com' {} + || true)
+if [ -n "$external_matches" ]; then
   echo "unexpected external runtime reference in app bundle" >&2
+  printf '%s\n' "$external_matches" >&2
   exit 1
 fi
 
-if rg -n --hidden --glob '!*.map' '\b(fetch|XMLHttpRequest|WebSocket|EventSource)\s*\(' "$WEB_ROOT"; then
+network_matches=$(find "$WEB_ROOT" -type f ! -name '*.map' -exec grep -nE '(^|[^[:alnum:]_])(fetch|XMLHttpRequest|WebSocket|EventSource)[[:space:]]*\(' {} + || true)
+if [ -n "$network_matches" ]; then
   echo "unexpected network API in app bundle" >&2
+  printf '%s\n' "$network_matches" >&2
   exit 1
 fi
 

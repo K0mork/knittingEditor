@@ -11,6 +11,14 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-21: Release検証をmacOS標準ツールだけで実行可能に修正
+
+- 変更: GitHub ActionsのmacOS runnerに`rg`がないため、追加したApp Store資料検証を`grep`へ、既存のbundle内オフライン検査を`find`＋`grep`へ移行した。`rg`がない場合に検査を飛ばして成功表示する経路もなくし、検出内容を失敗ログへ出力する。
+- 主なファイル: `scripts/check-app-store-docs.sh`、`scripts/check-app-bundle.sh`
+- テスト: `PATH=/usr/bin:/bin`で資料検証を実行し、unsigned Release Archiveの資産検査を再実行する。変更後CIの全ジョブを確認する。
+- 未実施: 実機・Apple Developer署名・TestFlight・App Store Connect登録。これらは外部証跡が必要である。
+- 配布影響: アプリ本体、保存形式、表示名、外部通信方針は変更しない。Release検査の実行環境依存を解消し、検査結果の信頼性を上げる。
+
 ## 2026-09-21: App Store提出資料の静的整合性をArchive検証へ統合
 
 - 変更: App Storeメタデータの必須表項目と公開URL、審査メモのオフライン手順、Privacy Policy、提出チェックリスト、Simulatorスクリーンショットの参照を`check-app-store-docs.sh`で検査し、Release Archiveの資産検証から必ず実行する。実機撮影、署名、TestFlightなど外部作業を自動検証済みとは扱わない。

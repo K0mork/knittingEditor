@@ -49,11 +49,11 @@ metadata_value_is_nonempty "主カテゴリ" "$METADATA"
 metadata_value_is_nonempty "副カテゴリ" "$METADATA"
 metadata_value_is_nonempty "キーワード" "$METADATA"
 
-rg -q 'サポートURL: `https://github\.com/K0mork/knittingEditor_app/issues`' "$METADATA" || {
+grep -qE -- 'サポートURL: `https://github\.com/K0mork/knittingEditor_app/issues`' "$METADATA" || {
   echo "support URL is missing or does not target the public repository" >&2
   exit 1
 }
-rg -q 'プライバシーポリシーURL候補: `https://github\.com/K0mork/knittingEditor_app/blob/main/docs/PRIVACY_POLICY\.md`' "$METADATA" || {
+grep -qE -- 'プライバシーポリシーURL候補: `https://github\.com/K0mork/knittingEditor_app/blob/main/docs/PRIVACY_POLICY\.md`' "$METADATA" || {
   echo "privacy policy URL is missing or does not target the public repository" >&2
   exit 1
 }
@@ -63,13 +63,13 @@ for required_text in \
   'Files' \
   '.knit' \
   'Review guideline 4.2'; do
-  rg -q --fixed-strings "$required_text" "$REVIEW_NOTES" || {
+  grep -qF -- "$required_text" "$REVIEW_NOTES" || {
     echo "review notes are missing required text: $required_text" >&2
     exit 1
   }
 done
 
-rg -q '^# ' "$PRIVACY_POLICY" || {
+grep -qE -- '^# ' "$PRIVACY_POLICY" || {
   echo "privacy policy has no title" >&2
   exit 1
 }
@@ -78,17 +78,17 @@ for checked_item in \
   'iPhone 16／iPad (10th generation) Simulatorのスクリーンショット下書き' \
   '`App/PrivacyInfo.xcprivacy`' \
   'アプリ内ヘルプへプライバシーとサポート導線'; do
-  rg -q --fixed-strings -- "- [x] $checked_item" "$CHECKLIST" || {
+  grep -qF -- "- [x] $checked_item" "$CHECKLIST" || {
     echo "submission checklist does not record completed static item: $checked_item" >&2
     exit 1
   }
 done
 
-rg -q 'iphone-16-editor-simulator\.png' "$SCREENSHOTS" || {
+grep -qE -- 'iphone-16-editor-simulator\.png' "$SCREENSHOTS" || {
   echo "iPhone simulator screenshot is not documented" >&2
   exit 1
 }
-rg -q 'ipad-10-editor-simulator\.png' "$SCREENSHOTS" || {
+grep -qE -- 'ipad-10-editor-simulator\.png' "$SCREENSHOTS" || {
   echo "iPad simulator screenshot is not documented" >&2
   exit 1
 }
