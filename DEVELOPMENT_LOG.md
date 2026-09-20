@@ -11,6 +11,22 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-20: M2コミットのGitHub push再試行
+
+- 変更: M2コミット`7d23982`のpushを実行した。
+- 検証: `git push origin main`は2回ともGitHubの443番ポートへの接続失敗で未反映となった（`Failed to connect to github.com port 443`）。ローカル作業ツリーは変更なしで、リモートは直前の`0ad827d`のまま。
+- 未実施: GitHub上の反映確認。ネットワーク接続が復旧するまで再試行が必要。
+- 配布影響: なし。TestFlight・App Store配布は行っていない。
+
+## 2026-09-20: M2 scene phase通知とバックグラウンド保存flushを接続
+
+- 変更: SwiftUIのscene phaseがinactive/backgroundへ移行したとき、`WebViewModel`から`knittingEditorAppWillResignActive`イベントをWeb側へ通知し、Web編集画面がdirtyな盤面を即時IndexedDBへ保存するようにした。保存成功時は保存状態を解除し、失敗時は`.knit`バックアップを促すメッセージを表示する。
+- 主なファイル: `App/KnittingEditorApp.swift`、`App/WebViewContainer.swift`、`Web/src/App.tsx`、`DEVELOPMENT.md`、`TODO.md`
+- テスト: `(cd Web && npm test)`で4ファイル22テスト成功、`npm run build`と`scripts/build-web.sh`でTypeScript/Viteビルド成功。イベント経路のSimulator・実機動作は未実施。
+- 検証: `xcodegen generate --spec project.yml`成功、iOS Simulator向け`xcodebuild -project knittingEditor.xcodeproj -scheme knittingEditor -sdk iphonesimulator -configuration Debug CODE_SIGNING_ALLOWED=NO build`成功。`AppResources/Web/`はXcode pre-build scriptで再生成される。
+- 未実施: Simulator・実機でのscene phase、強制終了相当、IndexedDB復元、保存失敗時のUI確認。利用可能なSimulatorデバイスがないため。
+- 配布影響: TestFlight・App Store配布は行っていない。
+
 ## 2026-09-20: M1 Web版編集資産をアプリ用ビルドへ同期
 
 - 変更: Web版固定コミット`8d3385799f61526334fd33c0a9e7be115f084afd`からReact UI、packed Board、Canvas、26記号の`catalog.ts`・`glyphs.ts`、IndexedDB、PNG/PDF、`.knit`入出力、使い方ページを`Web/`へ同期した。`scripts/build-web.sh`でVite成果物を`AppResources/Web/`へ生成し、Xcodeのpre-build scriptからも同じ処理を実行する。

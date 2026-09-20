@@ -97,6 +97,7 @@ Web版の記号定義はアプリ版の互換性に直結します。手作業�
 
 - 通常編集はアプリ専用の永続IndexedDBへ400 ms程度のデバウンスで自動保存する。
 - バックグラウンド移行、シーン切断、編み図切替の前には保留中の保存を完了させる。
+- SwiftUIのscene phaseがinactive/backgroundへ変化したとき、`WKWebView`へ`knittingEditorAppWillResignActive`イベントを送り、Web側が保留中の編集中盤面を即時保存する。
 - アプリ更新でローカルWebアセットのURLが変わっても同じ永続データストアを使用できる構成にする。
 - アプリ削除時に端末内データが消えることを明示し、`.knit`バックアップを案内する。
 - `.knit`はWeb版と相互に読み書きできることをfixtureで検証する。

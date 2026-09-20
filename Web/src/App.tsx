@@ -81,6 +81,20 @@ export default function App() {
     return () => window.removeEventListener('beforeunload', handler);
   }, [dirty]);
 
+  useEffect(() => {
+    const handler = () => {
+      if (!dirty || !activeDocument || !board) return;
+      void saveDocument(activeDocument, board).then((saved) => {
+        if (activeDocumentIdRef.current !== saved.id) return;
+        setActiveDocument((current) => current?.id === saved.id ? saved : current);
+        setDirty(false);
+        void refreshDocuments();
+      }).catch(() => setMessage('バックグラウンド移行前の自動保存に失敗しました。バックアップを保存してください。'));
+    };
+    window.addEventListener('knittingEditorAppWillResignActive', handler);
+    return () => window.removeEventListener('knittingEditorAppWillResignActive', handler);
+  }, [activeDocument, board, dirty, refreshDocuments]);
+
   const changed = () => {
     trackFirstEdit();
     editGenerationRef.current += 1;
