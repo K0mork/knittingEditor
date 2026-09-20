@@ -64,7 +64,8 @@
 - [x] `prompt`／`confirm`をアプリ内ダイアログへ置換する
 - [ ] VoiceOverラベル、フォーカス順、状態通知を整える
 - [x] Canvasと保存状態へアクセシブルな名前・状態通知を付与する（実機VoiceOver確認は別途必要）
-- [ ] Dynamic Typeと44 pt以上の操作領域を確認する
+- [x] Dynamic Type対応のrem縮尺と主要操作領域44px以上を実装する（実機表示確認は別途必要）
+- [ ] Dynamic Type、VoiceOverフォーカス順、全画面レイアウトを実機確認する
 - [ ] 大規模PNG/PDFの上限とエラー表示を実機検証する
 
 完了条件: 対象となるiPhone・iPad実機で主要操作、アクセシビリティ、出力が完了する。

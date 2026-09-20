@@ -11,6 +11,14 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-20: M4操作領域とDynamic Typeの静的対応を強化
+
+- 変更: ヘッダーリンク、文書操作ボタン、盤面サイズ入力、出力select・range入力を44px以上へ統一した。`rem`ベースの文字サイズをiOSの文字拡大設定が反映できるよう`-webkit-text-size-adjust`を明示した。
+- 主なファイル: `Web/src/styles.css`、`TODO.md`
+- テスト: `(cd Web && npm test)`と`npm run build`を実行し、`git diff --check`に成功した。
+- 未実施: iPhone／iPad実機でのDynamic Type、VoiceOverフォーカス順、Split View・キーボード・Safe Areaの目視確認は未実施。
+- 配布影響: Web UIのCSSのみ変更。権限、データ形式、ネットワークは変更しない。
+
 ## 2026-09-20: ローカル起動画面背景を設定
 
 - 変更: `UILaunchScreen`の`UIColorName`を`LaunchBackground`へ設定し、asset catalogへ既存アプリ配色の深緑背景を追加した。起動画面を外部資産やネットワークへ依存させない。
