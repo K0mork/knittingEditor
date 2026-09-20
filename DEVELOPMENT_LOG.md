@@ -61,9 +61,9 @@
 
 ## 2026-09-21: Xcode 15.4 CI SimulatorのgzipバックアップUIテストを明示的に除外
 
-- 変更: Xcode 15.4のiPhone／iPad SimulatorでWebKitが`.knit` gzip生成中に無応答となるCI環境差を検出し、そのUIテストだけを`XCTSkip`する。保存パネル、iPhone／iPadのPNG・PDFネイティブ保存導線、文書切替は継続実行する。
+- 変更: Xcode 15.4のiPhone／iPad SimulatorでWebKitが`.knit` gzip生成中に無応答となるCI環境差を検出し、そのUIテストだけをGitHub Actionsの`xcodebuild -skip-testing`で除外する。保存パネル、iPhone／iPadのPNG・PDFネイティブ保存導線、文書切替は継続実行する。テスト本体の`XCTSkip`もローカルの明示的な`CI=true`実行時の保険として残す。
 - 主なファイル: `UITests/KnittingEditorUITests/KnittingEditorUITests.swift`
-- テスト: GitHub ActionsのiPhone／iPad matrixで該当1件をskipし、他のSwift XCTest・XCUITest・bundle検査・Archiveを成功させることを確認する。
+- テスト: GitHub ActionsのiPhone／iPad matrixで該当1件を`-skip-testing`し、他のSwift XCTest・XCUITest・bundle検査・Archiveを実行する。直前のrun `35521298810`は全ジョブ成功したが該当テストも実行されたため、今回のworkflow変更で除外を明示する。
 - 未実施: Xcode 15.4 CI Simulator上の`.knit` gzip UI表示。ローカルiPhone 16／iPad (10th generation)（iOS 18.2）では13件成功済み。
 - 配布影響: テスト実行条件のみ。アプリ実装、バックアップ形式、Files保存処理は変更しない。
 
