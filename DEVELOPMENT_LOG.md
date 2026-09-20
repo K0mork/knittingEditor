@@ -11,6 +11,14 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-21: CI全matrix成功を確認
+
+- 変更: `aee8d19`のCI再試行設定とSimulator再boot修正を含むGitHub Actions run `35526038656`を確認した。Web、Swift/XCUITestのiPhone／iPad matrix、同一Bundle IDのアプリ更新復元matrix、Release Archive、bundle検査が全て成功した。
+- 主なファイル: `.github/workflows/ci.yml`、`scripts/simulate-app-update.sh`、`TODO.md`、`docs/APP_STORE_CHECKLIST.md`
+- テスト: GitHub Actions run `35526038656`で全6ジョブ成功。ローカルXcodeBuildMCPでも`testDocumentSwitchAutosavesEachDocument`が1件成功。
+- 未実施: 実機Files／AirDrop、機内モード通信監視、Apple Developer署名、TestFlight、App Store提出。
+- 配布影響: CI検証の信頼性と記録を更新した。配布物・保存形式・Bundle IDは変更しない。
+
 ## 2026-09-21: CI iOS UIテストの一過性失敗を再試行
 
 - 変更: GitHub Actions run `35525337010`で、iPhone 16の`testDocumentSwitchAutosavesEachDocument`がWebKitアクセシビリティ更新待ち中に一度だけ失敗し、同runのiPad・app-update・Web・Archiveは成功した。Xcode標準の`-retry-tests-on-failure`をiOS matrixへ追加し、テスト本体の失敗を隠さず最大3回まで再試行する。
