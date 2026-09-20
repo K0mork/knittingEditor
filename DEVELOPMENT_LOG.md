@@ -11,6 +11,14 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-21: WebKitのConcurrency境界警告を明示化
+
+- 変更: Xcode 15.4のWebKit protocolがSwift Concurrency注釈を持たない境界を`@preconcurrency import WebKit`として明示し、テストクラス全体へ付けていた`@MainActor`を必要なテストメソッドへ限定した。WebView delegateの実行コンテキストを隠していた警告を抑制するのではなく、既存のMain Actor UI処理との境界として記録する。
+- 主なファイル: `App/WebViewContainer.swift`、`Tests/KnittingEditorAppTests/LocalWebSchemeHandlerTests.swift`
+- テスト: `xcodebuild build-for-testing`でSwift warningの消失を確認し、Web単体テスト、Swift unit test、iPhone／iPad Simulator UI test、変更後CIを実行する。
+- 未実施: Xcode 16以降のWebKit Concurrency注釈での再確認、実機、Apple Developer署名、TestFlight。
+- 配布影響: アプリ挙動、保存形式、Bundle ID、外部通信方針は変更しない。Swiftコンパイラ警告の原因を明示化するだけである。
+
 ## 2026-09-21: アプリ更新probeのSimulator一過性タイムアウトを再試行
 
 - 変更: `scripts/simulate-app-update.sh`のseed保存と更新後復元の`xcodebuild`へ`-retry-tests-on-failure`を追加した。GitHub Actions run `35538016406`でiPhoneのseedがWeb操作前に「Failed to get background assertion ... Timed out while acquiring background assertion」で失敗したため、通常iOS matrixと同じXcode標準の再試行条件へ揃える。

@@ -1,8 +1,7 @@
 import XCTest
-import WebKit
+@preconcurrency import WebKit
 @testable import knittingEditor
 
-@MainActor
 final class LocalWebSchemeHandlerTests: XCTestCase {
     func testIndexURLUsesStableLocalOrigin() {
         XCTAssertEqual(LocalWebSchemeHandler.indexURL.absoluteString, "knitting-local://bundle/index.html")
@@ -35,6 +34,7 @@ final class LocalWebSchemeHandlerTests: XCTestCase {
         )
     }
 
+    @MainActor
     func testLocalEditorDoesNotInvokeRuntimeNetworkAPIs() async throws {
         let webView = try makeWebView(networkProbe: true)
         try await loadIndex(in: webView)

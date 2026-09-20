@@ -2,7 +2,7 @@ import Observation
 import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
-import WebKit
+@preconcurrency import WebKit
 
 @MainActor
 @Observable
