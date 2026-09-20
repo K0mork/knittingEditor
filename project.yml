@@ -48,6 +48,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.k0mork.knittingEditor.tests
+        GENERATE_INFOPLIST_FILE: YES
 
   knittingEditorUITests:
     type: bundle.ui-testing
@@ -59,3 +60,4 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.k0mork.knittingEditor.uitests
+        GENERATE_INFOPLIST_FILE: YES

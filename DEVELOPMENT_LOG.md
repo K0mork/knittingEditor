@@ -19,6 +19,22 @@
 - 未実施: GitHub上の公開URL表示確認、App Store ConnectへのURL登録、App Privacy回答の最終照合は未実施。
 - 配布影響: 公開ポリシー文書を追加した。アプリの通信・保存挙動は変更しない。
 
+## 2026-09-20: Simulatorインストール時のInfo.plistを修正
+
+- 変更: Simulatorへのインストールで`CFBundleExecutable`が欠落していたため、`$(EXECUTABLE_NAME)`を明示した。Filesからはコピーとして開く設計なので`LSSupportsOpeningDocumentsInPlace=false`も明示した。
+- 主なファイル: `App/Info.plist`
+- テスト: XcodeBuildMCPのiPhone 16 Simulatorで再ビルド・再インストール・起動を行う。
+- 未実施: iPhone／iPad実機、TestFlight、App Store提出環境。
+- 配布影響: アプリインストール時のbundleメタデータを修正した。ファイル内容や保存形式は変更しない。
+
+## 2026-09-20: XCTest bundleのInfo.plist生成を有効化
+
+- 変更: SimulatorのXCUITest実行時にテストbundleのInfo.plistがなく署名処理で停止したため、Swift単体テストとXCUITestターゲットで`GENERATE_INFOPLIST_FILE=YES`を設定した。
+- 主なファイル: `project.yml`、生成済み`knittingEditor.xcodeproj`
+- テスト: XcodeBuildMCPのiPhone 16 SimulatorでSwift XCTest／XCUITestを再実行する。
+- 未実施: iPad Simulator、iPhone／iPad実機、TestFlight。
+- 配布影響: アプリ本体のbundleやデータ形式は変更しない。テストターゲットの生成設定のみ変更した。
+
 ## 2026-09-20: AppIcon・起動画面を含むRelease Archiveを再検証
 
 - 変更: コード変更はない。AppIconと`LaunchBackground`追加後の提出候補bundleをRelease Archiveから再検査した。
