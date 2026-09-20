@@ -36,6 +36,20 @@ function mirror(primitives: GlyphPrimitive[], width: number): GlyphPrimitive[] {
   });
 }
 
+function scale(primitives: GlyphPrimitive[], scaleX: number, scaleY: number): GlyphPrimitive[] {
+  const apply = ({ x, y }: GlyphPoint) => point(x * scaleX, y * scaleY);
+  return primitives.map((primitive) => {
+    if (primitive.kind === 'line') return { ...primitive, from: apply(primitive.from), to: apply(primitive.to) };
+    if (primitive.kind === 'polyline') return { ...primitive, points: primitive.points.map(apply) };
+    if (primitive.kind === 'ellipse') return { ...primitive, cx: primitive.cx * scaleX, cy: primitive.cy * scaleY, rx: primitive.rx * scaleX, ry: primitive.ry * scaleY };
+    return {
+      ...primitive,
+      start: apply(primitive.start),
+      curves: primitive.curves.map((curve) => ({ control1: apply(curve.control1), control2: apply(curve.control2), to: apply(curve.to) })),
+    };
+  });
+}
+
 function glyph(width: number, height: number, primitives: GlyphPrimitive[], strokeWidth = 9): GlyphDefinition {
   return { width: width * GLYPH_CELL, height: height * GLYPH_CELL, strokeWidth, primitives };
 }
@@ -117,9 +131,9 @@ const glyphs: Record<string, GlyphDefinition> = {
   knit: glyph(1, 1, [line(50, 12, 50, 88)]),
   purl: glyph(1, 1, [line(12, 50, 88, 50)]),
   yo: glyph(1, 1, [{ kind: 'ellipse', cx: 50, cy: 50, rx: 35, ry: 35 }]),
-  right_up_two_one: glyph(1, 1, rightTwoDecrease),
-  left_up_two_one: glyph(1, 1, mirror(rightTwoDecrease, GLYPH_CELL)),
-  purl_left_up_two_one: glyph(1, 1, [...mirror(rightTwoDecrease, GLYPH_CELL), line(35, 82, 65, 82)]),
+  right_up_two_one: glyph(2, 1, scale(rightTwoDecrease, 2, 1)),
+  left_up_two_one: glyph(2, 1, scale(mirror(rightTwoDecrease, GLYPH_CELL), 2, 1)),
+  purl_left_up_two_one: glyph(2, 1, scale([...mirror(rightTwoDecrease, GLYPH_CELL), line(35, 82, 65, 82)], 2, 1)),
   right_cross: cable(1, 1, 'right'),
   left_cross: cable(1, 1, 'left'),
   purl_right_cross: cable(1, 1, 'right', { purlUnder: true }),
@@ -128,14 +142,14 @@ const glyphs: Record<string, GlyphDefinition> = {
   purl_left_up_two_cross: cable(1, 2, 'left', { purlUnder: true }),
   purl_right_cross_twist_stitch: twistCross('right'),
   purl_left_cross_twist_stitch: twistCross('left'),
-  middle_up_three_one: glyph(1, 1, middleThreeDecrease),
-  right_up_three_one: glyph(1, 1, [...middleThreeDecrease, line(20, 14, 82, 86)]),
-  left_up_three_one: glyph(1, 1, mirror([...middleThreeDecrease, line(20, 14, 82, 86)], GLYPH_CELL)),
+  middle_up_three_one: glyph(3, 1, scale(middleThreeDecrease, 3, 1)),
+  right_up_three_one: glyph(3, 1, scale([...middleThreeDecrease, line(20, 14, 82, 86)], 3, 1)),
+  left_up_three_one: glyph(3, 1, scale(mirror([...middleThreeDecrease, line(20, 14, 82, 86)], GLYPH_CELL), 3, 1)),
   right_up_two_cross: cable(2, 2, 'right'),
   left_up_two_cross: cable(2, 2, 'left'),
   right_up_three_cross: cable(3, 3, 'right'),
   left_up_three_cross: cable(3, 3, 'left'),
-  slip_stitch: glyph(1, 1, [polyline(16, 16, 50, 88, 84, 16)]),
+  slip_stitch: glyph(1, 2, scale([polyline(16, 16, 50, 88, 84, 16)], 1, 2)),
   twist_stitch: twist(),
   purl_twist_stitch: glyph(1, 1, [...twist().primitives, line(30, 94, 70, 94)]),
 };

@@ -60,16 +60,14 @@ describe('stitch catalog', () => {
     expect(STITCH_BY_KEY.get('right_up_three_cross')).toMatchObject({ width: 6, height: 1, consumes: 6, produces: 6 });
   });
 
-  it('uses the same vector geometry for screen and PDF without stretching operational footprints', () => {
+  it('uses the full operational footprint for screen and PDF vectors', () => {
     for (const stitch of STITCHES.filter((item) => item.renderKind === 'glyph')) {
       const glyph = getGlyphDefinition(stitch.key)!;
+      expect(glyph.width, `${stitch.key} width`).toBe(stitch.width * 100);
+      expect(glyph.height, `${stitch.key} height`).toBe(stitch.height * 100);
       expect(glyph.primitives.length).toBeGreaterThan(0);
       expect(glyphPdfCommands(stitch.key)?.commands).toContain(' S Q');
     }
-    expect(getGlyphDefinition('right_up_three_one')).toMatchObject({ width: 100, height: 100 });
-    expect(STITCH_BY_KEY.get('right_up_three_one')).toMatchObject({ width: 3, height: 1 });
-    expect(getGlyphDefinition('slip_stitch')).toMatchObject({ width: 100, height: 100 });
-    expect(STITCH_BY_KEY.get('slip_stitch')).toMatchObject({ width: 1, height: 2 });
   });
 
   it('keeps every vector primitive inside its drawing box', () => {
