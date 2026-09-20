@@ -42,6 +42,9 @@ describe('Board', () => {
   it('supports one million cells in a compact buffer', () => {
     const board = new Board(1000, 1000);
     expect(board.cells.byteLength).toBe(4_000_000);
+    board.place(0, 0, 'knit', '#123456', false);
+    board.place(999, 999, 'purl', '#abcdef', false);
+    expect(board.occupiedStitchCount).toBe(2);
   });
 
   it('counts placed stitch anchors for accessible status', () => {

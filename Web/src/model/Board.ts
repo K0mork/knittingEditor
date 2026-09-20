@@ -35,6 +35,7 @@ export class Board {
   cols: number;
   cells: Uint32Array;
   private owners: Int32Array;
+  private occupiedCount = 0;
 
   constructor(rows = 20, cols = 20, cells?: Uint32Array) {
     Board.validateSize(rows, cols);
@@ -55,11 +56,7 @@ export class Board {
   index(row: number, col: number): number { return row * this.cols + col; }
   inBounds(row: number, col: number): boolean { return row >= 0 && col >= 0 && row < this.rows && col < this.cols; }
   valueAt(row: number, col: number): number { return this.cells[this.index(row, col)] ?? 0; }
-  get occupiedStitchCount(): number {
-    let count = 0;
-    for (const value of this.cells) if (value) count += 1;
-    return count;
-  }
+  get occupiedStitchCount(): number { return this.occupiedCount; }
   ownerAt(row: number, col: number): number { return this.inBounds(row, col) ? this.owners[this.index(row, col)] : -1; }
 
   definitionAt(row: number, col: number): StitchDefinition | undefined {
@@ -89,6 +86,7 @@ export class Board {
     });
     conflicting.forEach((owner) => this.clearOwner(owner));
     this.cells[anchorIndex] = value;
+    this.occupiedCount += 1;
     this.eachFootprint(row, col, definition, (targetRow, targetCol) => {
       this.owners[this.index(targetRow, targetCol)] = anchorIndex;
     });
@@ -105,6 +103,7 @@ export class Board {
   clear(): void {
     this.cells.fill(0);
     this.owners.fill(-1);
+    this.occupiedCount = 0;
   }
 
   resize(newRows: number, newCols: number, rowOffset = 0, colOffset = 0): void {
@@ -201,6 +200,7 @@ export class Board {
 
   private rebuildOwners(): void {
     this.owners.fill(-1);
+    this.occupiedCount = 0;
     for (let index = 0; index < this.cells.length; index++) {
       const value = this.cells[index];
       if (!value) continue;
@@ -209,6 +209,7 @@ export class Board {
       const row = Math.floor(index / this.cols);
       const col = index % this.cols;
       if (!this.canFit(row, col, definition)) { this.cells[index] = 0; continue; }
+      this.occupiedCount += 1;
       this.eachFootprint(row, col, definition, (targetRow, targetCol) => {
         this.owners[this.index(targetRow, targetCol)] = index;
       });
@@ -230,6 +231,7 @@ export class Board {
     const row = Math.floor(owner / this.cols);
     const col = owner % this.cols;
     this.cells[owner] = 0;
+    this.occupiedCount -= 1;
     if (definition) this.eachFootprint(row, col, definition, (targetRow, targetCol) => {
       const index = this.index(targetRow, targetCol);
       if (this.owners[index] === owner) this.owners[index] = -1;
