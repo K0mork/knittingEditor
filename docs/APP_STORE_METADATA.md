@@ -24,7 +24,7 @@
 ## URLと提出メモ
 
 - サポートURL: `https://github.com/K0mork/knittingEditor_app/issues`（公開リポジトリが利用可能なことを提出前に確認）
-- プライバシーポリシーURL: 未確定。アプリ内ヘルプの説明を公開Web URLへ配置し、App Store Connectへ登録する必要がある。
+- プライバシーポリシーURL候補: `https://github.com/K0mork/knittingEditor_app/blob/main/docs/PRIVACY_POLICY.md`（App Store Connect登録前に公開状態と表示を確認）
 - 審査メモ: [`APP_REVIEW_NOTES.md`](APP_REVIEW_NOTES.md)の4.2説明と機内モード手順を転記する。
 - スクリーンショット: iPhone縦、iPhone横、iPad全画面、iPad可変幅を実機またはTestFlightで撮影して差し替える。
 
@@ -32,5 +32,6 @@
 
 - [ ] App名、サブタイトル、説明文、キーワードの文字数をApp Store Connectで確認する。
 - [ ] App Privacyの回答をPrivacy Manifestと照合する。
-- [ ] 公開Privacy Policy URLを確定する。
+- [x] Privacy Policy本文を`docs/PRIVACY_POLICY.md`へ用意する。
+- [ ] 公開Privacy Policy URLをApp Store Connectへ登録し、審査端末から表示できることを確認する。
 - [ ] スクリーンショットとアイコンを最終版へ差し替える。

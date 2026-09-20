@@ -11,6 +11,14 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-20: 公開Privacy Policy本文を追加
+
+- 変更: 端末内保存、Safari保存領域を読まない方針、ユーザー操作時だけのファイル共有・Safari遷移、アプリ削除時のデータ消失、問い合わせ先を`docs/PRIVACY_POLICY.md`へ明文化した。App Storeメタデータ案と提出チェックリストから公開URL候補を参照する。
+- 主なファイル: `docs/PRIVACY_POLICY.md`、`docs/APP_STORE_METADATA.md`、`docs/APP_STORE_CHECKLIST.md`
+- テスト: 文書変更のみ。`git diff --check`を実行する。
+- 未実施: GitHub上の公開URL表示確認、App Store ConnectへのURL登録、App Privacy回答の最終照合は未実施。
+- 配布影響: 公開ポリシー文書を追加した。アプリの通信・保存挙動は変更しない。
+
 ## 2026-09-20: AppIcon・起動画面を含むRelease Archiveを再検証
 
 - 変更: コード変更はない。AppIconと`LaunchBackground`追加後の提出候補bundleをRelease Archiveから再検査した。

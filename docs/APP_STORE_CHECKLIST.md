@@ -8,6 +8,7 @@
 - [ ] iPhone／iPadの実機スクリーンショットを撮影する。
 - [x] `App/PrivacyInfo.xcprivacy`を同梱し、収集データなし・トラッキングなしと一致させる。
 - [x] アプリ内ヘルプへプライバシーとサポート導線を同梱する。
+- [x] 公開Privacy Policy本文を`docs/PRIVACY_POLICY.md`へ用意する。
 - [x] App Review 4.2向けのネイティブ統合説明を`docs/APP_REVIEW_NOTES.md`へ記録する。
 - [x] App Store提出メタデータの下書きを`docs/APP_STORE_METADATA.md`へ用意する。
 
@@ -19,5 +20,6 @@
 - [ ] 1000×1000盤面のメモリ、PNG拒否、PDF出力時間を記録する。
 - [ ] TestFlight内部テストでクラッシュログとメモリ警告を確認する。
 - [ ] App Store ConnectのApp Privacy回答をPrivacy Manifestと照合する。
+- [ ] Privacy Policy URLをApp Store Connectへ登録し、公開状態を確認する。
 - [ ] 審査メモへ`docs/APP_REVIEW_NOTES.md`の要点を転記する。
 - [ ] 提出後の承認を確認するまで、App Store配布完了とは報告しない。
