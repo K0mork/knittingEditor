@@ -11,6 +11,14 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-20: AppIcon・起動画面を含むRelease Archiveを再検証
+
+- 変更: コード変更はない。AppIconと`LaunchBackground`追加後の提出候補bundleをRelease Archiveから再検査した。
+- 主なファイル: なし（検証記録のみ）。
+- テスト: `xcodebuild archive -project knittingEditor.xcodeproj -scheme knittingEditor -configuration Release -destination 'generic/platform=iOS' ... CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO`が`ARCHIVE SUCCEEDED`。Archive内の`AppIcon60x60@2x.png`、`AppIcon76x76@2x~ipad.png`、Privacy Manifest、ローカルWeb資産を検査成功した。
+- 未実施: 署名済みArchive、実機ホーム画面・起動遷移、TestFlight、App Store Connectは未実施。
+- 配布影響: なし。署名・配布は行っていない。
+
 ## 2026-09-20: M4操作領域とDynamic Typeの静的対応を強化
 
 - 変更: ヘッダーリンク、文書操作ボタン、盤面サイズ入力、出力select・range入力を44px以上へ統一した。`rem`ベースの文字サイズをiOSの文字拡大設定が反映できるよう`-webkit-text-size-adjust`を明示した。
