@@ -11,6 +11,14 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-21: 固定originと永続WebKitデータの更新耐性を自動検証
+
+- 変更: 固定origin `knitting-local://bundle` と `WKWebsiteDataStore.default()` を使うWebViewをいったん破棄して再生成し、IndexedDBのデータが同じアプリ更新相当の構成で読み戻せる単体テストを追加した。アプリのDB名・schemaを変更せずにWebViewを更新する方針をテストで固定する。
+- 主なファイル: `Tests/KnittingEditorAppTests/LocalWebSchemeHandlerTests.swift`、`TODO.md`
+- テスト: `xcodebuild build-for-testing`成功。iPhone 16 Simulator（iOS 18.2）とiPad (10th generation) Simulator（iOS 18.2）で`testStableOriginAndWebsiteDataSurviveWebViewReplacement`を各1件実行し、各1 passed・0 failed。
+- 未実施: 署名済みアプリを端末へ上書きインストールする実機アップデート試験、Apple Developer署名、TestFlight。実機アップデートはM2の残項目として保持する。
+- 配布影響: 保存originとIndexedDBの実装を変更せず、更新耐性の回帰テストだけを追加した。配布物・外部通信・署名設定は変更しない。
+
 ## 2026-09-21: PNG/PDFネイティブ保存UIテストのキャンセル待機を安定化
 
 - 変更: PNG／PDFのUIテストで保存アクションシートの「キャンセル」実行後にdismiss完了を待つようにした。PNGでは保存アクションを開いたまま次のPDF操作へ進んでいたため、Xcode 15.4 iPhone SimulatorでPDFアクションが不定になる問題を避ける。

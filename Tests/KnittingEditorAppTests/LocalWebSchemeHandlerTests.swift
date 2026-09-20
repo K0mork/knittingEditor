@@ -1,4 +1,5 @@
 import XCTest
+import WebKit
 @testable import knittingEditor
 
 @MainActor
@@ -32,5 +33,104 @@ final class LocalWebSchemeHandlerTests: XCTestCase {
                 bundle: bundle
             )
         )
+    }
+
+    @MainActor
+    func testStableOriginAndWebsiteDataSurviveWebViewReplacement() async throws {
+        let firstWebView = try makeWebView()
+        try await loadIndex(in: firstWebView)
+        let stored = try await firstWebView.callAsyncJavaScript(
+            """
+            const request = indexedDB.open('knitting-editor-update-probe-v1', 1);
+            request.onupgradeneeded = () => request.result.createObjectStore('probe', { keyPath: 'id' });
+            const database = await new Promise((resolve, reject) => {
+              request.onsuccess = () => resolve(request.result);
+              request.onerror = () => reject(request.error ?? new Error('open failed'));
+            });
+            await new Promise((resolve, reject) => {
+              const transaction = database.transaction('probe', 'readwrite');
+              transaction.objectStore('probe').put({ id: 'release-1', value: 'persisted' });
+              transaction.oncomplete = resolve;
+              transaction.onerror = () => reject(transaction.error ?? new Error('write failed'));
+            });
+            database.close();
+            return true;
+            """,
+            arguments: [:],
+            in: nil,
+            contentWorld: .page
+        )
+        XCTAssertEqual(stored as? Bool, true)
+
+        firstWebView.stopLoading()
+        firstWebView.navigationDelegate = nil
+        let secondWebView = try makeWebView()
+        try await loadIndex(in: secondWebView)
+        let restored = try await secondWebView.callAsyncJavaScript(
+            """
+            const request = indexedDB.open('knitting-editor-update-probe-v1', 1);
+            const database = await new Promise((resolve, reject) => {
+              request.onsuccess = () => resolve(request.result);
+              request.onerror = () => reject(request.error ?? new Error('open failed'));
+            });
+            const value = await new Promise((resolve, reject) => {
+              const transaction = database.transaction('probe', 'readonly');
+              const get = transaction.objectStore('probe').get('release-1');
+              get.onsuccess = () => resolve(get.result?.value ?? null);
+              get.onerror = () => reject(get.error ?? new Error('read failed'));
+            });
+            database.close();
+            return value;
+            """,
+            arguments: [:],
+            in: nil,
+            contentWorld: .page
+        )
+        XCTAssertEqual(restored as? String, "persisted")
+    }
+
+    @MainActor
+    private func makeWebView() throws -> WKWebView {
+        let configuration = WKWebViewConfiguration()
+        configuration.websiteDataStore = .default()
+        configuration.setURLSchemeHandler(
+            LocalWebSchemeHandler(bundle: Bundle(for: LocalWebSchemeHandler.self)),
+            forURLScheme: LocalWebSchemeHandler.scheme
+        )
+        return WKWebView(frame: .zero, configuration: configuration)
+    }
+
+    @MainActor
+    private func loadIndex(in webView: WKWebView) async throws {
+        let delegate = NavigationDelegate()
+        webView.navigationDelegate = delegate
+        webView.load(URLRequest(url: LocalWebSchemeHandler.indexURL))
+        try await delegate.waitForLoad()
+    }
+}
+
+@MainActor
+private final class NavigationDelegate: NSObject, WKNavigationDelegate {
+    private var continuation: CheckedContinuation<Void, Error>?
+
+    func waitForLoad() async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            self.continuation = continuation
+        }
+    }
+
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        continuation?.resume()
+        continuation = nil
+    }
+
+    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+        continuation?.resume(throwing: error)
+        continuation = nil
+    }
+
+    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        continuation?.resume(throwing: error)
+        continuation = nil
     }
 }
