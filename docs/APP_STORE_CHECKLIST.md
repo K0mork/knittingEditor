@@ -9,6 +9,7 @@
 - [x] `App/PrivacyInfo.xcprivacy`を同梱し、収集データなし・トラッキングなしと一致させる。
 - [x] アプリ内ヘルプへプライバシーとサポート導線を同梱する。
 - [x] App Review 4.2向けのネイティブ統合説明を`docs/APP_REVIEW_NOTES.md`へ記録する。
+- [x] App Store提出メタデータの下書きを`docs/APP_STORE_METADATA.md`へ用意する。
 
 ## 検証・配布
 

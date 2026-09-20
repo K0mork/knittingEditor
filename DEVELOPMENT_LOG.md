@@ -27,6 +27,14 @@
 - 未実施: 起動済みSimulatorがなく、XCUITestの実行、編集操作、アプリ再起動後の復元、Files／共有は未実施。
 - 配布影響: テストコードとTODOの精度のみ変更。署名・配布物は変更しない。
 
+## 2026-09-20: App Store提出メタデータ案を追加
+
+- 変更: App名、サブタイトル、説明文、キーワード、カテゴリ、サポート導線、審査メモの転記先を`docs/APP_STORE_METADATA.md`へまとめた。公開Privacy Policy URLと実機スクリーンショットは未確定として明記し、提出チェックリストから参照できるようにした。
+- 主なファイル: `docs/APP_STORE_METADATA.md`、`docs/APP_STORE_CHECKLIST.md`
+- テスト: 文書変更のみ。`git diff --check`を実行する。
+- 未実施: App Store Connectへの入力、URL公開、アイコン・スクリーンショット最終化、TestFlightは未実施。
+- 配布影響: 提出準備文書のみ。署名、配布、外部サービス設定は変更しない。
+
 ## 2026-09-20: M3 `.knit`相互運用fixtureを固定
 
 - 変更: Web版出力とアプリ版搬送で共有するgzip JSONの最小`.knit` fixtureを追加した。Webの`importBackup`はfixtureを実際に復元し、Swift単体テストは同じバイト列を型付き`exportFile`メッセージへ包んでも変化しないことを検証する。アプリ側でpayloadを再シリアライズしない方針を`docs/NATIVE_BRIDGE.md`へ明記した。
