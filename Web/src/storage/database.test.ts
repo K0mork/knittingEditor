@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { gunzipSync, gzipSync, strFromU8, strToU8 } from 'fflate';
 import { Board } from '../model/Board';
 import {
-  boardFromDocument, createDocument, exportBackup, importBackup, saveDocument,
+  boardFromDocument, createDocument, exportBackup, importBackup, initializeStorage, listDocuments, saveDocument, setSetting,
 } from './database';
 import interopFixtureBase64 from '../../../test-fixtures/knitting-editor-v2-interop.knit.b64?raw';
 
@@ -49,5 +49,32 @@ describe('backup restore', () => {
     expect(result.count).toBe(1);
     expect(result.documents[0].name).toBe('相互運用fixture（復元）');
     expect(Array.from(new Uint32Array(result.documents[0].cells))).toEqual([1, 2, 3, 4, 5, 6]);
+  });
+
+  it('keeps the selected document across storage initialization', async () => {
+    const first = await createDocument('先に作った編み図');
+    await createDocument('後に作った編み図');
+    await setSetting('activeDocumentId', first.id);
+
+    const initialized = await initializeStorage();
+
+    expect(initialized.activeId).toBe(first.id);
+    expect(initialized.documents.map((document) => document.id)).toContain(first.id);
+  });
+
+  it('persists a 1000x1000 board and restores its packed cells', async () => {
+    const document = await createDocument('最大盤面', 1, 1);
+    const board = new Board(1000, 1000);
+    board.place(0, 0, 'knit', '#123456', false);
+    board.place(999, 999, 'purl', '#abcdef', false);
+
+    await saveDocument(document, board);
+    const stored = (await listDocuments()).find((item) => item.id === document.id);
+
+    expect(stored).toBeDefined();
+    expect(stored!.cells.byteLength).toBe(1000 * 1000 * Uint32Array.BYTES_PER_ELEMENT);
+    const restored = boardFromDocument(stored!);
+    expect(restored.valueAt(0, 0)).toBe(board.valueAt(0, 0));
+    expect(restored.valueAt(999, 999)).toBe(board.valueAt(999, 999));
   });
 });
