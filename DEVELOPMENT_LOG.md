@@ -11,6 +11,14 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-20: Release ArchiveをCIへ追加
+
+- 変更: 手書き`Info.plist`へ`$(PRODUCT_BUNDLE_IDENTIFIER)`を明示し、`generic/platform=iOS`向け署名なしRelease Archiveで発生していた`Archive Missing Bundle Identifier`を解消した。CIに独立した`release-archive` jobを追加し、Archive内のapp bundleへローカル資産・Privacy Manifest・外部参照検査を適用する。
+- 主なファイル: `App/Info.plist`、`.github/workflows/ci.yml`、`TODO.md`
+- テスト: `xcodebuild archive -project knittingEditor.xcodeproj -scheme knittingEditor -configuration Release -destination 'generic/platform=iOS' -archivePath <temporary> CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO`が`ARCHIVE SUCCEEDED`。生成Archive内appへ`scripts/check-app-bundle.sh`を適用できる構成を確認した。
+- 未実施: Apple Developer Teamによる署名済みArchive、TestFlight upload、App Store Connect検証は未実施。署名なしArchiveは配布可能なビルドを意味しない。
+- 配布影響: Release Archive自動検査を追加した。証明書、Provisioning Profile、配布先は変更していない。
+
 ## 2026-09-20: iOSデバイスSDK向けコンパイルを確認
 
 - 変更: コード変更はない。接続中として列挙された`Fuji`はXcode schemeの実行destinationへ解決されなかったため、端末へインストールせず`iphoneos` SDKの`build-for-testing`だけを実行した。

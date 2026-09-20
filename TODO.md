@@ -79,6 +79,7 @@
 - [x] 全記号fixtureのCanvas・PNG・PDF回帰テストを追加する（実機のPNG表示確認は別途必要）
 - [ ] ネットワーク要求を検出するオフライン試験を追加する
 - [x] 生成アプリbundleの通信API・外部実行参照を静的検査する（実機の通信監視は別途必要）
+- [x] 署名なしRelease Archiveとローカル資産検査をCIで再現する（Apple署名済みArchiveは別途必要）
 - [x] iPhone・iPad SimulatorのCI matrixを作る
 - [x] リリースビルドのローカル資産完全性を検証する
 
