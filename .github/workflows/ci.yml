@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  web:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: Web/package-lock.json
+      - name: Test and build web bundle
+        working-directory: Web
+        run: npm ci --ignore-scripts && npm test && npm run build
+
+  ios:
+    strategy:
+      fail-fast: false
+      matrix:
+        device:
+          - 'iPhone 16'
+          - 'iPad (10th generation)'
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        run: xcodegen generate --spec project.yml
+      - name: Run iOS tests
+        run: >-
+          xcodebuild test
+          -project knittingEditor.xcodeproj
+          -scheme knittingEditor
+          -destination 'platform=iOS Simulator,name=${{ matrix.device }},OS=latest'
+          CODE_SIGNING_ALLOWED=NO
+      - name: Verify generated app bundle
+        run: |
+          xcodebuild build -project knittingEditor.xcodeproj -scheme knittingEditor \
+            -sdk iphonesimulator -configuration Debug CODE_SIGNING_ALLOWED=NO \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData"
+          scripts/check-app-bundle.sh "$RUNNER_TEMP/DerivedData/Build/Products/Debug-iphonesimulator/knittingEditor.app"

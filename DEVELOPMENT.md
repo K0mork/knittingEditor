@@ -53,6 +53,9 @@ xcodebuild -project knittingEditor.xcodeproj -scheme knittingEditor \
   -sdk iphonesimulator -configuration Debug CODE_SIGNING_ALLOWED=NO build
 xcodebuild -project knittingEditor.xcodeproj -scheme knittingEditor \
   -sdk iphonesimulator -configuration Debug CODE_SIGNING_ALLOWED=NO build-for-testing
+
+(cd Web && npm ci --ignore-scripts && npm test && npm run build)
+scripts/check-app-bundle.sh /path/to/knittingEditor.app
 ```
 
 公開中の`https://knittingeditor.com/`は読み込みません。Viteのアプリ用ビルドをXcodeバンドルへ格納し、HTML、JavaScript、記号、WorkerをローカルURLから読み込みます。
@@ -142,6 +145,7 @@ SwiftDataへの移行は初回リリース後の選択肢とします。初回�
 - iPhoneとiPadの代表Simulatorで実行する。
 - ジェスチャー、Apple Pencil、巨大PNG/PDF、メモリ圧迫は実機で確認する。
 - オフライン試験では通信を遮断し、全必須機能を操作する。
+- `.github/workflows/ci.yml`でWebテスト、Swiftテスト、iPhone／iPad SimulatorのXCUITest、生成アプリバンドルの外部参照検査を実行する。
 
 ### 互換性
 

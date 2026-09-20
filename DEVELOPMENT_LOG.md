@@ -11,6 +11,14 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-20: M5 CI、XCUITest、ローカル資産検査を追加
+
+- 変更: Web単体テストとViteビルド、Swift単体テスト、iPhone／iPad Simulator matrix、起動XCUITestをGitHub Actionsへ追加した。XcodeGenでUIテストターゲットを生成し、生成アプリバンドルにHTML／assets／guideが存在し、分析タグやアプリ外部ホストが含まれないことを検査する`check-app-bundle.sh`を追加した。全26記号のSVG／PDF glyph定義回帰テストも追加した。
+- 主なファイル: `.github/workflows/ci.yml`、`project.yml`、`UITests/KnittingEditorUITests/KnittingEditorUITests.swift`、`scripts/check-app-bundle.sh`、`Web/src/stitches/glyphs.test.ts`
+- テスト: `(cd Web && npm test)`で6ファイル29テスト成功、`npm run build`成功。`xcodegen generate`と`xcodebuild ... build-for-testing`でアプリ、Swift単体テスト、XCUITestのコンパイル成功。生成アプリを`check-app-bundle.sh`で検査し成功した。初回の資産検査はSVG名前空間まで外部URLとして誤検出したため、許可対象を見直して再実行した。
+- 未実施: 起動済みSimulatorがないためXCUITest実行、iPhone／iPadのUI操作、Files／共有、機内モード通信監視は未実施。GitHub Actions上のmatrix実行が必要。
+- 配布影響: CI設定とテストターゲットのみ追加。署名、TestFlight、App Store提出は行っていない。
+
 ## 2026-09-20: M4アプリ内ダイアログと操作領域の改善
 
 - 変更: WebView内の`window.prompt`／`window.confirm`をReact製のアクセシブルなアプリ内ダイアログへ置き換えた。盤面位置入力、編み図名、ブロック名、削除、全体クリアを同じダイアログ経路に統一し、キャンセルとEscapeを扱う。主要ボタンと色入力は44px以上へ調整し、`prefers-reduced-motion`にも対応した。

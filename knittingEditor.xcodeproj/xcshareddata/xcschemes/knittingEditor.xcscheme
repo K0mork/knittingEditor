@@ -50,6 +50,17 @@
                ReferencedContainer = "container:knittingEditor.xcodeproj">
             </BuildableReference>
          </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "7283B33B8F44BDE5F5F8EEBF"
+               BuildableName = "knittingEditorUITests.xctest"
+               BlueprintName = "knittingEditorUITests"
+               ReferencedContainer = "container:knittingEditor.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
       <CommandLineArguments>
       </CommandLineArguments>

@@ -10,6 +10,7 @@
 		2A22B31E4E848E4416DE5D2E /* KnittingEditorUTType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E89D10B53EB561502464406 /* KnittingEditorUTType.swift */; };
 		2E279AF776F175B3F77DA1A5 /* Web in Resources */ = {isa = PBXBuildFile; fileRef = F41441F8FD8454433D85E51C /* Web */; };
 		399AE0908FE88F56457A7A54 /* WebViewContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E643EAB3D8627886E3EDCB9 /* WebViewContainer.swift */; };
+		72A7C34CF22FD0138A1E8FE7 /* KnittingEditorUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 049604E8F16625AD6FE9AA3F /* KnittingEditorUITests.swift */; };
 		80BB0B545C49794374C7C699 /* KnittingEditorApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79CFD1A36C16A062BF1E7D49 /* KnittingEditorApp.swift */; };
 		CF285C11B3A112C566D556C3 /* NativeBridgeMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DA6B84D7E98986674AF1841 /* NativeBridgeMessage.swift */; };
 		D3CA49E4EE8BA3B56DA80D0E /* NativeBridgeMessageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE539ADB212ECD98B46BDB /* NativeBridgeMessageTests.swift */; };
@@ -18,6 +19,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		6ED101A4D70D3DFE1460C875 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 621B162E2A5245DB289BE9C9 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 78F6BE1E8DD740EEC31B070B;
+			remoteInfo = knittingEditor;
+		};
 		C3D1C1C71BCF442C26D28AD8 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 621B162E2A5245DB289BE9C9 /* Project object */;
@@ -29,11 +37,13 @@
 
 /* Begin PBXFileReference section */
 		02EEF60A275DC7E5B3AFEC1E /* LocalWebSchemeHandlerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalWebSchemeHandlerTests.swift; sourceTree = "<group>"; };
+		049604E8F16625AD6FE9AA3F /* KnittingEditorUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnittingEditorUITests.swift; sourceTree = "<group>"; };
 		07781248F43F310A19A846F2 /* knittingEditorTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = knittingEditorTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		23B041EDB211844299152088 /* knittingEditor.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = knittingEditor.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2DA6B84D7E98986674AF1841 /* NativeBridgeMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeBridgeMessage.swift; sourceTree = "<group>"; };
 		4E643EAB3D8627886E3EDCB9 /* WebViewContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebViewContainer.swift; sourceTree = "<group>"; };
 		79CFD1A36C16A062BF1E7D49 /* KnittingEditorApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnittingEditorApp.swift; sourceTree = "<group>"; };
+		8D40BDC62512CFC6F6D66BE6 /* knittingEditorUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = knittingEditorUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9E89D10B53EB561502464406 /* KnittingEditorUTType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnittingEditorUTType.swift; sourceTree = "<group>"; };
 		B879541A0716033B76781073 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		CAFE539ADB212ECD98B46BDB /* NativeBridgeMessageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeBridgeMessageTests.swift; sourceTree = "<group>"; };
@@ -59,11 +69,20 @@
 			path = KnittingEditorAppTests;
 			sourceTree = "<group>";
 		};
+		4D25F30CB03D068C7B3B6751 /* KnittingEditorUITests */ = {
+			isa = PBXGroup;
+			children = (
+				049604E8F16625AD6FE9AA3F /* KnittingEditorUITests.swift */,
+			);
+			path = KnittingEditorUITests;
+			sourceTree = "<group>";
+		};
 		78E8927B1B271B6F47270280 /* Products */ = {
 			isa = PBXGroup;
 			children = (
 				23B041EDB211844299152088 /* knittingEditor.app */,
 				07781248F43F310A19A846F2 /* knittingEditorTests.xctest */,
+				8D40BDC62512CFC6F6D66BE6 /* knittingEditorUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -74,6 +93,7 @@
 				E33E4B0F767B0C1D8E5B0686 /* App */,
 				3AD645916EC8D81985BD1DE0 /* AppResources */,
 				B6E58702385CDAD5F7E3FD6A /* Tests */,
+				EBD817725BFEA64E0012F938 /* UITests */,
 				78E8927B1B271B6F47270280 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -99,6 +119,14 @@
 			path = App;
 			sourceTree = "<group>";
 		};
+		EBD817725BFEA64E0012F938 /* UITests */ = {
+			isa = PBXGroup;
+			children = (
+				4D25F30CB03D068C7B3B6751 /* KnittingEditorUITests */,
+			);
+			path = UITests;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -119,6 +147,24 @@
 			productName = knittingEditorTests;
 			productReference = 07781248F43F310A19A846F2 /* knittingEditorTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		7283B33B8F44BDE5F5F8EEBF /* knittingEditorUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C4FC953BBD1BB078EFA3566C /* Build configuration list for PBXNativeTarget "knittingEditorUITests" */;
+			buildPhases = (
+				328FDC0B98939F7595B549B3 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				650FBB14CBB7A67CD9AC1F99 /* PBXTargetDependency */,
+			);
+			name = knittingEditorUITests;
+			packageProductDependencies = (
+			);
+			productName = knittingEditorUITests;
+			productReference = 8D40BDC62512CFC6F6D66BE6 /* knittingEditorUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 		78F6BE1E8DD740EEC31B070B /* knittingEditor */ = {
 			isa = PBXNativeTarget;
@@ -148,6 +194,9 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					7283B33B8F44BDE5F5F8EEBF = {
+						TestTargetID = 78F6BE1E8DD740EEC31B070B;
+					};
 					78F6BE1E8DD740EEC31B070B = {
 						ProvisioningStyle = Automatic;
 					};
@@ -169,6 +218,7 @@
 			targets = (
 				78F6BE1E8DD740EEC31B070B /* knittingEditor */,
 				547750A85107156D3FA3B420 /* knittingEditorTests */,
+				7283B33B8F44BDE5F5F8EEBF /* knittingEditorUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -207,6 +257,14 @@
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		328FDC0B98939F7595B549B3 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				72A7C34CF22FD0138A1E8FE7 /* KnittingEditorUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		9D312ED088253DC063FE2C10 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -231,6 +289,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		650FBB14CBB7A67CD9AC1F99 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 78F6BE1E8DD740EEC31B070B /* knittingEditor */;
+			targetProxy = 6ED101A4D70D3DFE1460C875 /* PBXContainerItemProxy */;
+		};
 		F517509B74D251803E61EDBF /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 78F6BE1E8DD740EEC31B070B /* knittingEditor */;
@@ -255,6 +318,22 @@
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
+		};
+		0D216ACB332C03BF5FADD7ED /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.k0mork.knittingEditor.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = knittingEditor;
+			};
+			name = Debug;
 		};
 		15BAAEAEBFC66E15421E1833 /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -370,6 +449,22 @@
 			};
 			name = Debug;
 		};
+		EC9D5059D95BFD45C52D0277 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.k0mork.knittingEditor.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = knittingEditor;
+			};
+			name = Release;
+		};
 		F2234023EFFE1B033B9579EB /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -454,6 +549,15 @@
 			buildConfigurations = (
 				15BAAEAEBFC66E15421E1833 /* Debug */,
 				69EC72CA357811F54FB7D746 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		C4FC953BBD1BB078EFA3566C /* Build configuration list for PBXNativeTarget "knittingEditorUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0D216ACB332C03BF5FADD7ED /* Debug */,
+				EC9D5059D95BFD45C52D0277 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

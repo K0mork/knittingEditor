@@ -34,6 +34,7 @@ targets:
     scheme:
       testTargets:
         - knittingEditorTests
+        - knittingEditorUITests
 
   knittingEditorTests:
     type: bundle.unit-test
@@ -45,3 +46,14 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.k0mork.knittingEditor.tests
+
+  knittingEditorUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: UITests/KnittingEditorUITests
+    dependencies:
+      - target: knittingEditor
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.k0mork.knittingEditor.uitests

@@ -26,5 +26,6 @@ struct ContentView: View {
         WebViewContainer(model: model)
             .ignoresSafeArea(.container, edges: .bottom)
             .accessibilityLabel("棒針編み図エディタ")
+            .accessibilityIdentifier("knittingEditorWebView")
     }
 }

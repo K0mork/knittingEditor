@@ -70,14 +70,14 @@
 
 ## M5: 自動テスト・CI（P0）
 
-- [ ] Web単体テストをCIへ追加する
-- [ ] Swift単体テストを追加する
-- [ ] XCUITestで起動、編集、再起動復元を検証する
+- [x] Web単体テストをCIへ追加する
+- [x] Swift単体テストを追加する
+- [x] XCUITestで起動、編集、再起動復元を検証する
 - [ ] XCUITestでFiles入出力と共有導線を検証する
 - [ ] 全記号fixtureのCanvas・PNG・PDF回帰テストを追加する
 - [ ] ネットワーク要求を検出するオフライン試験を追加する
-- [ ] iPhone・iPad SimulatorのCI matrixを作る
-- [ ] リリースビルドのローカル資産完全性を検証する
+- [x] iPhone・iPad SimulatorのCI matrixを作る
+- [x] リリースビルドのローカル資産完全性を検証する
 
 完了条件: クリーン環境で全テスト、Archive、オフライン資産検査が再現可能に成功する。
 
