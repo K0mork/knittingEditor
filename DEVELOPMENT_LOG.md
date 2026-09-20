@@ -11,6 +11,14 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-21: M6リリース資産と申請資料の静的検証を更新
+
+- 変更: `docs/APP_STORE_CHECKLIST.md`のCI証跡を、Web、Swift、iPhone／iPad UIテスト、iPhone／iPad app-update、Release Archiveの全6ジョブが成功したrun `35544029559`へ更新した。M6のSimulator画面下書き、起動画面定義、AppIcon、Privacy Manifest、提出資料の参照関係を現行Archiveで再検証した。
+- 主なファイル: `docs/APP_STORE_CHECKLIST.md`、`DEVELOPMENT_LOG.md`
+- テスト: `scripts/check-release-assets.sh /Users/komorikouki/Library/Developer/XcodeBuildMCP/workspaces/knittingEditor_app-2e497d8fe210/DerivedData/knittingEditor-41ffcc54eb3e/Build/Products/Debug-iphonesimulator/knittingEditor.app`、`scripts/check-app-store-docs.sh`、`git diff --check`が成功した。XcodeBuildMCPでiPad Simulatorを起動し、runtime UI snapshotを取得できた。
+- 未実施: 実機の起動画面・スクリーンショット、Apple Developer署名、TestFlight、App Store Connect登録。Simulatorと静的検証の成功だけでは外部配布ゲートを完了にしない。
+- 配布影響: アプリ本体・保存形式・Bundle ID・外部通信方針は変更しない。提出証跡の参照先と検証ログだけを更新した。
+
 ## 2026-09-21: UIテストの保存待機条件を実際の見出しに合わせる
 
 - 変更: 保存待機ヘルパーを文書名の完全一致から見出しの接頭辞一致へ変更した。入力欄の既定値が文書名へ続く実装に合わせ、文書切替テストではA/Bそれぞれの編集直後、アプリ更新seedでは編集直後に保存完了を待つようにした。誤っていた文書切替テストへのfixture名待機も除去した。

@@ -15,7 +15,7 @@
 
 ## 検証・配布
 
-- [x] GitHub ActionsのWeb、Swift、iPhone／iPad UIテストを成功させる（run `35526038656`）。
+- [x] GitHub ActionsのWeb、Swift、iPhone／iPad UIテストを成功させる（run `35544029559`）。
 - [ ] 実機で機内モードのP0フローを完了する。
 - [ ] Files、AirDrop、共有先、外部`.knit`の往復を実機で確認する。
 - [ ] 1000×1000盤面のメモリ、PNG拒否、PDF出力時間を記録する。
