@@ -75,7 +75,7 @@
 - [x] Swift単体テストを追加する
 - [x] XCUITestで起動、編集、再起動復元を検証する
 - [ ] XCUITestでFiles入出力と共有導線を検証する
-- [ ] 全記号fixtureのCanvas・PNG・PDF回帰テストを追加する
+- [x] 全記号fixtureのCanvas・PNG・PDF回帰テストを追加する（実機のPNG表示確認は別途必要）
 - [ ] ネットワーク要求を検出するオフライン試験を追加する
 - [x] 生成アプリbundleの通信API・外部実行参照を静的検査する（実機の通信監視は別途必要）
 - [x] iPhone・iPad SimulatorのCI matrixを作る

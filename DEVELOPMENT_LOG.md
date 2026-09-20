@@ -43,6 +43,14 @@
 - 未実施: iPhone／iPad実機のVoiceOverフォーカス順、外付け入力、Dynamic Type、Canvasジェスチャーは未実施。M4の実機項目は維持する。
 - 配布影響: Web UIのアクセシビリティ属性と非表示説明のみ変更。権限や外部通信は追加していない。
 
+## 2026-09-20: M5全記号のCanvas・PDF回帰fixtureを追加
+
+- 変更: 26記号のうち描画記号25個をCanvas描画経路へ通す単体テストと、全描画記号および白くする記号を1枚へ配置してPDFのXObject参照・白塗り命令を確認するfixtureテストを追加した。PNGは同じ`drawGlyph`経路を使うため、描画呼び出しの回帰を共有する。
+- 主なファイル: `Web/src/stitches/glyphs.test.ts`、`Web/src/export/pdf.worker.test.ts`、`TODO.md`
+- テスト: `(cd Web && npm test)`で6ファイル34テスト成功、`npm run build`成功。
+- 未実施: iPhone／iPad実機で生成PNG／PDFを開いて表示する確認は未実施。M4・M5の実機表示項目は維持する。
+- 配布影響: 単体テストのみ。出力形式やアプリbundleは変更しない。
+
 ## 2026-09-20: M6プライバシー、サポート、審査準備を追加
 
 - 変更: `PrivacyInfo.xcprivacy`をアプリバンドルへ追加し、トラッキングなし・収集データなし・宣言対象APIなしを明記した。アプリ内ヘルプへ端末内処理、アプリ削除時のデータ消失、GitHub Issuesサポート導線を追加した。ユーザーがリンクを選んだ場合だけSwift側でSafariを開く。App Review 4.2向け審査メモとApp Store提出チェックリストを追加した。
