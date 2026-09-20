@@ -1,7 +1,7 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 import { gzipSync, gunzipSync, strFromU8, strToU8 } from 'fflate';
 import { Board, type PatternBlock } from '../model/Board';
-import { STITCH_BY_KEY } from '../stitches/catalog';
+import { STITCH_BY_KEY, STITCH_CATALOG_VERSION } from '../stitches/catalog';
 
 export interface ChartDocument {
   id: string;
@@ -25,6 +25,7 @@ interface BackupDocument extends Omit<ChartDocument, 'cells'> { cells: string }
 interface BackupPayload {
   format: 'knitting-editor';
   version: 2;
+  stitchCatalogVersion?: number;
   exportedAt: string;
   documents: BackupDocument[];
   blocks: PatternBlock[];
@@ -179,7 +180,7 @@ export async function exportBackup(documentIds?: string[]): Promise<Blob> {
   const documents = (await listDocuments()).filter((item) => !documentIds || documentIds.includes(item.id));
   const blocks = documentIds ? [] : await listBlocks();
   const payload: BackupPayload = {
-    format: 'knitting-editor', version: 2, exportedAt: new Date().toISOString(),
+    format: 'knitting-editor', version: 2, stitchCatalogVersion: STITCH_CATALOG_VERSION, exportedAt: new Date().toISOString(),
     documents: documents.map((item) => ({ ...item, cells: bytesToBase64(new Uint8Array(item.cells)) })),
     blocks,
   };
@@ -190,6 +191,9 @@ export async function importBackup(file: Blob): Promise<ImportBackupResult> {
   const payload = JSON.parse(strFromU8(gunzipSync(new Uint8Array(await file.arrayBuffer())))) as BackupPayload;
   if (payload.format !== 'knitting-editor' || payload.version !== 2 || !Array.isArray(payload.documents)) {
     throw new Error('対応していないバックアップ形式です');
+  }
+  if ((payload.stitchCatalogVersion ?? 1) > STITCH_CATALOG_VERSION) {
+    throw new Error('新しい記号カタログで作成されたバックアップです。アプリを更新してください');
   }
   const now = Date.now();
   const restoredDocuments = payload.documents.map((item): ChartDocument => {

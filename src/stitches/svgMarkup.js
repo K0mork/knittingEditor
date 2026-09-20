@@ -1,3 +1,10 @@
+// @ts-check
+
+/**
+ * @param {string} type
+ * @param {{ orientation?: 'square' | 'horizontal' | 'vertical' }} [options]
+ * @returns {string}
+ */
 export function getStitchSymbol(type, options = {}) {
   // options.orientation: "square" (デフォルト)、"horizontal"（横長）、"vertical"（縦長）
   const orientation = options.orientation || 'square';
@@ -348,7 +355,7 @@ export function getStitchSymbol(type, options = {}) {
             transform="matrix(1, 0, 0, -1, 0, 850.5)" />
         </svg>
       `;
-    case 'purl_twisst_stitch':
+    case 'purl_twist_stitch':
       return `
         <svg viewBox="0 0 850.5 850.5" style="width:100%;height:100%;" xmlns="http://www.w3.org/2000/svg">
   <path
