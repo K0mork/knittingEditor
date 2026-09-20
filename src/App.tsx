@@ -2,7 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { boardSizeBucket, countBucket, trackAnalyticsEvent, trackFirstEdit } from './analytics';
 import { BoardCanvas, type CanvasMode } from './canvas/BoardCanvas';
 import { Board, type PatternBlock, type Rect } from './model/Board';
-import { STITCHES, stitchSvg } from './stitches/catalog';
+import {
+  STITCHES, STITCH_CATEGORY_LABELS, type StitchCategory,
+} from './stitches/catalog';
 import {
   boardFromDocument, createDocument, deleteBlock, deleteDocument, duplicateDocument,
   exportBackup, importBackup, initializeStorage, listBlocks, listDocuments,
@@ -12,6 +14,7 @@ import { downloadBlob, renderPdf, renderPng, validatePngSize } from './export/ex
 
 type BusyTask = 'PNGを生成中' | 'PDFを生成中' | 'バックアップを処理中';
 type Panel = 'documents' | 'grid' | 'blocks' | 'export';
+const STITCH_CATEGORY_ORDER: StitchCategory[] = ['basic', 'decrease', 'cable', 'twist', 'utility'];
 
 export default function App() {
   const [documents, setDocuments] = useState<ChartDocument[]>([]);
@@ -20,6 +23,7 @@ export default function App() {
   const [blocks, setBlocks] = useState<PatternBlock[]>([]);
   const [revision, setRevision] = useState(0);
   const [selectedStitch, setSelectedStitch] = useState('knit');
+  const [stitchPickerOpen, setStitchPickerOpen] = useState(false);
   const [selectedColor, setSelectedColor] = useState('#d33c32');
   const [mode, setMode] = useState<CanvasMode>('draw');
   const [selection, setSelection] = useState<Rect>();
@@ -176,6 +180,15 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleShortcut);
   }, [selection, copiedBlock, copySelection]);
 
+  useEffect(() => {
+    if (!stitchPickerOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setStitchPickerOpen(false);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [stitchPickerOpen]);
+
   const runPngExport = async (cellSize: number) => {
     if (!board || !activeDocument) return;
     const validation = validatePngSize(board, cellSize);
@@ -257,14 +270,45 @@ export default function App() {
     <main className="workspace">
       <section className="primary-tools" aria-label="編集ツール">
         <label className="color-tool"><span>色</span><input aria-label="記号の色" type="color" value={selectedColor} onChange={(event) => setSelectedColor(event.target.value)} /></label>
-        <label className="stitch-tool"><span dangerouslySetInnerHTML={{ __html: stitchSvg(currentStitch.key) }} /><select aria-label="編み目記号" value={selectedStitch} onChange={(event) => { setSelectedStitch(event.target.value); setMode('draw'); trackAnalyticsEvent('stitch_selected', { stitch_key: event.target.value }); }}>
-          {STITCHES.map((stitch) => <option key={stitch.key} value={stitch.key}>{stitch.name}</option>)}
-        </select></label>
+        <button className="stitch-tool" aria-label="編み目記号を選ぶ" aria-haspopup="dialog" aria-expanded={stitchPickerOpen} onClick={() => setStitchPickerOpen(true)}>
+          <span aria-hidden="true" dangerouslySetInnerHTML={{ __html: currentStitch.svg }} />
+          <span className="stitch-tool-name">{currentStitch.name}</span>
+          <span className="stitch-tool-chevron" aria-hidden="true">⌄</span>
+        </button>
         <button className={mode === 'draw' ? 'active' : ''} onClick={() => { setMode('draw'); setSelection(undefined); }}>描く</button>
         <button className={mode === 'erase' ? 'active' : ''} onClick={() => { setMode('erase'); setSelection(undefined); }}>消す</button>
         <button className={mode === 'select' ? 'active' : ''} onClick={() => { setMode('select'); setSelection(undefined); }}>範囲</button>
         {copiedBlock && <button className={mode === 'paste' ? 'active' : ''} onClick={() => { setPasteBlock(copiedBlock); setMode('paste'); setSelection(undefined); }}>貼付</button>}
       </section>
+
+      {stitchPickerOpen && <div className="stitch-picker-backdrop" onMouseDown={(event) => {
+        if (event.target === event.currentTarget) setStitchPickerOpen(false);
+      }}>
+        <section className="stitch-picker" role="dialog" aria-modal="true" aria-labelledby="stitch-picker-title">
+          <div className="stitch-picker-heading"><div><h2 id="stitch-picker-title">編み目記号</h2><p>記号を選ぶと描画モードになります</p></div><button onClick={() => setStitchPickerOpen(false)}>閉じる</button></div>
+          {STITCH_CATEGORY_ORDER.map((category) => <div className="stitch-category" key={category}>
+            <h3>{STITCH_CATEGORY_LABELS[category]}</h3>
+            <div className="stitch-grid">
+              {STITCHES.filter((stitch) => stitch.category === category).map((stitch) => <button
+                className={stitch.key === selectedStitch ? 'stitch-option selected' : 'stitch-option'}
+                key={stitch.key}
+                aria-pressed={stitch.key === selectedStitch}
+                onClick={() => {
+                  setSelectedStitch(stitch.key);
+                  setMode('draw');
+                  setSelection(undefined);
+                  setStitchPickerOpen(false);
+                  trackAnalyticsEvent('stitch_selected', { stitch_key: stitch.key });
+                }}
+              >
+                <span className="stitch-option-symbol" aria-hidden="true" dangerouslySetInnerHTML={{ __html: stitch.svg }} />
+                <span>{stitch.name}</span>
+                <small>{stitch.width}×{stitch.height}目</small>
+              </button>)}
+            </div>
+          </div>)}
+        </section>
+      </div>}
 
       {selection && <div className="selection-actions" role="toolbar" aria-label="選択範囲の操作">
         <button className="primary" onClick={copySelection}>コピーして貼付</button>

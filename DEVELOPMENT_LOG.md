@@ -1,5 +1,13 @@
 # Development Log
 
+## 2026-09-20 — 編み目記号の互換性・PDF白塗り・選択UIを改善
+
+- 影響: 保存済み編み図で使う記号IDを明示的な永続値に変更し、バックアップへ記号カタログ版を記録するようにした。旧キー `purl_twisst_stitch` は互換名として読込みを維持する。「白くする」は消去とは別の記号として残し、PDFでもセルを白く塗ってグリッドを隠すよう修正した。従来の文字だけの選択欄を、記号画像・名称・占有目数を分類表示するパレットへ変更した。記号図形そのものは変更していない。
+- 主なファイル: `src/stitches/catalog.ts`, `src/stitches/svgMarkup.js`, `src/App.tsx`, `src/styles.css`, `src/export/pdf.worker.ts`, `src/storage/database.ts`
+- テスト: `src/stitches/catalog.test.ts` に永続ID、キー重複、全SVG、旧キー互換の検証を追加した。`src/export/pdf.worker.test.ts` にPDF白塗り命令、`src/storage/database.test.ts` にバックアップの記号カタログ版、`tests/e2e/editor.spec.ts` に記号パレット表示・選択・ID 25の保存を追加した。
+- 検証: `npm run typecheck`、`npm test`（17件）、`npm run build`、`npm run check:dist`、`npm run test:e2e`（Chromium mobile・WebKit mobile・Chromium desktop、39件）を実行し、すべて成功。ChromiumとWebKitでモバイル390×844、デスクトップ1280×800のパレットを手動確認し、スクリーンショットを `/tmp/stitch-picker-{chromium,webkit}-{mobile,desktop}.png` に保存した。
+- デプロイ影響: 静的アプリの更新あり。未デプロイ。デプロイ後は記号パレット、白くしたセルの再読込み、PNG/PDFでの白塗り、既存編み図の記号互換性を確認する必要がある。
+
 ## 2026-09-20 — SEOと使い方ページのブラウザテストを追加
 
 - 影響: 実行時の動作は変更しない。`/` のメタデータ、構造化データ、JavaScript実行前の説明文、`/guide/` ページ、sitemapとfaviconの配信を自動検証するようにした。

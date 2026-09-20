@@ -34,9 +34,22 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 .primary-tools button { flex: 0 0 auto; }
 .color-tool { display: flex; align-items: center; gap: 5px; font-size: .8rem; }
 .color-tool input { width: 42px; height: 42px; border: 0; padding: 2px; background: none; }
-.stitch-tool { min-width: 170px; display: flex; align-items: center; gap: 6px; padding: 3px 8px; border: 1px solid var(--border); border-radius: 10px; background: white; }
-.stitch-tool > span { display: block; flex: 0 0 32px; width: 32px; height: 32px; color: #222; }
-.stitch-tool select { width: 100%; min-height: 34px; border: 0; background: transparent; }
+.stitch-tool { min-width: 170px; display: flex; align-items: center; gap: 7px; padding: 4px 8px; text-align: left; background: white; }
+.stitch-tool > span:first-child { display: block; flex: 0 0 32px; width: 32px; height: 32px; color: #222; }
+.stitch-tool-name { flex: 1; white-space: nowrap; }
+.stitch-tool-chevron { color: #647269; font-size: 1.1rem; }
+.stitch-picker-backdrop { position: fixed; inset: 0; z-index: 12; display: grid; place-items: end center; padding-top: 24px; background: rgba(26, 39, 31, .32); }
+.stitch-picker { width: min(100%, 760px); max-height: min(82vh, 760px); overflow: auto; padding: 14px max(14px, env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left)); border-radius: 18px 18px 0 0; background: var(--paper); box-shadow: 0 -12px 40px rgba(20, 38, 27, .24); }
+.stitch-picker-heading { position: sticky; top: -14px; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: -14px 0 8px; padding: 14px 0 9px; background: var(--paper); }
+.stitch-picker-heading h2 { margin: 0; font-size: 1.15rem; }
+.stitch-picker-heading p { margin: 2px 0 0; color: #67756e; font-size: .76rem; }
+.stitch-category h3 { margin: 15px 0 7px; color: #53605a; font-size: .86rem; }
+.stitch-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+.stitch-option { min-width: 0; min-height: 104px; display: grid; grid-template-rows: 50px auto auto; place-items: center; gap: 3px; padding: 7px 4px; text-align: center; }
+.stitch-option.selected { border-color: var(--green); background: #edf7ef; box-shadow: inset 0 0 0 1px var(--green); }
+.stitch-option-symbol { display: block; width: 64px; height: 50px; color: #202622; }
+.stitch-option > span:nth-child(2) { max-width: 100%; font-size: .78rem; line-height: 1.25; overflow-wrap: anywhere; }
+.stitch-option small { color: #718078; font-size: .68rem; }
 .canvas-wrap { min-height: 0; position: relative; overflow: hidden; }
 .board-canvas { display: block; width: 100%; height: 100%; touch-action: none; user-select: none; cursor: crosshair; }
 .board-canvas.mode-erase { cursor: cell; }
@@ -88,6 +101,9 @@ footer { display: none; }
   .drawer { inset: 74px 0 0 auto; width: 390px; max-height: none; border-radius: 18px 0 0 18px; box-shadow: -12px 0 40px rgba(20, 38, 27, .2); }
   .toast { bottom: 24px; }
   .selection-actions { bottom: 18px; }
+  .stitch-picker-backdrop { place-items: center; padding: 24px; }
+  .stitch-picker { border-radius: 18px; }
+  .stitch-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 }
 
 @media (min-width: 1180px) {

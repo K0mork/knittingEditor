@@ -68,6 +68,29 @@ test('erases stitches continuously', async ({ page }) => {
   expect(remaining).toBe(0);
 });
 
+test('selects a stitch from the visual palette and places white-out data', async ({ page }) => {
+  await page.getByRole('button', { name: '編み目記号を選ぶ' }).click();
+  const picker = page.getByRole('dialog', { name: '編み目記号' });
+  await expect(picker).toBeVisible();
+  await expect(picker.locator('.stitch-option-symbol svg')).toHaveCount(25);
+  await picker.getByRole('button', { name: /白くする/ }).click();
+  await expect(page.locator('.stitch-tool-name')).toHaveText('白くする');
+
+  const canvas = page.getByLabel('編み図編集盤面');
+  const box = await canvas.boundingBox();
+  await page.mouse.click(box!.x + 75, box!.y + 75);
+  await page.waitForTimeout(500);
+  const stitchId = await page.evaluate(async () => {
+    const request = indexedDB.open('knitting-editor-v2');
+    const db = await new Promise<IDBDatabase>((resolve) => { request.onsuccess = () => resolve(request.result); });
+    const transaction = db.transaction('documents');
+    const get = transaction.objectStore('documents').getAll();
+    const documents = await new Promise<Array<{ cells: ArrayBuffer }>>((resolve) => { get.onsuccess = () => resolve(get.result); });
+    return new Uint32Array(documents[0].cells).find(Boolean)! >>> 24;
+  });
+  expect(stitchId).toBe(25);
+});
+
 test('creates a block and exports backup and PDF', async ({ page }) => {
   await page.getByRole('button', { name: '範囲' }).click();
   const canvas = page.getByLabel('編み図編集盤面');
