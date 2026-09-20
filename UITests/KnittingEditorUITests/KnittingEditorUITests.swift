@@ -162,19 +162,7 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertTrue(app.buttons["共有"].exists)
         app.buttons["ファイルに保存"].tap()
 
-        let localizedPickerCancel = app.descendants(matching: .any)
-            .matching(identifier: "キャンセル")
-            .firstMatch
-        let englishPickerCancel = app.descendants(matching: .any)
-            .matching(identifier: "Cancel")
-            .firstMatch
-        let pickerCancel = localizedPickerCancel.exists ? localizedPickerCancel : englishPickerCancel
-        XCTAssertTrue(pickerCancel.waitForExistence(timeout: 10), app.debugDescription)
-        if pickerCancel.isHittable {
-            pickerCancel.tap()
-        } else {
-            pickerCancel.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
-        }
+        cancelDocumentPicker(in: app)
     }
 
     func testPngAndPdfExportsReachNativeFileActions() {
@@ -189,13 +177,39 @@ final class KnittingEditorUITests: XCTestCase {
         let png = app.buttons["PNGを保存"]
         XCTAssertTrue(png.waitForExistence(timeout: 15))
         png.tap()
-        XCTAssertTrue(app.buttons["ファイルに保存"].waitForExistence(timeout: 15))
-        app.buttons["キャンセル"].tap()
+        let pngFileSave = app.buttons["ファイルに保存"]
+        XCTAssertTrue(pngFileSave.waitForExistence(timeout: 15))
+        cancelExportAlert(in: app)
 
         let pdf = app.buttons["PDFを保存"]
         XCTAssertTrue(pdf.waitForExistence(timeout: 15))
         pdf.tap()
-        XCTAssertTrue(app.buttons["ファイルに保存"].waitForExistence(timeout: 15))
-        app.buttons["キャンセル"].tap()
+        let pdfFileSave = app.buttons["ファイルに保存"]
+        XCTAssertTrue(pdfFileSave.waitForExistence(timeout: 15))
+        cancelExportAlert(in: app)
+    }
+
+    private func cancelDocumentPicker(in app: XCUIApplication) {
+        let localizedCancel = app.descendants(matching: .any)
+            .matching(identifier: "キャンセル")
+            .firstMatch
+        let englishCancel = app.descendants(matching: .any)
+            .matching(identifier: "Cancel")
+            .firstMatch
+        let cancel = localizedCancel.waitForExistence(timeout: 10) ? localizedCancel : englishCancel
+        XCTAssertTrue(cancel.waitForExistence(timeout: 15), app.debugDescription)
+        if cancel.isHittable {
+            cancel.tap()
+        } else {
+            cancel.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        }
+        XCTAssertTrue(cancel.waitForNonExistence(timeout: 15), app.debugDescription)
+    }
+
+    private func cancelExportAlert(in app: XCUIApplication) {
+        let cancel = app.buttons["キャンセル"]
+        XCTAssertTrue(cancel.waitForExistence(timeout: 15))
+        cancel.tap()
+        XCTAssertTrue(cancel.waitForNonExistence(timeout: 15), app.debugDescription)
     }
 }

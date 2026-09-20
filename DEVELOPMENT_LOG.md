@@ -11,6 +11,14 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-21: PNG/PDFネイティブ保存UIテストのキャンセル待機を安定化
+
+- 変更: PNG／PDFのUIテストで保存アクションシートの「キャンセル」実行後にdismiss完了を待つようにした。PNGでは保存アクションを開いたまま次のPDF操作へ進んでいたため、Xcode 15.4 iPhone SimulatorでPDFアクションが不定になる問題を避ける。
+- 主なファイル: `UITests/KnittingEditorUITests/KnittingEditorUITests.swift`
+- テスト: `xcodebuild ... -only-testing:knittingEditorUITests/KnittingEditorUITests/testPngAndPdfExportsReachNativeFileActions`をローカルiPhone 16 Simulator（iOS 18.2）で実行し、1件・0 failures。`build-for-testing`も成功。
+- 未実施: この変更後のGitHub Actions再実行、Apple Developer署名、実機、TestFlight。
+- 配布影響: UIテストのみ。PNG／PDFの生成・保存実装は変更しない。
+
 ## 2026-09-21: ネイティブ保存画面の表示をRunLoop後へ遅延
 
 - 変更: WKWebViewの型付き出力メッセージ受信直後ではなく、Main RunLoopへ戻ってから保存画面／Document Pickerを表示するようにした。Xcode 15.4 Simulatorで`.knit`保存アクションが表示されない競合を避ける。UIテストはDocument Picker Cancel要素が非hittableな場合に座標でフォールバックする。
