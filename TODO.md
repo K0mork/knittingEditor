@@ -6,7 +6,9 @@
 
 ## M0: 技術検証・基盤（P0）
 
-- [ ] Apple Developer Team、Bundle ID、アプリ名、署名方法を決定する
+- [ ] Apple Developer Team、署名方法を決定する
+- [x] Bundle IDを`com.k0mork.knittingEditor`として固定する
+- [ ] App Store表示名（アプリ名）を確定する
 - [x] 対象iOS・iPadOSの下限と対応端末を決定する（iOS 17.0以上、iPhone・iPad）
 - [x] SwiftUIユニバーサルアプリのXcodeプロジェクトを作成する
 - [x] ローカルWeb資産を読み込む`WKWebView`の最小実装を作る

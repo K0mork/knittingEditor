@@ -1,6 +1,6 @@
 # App Storeメタデータ案
 
-提出時にApp Store Connectへ転記するための下書き。文字数上限、表示名、URLは提出前にApp Store Connectで再確認する。
+提出時にApp Store Connectへ転記するための下書き。文字数上限、表示名、URLは提出前にApp Store Connectで再確認する。Bundle IDは`com.k0mork.knittingEditor`で固定し、App Store表示名はこの案をもとに提出前に確定する。確定までは`App/Info.plist`の内部表示名と同一視しない。
 
 ## 基本情報
 

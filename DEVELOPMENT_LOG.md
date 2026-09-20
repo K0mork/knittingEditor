@@ -11,6 +11,14 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-21: M0の配布識別子決定状態を分離
+
+- 変更: コード、CI、Archive検査、実機チェックリストで既に`com.k0mork.knittingEditor`へ固定しているBundle IDをTODO上で完了扱いにし、未決定のApple Developer Team・署名方法・App Store表示名から分離した。表示名は既存の英語内部名と日本語の提出案が一致していないため、最終決定までは変更しない。
+- 主なファイル: `TODO.md`、`docs/APP_STORE_METADATA.md`
+- テスト: `scripts/check-app-store-docs.sh`、Release Archive資産検証、変更後CIでBundle IDと提出資料の整合性を確認する。
+- 未実施: Apple Developer Team、署名方法、App Store表示名の最終決定、実機、TestFlight。これらは外部アカウントまたは製品判断が必要である。
+- 配布影響: アプリ本体、Bundle ID、保存形式、表示名は変更しない。TODOの完了状態と実装済み固定値を一致させる。
+
 ## 2026-09-21: Release検証をmacOS標準ツールだけで実行可能に修正
 
 - 変更: GitHub ActionsのmacOS runnerに`rg`がないため、追加したApp Store資料検証を`grep`へ、既存のbundle内オフライン検査を`find`＋`grep`へ移行した。`rg`がない場合に検査を飛ばして成功表示する経路もなくし、検出内容を失敗ログへ出力する。
