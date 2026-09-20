@@ -15,6 +15,9 @@ import { listenNativeBackupSelected, listenNativeError, requestNativeBackupOpen 
 
 type BusyTask = 'PNGを生成中' | 'PDFを生成中' | 'バックアップを処理中';
 type Panel = 'documents' | 'grid' | 'blocks' | 'export';
+type DialogRequest =
+  | { kind: 'prompt'; title: string; defaultValue: string; resolve: (value: string | null) => void }
+  | { kind: 'confirm'; title: string; resolve: (value: boolean) => void };
 const STITCH_CATEGORY_ORDER: StitchCategory[] = ['basic', 'decrease', 'cable', 'twist', 'utility'];
 
 export default function App() {
@@ -34,6 +37,7 @@ export default function App() {
   const [busy, setBusy] = useState<BusyTask>();
   const [message, setMessage] = useState('');
   const [dirty, setDirty] = useState(false);
+  const [dialog, setDialog] = useState<DialogRequest>();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const activeDocumentIdRef = useRef<string | undefined>(undefined);
   const editGenerationRef = useRef(0);
@@ -103,6 +107,18 @@ export default function App() {
     setDirty(true);
   };
   const notify = (text: string) => { setMessage(text); window.setTimeout(() => setMessage(''), 4500); };
+  const askText = useCallback((title: string, defaultValue = '') => new Promise<string | null>((resolve) => {
+    setDialog({ kind: 'prompt', title, defaultValue, resolve });
+  }), []);
+  const askConfirm = useCallback((title: string) => new Promise<boolean>((resolve) => {
+    setDialog({ kind: 'confirm', title, resolve });
+  }), []);
+  const resolveDialog = (value: string | null | boolean) => {
+    if (!dialog) return;
+    setDialog(undefined);
+    if (dialog.kind === 'prompt') dialog.resolve(typeof value === 'string' ? value : null);
+    else dialog.resolve(value === true);
+  };
   const togglePanel = (nextPanel: Panel) => {
     const opening = panel !== nextPanel;
     setPanel(opening ? nextPanel : undefined);
@@ -128,11 +144,10 @@ export default function App() {
     catch (error) { notify(error instanceof Error ? error.message : String(error)); }
   };
 
-  const promptIndex = (kind: 'row' | 'col', action: 'insert' | 'remove') => {
+  const promptIndex = async (kind: 'row' | 'col', action: 'insert' | 'remove') => {
     if (!board) return;
     const maximum = kind === 'row' ? board.rows : board.cols;
-    const label = kind === 'row' ? '段' : '列';
-    const raw = window.prompt(`${action === 'insert' ? '挿入位置' : '削除する位置'}を入力してください（1〜${maximum}、表示番号基準）`);
+    const raw = await askText(`${action === 'insert' ? '挿入位置' : '削除する位置'}を入力してください（1〜${maximum}、表示番号基準）`);
     if (raw === null) return;
     const displayed = Number(raw);
     if (!Number.isInteger(displayed) || displayed < 1 || displayed > maximum) { notify(`1〜${maximum}の整数を入力してください`); return; }
@@ -145,7 +160,7 @@ export default function App() {
 
   const saveSelectionAsBlock = async () => {
     if (!board || !selection) return;
-    const name = window.prompt('ブロック名を入力してください', '新しいパターン');
+    const name = await askText('ブロック名を入力してください', '新しいパターン');
     if (!name?.trim()) return;
     const block = board.createBlock(selection, name.trim());
     await saveBlock(block);
@@ -229,7 +244,7 @@ export default function App() {
   };
 
   const createNewDocument = async () => {
-    const name = window.prompt('編み図名を入力してください', '新しい編み図');
+    const name = await askText('編み図名を入力してください', '新しい編み図');
     if (!name?.trim()) return;
     const document = await createDocument(name.trim());
     await refreshDocuments();
@@ -361,12 +376,12 @@ export default function App() {
         <button className="primary" onClick={() => void createNewDocument()}>新しい編み図</button>
         <div className="document-list">{documents.map((document) => <div className={document.id === activeDocument.id ? 'document active' : 'document'} key={document.id}>
           <button onClick={() => void switchDocument(document)}>{document.name}<small>{document.rows}×{document.cols}</small></button>
-          <div><button aria-label="名前変更" onClick={() => void (async () => { const name = prompt('新しい名前', document.name); if (name?.trim()) { await renameDocument(document.id, name.trim()); await refreshDocuments(); if (document.id === activeDocument.id) setActiveDocument({ ...activeDocument, name: name.trim() }); } })()}>名称</button>
+          <div><button aria-label="名前変更" onClick={() => void (async () => { const name = await askText('新しい名前', document.name); if (name?.trim()) { await renameDocument(document.id, name.trim()); await refreshDocuments(); if (document.id === activeDocument.id) setActiveDocument({ ...activeDocument, name: name.trim() }); } })()}>名称</button>
           <button aria-label="複製" onClick={() => void (async () => { await duplicateDocument(document.id); await refreshDocuments(); })()}>複製</button>
-          <button aria-label="削除" disabled={documents.length === 1} onClick={() => void (async () => { if (confirm(`「${document.name}」を削除しますか？`)) { await deleteDocument(document.id); const remaining = await listDocuments(); setDocuments(remaining); if (document.id === activeDocument.id) await switchDocument(remaining[0], false); } })()}>削除</button></div>
+          <button aria-label="削除" disabled={documents.length === 1} onClick={() => void (async () => { if (await askConfirm(`「${document.name}」を削除しますか？`)) { await deleteDocument(document.id); const remaining = await listDocuments(); setDocuments(remaining); if (document.id === activeDocument.id) await switchDocument(remaining[0], false); } })()}>削除</button></div>
         </div>)}</div>
       </>}
-      {panel === 'grid' && <GridControls board={board} changed={changed} mutateStructure={mutateStructure} promptIndex={promptIndex} notify={notify} />}
+      {panel === 'grid' && <GridControls board={board} changed={changed} mutateStructure={mutateStructure} promptIndex={promptIndex} confirmAction={askConfirm} notify={notify} />}
       {panel === 'blocks' && <>
         {selection && <><button className="primary" onClick={copySelection}>保存せずコピーして貼付</button><button onClick={() => void saveSelectionAsBlock()}>選択範囲をブロック保存</button></>}
         {!selection && <button onClick={() => { setMode('select'); setPanel(undefined); }}>盤面で範囲を選択</button>}
@@ -376,15 +391,16 @@ export default function App() {
     </aside>}
 
     <input ref={fileInputRef} hidden type="file" accept=".knit,application/gzip" onChange={(event) => { void restore(event.target.files?.[0]); event.target.value = ''; }} />
+    {dialog && <AppDialog request={dialog} onResolve={resolveDialog} />}
     {busy && <div className="busy" role="status"><span className="spinner" />{busy}</div>}
     {message && <div className="toast" role="status">{message}</div>}
     <footer><span>© 2026 棒針編み図エディタ</span><a href="/guide/">使い方</a></footer>
   </div>;
 }
 
-function GridControls({ board, changed, mutateStructure, promptIndex, notify }: {
+function GridControls({ board, changed, mutateStructure, promptIndex, confirmAction, notify }: {
   board: Board; changed: () => void; mutateStructure: (operation: () => void) => void;
-  promptIndex: (kind: 'row' | 'col', action: 'insert' | 'remove') => void; notify: (message: string) => void;
+  promptIndex: (kind: 'row' | 'col', action: 'insert' | 'remove') => void; confirmAction: (message: string) => Promise<boolean>; notify: (message: string) => void;
 }) {
   const [rows, setRows] = useState(board.rows);
   const [cols, setCols] = useState(board.cols);
@@ -395,7 +411,7 @@ function GridControls({ board, changed, mutateStructure, promptIndex, notify }: 
     <h3>追加</h3><div className="button-grid"><button onClick={() => mutateStructure(() => board.resize(board.rows + 1, board.cols, 1, 0))}>上に段</button><button onClick={() => mutateStructure(() => board.resize(board.rows + 1, board.cols))}>下に段</button><button onClick={() => mutateStructure(() => board.resize(board.rows, board.cols + 1, 0, 1))}>左に列</button><button onClick={() => mutateStructure(() => board.resize(board.rows, board.cols + 1))}>右に列</button></div>
     <h3>削除</h3><div className="button-grid"><button onClick={() => mutateStructure(() => board.resize(board.rows - 1, board.cols, -1, 0))}>上の段</button><button onClick={() => mutateStructure(() => board.resize(board.rows - 1, board.cols))}>下の段</button><button onClick={() => mutateStructure(() => board.resize(board.rows, board.cols - 1, 0, -1))}>左の列</button><button onClick={() => mutateStructure(() => board.resize(board.rows, board.cols - 1))}>右の列</button></div>
     <h3>指定位置</h3><div className="button-grid"><button onClick={() => promptIndex('row', 'insert')}>段を挿入</button><button onClick={() => promptIndex('col', 'insert')}>列を挿入</button><button onClick={() => promptIndex('row', 'remove')}>段を削除</button><button onClick={() => promptIndex('col', 'remove')}>列を削除</button></div>
-    <button className="danger" onClick={() => { if (confirm('盤面をすべて消去しますか？')) { board.clear(); changed(); notify('盤面を消去しました'); } }}>全体をクリア</button>
+    <button className="danger" onClick={() => void (async () => { if (await confirmAction('盤面をすべて消去しますか？')) { board.clear(); changed(); notify('盤面を消去しました'); } })()}>全体をクリア</button>
   </div>;
 }
 
@@ -416,5 +432,27 @@ function ExportControls({ board, onPng, onPdf, onBackup, onRestore }: {
     <h3>PNG</h3><label>1セルの画素数<input type="range" min="2" max="30" value={pngSize} onChange={(event) => setPngSize(Number(event.target.value))} /><output>{pngSize}px</output></label><p>{png.width}×{png.height}px {!png.valid && `— ${png.reason}`}</p><button disabled={!png.valid} onClick={() => onPng(pngSize)}>PNGを保存</button>{!png.valid && <p className="recommend">この盤面はPDF保存をおすすめします。</p>}
     <h3>PDF</h3><label>構成<select value={layout} onChange={(event) => setLayout(event.target.value as 'single' | 'tiled')}><option value="single">全体を1ページ</option><option value="tiled">読みやすく分割</option></select></label><label>用紙<select value={orientation} onChange={(event) => setOrientation(event.target.value as 'portrait' | 'landscape')}><option value="portrait">A4縦</option><option value="landscape">A4横</option></select></label>{layout === 'tiled' && <label>セル寸法<input type="range" min="2" max="10" value={millimeters} onChange={(event) => setMillimeters(Number(event.target.value))} /><output>{millimeters}mm</output></label>}<p>推定 {pages}ページ{pages > 100 && ' — ページ数が多いため1ページ版もご検討ください'}</p><button onClick={() => onPdf(layout, orientation, millimeters)}>PDFを保存</button>
     <h3>バックアップ</h3><div className="button-grid"><button onClick={() => onBackup(false)}>この編み図</button><button onClick={() => onBackup(true)}>全データ</button><button onClick={onRestore}>復元</button></div><p>端末内データはブラウザ操作で消える場合があります。定期的に保存してください。</p>
+  </div>;
+}
+
+function AppDialog({ request, onResolve }: {
+  request: DialogRequest;
+  onResolve: (value: string | null | boolean) => void;
+}) {
+  const [value, setValue] = useState(request.kind === 'prompt' ? request.defaultValue : '');
+  useEffect(() => { setValue(request.kind === 'prompt' ? request.defaultValue : ''); }, [request]);
+  return <div className="app-dialog-backdrop" role="presentation" onMouseDown={(event) => {
+    if (event.target === event.currentTarget) onResolve(request.kind === 'prompt' ? null : false);
+  }}>
+    <section className="app-dialog" role="dialog" aria-modal="true" aria-labelledby="app-dialog-title" onKeyDown={(event) => {
+      if (event.key === 'Escape') onResolve(request.kind === 'prompt' ? null : false);
+    }}>
+      <h2 id="app-dialog-title">{request.title}</h2>
+      {request.kind === 'prompt' && <input autoFocus aria-label="入力" value={value} onChange={(event) => setValue(event.target.value)} />}
+      <div className="app-dialog-actions">
+        <button onClick={() => onResolve(request.kind === 'prompt' ? null : false)}>キャンセル</button>
+        <button className="primary" autoFocus={request.kind === 'confirm'} onClick={() => onResolve(request.kind === 'prompt' ? value : true)}>決定</button>
+      </div>
+    </section>
   </div>;
 }

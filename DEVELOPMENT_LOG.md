@@ -11,6 +11,14 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-20: M4アプリ内ダイアログと操作領域の改善
+
+- 変更: WebView内の`window.prompt`／`window.confirm`をReact製のアクセシブルなアプリ内ダイアログへ置き換えた。盤面位置入力、編み図名、ブロック名、削除、全体クリアを同じダイアログ経路に統一し、キャンセルとEscapeを扱う。主要ボタンと色入力は44px以上へ調整し、`prefers-reduced-motion`にも対応した。
+- 主なファイル: `Web/src/App.tsx`、`Web/src/styles.css`、`TODO.md`
+- テスト: `(cd Web && npm test)`で5ファイル27テスト成功、`npm run build`成功。`rg`で対象Webソースに`window.prompt`／`window.confirm`が残っていないことを確認した。
+- 未実施: iPhone狭幅、iPad Split View／Stage Manager、キーボード、VoiceOver、Dynamic Type、Apple Pencil、実機出力性能の目視・操作確認。利用可能な起動済みSimulator／実機がないため。
+- 配布影響: ネイティブダイアログAPIや新しい権限は追加していない。TestFlight・App Store配布は行っていない。
+
 ## 2026-09-20: M3 JavaScript–Swiftファイル連携を追加
 
 - 変更: PNG、PDF、`.knit`をBase64付きのversion 1メッセージでSwiftへ渡し、iOS側でFiles保存または共有シートを選べるようにした。`.knit`のDocument Picker、Files／AirDrop／他アプリからの`onOpenURL`受け入れ、独自UTType／Document Typeを追加した。Web側の通常ブラウザでは従来のdownload／file inputへフォールバックする。
