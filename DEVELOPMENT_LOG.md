@@ -11,6 +11,14 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-20: iOSデバイスSDK向けコンパイルを確認
+
+- 変更: コード変更はない。接続中として列挙された`Fuji`はXcode schemeの実行destinationへ解決されなかったため、端末へインストールせず`iphoneos` SDKの`build-for-testing`だけを実行した。
+- 主なファイル: なし（検証記録のみ）。
+- テスト: `xcodebuild build-for-testing -project knittingEditor.xcodeproj -scheme knittingEditor -sdk iphoneos CODE_SIGNING_ALLOWED=NO`が`TEST BUILD SUCCEEDED`となり、アプリ・Swift単体テスト・XCUITest targetのデバイス向けコンパイルに成功した。
+- 未実施: 端末destinationでの起動、XCTest／XCUITest、Files／共有、機内モード通信監視は未実施。Apple Developer Team／署名設定とXcodeから認識可能な実機destinationが必要。
+- 配布影響: なし。署名、インストール、TestFlight、App Storeへの配布は行っていない。
+
 ## 2026-09-20: M3 `.knit`相互運用fixtureを固定
 
 - 変更: Web版出力とアプリ版搬送で共有するgzip JSONの最小`.knit` fixtureを追加した。Webの`importBackup`はfixtureを実際に復元し、Swift単体テストは同じバイト列を型付き`exportFile`メッセージへ包んでも変化しないことを検証する。アプリ側でpayloadを再シリアライズしない方針を`docs/NATIVE_BRIDGE.md`へ明記した。
