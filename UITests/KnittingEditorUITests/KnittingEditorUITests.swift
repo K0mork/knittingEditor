@@ -84,4 +84,26 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertTrue(app.buttons["共有"].exists)
         app.buttons["キャンセル"].tap()
     }
+
+    func testPngAndPdfExportsReachNativeFileActions() {
+        let app = XCUIApplication()
+        app.launch()
+
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 15))
+        let save = app.buttons["保存"]
+        XCTAssertTrue(save.waitForExistence(timeout: 5))
+        save.tap()
+
+        let png = app.buttons["PNGを保存"]
+        XCTAssertTrue(png.waitForExistence(timeout: 5))
+        png.tap()
+        XCTAssertTrue(app.buttons["ファイルに保存"].waitForExistence(timeout: 15))
+        app.buttons["キャンセル"].tap()
+
+        let pdf = app.buttons["PDFを保存"]
+        XCTAssertTrue(pdf.waitForExistence(timeout: 5))
+        pdf.tap()
+        XCTAssertTrue(app.buttons["ファイルに保存"].waitForExistence(timeout: 15))
+        app.buttons["キャンセル"].tap()
+    }
 }

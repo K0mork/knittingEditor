@@ -10,6 +10,7 @@
 - [x] ローカルWeb資産を読み込む`WKWebView`の最小実装を作る
 - [ ] ローカルoriginと永続`WKWebsiteDataStore`の更新耐性を確認する
 - [ ] module Worker、Blob、Canvas、IndexedDB、Pointer Eventsの実機PoCを行う
+- [x] iPhone／iPad SimulatorでCanvas・Blob・PDF module Workerの保存導線をスモーク検証する（実機PoCは別途）
 - [ ] 機内モードで起動でき、外部通信がないことを確認する
 - [x] アプリ用Webビルド方式とXcodeへのコピー方式を自動化する
 

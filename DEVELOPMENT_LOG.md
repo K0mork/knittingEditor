@@ -91,6 +91,14 @@
 - 未実施: 起動画面の撮影、実機・TestFlightでの最終スクリーンショット、App Store Connect登録。
 - 配布影響: ドキュメント用の下書き画像を追加した。アプリbundleや実行時挙動は変更しない。
 
+## 2026-09-20: PNG・PDF出力のSimulatorスモークを追加
+
+- 変更: XCUITestへPNG・PDF保存操作を追加し、Canvas／Blob／PDF module Workerの生成後にSwiftのファイル保存アクションが表示されることを検証する。
+- 主なファイル: `UITests/KnittingEditorUITests/KnittingEditorUITests.swift`
+- テスト: iPhone／iPad SimulatorでPNG・PDFを含むXCUITestを再実行する。
+- 未実施: 実機の大規模出力、メモリ警告、実際のFiles保存・共有先選択。
+- 配布影響: テストコードのみ。PNG／PDF出力仕様は変更しない。
+
 ## 2026-09-20: AppIcon・起動画面を含むRelease Archiveを再検証
 
 - 変更: コード変更はない。AppIconと`LaunchBackground`追加後の提出候補bundleをRelease Archiveから再検査した。
