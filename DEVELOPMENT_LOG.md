@@ -27,6 +27,14 @@
 - 未実施: 変更後のGitHub Actions再実行、Apple Developer署名、実機、TestFlight。
 - 配布影響: テスト待機時間のみ。アプリ実装、データ形式、保存処理は変更しない。
 
+## 2026-09-21: iPad Document Pickerの要素種別差を吸収
+
+- 変更: GitHub Actions run `35519570709`で、iPadのDocument Pickerの「キャンセル」が`Other`ではなく`Button`として返る実行があり、`otherElements`固定のUIテストが失敗したため、アクセシビリティ識別子を要素種別を問わず検索するようにした。
+- 主なファイル: `UITests/KnittingEditorUITests/KnittingEditorUITests.swift`
+- テスト: `xcodebuild -project knittingEditor.xcodeproj -scheme knittingEditor -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build-for-testing`成功。変更後のGitHub Actions再実行で全matrix成功を確認する。
+- 未実施: 変更後のGitHub Actions再実行、Apple Developer署名、実機、TestFlight。
+- 配布影響: UIテストの要素検索だけを変更。Document Pickerの実装、保存形式、アプリ動作は変更しない。
+
 ## 2026-09-21: Xcode 15.4 CI iPhoneのgzipバックアップUIテストを明示的に除外
 
 - 変更: Xcode 15.4のiPhone SimulatorでWebKitが`.knit` gzip生成中に無応答となる既知のCI環境差を検出し、そのUIテストだけを`XCTSkip`する。iPadの同一`.knit`導線、iPhone／iPadのPNG・PDFネイティブ保存導線は継続実行する。

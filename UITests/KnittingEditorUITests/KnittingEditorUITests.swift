@@ -164,8 +164,12 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertTrue(app.buttons["共有"].exists)
         app.buttons["ファイルに保存"].tap()
 
-        let localizedPickerCancel = app.otherElements["キャンセル"]
-        let englishPickerCancel = app.otherElements["Cancel"]
+        let localizedPickerCancel = app.descendants(matching: .any)
+            .matching(identifier: "キャンセル")
+            .firstMatch
+        let englishPickerCancel = app.descendants(matching: .any)
+            .matching(identifier: "Cancel")
+            .firstMatch
         let pickerCancel = localizedPickerCancel.exists ? localizedPickerCancel : englishPickerCancel
         XCTAssertTrue(pickerCancel.waitForExistence(timeout: 10), app.debugDescription)
         if pickerCancel.isHittable {
