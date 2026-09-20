@@ -56,6 +56,9 @@ xcodebuild -project knittingEditor.xcodeproj -scheme knittingEditor \
 
 (cd Web && npm ci --ignore-scripts && npm test && npm run build)
 scripts/check-app-bundle.sh /path/to/knittingEditor.app
+
+# 同一Bundle IDの更新ビルドでIndexedDBが復元されることを確認する
+SIMULATOR_UDID=<booted-simulator-udid> scripts/simulate-app-update.sh "iPhone 16"
 ```
 
 公開中の`https://knittingeditor.com/`は読み込みません。Viteのアプリ用ビルドをXcodeバンドルへ格納し、HTML、JavaScript、記号、WorkerをローカルURLから読み込みます。

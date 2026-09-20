@@ -48,6 +48,26 @@ jobs:
             -derivedDataPath "$RUNNER_TEMP/DerivedData"
           scripts/check-app-bundle.sh "$RUNNER_TEMP/DerivedData/Build/Products/Debug-iphonesimulator/knittingEditor.app"
 
+  app-update:
+    strategy:
+      fail-fast: false
+      matrix:
+        device:
+          - 'iPhone 16'
+          - 'iPad (10th generation)'
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        run: xcodegen generate --spec project.yml
+      - name: Simulate app update and restore IndexedDB
+        run: >-
+          scripts/simulate-app-update.sh
+          '${{ matrix.device }}'
+          'platform=iOS Simulator,name=${{ matrix.device }},OS=latest'
+
   release-archive:
     runs-on: macos-14
     steps:

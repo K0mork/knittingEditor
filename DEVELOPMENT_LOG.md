@@ -11,6 +11,14 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-21: 同一Bundle IDのアプリ更新復元試験を追加
+
+- 変更: version 1でIndexedDBへ試験編み図を保存し、同一Bundle IDの`CURRENT_PROJECT_VERSION=2`ビルドをSimulatorへ上書きインストールした後、編み図と編集セルを復元できる専用XCUITestを追加した。通常のCIテストではskipし、`scripts/simulate-app-update.sh`からだけ実行する。iPhone／iPad matrixでも同じ試験を再現できるようCI jobを追加した。
+- 主なファイル: `UITests/KnittingEditorUITests/KnittingEditorUITests.swift`、`scripts/simulate-app-update.sh`、`.github/workflows/ci.yml`、`DEVELOPMENT.md`、`TODO.md`
+- テスト: iPhone 16 Simulator（iOS 18.2）とiPad 10 Simulator（iOS 18.2）で、seed 1件、version 2復元1件を各々実行し、いずれも0 failures。`bash -n scripts/simulate-app-update.sh`も成功。
+- 未実施: 署名済み実機のApp Store更新、Apple Developer署名、TestFlight。CI jobの変更後実行結果はpush後に確認する。
+- 配布影響: アプリの保存形式とBundle IDは変更しない。更新耐性の専用検証とCI実行だけを追加し、TestFlight／App Store配布は行わない。
+
 ## 2026-09-21: 固定originと永続WebKitデータの更新耐性を自動検証
 
 - 変更: 固定origin `knitting-local://bundle` と `WKWebsiteDataStore.default()` を使うWebViewをいったん破棄して再生成し、IndexedDBのデータが同じアプリ更新相当の構成で読み戻せる単体テストを追加した。アプリのDB名・schemaを変更せずにWebViewを更新する方針をテストで固定する。

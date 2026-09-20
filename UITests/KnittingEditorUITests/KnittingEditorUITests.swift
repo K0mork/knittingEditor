@@ -142,6 +142,62 @@ final class KnittingEditorUITests: XCTestCase {
         )
     }
 
+    func testSeedDocumentForAppUpdateProbe() throws {
+        try requireAppUpdateProbe()
+        let app = XCUIApplication()
+        app.launch()
+
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 15))
+        let documents = app.buttons["編み図"]
+        XCTAssertTrue(documents.waitForExistence(timeout: 15))
+        documents.tap()
+        let newDocument = app.buttons["新しい編み図"]
+        XCTAssertTrue(newDocument.waitForExistence(timeout: 15))
+        newDocument.tap()
+        let nameField = app.textFields["入力"]
+        XCTAssertTrue(nameField.waitForExistence(timeout: 15))
+        nameField.tap()
+        nameField.typeText("アプリ更新復元fixture")
+        app.buttons["決定"].tap()
+
+        let webView = app.webViews.firstMatch
+        let canvas = webView.otherElements
+            .matching(NSPredicate(format: "label CONTAINS %@", "記号0個"))
+            .firstMatch
+        XCTAssertTrue(canvas.waitForExistence(timeout: 10))
+        canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        XCTAssertTrue(
+            webView.otherElements
+                .matching(NSPredicate(format: "label CONTAINS %@", "記号1個"))
+                .firstMatch
+                .waitForExistence(timeout: 10)
+        )
+    }
+
+    func testUpdatedAppRestoresSeedDocument() throws {
+        try requireAppUpdateProbe()
+        let app = XCUIApplication()
+        app.launch()
+
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 15))
+        let documents = app.buttons["編み図"]
+        XCTAssertTrue(documents.waitForExistence(timeout: 15))
+        documents.tap()
+        let restoredDocument = app.buttons
+            .matching(NSPredicate(format: "label BEGINSWITH %@", "アプリ更新復元fixture"))
+            .firstMatch
+        XCTAssertTrue(restoredDocument.waitForExistence(timeout: 15), app.debugDescription)
+        restoredDocument.tap()
+
+        XCTAssertTrue(
+            app.webViews.firstMatch.otherElements
+                .matching(NSPredicate(format: "label CONTAINS %@", "記号1個"))
+                .firstMatch
+                .waitForExistence(timeout: 10),
+            app.debugDescription
+        )
+    }
+
     func testBackupExportShowsNativeFileActions() throws {
         if ProcessInfo.processInfo.environment["CI"] == "true" {
             throw XCTSkip("Xcode 15.4 CI SimulatorではWebKitがgzipバックアップ生成中に無応答になるため、保存パネル・PNG/PDF導線とローカルSimulatorで検証する")
@@ -220,5 +276,11 @@ final class KnittingEditorUITests: XCTestCase {
         )
         let result = XCTWaiter.wait(for: [disappearance], timeout: 15)
         XCTAssertTrue(result == .completed, app.debugDescription)
+    }
+
+    private func requireAppUpdateProbe() throws {
+        if !FileManager.default.fileExists(atPath: "/tmp/knitting-editor-app-update-probe") {
+            throw XCTSkip("専用のアプリ更新シミュレーションスクリプトからのみ実行する")
+        }
     }
 }
