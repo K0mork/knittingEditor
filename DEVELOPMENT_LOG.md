@@ -19,6 +19,13 @@
 - 未実施: アイコン最終デザイン、起動画面の目視、実機スクリーンショット、Apple Developer Team／署名、TestFlight内部テスト、実機クラッシュ・メモリ・出力時間、App Store Connect入力と提出は未実施。これらはAppleアカウントと実機が必要。
 - 配布影響: Privacy Manifestと外部サポートリンクの導線を追加した。TestFlight・App Storeへの提出は行っていない。
 
+## 2026-09-20: リリース資産検査へPrivacy Manifestを追加
+
+- 変更: `scripts/check-app-bundle.sh`が生成アプリ内の`PrivacyInfo.xcprivacy`存在とplist構文も検査するようにした。M2のヘルプ記載完了条件とTODOを同期した。
+- 検証: `xcodebuild ... build`後に`plutil -lint`と`check-app-bundle.sh`を実行し成功。`git diff --check`成功。
+- 未実施: 実機・TestFlight・App Store Connectは未実施。
+- 配布影響: Privacy Manifestを欠くアプリバンドルをCIで検出できる。
+
 ## 2026-09-20: M5 CI、XCUITest、ローカル資産検査を追加
 
 - 変更: Web単体テストとViteビルド、Swift単体テスト、iPhone／iPad Simulator matrix、起動XCUITestをGitHub Actionsへ追加した。XcodeGenでUIテストターゲットを生成し、生成アプリバンドルにHTML／assets／guideが存在し、分析タグやアプリ外部ホストが含まれないことを検査する`check-app-bundle.sh`を追加した。全26記号のSVG／PDF glyph定義回帰テストも追加した。

@@ -15,6 +15,12 @@ for required in index.html assets guide/index.html; do
   fi
 done
 
+if [ ! -f "$APP_PATH/PrivacyInfo.xcprivacy" ]; then
+  echo "missing Privacy Manifest" >&2
+  exit 1
+fi
+plutil -lint "$APP_PATH/PrivacyInfo.xcprivacy" >/dev/null
+
 if rg -n --hidden --glob '!*.map' 'googletagmanager|G-VVE0G4ZFL4|knittingeditor\.com' "$WEB_ROOT"; then
   echo "unexpected external runtime reference in app bundle" >&2
   exit 1
