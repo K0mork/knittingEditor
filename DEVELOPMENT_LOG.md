@@ -11,6 +11,14 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-21: CIアプリ更新試験前にSimulatorを再起動
+
+- 変更: GitHub Actionsの`app-update` jobで、version 1のXCUITest終了後にSimulatorがShutdown状態へ戻る環境があるため、version 2アプリのinstall前に対象UDIDを`simctl boot`し、`bootstatus -b`完了を待つようにした。
+- 主なファイル: `scripts/simulate-app-update.sh`
+- テスト: `bash -n scripts/simulate-app-update.sh`と、ローカルiPad 10 Simulatorでのseed→version 2 install→復元試験を実行する。変更後GitHub Actionsのapp-update matrixはpush後に確認する。
+- 未実施: 修正後CI、署名済み実機のApp Store更新、Apple Developer署名、TestFlight。
+- 配布影響: アプリ本体・保存形式・Bundle IDは変更せず、検証スクリプトのSimulator状態待機だけを修正した。
+
 ## 2026-09-21: CIアプリ更新matrixのSimulator UUID解決を修正
 
 - 変更: GitHub Actionsの`app-update` jobで、iPad名の括弧をUUID抽出の区切り文字にしていたため端末を見失い、iPhoneではseed後に別runtimeのShutdown端末へinstallしていた。端末名を文字列として照合し、UUID形式を抽出し、seed後はBooted端末へ再解決するよう`simulate-app-update.sh`を修正した。

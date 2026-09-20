@@ -65,6 +65,8 @@ if [[ -z "${SIMULATOR_UDID:-}" ]]; then
     simulator_udid="$booted_udid"
   fi
 fi
+xcrun simctl boot "$simulator_udid" >/dev/null 2>&1 || true
+xcrun simctl bootstatus "$simulator_udid" -b
 xcrun simctl install "$simulator_udid" "$updated_app"
 updated_xctestrun="$(find "$updated_derived_data/Build/Products" -name '*.xctestrun' -print -quit)"
 if [[ -z "$updated_xctestrun" ]]; then
