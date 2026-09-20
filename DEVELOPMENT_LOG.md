@@ -35,6 +35,13 @@
 - 未実施: Apple Developer署名、実機最終素材、TestFlight、App Store Connect登録。静的検査成功だけではM6の外部ゲートを完了にしない。
 - 配布影響: 配布資産の検査範囲だけを拡張し、アプリ本体・保存形式・Bundle ID・署名設定は変更しない。
 
+## 2026-09-21: アプリ更新Simulator検証の対象UDIDを固定
+
+- 変更: `scripts/simulate-app-update.sh`で名前指定のdestinationを検出済みSimulator UDIDへ正規化し、データ消去・fixture保存・更新後復元確認を同一個体で実行する。同名Simulatorが複数ある環境で、消去先と`xcodebuild`の実行先がずれる問題を修正した。
+- 主なファイル: `scripts/simulate-app-update.sh`
+- テスト: `bash -n scripts/simulate-app-update.sh`、iPad Simulatorのアプリ更新検証、CIの全ジョブ成功を確認する。
+- 配布影響: アプリ本体・保存形式・Bundle ID・署名設定は変更しない。CIの更新互換性検証だけを安定化する。
+
 ## 2026-09-21: 実装品質監査に基づく保存・ブリッジ・バックアップ検証の強化
 
 - 変更: Swiftのnative bridgeでバージョン不一致を`unsupportedVersion`として分類し、外部リンクはメインフレームだけをSafariへ渡すよう制限した。出力一時ファイルの上書き時に前回ファイルを確実に削除し、MIME型から拡張子を補えるようにした。バックグラウンド移行時はSwiftからWeb側の保存Promiseを呼び出し、ブラウザ互換用イベントも同じ保存処理へ接続した。起動失敗を読み込み中画面に隠さず再読み込み案内を表示し、nativeイベント購読を初回一度だけ登録するよう整理した。`.knit`復元では未知の記号ID、盤面・ブロックの範囲外／重複データ、形式不正を拒否し、旧fixtureの直接記号ID形式は受け入れて表示時にpacked形式へ正規化する。

@@ -26,6 +26,10 @@ if [[ -z "$simulator_udid" ]]; then
   echo "Simulatorが見つかりません: $simulator_name" >&2
   exit 1
 fi
+# 同名Simulatorが複数ある環境でも、データ消去・初回保存・更新後確認を
+# 同じ個体に固定する。名前指定のdestinationはxcodebuildが別UDIDを選ぶ
+# 可能性があるため、検出済みUDIDへ正規化する。
+destination="platform=iOS Simulator,id=${simulator_udid}"
 
 rm -rf "$work_dir"
 mkdir -p "$work_dir"
@@ -59,12 +63,6 @@ xcodebuild build-for-testing \
     CODE_SIGNING_ALLOWED=NO
 )
 updated_app="$updated_derived_data/Build/Products/Debug-iphonesimulator/knittingEditor.app"
-if [[ -z "${SIMULATOR_UDID:-}" ]]; then
-  booted_udid="$(find_simulator_udid "$(xcrun simctl list devices booted)")"
-  if [[ -n "$booted_udid" ]]; then
-    simulator_udid="$booted_udid"
-  fi
-fi
 xcrun simctl boot "$simulator_udid" >/dev/null 2>&1 || true
 xcrun simctl bootstatus "$simulator_udid" -b
 xcrun simctl install "$simulator_udid" "$updated_app"
