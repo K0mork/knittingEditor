@@ -7,14 +7,11 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		2E279AF776F175B3F77DA1A5 /* Web in Resources */ = {isa = PBXBuildFile; fileRef = F41441F8FD8454433D85E51C /* Web */; };
 		399AE0908FE88F56457A7A54 /* WebViewContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E643EAB3D8627886E3EDCB9 /* WebViewContainer.swift */; };
-		7163B3D6A7BDA75C3197BD4F /* index.html in Resources */ = {isa = PBXBuildFile; fileRef = 45D08DB151481A921260FBCD /* index.html */; };
 		80BB0B545C49794374C7C699 /* KnittingEditorApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79CFD1A36C16A062BF1E7D49 /* KnittingEditorApp.swift */; };
 		D7C5FF536E7363BAD27BC269 /* LocalWebSchemeHandlerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02EEF60A275DC7E5B3AFEC1E /* LocalWebSchemeHandlerTests.swift */; };
-		EAB7F8B0D57431A2C1AD3A4B /* app.js in Resources */ = {isa = PBXBuildFile; fileRef = D24FBA79BD77F68D1C616E64 /* app.js */; };
-		EBAEDD1AEC629CA82B4E7163 /* worker.js in Resources */ = {isa = PBXBuildFile; fileRef = 8C489DBB52C6511999AC2D2F /* worker.js */; };
 		F892932BE7BC991009235A25 /* LocalWebSchemeHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2454BC6D34F2448DF141412 /* LocalWebSchemeHandler.swift */; };
-		FE71E1C4CE6F745C5CAF12AB /* styles.css in Resources */ = {isa = PBXBuildFile; fileRef = 1A37A1328A52F1377EC2DA62 /* styles.css */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -30,22 +27,19 @@
 /* Begin PBXFileReference section */
 		02EEF60A275DC7E5B3AFEC1E /* LocalWebSchemeHandlerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalWebSchemeHandlerTests.swift; sourceTree = "<group>"; };
 		07781248F43F310A19A846F2 /* knittingEditorTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = knittingEditorTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		1A37A1328A52F1377EC2DA62 /* styles.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = styles.css; sourceTree = "<group>"; };
 		23B041EDB211844299152088 /* knittingEditor.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = knittingEditor.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		45D08DB151481A921260FBCD /* index.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = index.html; sourceTree = "<group>"; };
 		4E643EAB3D8627886E3EDCB9 /* WebViewContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebViewContainer.swift; sourceTree = "<group>"; };
 		79CFD1A36C16A062BF1E7D49 /* KnittingEditorApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnittingEditorApp.swift; sourceTree = "<group>"; };
-		8C489DBB52C6511999AC2D2F /* worker.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = worker.js; sourceTree = "<group>"; };
 		B879541A0716033B76781073 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
-		D24FBA79BD77F68D1C616E64 /* app.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = app.js; sourceTree = "<group>"; };
 		F2454BC6D34F2448DF141412 /* LocalWebSchemeHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalWebSchemeHandler.swift; sourceTree = "<group>"; };
+		F41441F8FD8454433D85E51C /* Web */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Web; path = AppResources/Web; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
 		3AD645916EC8D81985BD1DE0 /* AppResources */ = {
 			isa = PBXGroup;
 			children = (
-				ECDC51E41530E07B4E24DF4C /* Web */,
+				F41441F8FD8454433D85E51C /* Web */,
 			);
 			path = AppResources;
 			sourceTree = "<group>";
@@ -96,17 +90,6 @@
 			path = App;
 			sourceTree = "<group>";
 		};
-		ECDC51E41530E07B4E24DF4C /* Web */ = {
-			isa = PBXGroup;
-			children = (
-				D24FBA79BD77F68D1C616E64 /* app.js */,
-				45D08DB151481A921260FBCD /* index.html */,
-				1A37A1328A52F1377EC2DA62 /* styles.css */,
-				8C489DBB52C6511999AC2D2F /* worker.js */,
-			);
-			path = Web;
-			sourceTree = "<group>";
-		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -132,6 +115,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 23E9C6436949CB5B23CE863A /* Build configuration list for PBXNativeTarget "knittingEditor" */;
 			buildPhases = (
+				783EF03BD4B7A11DCA49C7FA /* Build local Web assets */,
 				9D312ED088253DC063FE2C10 /* Sources */,
 				5850DBD396BE30A55DCC7041 /* Resources */,
 			);
@@ -185,14 +169,33 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				EAB7F8B0D57431A2C1AD3A4B /* app.js in Resources */,
-				7163B3D6A7BDA75C3197BD4F /* index.html in Resources */,
-				FE71E1C4CE6F745C5CAF12AB /* styles.css in Resources */,
-				EBAEDD1AEC629CA82B4E7163 /* worker.js in Resources */,
+				2E279AF776F175B3F77DA1A5 /* Web in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		783EF03BD4B7A11DCA49C7FA /* Build local Web assets */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Build local Web assets";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${SRCROOT}/scripts/build-web.sh\"";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		9D312ED088253DC063FE2C10 /* Sources */ = {

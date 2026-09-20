@@ -17,9 +17,14 @@ targets:
   knittingEditor:
     type: application
     platform: iOS
+    preBuildScripts:
+      - name: Build local Web assets
+        script: "\"${SRCROOT}/scripts/build-web.sh\""
+        basedOnDependencyAnalysis: false
     sources:
       - path: App
       - path: AppResources/Web
+        type: folder
         buildPhase: resources
     settings:
       base:

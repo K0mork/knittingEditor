@@ -25,9 +25,9 @@ Web版「棒針編み図エディタ」を、インターネット接続なし�
 
 ## 現在の状態
 
-- アプリコード: M0のSwiftUI・WKWebViewコンテナを実装済み
+- アプリコード: M0のSwiftUI・WKWebViewコンテナとM1のWeb編集資産同期を実装済み
 - Xcodeプロジェクト: `knittingEditor.xcodeproj`を作成済み
 - 対象OSの下限: iOS 17.0以上
 - App Store Connect設定: 未作成
 
-現段階のWeb画面はM0技術検証用です。実際の編み図編集機能の取り込みはTODOのM1から進めます。
+Web編集画面はM1で同梱済みです。Files・共有シート・`.knit`入出力のネイティブ連携はTODOのM3で実装します。

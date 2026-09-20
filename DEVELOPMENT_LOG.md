@@ -11,6 +11,16 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-20: M1 Web版編集資産をアプリ用ビルドへ同期
+
+- 変更: Web版固定コミット`8d3385799f61526334fd33c0a9e7be115f084afd`からReact UI、packed Board、Canvas、26記号の`catalog.ts`・`glyphs.ts`、IndexedDB、PNG/PDF、`.knit`入出力、使い方ページを`Web/`へ同期した。`scripts/build-web.sh`でVite成果物を`AppResources/Web/`へ生成し、Xcodeのpre-build scriptからも同じ処理を実行する。
+- アプリ差分: Google Analytics初期化と外部プライバシーURLを除去し、分析APIはno-opにした。Safariの`localStorage`旧版移行関数とテストをアプリ版から除外した。同期記録とIDスナップショットを`docs/WEB_SYNC.md`へ追加した。
+- 主なファイル: `Web/`、`scripts/sync-web-source.sh`、`scripts/build-web.sh`、`project.yml`、`AppResources/Web/.gitkeep`、`docs/WEB_SYNC.md`、`TODO.md`
+- テスト: `(cd Web && npm test)`で4ファイル22テスト成功、`npm run build`（`scripts/build-web.sh`内）でTypeScriptとViteビルド成功。生成bundleにGAタグ、アプリ外部ホスト、`localStorage`移行文字列がないことを確認した。`xcodegen generate --spec project.yml`とiOS Simulator向け`xcodebuild ... build`も成功し、アプリバンドル内`Web/`へHTML、CSS、JavaScript、PDF Worker、使い方ページが入ることを確認した。
+- 検証: Web版のGit状態はcleanのまま維持し、同期スクリプトは固定SHAとclean checkoutを検査する。誤って付けたVitestの`--runInBand`オプションは失敗したため、正しい`npm test`を再実行して成功を確認した。
+- 未実施: Simulatorでの起動・WebView内操作、実機、機内モードでの通信監視、Files／共有シート、Swiftブリッジ、Web→アプリ→Webの実データ往復。利用可能なSimulatorデバイスがなく、ネイティブ連携はM3以降の実装対象であるため。
+- 配布影響: TestFlight・App Store配布は行っていない。生成Web bundleはGit管理せず、ビルド時に再生成する。
+
 ## 2026-09-20: M0 SwiftUI・ローカルWKWebView基盤を追加
 
 - 変更: iOS 17.0以上のiPhone・iPadを対象に、SwiftUIアプリ入口、固定origin（`knitting-local://bundle`）の`WKURLSchemeHandler`、永続`WKWebsiteDataStore`を使う`WKWebView`コンテナを追加した。Web資産はアプリバンドルへ同梱し、外部URLへのナビゲーションを拒否する。M0検証用Web画面でCanvas、Pointer Events、Blob、IndexedDB、module Workerの利用可否を確認でき、IndexedDBの保存回数とscene phaseからの保存要求を表示する。

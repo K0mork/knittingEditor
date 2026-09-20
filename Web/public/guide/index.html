@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#3d7a4a" />
+    <meta name="description" content="無料の棒針編み図エディタの使い方。編み図の作成、編み目記号と色の入力、範囲コピー、PNG・PDF保存、バックアップ方法を説明します。" />
+    <title>棒針編み図エディタの使い方</title>
+    <style>
+      :root {
+        font-family: Inter, "Hiragino Sans", "Yu Gothic", system-ui, sans-serif;
+        color: #26322c;
+        background: #f3f0e8;
+        line-height: 1.8;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; }
+      header, main, footer { width: min(880px, calc(100% - 32px)); margin-inline: auto; }
+      header { padding: 28px 0 12px; }
+      main { padding: 8px 0 48px; }
+      footer { padding: 20px 0 40px; border-top: 1px solid #d5dbd3; }
+      h1 { font-size: clamp(1.7rem, 5vw, 2.5rem); line-height: 1.35; }
+      h2 { margin-top: 2.2em; line-height: 1.45; }
+      p, li { max-width: 72ch; }
+      a { color: #285d35; }
+      .lead { font-size: 1.08rem; }
+      .cta {
+        display: inline-block;
+        margin-top: 12px;
+        padding: 10px 16px;
+        border-radius: 10px;
+        background: #3d7a4a;
+        color: white;
+        font-weight: 700;
+        text-decoration: none;
+      }
+      .note {
+        padding: 14px 16px;
+        border-left: 4px solid #3d7a4a;
+        background: #fffef9;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <a href="/">棒針編み図エディタ</a>
+    </header>
+    <main>
+      <h1>ブラウザで棒針編み図を作る方法</h1>
+      <p class="lead">棒針編み図エディタは，iPhoneやiPadでオフライン利用できる編み図作成アプリです．アカウント登録やネットワーク接続は必要ありません．</p>
+      <a class="cta" href="/">編み図を作成する</a>
+
+      <h2>1．編み目記号と色を選ぶ</h2>
+      <p>画面上部の編み目記号メニューから使用する記号を選び，色を指定します．現在は26種類の編み目記号に対応しています．</p>
+
+      <h2>2．盤面に編み目を入力する</h2>
+      <p>「描く」を選んでセルをタップまたはドラッグすると，選択中の編み目記号を連続して入力できます．「消す」では入力済みのセルを消去できます．</p>
+      <p>スマートフォンでは1本指で編集し，2本指で盤面の移動や拡大縮小を行えます．PCではマウス操作にも対応しています．</p>
+
+      <h2>3．段数と列数を変更する</h2>
+      <p>「盤面」から段数と列数を変更できます．上下左右への追加と削除，指定位置への段・列の挿入と削除にも対応しています．盤面は最大1000×1000セルまで扱えます．</p>
+
+      <h2>4．よく使う模様をコピーする</h2>
+      <p>「範囲」で盤面の一部を選択すると，その範囲をコピーして別の場所へ貼り付けられます．繰り返し使う模様はパターンブロックとして名前を付けて保存できます．</p>
+
+      <h2>5．PNGまたはPDFで保存する</h2>
+      <p>「保存」から完成した編み図をPNGまたはPDFとして出力できます．PDFは全体を1ページに収める形式と，A4用紙へ読みやすく分割する形式を選べます．</p>
+
+      <h2>6．編み図をバックアップする</h2>
+      <p>作成中のデータはアプリ専用のIndexedDBへ自動保存されます．アプリを削除すると端末内データも消えるため，重要な編み図は「保存」から <code>.knit</code> 形式のバックアップを書き出してください．</p>
+      <p class="note">バックアップファイルは，同じエディタの「復元」から読み込めます．複数の編み図をまとめて保存することもできます．</p>
+
+      <h2>対応している主な機能</h2>
+      <ul>
+        <li>26種類の編み目記号と色指定</li>
+        <li>スマートフォンとPCのブラウザ操作</li>
+        <li>段・列の追加，挿入，削除</li>
+        <li>範囲コピーとパターンブロック</li>
+        <li>PNG出力</li>
+        <li>1ページPDFとA4分割PDF</li>
+        <li>端末内への自動保存</li>
+        <li><code>.knit</code> バックアップの書き出しと復元</li>
+      </ul>
+
+      <a class="cta" href="/">棒針編み図エディタを開く</a>
+    </main>
+    <footer>
+      <a href="/">棒針編み図エディタへ戻る</a>
+    </footer>
+  </body>
+</html>

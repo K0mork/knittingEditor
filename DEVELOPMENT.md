@@ -57,7 +57,7 @@ xcodebuild -project knittingEditor.xcodeproj -scheme knittingEditor \
 
 公開中の`https://knittingeditor.com/`は読み込みません。Viteのアプリ用ビルドをXcodeバンドルへ格納し、HTML、JavaScript、記号、WorkerをローカルURLから読み込みます。
 
-M0の初期コンテナは`knitting-local://bundle/index.html`という固定originを`WKURLSchemeHandler`で提供します。`WKWebsiteDataStore.default()`を使い、実行時に外部URLを許可しません。現在の`AppResources/Web/`はCanvas、Pointer Events、Blob、IndexedDB、module Workerを確認する小さな技術検証画面です。実際のWeb版編集資産への置換はM1で行います。
+M0の初期コンテナは`knitting-local://bundle/index.html`という固定originを`WKURLSchemeHandler`で提供します。`WKWebsiteDataStore.default()`を使い、実行時に外部URLを許可しません。M1以降の`AppResources/Web/`は`Web/`のViteビルド成果物であり、Canvas、Pointer Events、Blob、IndexedDB、module Worker、全26記号を含むWeb編集画面を同梱します。Files・共有シート・ネイティブ保存はM3で接続します。
 
 ## 4. Web版から再利用する範囲
 
