@@ -35,6 +35,14 @@
 - 未実施: Apple Developer署名、実機、TestFlight。
 - 配布影響: Swiftのactor隔離を明示するだけで、画面・保存・通信仕様は変更しない。
 
+## 2026-09-20: Xcode 15 Simulator向けbundleバージョンを明示
+
+- 変更: `CFBundleShortVersionString`と`CFBundleVersion`をInfo.plistへ追加し、`MARKETING_VERSION=1.0`、`CURRENT_PROJECT_VERSION=1`をXcodeGen設定へ固定した。Xcode 15.4 Simulatorのインストール時に発生した「valid CFBundleVersionがない」エラーを解消する。
+- 主なファイル: `App/Info.plist`、`project.yml`、生成済み`knittingEditor.xcodeproj/project.pbxproj`
+- テスト: iPhone／iPad SimulatorのXCUITestとXcode 15.4 GitHub Actionsで再実行する。
+- 未実施: Apple Developer署名、実機、TestFlight。
+- 配布影響: アプリのバージョン表示とCFBundleVersionを初回リリース値へ明示した。保存形式や機能は変更しない。
+
 ## 2026-09-20: 公開Privacy Policy本文を追加
 
 - 変更: 端末内保存、Safari保存領域を読まない方針、ユーザー操作時だけのファイル共有・Safari遷移、アプリ削除時のデータ消失、問い合わせ先を`docs/PRIVACY_POLICY.md`へ明文化した。App Storeメタデータ案と提出チェックリストから公開URL候補を参照する。
