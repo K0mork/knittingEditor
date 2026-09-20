@@ -224,7 +224,8 @@ struct WebViewContainer: UIViewRepresentable {
             }
             pendingExportURL = temporaryURL
 
-            let alert = UIAlertController(title: "ファイルを保存", message: filename, preferredStyle: .actionSheet)
+            let alertStyle: UIAlertController.Style = UIDevice.current.userInterfaceIdiom == .pad ? .alert : .actionSheet
+            let alert = UIAlertController(title: "ファイルを保存", message: filename, preferredStyle: alertStyle)
             alert.addAction(UIAlertAction(title: "ファイルに保存", style: .default) { [weak self, weak presenter] _ in
                 guard let self, let presenter, let pendingExportURL = self.pendingExportURL else { return }
                 let picker = UIDocumentPickerViewController(forExporting: [pendingExportURL], asCopy: true)

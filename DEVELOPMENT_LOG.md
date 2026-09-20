@@ -59,6 +59,22 @@
 - 未実施: 実機でのIndexedDB更新耐性、編み図切替の長時間試験、強制終了、1000×1000盤面の実機メモリ測定。
 - 配布影響: 盤面のVoiceOver向け状態情報を追加した。保存形式とネイティブブリッジ仕様は変更しない。
 
+## 2026-09-20: バックアップ出力のネイティブ操作シートを検証
+
+- 変更: XCUITestへ、保存パネルから`.knit`を出力し、Swift側の「ファイルに保存」「共有」アクションシートが表示されることを追加した。
+- 主なファイル: `UITests/KnittingEditorUITests/KnittingEditorUITests.swift`
+- テスト: iPhone／iPad SimulatorでXCUITestを再実行し、バックアップ出力を含む全ケースが成功することを確認する。
+- 未実施: Filesの実保存、AirDrop・共有先アプリの選択、実機の共有UI。
+- 配布影響: テストコードのみ。出力ファイル形式と共有実装は変更しない。
+
+## 2026-09-20: iPadバックアップ出力の表示方式を修正
+
+- 変更: iPadではアクションシートのpopover表示が出ないケースがあったため、バックアップ出力の「ファイルに保存」「共有」を通常のalertとして表示し、iPhoneでは従来どおりaction sheetを使うようにした。
+- 主なファイル: `App/WebViewContainer.swift`
+- テスト: iPhone／iPad Simulatorでバックアップ出力を含むXCUITestを再実行する。
+- 未実施: 実機のFiles・共有先アプリ、AirDrop、TestFlight。
+- 配布影響: iPadのファイル出力確認UIのみ変更。ファイル形式、保存先、共有データは変更しない。
+
 ## 2026-09-20: AppIcon・起動画面を含むRelease Archiveを再検証
 
 - 変更: コード変更はない。AppIconと`LaunchBackground`追加後の提出候補bundleをRelease Archiveから再検査した。
