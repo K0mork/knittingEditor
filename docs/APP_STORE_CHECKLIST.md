@@ -20,6 +20,7 @@
 - [ ] 実機で機内モードのP0フローを完了する。
 - [ ] Files、AirDrop、共有先、外部`.knit`の往復を実機で確認する。
 - [ ] 1000×1000盤面のメモリ、PNG拒否、PDF出力時間を記録する。
+- Simulator／Webでの1000×1000保存復元・PDF基準値は[`SIMULATOR_PERFORMANCE_BASELINE.md`](SIMULATOR_PERFORMANCE_BASELINE.md)に記録済み（実機/TestFlight確認の代替ではない）。
 - [ ] TestFlight内部テストでクラッシュログとメモリ警告を確認する。
 - [ ] App Store ConnectのApp Privacy回答をPrivacy Manifestと照合する。
 - [ ] Privacy Policy URLをApp Store Connectへ登録し、公開状態を確認する。

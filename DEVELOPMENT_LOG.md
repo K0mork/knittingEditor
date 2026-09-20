@@ -11,6 +11,14 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-21: Simulator／Webの性能基準値を記録
+
+- 変更: 既存の1000×1000保存・復元テストと密集PDFテストを実行し、開発環境での観測値を`docs/SIMULATOR_PERFORMANCE_BASELINE.md`へ記録した。申請資料検査から基準値文書の存在と見出しも検証する。
+- 主なファイル: `docs/SIMULATOR_PERFORMANCE_BASELINE.md`、`docs/APP_STORE_CHECKLIST.md`、`scripts/check-app-store-docs.sh`
+- テスト: `cd Web && npm test -- --run`で6 files／39 tests成功（2.31秒）。PDFテストは4件成功し1000×1000密集PDFの観測値1,511ms、保存・復元テストは9件成功し観測値14ms。`scripts/check-release-assets.sh`、`scripts/check-app-store-docs.sh`、`git diff --check`も成功した。
+- 未実施: 実機WebKitのピークメモリ、PNG/PDF出力時間、クラッシュログ、TestFlight内部テスト。今回の基準値は実機・TestFlightゲートを完了にしない。
+- 配布影響: アプリ本体、保存形式、Bundle ID、外部通信方針は変更しない。リリース前性能の比較基準と測定限界を文書化した。
+
 ## 2026-09-21: 起動画面のSimulator下書きを追加
 
 - 変更: iPhone 16とiPad (10th generation)を一度アンインストールして再インストールし、`UILaunchScreen`表示中の下書きを`docs/screenshots/`へ保存した。起動画面下書きの端末解像度をRelease資産検査へ追加し、申請資料から参照できるようにした。実機・TestFlightの最終素材とは区別する。

@@ -9,8 +9,9 @@ CHECKLIST="$REPO_ROOT/docs/APP_STORE_CHECKLIST.md"
 REVIEW_NOTES="$REPO_ROOT/docs/APP_REVIEW_NOTES.md"
 PRIVACY_POLICY="$REPO_ROOT/docs/PRIVACY_POLICY.md"
 SCREENSHOTS="$REPO_ROOT/docs/SCREENSHOTS.md"
+PERFORMANCE_BASELINE="$REPO_ROOT/docs/SIMULATOR_PERFORMANCE_BASELINE.md"
 
-for required in "$METADATA" "$CHECKLIST" "$REVIEW_NOTES" "$PRIVACY_POLICY" "$SCREENSHOTS"; do
+for required in "$METADATA" "$CHECKLIST" "$REVIEW_NOTES" "$PRIVACY_POLICY" "$SCREENSHOTS" "$PERFORMANCE_BASELINE"; do
   if [ ! -f "$required" ]; then
     echo "missing App Store document: $required" >&2
     exit 1
@@ -98,6 +99,11 @@ grep -qE -- 'iphone-16-launch-simulator\.png' "$SCREENSHOTS" || {
 }
 grep -qE -- 'ipad-10-launch-simulator\.png' "$SCREENSHOTS" || {
   echo "iPad simulator launch screenshot is not documented" >&2
+  exit 1
+}
+
+grep -qF -- '# Simulator／Web基準値' "$PERFORMANCE_BASELINE" || {
+  echo "Simulator performance baseline has no title" >&2
   exit 1
 }
 
