@@ -43,6 +43,14 @@
 - 未実施: 実機のタッチ・Apple Pencil・VoiceOver・機内モード通信監視、TestFlight。
 - 配布影響: コード・bundle・保存形式は変更しない。Simulator実行証跡のみを記録した。
 
+## 2026-09-20: XCTestのMainActor警告を整理
+
+- 変更: Xcode 27でUI操作とUIKit由来のテストに出ていたSwift並行性警告を避けるため、UIテストと`LocalWebSchemeHandler`テストを`@MainActor`へ明示した。
+- 主なファイル: `UITests/KnittingEditorUITests/KnittingEditorUITests.swift`、`Tests/KnittingEditorAppTests/LocalWebSchemeHandlerTests.swift`
+- テスト: iPhone 16 SimulatorのXCTestを再実行し、9件成功と警告消失を確認する。
+- 未実施: 実機、TestFlight、実機でのVoiceOver・通信監視。
+- 配布影響: テストコードのみ。アプリ本体の挙動・保存形式は変更しない。
+
 ## 2026-09-20: AppIcon・起動画面を含むRelease Archiveを再検証
 
 - 変更: コード変更はない。AppIconと`LaunchBackground`追加後の提出候補bundleをRelease Archiveから再検査した。

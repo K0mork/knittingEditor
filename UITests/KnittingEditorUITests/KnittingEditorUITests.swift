@@ -1,5 +1,6 @@
 import XCTest
 
+@MainActor
 final class KnittingEditorUITests: XCTestCase {
     func testLaunchShowsLocalEditorContainer() {
         let app = XCUIApplication()

@@ -1,6 +1,7 @@
 import XCTest
 @testable import knittingEditor
 
+@MainActor
 final class LocalWebSchemeHandlerTests: XCTestCase {
     func testIndexURLUsesStableLocalOrigin() {
         XCTAssertEqual(LocalWebSchemeHandler.indexURL.absoluteString, "knitting-local://bundle/index.html")
