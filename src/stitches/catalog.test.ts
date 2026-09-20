@@ -75,6 +75,39 @@ describe('stitch catalog', () => {
     expect(getGlyphDefinition('left_up_three_one')?.primitives).toHaveLength(3);
   });
 
+  it('keeps the named side on top for every cable pair', () => {
+    const pairs = [
+      ['right_cross', 'left_cross', 1],
+      ['purl_right_cross', 'purl_left_cross', 1],
+      ['purl_right_up_two_cross', 'purl_left_up_two_cross', 2],
+      ['right_up_two_cross', 'left_up_two_cross', 2],
+      ['right_up_three_cross', 'left_up_three_cross', 3],
+    ] as const;
+    for (const [rightKey, leftKey, overCount] of pairs) {
+      for (const [key, expectedDirection] of [[rightKey, -1], [leftKey, 1]] as const) {
+        const glyph = getGlyphDefinition(key)!;
+        const fullSpanLines = glyph.primitives.filter((primitive) => (
+          primitive.kind === 'line'
+          && Math.abs(primitive.to.x - primitive.from.x) > glyph.width * 0.75
+        ));
+        expect(fullSpanLines, key).toHaveLength(overCount);
+        for (const primitive of fullSpanLines) {
+          if (primitive.kind !== 'line') continue;
+          expect(Math.sign(primitive.to.x - primitive.from.x), key).toBe(expectedDirection);
+        }
+      }
+    }
+  });
+
+  it('keeps the named side on top for twisted cable symbols', () => {
+    const right = getGlyphDefinition('purl_right_cross_twist_stitch')!;
+    const left = getGlyphDefinition('purl_left_cross_twist_stitch')!;
+    const rightOver = right.primitives[3];
+    const leftOver = left.primitives[3];
+    expect(rightOver).toMatchObject({ kind: 'line', from: { x: 150 }, to: { x: 121 } });
+    expect(leftOver).toMatchObject({ kind: 'line', from: { x: 50 }, to: { x: 79 } });
+  });
+
   it('keeps every vector primitive inside its drawing box', () => {
     for (const stitch of STITCHES.filter((item) => item.renderKind === 'glyph')) {
       const glyph = getGlyphDefinition(stitch.key)!;

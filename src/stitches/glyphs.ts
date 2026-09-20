@@ -81,8 +81,8 @@ function cable(leftCount: number, rightCount: number, direction: 'right' | 'left
   });
   const leftLines = bundle(leftCount, true);
   const rightLines = bundle(rightCount, false);
-  const over = direction === 'right' ? leftLines : rightLines;
-  const under = direction === 'right' ? rightLines : leftLines;
+  const over = direction === 'right' ? rightLines : leftLines;
+  const under = direction === 'right' ? leftLines : rightLines;
   const interpolate = (from: GlyphPoint, to: GlyphPoint, amount: number) => point(
     from.x + (to.x - from.x) * amount,
     from.y + (to.y - from.y) * amount,
@@ -125,7 +125,7 @@ function twistCross(direction: 'right' | 'left'): GlyphDefinition {
     { kind: 'ellipse', cx: 100, cy: 50, rx: 23, ry: 19 },
     line(121, 35, 150, 14),
   ];
-  return glyph(2, 1, direction === 'right' ? primitives : mirror(primitives, 2 * GLYPH_CELL));
+  return glyph(2, 1, direction === 'right' ? mirror(primitives, 2 * GLYPH_CELL) : primitives);
 }
 
 const glyphs: Record<string, GlyphDefinition> = {
@@ -139,8 +139,8 @@ const glyphs: Record<string, GlyphDefinition> = {
   left_cross: cable(1, 1, 'left'),
   purl_right_cross: cable(1, 1, 'right', { purlUnder: true }),
   purl_left_cross: cable(1, 1, 'left', { purlUnder: true }),
-  purl_right_up_two_cross: cable(2, 1, 'right', { purlUnder: true }),
-  purl_left_up_two_cross: cable(1, 2, 'left', { purlUnder: true }),
+  purl_right_up_two_cross: cable(1, 2, 'right', { purlUnder: true }),
+  purl_left_up_two_cross: cable(2, 1, 'left', { purlUnder: true }),
   purl_right_cross_twist_stitch: twistCross('right'),
   purl_left_cross_twist_stitch: twistCross('left'),
   middle_up_three_one: glyph(3, 1, scale(middleThreeDecrease, 3, 1)),
