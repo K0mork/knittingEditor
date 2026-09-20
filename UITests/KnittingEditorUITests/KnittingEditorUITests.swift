@@ -88,7 +88,11 @@ final class KnittingEditorUITests: XCTestCase {
         let englishPickerCancel = app.otherElements["Cancel"]
         let pickerCancel = localizedPickerCancel.exists ? localizedPickerCancel : englishPickerCancel
         XCTAssertTrue(pickerCancel.waitForExistence(timeout: 10), app.debugDescription)
-        pickerCancel.tap()
+        if pickerCancel.isHittable {
+            pickerCancel.tap()
+        } else {
+            pickerCancel.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        }
     }
 
     func testPngAndPdfExportsReachNativeFileActions() {

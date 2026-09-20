@@ -11,6 +11,14 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-21: ネイティブ保存画面の表示をRunLoop後へ遅延
+
+- 変更: WKWebViewの型付き出力メッセージ受信直後ではなく、Main RunLoopへ戻ってから保存画面／Document Pickerを表示するようにした。Xcode 15.4 Simulatorで`.knit`保存アクションが表示されない競合を避ける。UIテストはDocument Picker Cancel要素が非hittableな場合に座標でフォールバックする。
+- 主なファイル: `App/WebViewContainer.swift`、`UITests/KnittingEditorUITests/KnittingEditorUITests.swift`
+- テスト: iPhone／iPad SimulatorでXCUITestを再実行し、GitHub ActionsのXcode 15.4 matrixで確認する。
+- 未実施: Apple Developer署名、実機、TestFlight。
+- 配布影響: PNG／PDF／`.knit`の保存導線は維持し、表示タイミングだけを安定化した。
+
 ## 2026-09-20: GitHub ActionsのXcodeGenプロジェクト形式をXcode 15互換へ固定
 
 - 変更: XcodeGenの`projectFormat`を`xcode15_0`へ固定し、Xcode 15.4 runnerが`objectVersion = 77`の生成物を「future Xcode project file format」として拒否するCI障害を修正した。生成済み`knittingEditor.xcodeproj`も`objectVersion = 60`へ更新した。

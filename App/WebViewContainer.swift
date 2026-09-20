@@ -138,9 +138,13 @@ struct WebViewContainer: UIViewRepresentable {
             guard message.name == Self.messageHandlerName else { return }
             switch NativeBridgeMessage.decode(body: message.body) {
             case .success(.openBackup):
-                presentBackupPicker()
+                DispatchQueue.main.async { [weak self] in
+                    self?.presentBackupPicker()
+                }
             case let .success(.exportFile(data, filename, mimeType)):
-                presentExportOptions(data: data, filename: filename, mimeType: mimeType)
+                DispatchQueue.main.async { [weak self] in
+                    self?.presentExportOptions(data: data, filename: filename, mimeType: mimeType)
+                }
             case let .failure(error):
                 dispatchError(message: bridgeErrorMessage(error))
             }
