@@ -6,7 +6,7 @@
 - 主なファイル: `src/stitches/catalog.ts`, `src/stitches/svgMarkup.js`, `src/App.tsx`, `src/styles.css`, `src/export/pdf.worker.ts`, `src/storage/database.ts`
 - テスト: `src/stitches/catalog.test.ts` に永続ID、キー重複、全SVG、旧キー互換の検証を追加した。`src/export/pdf.worker.test.ts` にPDF白塗り命令、`src/storage/database.test.ts` にバックアップの記号カタログ版、`tests/e2e/editor.spec.ts` に記号パレット表示・選択・ID 25の保存を追加した。
 - 検証: `npm run typecheck`、`npm test`（17件）、`npm run build`、`npm run check:dist`、`npm run test:e2e`（Chromium mobile・WebKit mobile・Chromium desktop、39件）を実行し、すべて成功。ChromiumとWebKitでモバイル390×844、デスクトップ1280×800のパレットを手動確認し、スクリーンショットを `/tmp/stitch-picker-{chromium,webkit}-{mobile,desktop}.png` に保存した。
-- デプロイ影響: 静的アプリの更新あり。未デプロイ。デプロイ後は記号パレット、白くしたセルの再読込み、PNG/PDFでの白塗り、既存編み図の記号互換性を確認する必要がある。
+- デプロイ影響: 2026-09-20にコミット `58250b2` までを `main` へデプロイした。GitHub Actions「Test and deploy Pages」run `35479673129` のテスト・ビルド・デプロイはすべて成功。本番 `https://knittingeditor.com/`（HTTP 200）で25記号のパレット表示、「白くする」のID 25での保存と再読込み、PDF生成、およびPDF内の白塗り命令を確認した。
 
 ## 2026-09-20 — SEOと使い方ページのブラウザテストを追加
 
