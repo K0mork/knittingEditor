@@ -25,4 +25,45 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertTrue(app.buttons["全データ"].exists)
         XCTAssertTrue(app.buttons["復元"].exists)
     }
+
+    func testEditAndRelaunchRestoresLocalDocument() {
+        let app = XCUIApplication()
+        app.launch()
+
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 15))
+        let documents = app.buttons["編み図"]
+        XCTAssertTrue(documents.waitForExistence(timeout: 5))
+        documents.tap()
+
+        let newDocument = app.buttons["新しい編み図"]
+        XCTAssertTrue(newDocument.waitForExistence(timeout: 5))
+        newDocument.tap()
+        let nameField = app.textFields["入力"]
+        XCTAssertTrue(nameField.waitForExistence(timeout: 5))
+        nameField.tap()
+        nameField.typeText("再起動復元テスト")
+        app.buttons["決定"].tap()
+
+        let webView = app.webViews.firstMatch
+        let canvas = webView.otherElements
+            .matching(NSPredicate(format: "label CONTAINS %@", "記号0個"))
+            .firstMatch
+        XCTAssertTrue(canvas.waitForExistence(timeout: 10))
+        canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+
+        let editedCanvas = webView.otherElements
+            .matching(NSPredicate(format: "label CONTAINS %@", "記号1個"))
+            .firstMatch
+        XCTAssertTrue(editedCanvas.waitForExistence(timeout: 10))
+
+        app.terminate()
+        app.launch()
+
+        let relaunchedWebView = app.webViews.firstMatch
+        XCTAssertTrue(relaunchedWebView.waitForExistence(timeout: 15))
+        let restoredCanvas = relaunchedWebView.otherElements
+            .matching(NSPredicate(format: "label CONTAINS %@", "記号1個"))
+            .firstMatch
+        XCTAssertTrue(restoredCanvas.waitForExistence(timeout: 10))
+    }
 }

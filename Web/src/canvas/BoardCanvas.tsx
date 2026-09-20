@@ -310,7 +310,7 @@ export function BoardCanvas(props: Props) {
       className={`board-canvas mode-${props.mode}`}
       role="application"
       tabIndex={0}
-      aria-label={`編み図編集盤面。${props.board.rows}段、${props.board.cols}目。${modeLabel}モード。${selectionLabel}`}
+      aria-label={`編み図編集盤面。${props.board.rows}段、${props.board.cols}目。記号${props.board.occupiedStitchCount}個。${modeLabel}モード。${selectionLabel}`}
       aria-describedby="board-instructions"
       onContextMenu={(event) => event.preventDefault()}
       onPointerDown={handlePointerDown}

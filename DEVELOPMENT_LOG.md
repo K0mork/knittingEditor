@@ -51,6 +51,14 @@
 - 未実施: 実機、TestFlight、実機でのVoiceOver・通信監視。
 - 配布影響: テストコードのみ。アプリ本体の挙動・保存形式は変更しない。
 
+## 2026-09-20: 編集・再起動復元のSimulator回帰テストを追加
+
+- 変更: 盤面のアクセシブルラベルへ配置済み記号数を追加し、XCUITestで新規編み図の編集、アプリ終了、再起動後のIndexedDB復元を検証するケースを追加した。
+- 主なファイル: `Web/src/model/Board.ts`、`Web/src/canvas/BoardCanvas.tsx`、`Web/src/model/Board.test.ts`、`UITests/KnittingEditorUITests/KnittingEditorUITests.swift`、`TODO.md`
+- テスト: Webテスト35件成功。iPhone 16／iPad (10th generation) SimulatorでSwift XCTest・XCUITest計10件ずつ成功。
+- 未実施: 実機でのIndexedDB更新耐性、編み図切替の長時間試験、強制終了、1000×1000盤面の実機メモリ測定。
+- 配布影響: 盤面のVoiceOver向け状態情報を追加した。保存形式とネイティブブリッジ仕様は変更しない。
+
 ## 2026-09-20: AppIcon・起動画面を含むRelease Archiveを再検証
 
 - 変更: コード変更はない。AppIconと`LaunchBackground`追加後の提出候補bundleをRelease Archiveから再検査した。

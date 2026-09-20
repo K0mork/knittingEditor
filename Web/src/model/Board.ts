@@ -55,6 +55,11 @@ export class Board {
   index(row: number, col: number): number { return row * this.cols + col; }
   inBounds(row: number, col: number): boolean { return row >= 0 && col >= 0 && row < this.rows && col < this.cols; }
   valueAt(row: number, col: number): number { return this.cells[this.index(row, col)] ?? 0; }
+  get occupiedStitchCount(): number {
+    let count = 0;
+    for (const value of this.cells) if (value) count += 1;
+    return count;
+  }
   ownerAt(row: number, col: number): number { return this.inBounds(row, col) ? this.owners[this.index(row, col)] : -1; }
 
   definitionAt(row: number, col: number): StitchDefinition | undefined {

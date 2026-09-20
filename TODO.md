@@ -75,7 +75,7 @@
 - [x] Web単体テストをCIへ追加する
 - [x] Swift単体テストを追加する
 - [x] XCUITestコードで起動、WebView、保存導線のスモーク検証を定義し、iPhone 16／iPad (10th generation) Simulatorで実行する
-- [ ] XCUITestで編集、再起動復元を検証する
+- [x] XCUITestで編集、再起動復元を検証する（iPhone 16／iPad (10th generation) Simulator。実機は別途）
 - [ ] XCUITestでFiles入出力と共有導線を検証する
 - [x] 全記号fixtureのCanvas・PNG・PDF回帰テストを追加する（実機のPNG表示確認は別途必要）
 - [ ] ネットワーク要求を検出するオフライン試験を追加する

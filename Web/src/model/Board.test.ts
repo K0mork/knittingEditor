@@ -44,6 +44,15 @@ describe('Board', () => {
     expect(board.cells.byteLength).toBe(4_000_000);
   });
 
+  it('counts placed stitch anchors for accessible status', () => {
+    const board = new Board(4, 4);
+    expect(board.occupiedStitchCount).toBe(0);
+    board.place(1, 1, 'knit', '#123456', false);
+    expect(board.occupiedStitchCount).toBe(1);
+    board.clearAt(1, 1);
+    expect(board.occupiedStitchCount).toBe(0);
+  });
+
   it('clamps a selection made entirely outside the board', () => {
     const board = new Board(10, 10);
     expect(board.normalizeSelection({ top: -3, left: -4, bottom: -1, right: -2 })).toEqual({
