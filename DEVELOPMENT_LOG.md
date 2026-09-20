@@ -27,6 +27,14 @@
 - 未実施: iOSの永続`WKWebsiteDataStore`を使ったアプリ再起動・強制終了相当、実機メモリ測定、scene phase経由の保存は未実施。M2の実機完了項目は維持する。
 - 配布影響: Web単体テストのみ。アプリの保存形式と公開配布物は変更しない。
 
+## 2026-09-20: M5 bundleの通信API静的検査を追加
+
+- 変更: Viteのmodule-preload polyfillを無効にし、生成アプリbundleへ`fetch`、`XMLHttpRequest`、`WebSocket`、`EventSource`が混入しないことを`check-app-bundle.sh`で検査するようにした。既存の分析タグ・外部アプリホスト検査と合わせ、実行時通信のないbundleをCIで拒否する。
+- 主なファイル: `Web/vite.config.ts`、`scripts/check-app-bundle.sh`、`TODO.md`
+- テスト: `(cd Web && npm test)`、`npm run build`、`xcodegen generate`、iOS Simulator SDK向け`xcodebuild ... build`、生成appへの`check-app-bundle.sh`を実行する。
+- 未実施: 機内モード中の実機／Simulatorで通信要求を監視する試験は未実施。M5の実行時オフライン項目は未完了のままにする。
+- 配布影響: bundle生成設定とCI検査のみ。外部通信機能は追加していない。
+
 ## 2026-09-20: M6プライバシー、サポート、審査準備を追加
 
 - 変更: `PrivacyInfo.xcprivacy`をアプリバンドルへ追加し、トラッキングなし・収集データなし・宣言対象APIなしを明記した。アプリ内ヘルプへ端末内処理、アプリ削除時のデータ消失、GitHub Issuesサポート導線を追加した。ユーザーがリンクを選んだ場合だけSwift側でSafariを開く。App Review 4.2向け審査メモとApp Store提出チェックリストを追加した。

@@ -26,4 +26,9 @@ if rg -n --hidden --glob '!*.map' 'googletagmanager|G-VVE0G4ZFL4|knittingeditor\
   exit 1
 fi
 
+if rg -n --hidden --glob '!*.map' '\b(fetch|XMLHttpRequest|WebSocket|EventSource)\s*\(' "$WEB_ROOT"; then
+  echo "unexpected network API in app bundle" >&2
+  exit 1
+fi
+
 echo "app bundle assets and offline references are valid"

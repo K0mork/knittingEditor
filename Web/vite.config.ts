@@ -8,6 +8,7 @@ export default defineConfig({
     target: ['es2022', 'safari16.4'],
     sourcemap: true,
     chunkSizeWarningLimit: 900,
+    modulePreload: false,
   },
   server: {
     fs: { allow: ['..'] },

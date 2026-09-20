@@ -76,6 +76,7 @@
 - [ ] XCUITestでFiles入出力と共有導線を検証する
 - [ ] 全記号fixtureのCanvas・PNG・PDF回帰テストを追加する
 - [ ] ネットワーク要求を検出するオフライン試験を追加する
+- [x] 生成アプリbundleの通信API・外部実行参照を静的検査する（実機の通信監視は別途必要）
 - [x] iPhone・iPad SimulatorのCI matrixを作る
 - [x] リリースビルドのローカル資産完全性を検証する
 
