@@ -14,8 +14,10 @@ REPO_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
 
 INFO_PLIST="$APP_PATH/Info.plist"
 ICON_PATH="$REPO_ROOT/App/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png"
+LAUNCH_COLORSET_PATH="$REPO_ROOT/App/Assets.xcassets/LaunchBackground.colorset/Contents.json"
 
 for required in "$INFO_PLIST" "$ICON_PATH" \
+  "$LAUNCH_COLORSET_PATH" \
   "$REPO_ROOT/docs/APP_STORE_METADATA.md" \
   "$REPO_ROOT/docs/APP_REVIEW_NOTES.md" \
   "$REPO_ROOT/docs/PRIVACY_POLICY.md" \
@@ -40,6 +42,13 @@ display_name=$(plutil -extract CFBundleDisplayName raw -o - "$INFO_PLIST")
   echo "bundle version or display name is missing" >&2
   exit 1
 }
+
+launch_color_name=$(plutil -extract UILaunchScreen.UIColorName raw -o - "$INFO_PLIST" 2>/dev/null || true)
+[ "$launch_color_name" = "LaunchBackground" ] || {
+  echo "unexpected launch screen color asset: ${launch_color_name:-<missing>}" >&2
+  exit 1
+}
+jq -e '.colors | type == "array" and any(.[]; .idiom == "universal" and .color["color-space"] == "srgb")' "$LAUNCH_COLORSET_PATH" >/dev/null
 
 icon_width=$(sips -g pixelWidth "$ICON_PATH" | awk '/pixelWidth:/ { print $2; exit }')
 icon_height=$(sips -g pixelHeight "$ICON_PATH" | awk '/pixelHeight:/ { print $2; exit }')

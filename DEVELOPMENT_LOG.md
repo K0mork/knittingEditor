@@ -42,6 +42,14 @@
 - テスト: `bash -n scripts/simulate-app-update.sh`、iPad Simulatorのアプリ更新検証、CIの全ジョブ成功を確認する。
 - 配布影響: アプリ本体・保存形式・Bundle ID・署名設定は変更しない。CIの更新互換性検証だけを安定化する。
 
+## 2026-09-21: Release Archiveで起動画面資産を検査
+
+- 変更: `scripts/check-release-assets.sh`で、Release Archiveの`UILaunchScreen.UIColorName`が`LaunchBackground`を参照することと、対応するasset catalog色定義が存在し有効なことを検査する。AppIcon、提出文書、スクリーンショット下書きと同じRelease Archiveゲートで確認する。
+- 主なファイル: `scripts/check-release-assets.sh`、`.github/workflows/ci.yml`
+- テスト: `bash -n scripts/check-release-assets.sh`、既存Simulator app bundleへの配布資産検査、変更後CIのRelease Archiveを実行する。
+- 未実施: 起動画面の実機目視、最終App Storeスクリーンショット、Apple Developer署名、TestFlight、App Store Connect登録。
+- 配布影響: アプリ本体の起動画面設定は変更せず、配布前の静的検査範囲だけを拡張する。
+
 ## 2026-09-21: 実装品質監査に基づく保存・ブリッジ・バックアップ検証の強化
 
 - 変更: Swiftのnative bridgeでバージョン不一致を`unsupportedVersion`として分類し、外部リンクはメインフレームだけをSafariへ渡すよう制限した。出力一時ファイルの上書き時に前回ファイルを確実に削除し、MIME型から拡張子を補えるようにした。バックグラウンド移行時はSwiftからWeb側の保存Promiseを呼び出し、ブラウザ互換用イベントも同じ保存処理へ接続した。起動失敗を読み込み中画面に隠さず再読み込み案内を表示し、nativeイベント購読を初回一度だけ登録するよう整理した。`.knit`復元では未知の記号ID、盤面・ブロックの範囲外／重複データ、形式不正を拒否し、旧fixtureの直接記号ID形式は受け入れて表示時にpacked形式へ正規化する。
