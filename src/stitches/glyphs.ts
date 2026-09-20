@@ -56,7 +56,7 @@ function glyph(width: number, height: number, primitives: GlyphPrimitive[], stro
 
 const rightTwoDecrease = [polyline(18, 84, 52, 50, 24, 14), line(52, 50, 80, 86)];
 const middleThreeDecrease = [line(50, 12, 50, 88), line(16, 82, 50, 50), line(84, 82, 50, 50)];
-const rightThreeDecrease = [line(50, 12, 50, 88), polyline(16, 82, 50, 50, 20, 14), line(50, 50, 80, 86)];
+const rightThreeDecrease = [line(50, 88, 50, 50), polyline(16, 82, 50, 50, 20, 14), line(50, 50, 80, 86)];
 
 interface CableOptions { purlUnder?: boolean }
 

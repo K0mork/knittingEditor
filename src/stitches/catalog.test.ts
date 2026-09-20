@@ -93,9 +93,19 @@ describe('stitch catalog', () => {
       kind: 'polyline',
       points: [{ x: 48, y: 82 }, { x: 150, y: 50 }, { x: 60, y: 14 }],
     });
+    expect(getGlyphDefinition('right_up_three_one')?.primitives[0]).toEqual({
+      kind: 'line',
+      from: { x: 150, y: 88 },
+      to: { x: 150, y: 50 },
+    });
     expect(getGlyphDefinition('left_up_three_one')?.primitives[1]).toMatchObject({
       kind: 'polyline',
       points: [{ x: 252, y: 82 }, { x: 150, y: 50 }, { x: 240, y: 14 }],
+    });
+    expect(getGlyphDefinition('left_up_three_one')?.primitives[0]).toEqual({
+      kind: 'line',
+      from: { x: 150, y: 88 },
+      to: { x: 150, y: 50 },
     });
   });
 
