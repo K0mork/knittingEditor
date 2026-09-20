@@ -27,6 +27,14 @@
 - 未実施: Apple Developer Team情報、実機、TestFlight、App Store Connectの外部状態は未変更・未確認。
 - 配布影響: アプリ本体・保存形式・Bundle ID・CI設定は変更しない。外部ゲートを実施可能な順序と証跡へ固定した。
 
+## 2026-09-21: Release Archiveの提出資産静的検査を強化
+
+- 変更: `scripts/check-release-assets.sh`を追加し、既存の同梱Web資産・Privacy Manifest・外部通信参照検査に加えて、Bundle ID、バージョン、表示名、1024px AppIcon、App Store文書、iPhone／iPadスクリーンショット下書きの存在と解像度を検査する。Release Archive CI jobから同じ検査を実行する。
+- 主なファイル: `scripts/check-release-assets.sh`、`.github/workflows/ci.yml`
+- テスト: macOSのRelease Archiveで`xcodebuild archive`後に検査スクリプトを実行する。ローカルではスクリプトの構文検査と、既存Simulator Archive検査を実行する。
+- 未実施: Apple Developer署名、実機最終素材、TestFlight、App Store Connect登録。静的検査成功だけではM6の外部ゲートを完了にしない。
+- 配布影響: 配布資産の検査範囲だけを拡張し、アプリ本体・保存形式・Bundle ID・署名設定は変更しない。
+
 ## 2026-09-21: 実装品質監査に基づく保存・ブリッジ・バックアップ検証の強化
 
 - 変更: Swiftのnative bridgeでバージョン不一致を`unsupportedVersion`として分類し、外部リンクはメインフレームだけをSafariへ渡すよう制限した。出力一時ファイルの上書き時に前回ファイルを確実に削除し、MIME型から拡張子を補えるようにした。バックグラウンド移行時はSwiftからWeb側の保存Promiseを呼び出し、ブラウザ互換用イベントも同じ保存処理へ接続した。起動失敗を読み込み中画面に隠さず再読み込み案内を表示し、nativeイベント購読を初回一度だけ登録するよう整理した。`.knit`復元では未知の記号ID、盤面・ブロックの範囲外／重複データ、形式不正を拒否し、旧fixtureの直接記号ID形式は受け入れて表示時にpacked形式へ正規化する。
