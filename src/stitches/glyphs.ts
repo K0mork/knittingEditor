@@ -54,9 +54,9 @@ function glyph(width: number, height: number, primitives: GlyphPrimitive[], stro
   return { width: width * GLYPH_CELL, height: height * GLYPH_CELL, strokeWidth, primitives };
 }
 
-const rightTwoDecrease = [line(22, 14, 80, 86), line(18, 84, 55, 49)];
+const rightTwoDecrease = [polyline(18, 84, 52, 50, 24, 14), line(52, 50, 80, 86)];
 const middleThreeDecrease = [line(50, 12, 50, 88), line(16, 82, 50, 50), line(84, 82, 50, 50)];
-const rightThreeDecrease = [line(50, 12, 50, 88), line(16, 82, 50, 50), line(20, 14, 82, 86)];
+const rightThreeDecrease = [line(50, 12, 50, 88), polyline(16, 82, 50, 50, 20, 14), line(50, 50, 80, 86)];
 
 interface CableOptions { purlUnder?: boolean }
 
@@ -138,6 +138,7 @@ const glyphs: Record<string, GlyphDefinition> = {
   yo: glyph(1, 1, [{ kind: 'ellipse', cx: 50, cy: 50, rx: 35, ry: 35 }]),
   right_up_two_one: glyph(2, 1, scale(rightTwoDecrease, 2, 1)),
   left_up_two_one: glyph(2, 1, scale(mirror(rightTwoDecrease, GLYPH_CELL), 2, 1)),
+  purl_right_up_two_one: glyph(2, 1, scale([...rightTwoDecrease, line(35, 82, 65, 82)], 2, 1)),
   purl_left_up_two_one: glyph(2, 1, scale([...mirror(rightTwoDecrease, GLYPH_CELL), line(35, 82, 65, 82)], 2, 1)),
   right_cross: cable(1, 1, 'right'),
   left_cross: cable(1, 1, 'left'),

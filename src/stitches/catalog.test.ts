@@ -9,6 +9,7 @@ const EXPECTED_IDS = {
   right_up_two_one: 4,
   left_up_two_one: 5,
   purl_left_up_two_one: 6,
+  purl_right_up_two_one: 26,
   right_cross: 7,
   left_cross: 8,
   purl_right_cross: 9,
@@ -70,9 +71,32 @@ describe('stitch catalog', () => {
     }
   });
 
-  it('draws directional three-stitch decreases with three distinct lines', () => {
+  it('draws directional three-stitch decreases with three distinct primitives', () => {
     expect(getGlyphDefinition('right_up_three_one')?.primitives).toHaveLength(3);
     expect(getGlyphDefinition('left_up_three_one')?.primitives).toHaveLength(3);
+  });
+
+  it('joins decrease branches at the intersection without crossing past it', () => {
+    const expectedRightTwo = [
+      { kind: 'polyline', points: [{ x: 36, y: 84 }, { x: 104, y: 50 }, { x: 48, y: 14 }] },
+      { kind: 'line', from: { x: 104, y: 50 }, to: { x: 160, y: 86 } },
+    ];
+    expect(getGlyphDefinition('right_up_two_one')?.primitives).toEqual(expectedRightTwo);
+    expect(getGlyphDefinition('purl_right_up_two_one')?.primitives.slice(0, 2)).toEqual(expectedRightTwo);
+    expect(getGlyphDefinition('left_up_two_one')?.primitives[0]).toMatchObject({
+      kind: 'polyline',
+      points: [{ x: 164, y: 84 }, { x: 96, y: 50 }, { x: 152, y: 14 }],
+    });
+    expect(getGlyphDefinition('purl_left_up_two_one')?.primitives[0]).toEqual(getGlyphDefinition('left_up_two_one')?.primitives[0]);
+
+    expect(getGlyphDefinition('right_up_three_one')?.primitives[1]).toMatchObject({
+      kind: 'polyline',
+      points: [{ x: 48, y: 82 }, { x: 150, y: 50 }, { x: 60, y: 14 }],
+    });
+    expect(getGlyphDefinition('left_up_three_one')?.primitives[1]).toMatchObject({
+      kind: 'polyline',
+      points: [{ x: 252, y: 82 }, { x: 150, y: 50 }, { x: 240, y: 14 }],
+    });
   });
 
   it('keeps the named side on top for every cable pair', () => {

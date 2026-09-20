@@ -1,6 +1,6 @@
 import { glyphSvg, getGlyphDefinition, type GlyphDefinition } from './glyphs';
 
-export const STITCH_CATALOG_VERSION = 2;
+export const STITCH_CATALOG_VERSION = 3;
 export type StitchCategory = 'basic' | 'decrease' | 'cable' | 'twist' | 'utility';
 export type StitchStandardStatus = 'jis' | 'jis-derived' | 'extension' | 'utility';
 
@@ -29,6 +29,7 @@ const definitions: DefinitionInput[] = [
   { id: 3, key: 'yo', name: 'かけ目', width: 1, height: 1, consumes: 0, produces: 1, category: 'basic', standardStatus: 'jis', standardReference: 'JIS 2030' },
   { id: 4, key: 'right_up_two_one', name: '右上2目一度', width: 2, height: 1, consumes: 2, produces: 1, category: 'decrease', standardStatus: 'jis', standardReference: 'JIS 2040' },
   { id: 5, key: 'left_up_two_one', name: '左上2目一度', width: 2, height: 1, consumes: 2, produces: 1, category: 'decrease', standardStatus: 'jis', standardReference: 'JIS 2050' },
+  { id: 26, key: 'purl_right_up_two_one', name: '裏目の右上2目一度', width: 2, height: 1, consumes: 2, produces: 1, category: 'decrease', standardStatus: 'jis-derived', standardReference: 'JIS 2040・備考2' },
   { id: 6, key: 'purl_left_up_two_one', name: '裏目の左上2目一度', width: 2, height: 1, consumes: 2, produces: 1, category: 'decrease', standardStatus: 'jis-derived', standardReference: 'JIS 2050・備考2' },
   { id: 7, key: 'right_cross', name: '右上交差', width: 2, height: 1, consumes: 2, produces: 2, category: 'cable', standardStatus: 'jis', standardReference: 'JIS 2120' },
   { id: 8, key: 'left_cross', name: '左上交差', width: 2, height: 1, consumes: 2, produces: 2, category: 'cable', standardStatus: 'jis', standardReference: 'JIS 2130' },

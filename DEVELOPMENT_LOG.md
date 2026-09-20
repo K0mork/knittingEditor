@@ -1,5 +1,13 @@
 # Development Log
 
+## 2026-09-20 — 裏目右上2目一度を追加し減目の線端を修正
+
+- 影響: 「裏目の右上2目一度」を2×1目の新規記号ID 26として追加し、既存の永続IDを維持した。右上2目一度、左上2目一度、裏目の左右上2目一度、右上3目一度、左上3目一度は、短い斜線が交点を越えず一点で接続する形へ修正した。画面・PNG・PDFの共通ベクターへ反映される。記号数の案内を26種類へ更新し、バックアップの記号カタログ版を3とした。
+- 主なファイル: `src/stitches/glyphs.ts`, `src/stitches/catalog.ts`, `src/stitches/catalog.test.ts`, `src/storage/database.test.ts`, `tests/e2e/editor.spec.ts`, `public/guide/index.html`
+- テスト: 新規ID、左右の鏡像、2目・3目一度の交点座標、バックアップのカタログ版、パレットの26記号表示、新規記号の選択・盤面配置・ID 26保存を追加・更新した。
+- 検証: `npm run typecheck`、`npm test`（27件）、`npm run build`、`npm run check:dist`、`npm run test:e2e`（Chromium mobile・WebKit mobile・Chromium desktop、42件）を順に実行し、すべて成功。ローカルの記号パレットをデスクトップ1280×900とモバイル390×844で目視確認し、確認画像を `/tmp/decrease-symbols-{desktop,mobile}.png` に保存した。
+- デプロイ影響: なし。ローカルプレビューのみ。
+
 ## 2026-09-20 — 裏目左右上ねじり目交差を専用形状へ修正
 
 - 影響: 裏目右上ねじり目交差と裏目左上ねじり目交差を、斜線へ小さなループを継ぎ足した形から、上側の線自体が横長のねじりループを作り、下側の斜線が交差部で途切れる専用形状へ修正した。ねじり目とねじり裏目の形状は変更していない。
