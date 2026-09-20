@@ -118,7 +118,13 @@ export function buildPdf(request: PdfRequest): Uint8Array {
           if (!value) continue;
           const stitchId = cellStitchId(value);
           const stitch = STITCH_BY_ID.get(stitchId);
-          if (!stitch || stitch.key === 'erase') continue;
+          if (!stitch) continue;
+          if (stitch.key === 'erase') {
+            const x = originX + localCol * cellSize;
+            const y = originY + (tile.rows - localRow - 1) * cellSize;
+            rowCommands += `1 1 1 rg ${x.toFixed(3)} ${y.toFixed(3)} ${cellSize.toFixed(3)} ${cellSize.toFixed(3)} re f\n`;
+            continue;
+          }
           const color = cellColor(value);
           const red = ((color >> 16) & 255) / 255;
           const green = ((color >> 8) & 255) / 255;
