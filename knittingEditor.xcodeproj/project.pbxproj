@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 60;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -209,6 +209,7 @@
 				};
 			};
 			buildConfigurationList = 2A003D861D60F2D6C3EECD7B /* Build configuration list for PBXProject "knittingEditor" */;
+			compatibilityVersion = "Xcode 15.0";
 			developmentRegion = ja;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -217,7 +218,6 @@
 			);
 			mainGroup = 9AB35B5101FD2AB617182650;
 			minimizedProjectReferenceProxies = 1;
-			preferredProjectObjectVersion = 77;
 			productRefGroup = 78E8927B1B271B6F47270280 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";

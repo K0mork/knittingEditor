@@ -11,6 +11,14 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-20: GitHub ActionsのXcodeGenプロジェクト形式をXcode 15互換へ固定
+
+- 変更: XcodeGenの`projectFormat`を`xcode15_0`へ固定し、Xcode 15.4 runnerが`objectVersion = 77`の生成物を「future Xcode project file format」として拒否するCI障害を修正した。生成済み`knittingEditor.xcodeproj`も`objectVersion = 60`へ更新した。
+- 主なファイル: `project.yml`、`knittingEditor.xcodeproj/project.pbxproj`
+- テスト: ローカルXcode 27で`xcodebuild -list`とiOS generic destinationの`build-for-testing`が成功した。GitHub ActionsのXcode 15.4 runnerでの再実行結果はpush後に確認する。
+- 未実施: Apple Developer署名、実機、TestFlight。Xcode 15.4 runner上のCI成功確認はpush後に行う。
+- 配布影響: アプリの実装・データ形式は変更しない。Xcodeプロジェクトの互換形式だけを変更する。
+
 ## 2026-09-20: 公開Privacy Policy本文を追加
 
 - 変更: 端末内保存、Safari保存領域を読まない方針、ユーザー操作時だけのファイル共有・Safari遷移、アプリ削除時のデータ消失、問い合わせ先を`docs/PRIVACY_POLICY.md`へ明文化した。App Storeメタデータ案と提出チェックリストから公開URL候補を参照する。
