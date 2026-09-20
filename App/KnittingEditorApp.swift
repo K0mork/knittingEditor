@@ -1,6 +1,7 @@
 import SwiftUI
 
 @main
+@MainActor
 struct KnittingEditorApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @State private var webViewModel = WebViewModel()
