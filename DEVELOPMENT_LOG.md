@@ -16,7 +16,7 @@
 - 変更: PNG／PDFのUIテストで保存アクションシートの「キャンセル」実行後にdismiss完了を待つようにした。PNGでは保存アクションを開いたまま次のPDF操作へ進んでいたため、Xcode 15.4 iPhone SimulatorでPDFアクションが不定になる問題を避ける。
 - 主なファイル: `UITests/KnittingEditorUITests/KnittingEditorUITests.swift`
 - テスト: `xcodebuild ... -only-testing:knittingEditorUITests/KnittingEditorUITests/testPngAndPdfExportsReachNativeFileActions`をローカルiPhone 16 Simulator（iOS 18.2）で実行し、1件・0 failures。`build-for-testing`も成功。
-- 未実施: この変更後のGitHub Actions再実行、Apple Developer署名、実機、TestFlight。
+- 未実施: Xcode 15.4でのこの変更後のGitHub Actions再実行、Apple Developer署名、実機、TestFlight。Xcode 15.4には`XCUIElement.waitForNonExistence`がないため、XCTestのpredicate expectationで同じ待機を実装する。
 - 配布影響: UIテストのみ。PNG／PDFの生成・保存実装は変更しない。
 
 ## 2026-09-21: ネイティブ保存画面の表示をRunLoop後へ遅延

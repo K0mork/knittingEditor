@@ -203,13 +203,22 @@ final class KnittingEditorUITests: XCTestCase {
         } else {
             cancel.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
         }
-        XCTAssertTrue(cancel.waitForNonExistence(timeout: 15), app.debugDescription)
+        assertDisappears(cancel, from: app)
     }
 
     private func cancelExportAlert(in app: XCUIApplication) {
         let cancel = app.buttons["キャンセル"]
         XCTAssertTrue(cancel.waitForExistence(timeout: 15))
         cancel.tap()
-        XCTAssertTrue(cancel.waitForNonExistence(timeout: 15), app.debugDescription)
+        assertDisappears(cancel, from: app)
+    }
+
+    private func assertDisappears(_ element: XCUIElement, from app: XCUIApplication) {
+        let disappearance = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == false"),
+            object: element
+        )
+        let result = XCTWaiter.wait(for: [disappearance], timeout: 15)
+        XCTAssertTrue(result == .completed, app.debugDescription)
     }
 }
