@@ -39,6 +39,7 @@ jobs:
           -project knittingEditor.xcodeproj
           -scheme knittingEditor
           -destination 'platform=iOS Simulator,name=${{ matrix.device }},OS=latest'
+          -retry-tests-on-failure
           -skip-testing:knittingEditorUITests/KnittingEditorUITests/testBackupExportShowsNativeFileActions
           CODE_SIGNING_ALLOWED=NO
       - name: Verify generated app bundle

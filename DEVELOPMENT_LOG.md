@@ -11,6 +11,14 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-21: CI iOS UIテストの一過性失敗を再試行
+
+- 変更: GitHub Actions run `35525337010`で、iPhone 16の`testDocumentSwitchAutosavesEachDocument`がWebKitアクセシビリティ更新待ち中に一度だけ失敗し、同runのiPad・app-update・Web・Archiveは成功した。Xcode標準の`-retry-tests-on-failure`をiOS matrixへ追加し、テスト本体の失敗を隠さず最大3回まで再試行する。
+- 主なファイル: `.github/workflows/ci.yml`
+- テスト: ローカルXcodeBuildMCPで同UIテストを単独実行し、1件成功・0失敗。変更後CIのiPhone／iPad matrixで再確認する。
+- 未実施: 変更後CI、Apple Developer署名、実機、TestFlight。
+- 配布影響: アプリ本体・保存形式・Bundle IDは変更せず、CIの一過性UIテスト耐性だけを改善した。
+
 ## 2026-09-21: CIアプリ更新試験前にSimulatorを再起動
 
 - 変更: GitHub Actionsの`app-update` jobで、version 1のXCUITest終了後にSimulatorがShutdown状態へ戻る環境があるため、version 2アプリのinstall前に対象UDIDを`simctl boot`し、`bootstatus -b`完了を待つようにした。
