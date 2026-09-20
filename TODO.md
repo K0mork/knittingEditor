@@ -11,7 +11,7 @@
 - [ ] ローカルoriginと永続`WKWebsiteDataStore`の更新耐性を確認する
 - [ ] module Worker、Blob、Canvas、IndexedDB、Pointer Eventsの実機PoCを行う
 - [ ] 機内モードで起動でき、外部通信がないことを確認する
-- [ ] アプリ用Webビルド方式とXcodeへのコピー方式を自動化する
+- [x] アプリ用Webビルド方式とXcodeへのコピー方式を自動化する
 
 完了条件: iPhone・iPad実機でローカル資産から編集画面が起動し、再起動後も試験データが残る。
 

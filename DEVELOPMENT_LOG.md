@@ -26,6 +26,13 @@
 - 未実施: 実機・TestFlight・App Store Connectは未実施。
 - 配布影響: Privacy Manifestを欠くアプリバンドルをCIで検出できる。
 
+## 2026-09-20: WebビルドとXcodeコピー自動化の完了条件を同期
+
+- 変更: `scripts/build-web.sh`とXcode pre-build scriptでVite成果物を`AppResources/Web/`へ再生成する構成が実装・検証済みのため、M0 TODOの自動化項目を完了にした。
+- 検証: `scripts/build-web.sh`、`xcodegen generate`、`xcodebuild ... build`を既存のM1/M6検証で成功。生成Web bundleはGit管理外であることを確認した。
+- 未実施: Simulator／実機でのWeb runtime確認は別項目として未完了。
+- 配布影響: ビルド手順の変更のみ。TestFlight・App Store配布は行っていない。
+
 ## 2026-09-20: M5 CI、XCUITest、ローカル資産検査を追加
 
 - 変更: Web単体テストとViteビルド、Swift単体テスト、iPhone／iPad Simulator matrix、起動XCUITestをGitHub Actionsへ追加した。XcodeGenでUIテストターゲットを生成し、生成アプリバンドルにHTML／assets／guideが存在し、分析タグやアプリ外部ホストが含まれないことを検査する`check-app-bundle.sh`を追加した。全26記号のSVG／PDF glyph定義回帰テストも追加した。
