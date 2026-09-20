@@ -2,6 +2,8 @@
 
 優先度はP0（初回リリース必須）、P1（品質向上）、P2（将来候補）です。完了時は該当項目を更新し、同じコミットで`DEVELOPMENT_LOG.md`へ検証結果を記録します。
 
+実機・署名・TestFlightが必要な残項目は[`docs/REAL_DEVICE_RELEASE_CHECKLIST.md`](docs/REAL_DEVICE_RELEASE_CHECKLIST.md)の手順と証跡欄に従い、Simulatorの結果だけで完了にしません。
+
 ## M0: 技術検証・基盤（P0）
 
 - [ ] Apple Developer Team、Bundle ID、アプリ名、署名方法を決定する

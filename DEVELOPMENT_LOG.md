@@ -19,6 +19,14 @@
 - 未実施: 実機のFilesキャンセル、Safe Area／キーボード／VoiceOver／Dynamic Type／Apple Pencil／大規模出力の実機確認。これらはM4の実機ゲートとして残す。
 - 配布影響: Web機能・`.knit`形式・Bundle ID・外部通信なしの方針は変更しない。モーダル操作と狭幅表示の品質を改善し、ネイティブ保存導線の提示タイミングだけを安定化した。
 
+## 2026-09-21: 実機・署名・TestFlightのリリースゲートを文書化
+
+- 変更: M0、M2、M3、M4、M6で残っているApple Developer署名、機内モード、1000×1000盤面、Files／AirDrop、タッチ／Pencil／VoiceOver／Dynamic Type、TestFlight、App Store Connect確認を、端末情報・commit・測定値・ファイルハッシュ・画面収録で記録するチェックリストへ整理した。TODOから同チェックリストを参照する。
+- 主なファイル: `docs/REAL_DEVICE_RELEASE_CHECKLIST.md`、`TODO.md`
+- テスト: 文書変更のためコードテストは実施していない。`git diff --check`を実行する。
+- 未実施: Apple Developer Team情報、実機、TestFlight、App Store Connectの外部状態は未変更・未確認。
+- 配布影響: アプリ本体・保存形式・Bundle ID・CI設定は変更しない。外部ゲートを実施可能な順序と証跡へ固定した。
+
 ## 2026-09-21: 実装品質監査に基づく保存・ブリッジ・バックアップ検証の強化
 
 - 変更: Swiftのnative bridgeでバージョン不一致を`unsupportedVersion`として分類し、外部リンクはメインフレームだけをSafariへ渡すよう制限した。出力一時ファイルの上書き時に前回ファイルを確実に削除し、MIME型から拡張子を補えるようにした。バックグラウンド移行時はSwiftからWeb側の保存Promiseを呼び出し、ブラウザ互換用イベントも同じ保存処理へ接続した。起動失敗を読み込み中画面に隠さず再読み込み案内を表示し、nativeイベント購読を初回一度だけ登録するよう整理した。`.knit`復元では未知の記号ID、盤面・ブロックの範囲外／重複データ、形式不正を拒否し、旧fixtureの直接記号ID形式は受け入れて表示時にpacked形式へ正規化する。
