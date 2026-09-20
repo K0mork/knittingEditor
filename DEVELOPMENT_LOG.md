@@ -19,6 +19,14 @@
 - 未実施: Apple Developer署名、実機、TestFlight。
 - 配布影響: PNG／PDF／`.knit`の保存導線は維持し、表示タイミングだけを安定化した。
 
+## 2026-09-21: CI iPad起動遅延に対するXCUITest待機時間を延長
+
+- 変更: GitHub Actions run `35519087717`のiPad matrixで、M2切替テスト直後の`編み図`ボタン表示がXcode 15.4 Simulatorの起動遅延により5秒を超えたため、編集・再起動復元テストと文書切替テストの待機を15秒へ延長した。
+- 主なファイル: `UITests/KnittingEditorUITests/KnittingEditorUITests.swift`
+- テスト: 同runではWeb、Release Archive、iPhone matrixは成功し、iPadは`testEditAndRelaunchRestoresLocalDocument`の待機1件のみ失敗。待機時間変更後のGitHub Actions再実行で全matrix成功を確認する。
+- 未実施: 変更後のGitHub Actions再実行、Apple Developer署名、実機、TestFlight。
+- 配布影響: テスト待機時間のみ。アプリ実装、データ形式、保存処理は変更しない。
+
 ## 2026-09-21: Xcode 15.4 CI iPhoneのgzipバックアップUIテストを明示的に除外
 
 - 変更: Xcode 15.4のiPhone SimulatorでWebKitが`.knit` gzip生成中に無応答となる既知のCI環境差を検出し、そのUIテストだけを`XCTSkip`する。iPadの同一`.knit`導線、iPhone／iPadのPNG・PDFネイティブ保存導線は継続実行する。

@@ -33,7 +33,7 @@ final class KnittingEditorUITests: XCTestCase {
 
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 15))
         let documents = app.buttons["編み図"]
-        XCTAssertTrue(documents.waitForExistence(timeout: 5))
+        XCTAssertTrue(documents.waitForExistence(timeout: 15))
         documents.tap()
 
         let newDocument = app.buttons["新しい編み図"]
@@ -74,7 +74,7 @@ final class KnittingEditorUITests: XCTestCase {
 
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 15))
         let documents = app.buttons["編み図"]
-        XCTAssertTrue(documents.waitForExistence(timeout: 5))
+        XCTAssertTrue(documents.waitForExistence(timeout: 15))
         documents.tap()
 
         let newDocument = app.buttons["新しい編み図"]
