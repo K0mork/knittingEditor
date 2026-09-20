@@ -11,6 +11,14 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-21: App Store提出資料の静的整合性をArchive検証へ統合
+
+- 変更: App Storeメタデータの必須表項目と公開URL、審査メモのオフライン手順、Privacy Policy、提出チェックリスト、Simulatorスクリーンショットの参照を`check-app-store-docs.sh`で検査し、Release Archiveの資産検証から必ず実行する。実機撮影、署名、TestFlightなど外部作業を自動検証済みとは扱わない。
+- 主なファイル: `scripts/check-app-store-docs.sh`、`scripts/check-release-assets.sh`
+- テスト: `sh -n scripts/check-app-store-docs.sh scripts/check-release-assets.sh`、`scripts/check-app-store-docs.sh`、変更後CIのRelease Archive検証を実行する。
+- 未実施: 実機・Apple Developer署名・TestFlight・App Store Connect登録。これらは`docs/REAL_DEVICE_RELEASE_CHECKLIST.md`の証跡が必要である。
+- 配布影響: アプリ本体、保存形式、表示名、外部通信方針は変更しない。提出前の静的資料の欠落やリポジトリURLの誤りをArchive段階で検出する。
+
 ## 2026-09-21: WebKitのConcurrency境界警告を明示化
 
 - 変更: Xcode 15.4のWebKit protocolがSwift Concurrency注釈を持たない境界を`@preconcurrency import WebKit`として明示し、テストクラス全体へ付けていた`@MainActor`を必要なテストメソッドへ限定した。WebView delegateの実行コンテキストを隠していた警告を抑制するのではなく、既存のMain Actor UI処理との境界として記録する。

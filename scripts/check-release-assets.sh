@@ -11,6 +11,7 @@ SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
 REPO_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
 
 "$SCRIPT_DIR/check-app-bundle.sh" "$APP_PATH"
+"$SCRIPT_DIR/check-app-store-docs.sh"
 
 INFO_PLIST="$APP_PATH/Info.plist"
 ICON_PATH="$REPO_ROOT/App/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png"
