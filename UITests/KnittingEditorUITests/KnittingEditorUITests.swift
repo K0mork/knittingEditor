@@ -82,7 +82,13 @@ final class KnittingEditorUITests: XCTestCase {
 
         XCTAssertTrue(app.buttons["ファイルに保存"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["共有"].exists)
-        app.buttons["キャンセル"].tap()
+        app.buttons["ファイルに保存"].tap()
+
+        let localizedPickerCancel = app.otherElements["キャンセル"]
+        let englishPickerCancel = app.otherElements["Cancel"]
+        let pickerCancel = localizedPickerCancel.exists ? localizedPickerCancel : englishPickerCancel
+        XCTAssertTrue(pickerCancel.waitForExistence(timeout: 10), app.debugDescription)
+        pickerCancel.tap()
     }
 
     func testPngAndPdfExportsReachNativeFileActions() {

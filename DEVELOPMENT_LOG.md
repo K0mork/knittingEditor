@@ -107,6 +107,14 @@
 - 未実施: Apple Developerアカウントを必要とする提出工程。
 - 配布影響: 実装・bundle・保存形式は変更しない。
 
+## 2026-09-20: Document Picker表示をSimulatorで検証
+
+- 変更: バックアップ出力XCUITestを拡張し、「ファイルに保存」選択後のDocument Picker表示とキャンセル復帰を確認した。システムUIのロケール差に備え、キャンセル要素を日本語・英語の`otherElements`から解決する。
+- 主なファイル: `UITests/KnittingEditorUITests/KnittingEditorUITests.swift`
+- テスト: XcodeBuildMCPのiPhone 16／iPad (10th generation) Simulatorで`test_sim`を実行し、各12件（Swift XCTest 7件、XCUITest 5件）が成功した。
+- 未実施: Files実保存、共有先アプリ・AirDrop選択、実機のDocument Provider。
+- 配布影響: テストコードのみ。Document Typeと保存処理は変更しない。
+
 ## 2026-09-20: AppIcon・起動画面を含むRelease Archiveを再検証
 
 - 変更: コード変更はない。AppIconと`LaunchBackground`追加後の提出候補bundleをRelease Archiveから再検査した。

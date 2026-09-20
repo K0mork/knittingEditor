@@ -49,6 +49,7 @@
 - [x] `.knit`用の独自UTTypeとDocument Typeを登録する
 - [x] Document Pickerから`.knit`を読み込む
 - [x] Files／AirDrop／他アプリから`.knit`を開く
+- [x] iPhone／iPad SimulatorでDocument Picker表示とキャンセル復帰を検証する（実機Files保存は別途）
 - [ ] Web版出力fixtureをアプリで復元する
 - [ ] アプリ出力fixtureをWeb版で復元する
 - [x] 不正形式、新しいカタログ、巨大解凍データを安全に拒否する
