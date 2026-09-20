@@ -46,6 +46,7 @@ echo "[2/4] version 1でfixtureを保存"
     -project knittingEditor.xcodeproj \
     -scheme knittingEditor \
     -destination "$destination" \
+    -retry-tests-on-failure \
     -only-testing:knittingEditorUITests/KnittingEditorUITests/testSeedDocumentForAppUpdateProbe \
     CODE_SIGNING_ALLOWED=NO
 )
@@ -78,6 +79,7 @@ echo "[4/4] version 2でfixtureが復元されることを確認"
   xcodebuild test-without-building \
     -xctestrun "$updated_xctestrun" \
     -destination "$destination" \
+    -retry-tests-on-failure \
     -only-testing:knittingEditorUITests/KnittingEditorUITests/testUpdatedAppRestoresSeedDocument \
     CODE_SIGNING_ALLOWED=NO
 )

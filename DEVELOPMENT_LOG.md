@@ -11,6 +11,14 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-21: アプリ更新probeのSimulator一過性タイムアウトを再試行
+
+- 変更: `scripts/simulate-app-update.sh`のseed保存と更新後復元の`xcodebuild`へ`-retry-tests-on-failure`を追加した。GitHub Actions run `35538016406`でiPhoneのseedがWeb操作前に「Failed to get background assertion ... Timed out while acquiring background assertion」で失敗したため、通常iOS matrixと同じXcode標準の再試行条件へ揃える。
+- 主なファイル: `scripts/simulate-app-update.sh`
+- テスト: `bash -n scripts/simulate-app-update.sh`、ローカルiPad Simulatorのseed→更新→復元、変更後CIのiPhone／iPad app-update matrixを実行する。
+- 未実施: 実機のアプリ更新、Apple Developer署名、TestFlight。Simulatorの再試行成功だけでは実機更新ゲートを完了にしない。
+- 配布影響: アプリ本体・保存形式・Bundle IDは変更せず、Simulator検証の一過性失敗に対する再試行だけを追加する。
+
 ## 2026-09-21: 大盤面のアクセシブル状態計算を定数時間化
 
 - 変更: `Board.occupiedStitchCount`がCanvasのアクセシブル名生成ごとに全セルを走査していたため、記号アンカー数をBoard内部で管理するよう変更した。配置・消去・全消去では差分更新し、盤面リサイズや復元時だけ再構築する。1000×1000盤面でも状態ラベル更新が不要な百万セル走査を起こさない。
