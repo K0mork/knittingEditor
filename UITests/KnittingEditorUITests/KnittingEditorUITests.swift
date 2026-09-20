@@ -55,6 +55,7 @@ final class KnittingEditorUITests: XCTestCase {
             .matching(NSPredicate(format: "label CONTAINS %@", "記号1個"))
             .firstMatch
         XCTAssertTrue(editedCanvas.waitForExistence(timeout: 10))
+        waitForDocumentSave(named: "再起動復元テスト", in: webView)
 
         app.terminate()
         app.launch()
@@ -114,7 +115,6 @@ final class KnittingEditorUITests: XCTestCase {
                 .firstMatch
                 .waitForExistence(timeout: 10)
         )
-
         documents.tap()
         let documentA = app.buttons
             .matching(NSPredicate(format: "label BEGINSWITH %@", "M2切替A"))
@@ -140,6 +140,7 @@ final class KnittingEditorUITests: XCTestCase {
                 .firstMatch
                 .waitForExistence(timeout: 10)
         )
+        waitForDocumentSave(named: "アプリ更新復元fixture", in: webView)
     }
 
     func testSeedDocumentForAppUpdateProbe() throws {
@@ -280,6 +281,18 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertTrue(cancel.waitForExistence(timeout: 15))
         cancel.tap()
         assertDisappears(cancel, from: app)
+    }
+
+    private func waitForDocumentSave(named name: String, in webView: XCUIElement) {
+        let saved = webView.descendants(matching: .staticText)
+            .matching(NSPredicate(format: "label == %@", name))
+            .firstMatch
+        XCTAssertTrue(saved.waitForExistence(timeout: 15), webView.debugDescription)
+
+        let saving = webView.descendants(matching: .staticText)
+            .matching(NSPredicate(format: "label == %@", "\(name)（保存中…）"))
+            .firstMatch
+        XCTAssertFalse(saving.exists, webView.debugDescription)
     }
 
     private func assertDisappears(_ element: XCUIElement, from app: XCUIApplication) {

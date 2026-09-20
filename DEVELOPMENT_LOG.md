@@ -11,6 +11,14 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-21: アプリ更新probeで自動保存完了を待機
+
+- 変更: 更新probeのseed文書をversion 2へ上書きインストールする前に、UIテストが文書名のアクセシブル表示へ戻ることを待機するようにした。`（保存中…）`が消えるまで待つため、IndexedDB保存の完了前に更新へ進む競合を検出・防止する。再起動復元テストにも同じ待機を適用した。
+- 主なファイル: `UITests/KnittingEditorUITests/KnittingEditorUITests.swift`
+- テスト: Swift UI testのbuild、iPhone／iPad app-update probe、変更後CI全ジョブを実行する。
+- 未実施: 実機の保存完了・アプリ更新、Apple Developer署名、TestFlight。Simulatorの保存待機成功だけでは実機ゲートを完了にしない。
+- 配布影響: アプリ本体、保存形式、Bundle ID、外部通信方針は変更しない。テストが保存完了を確認してからライフサイクル操作へ進むだけである。
+
 ## 2026-09-21: GitHub ActionsをNode 24対応版へ更新
 
 - 変更: CIの`actions/checkout`をv7、`actions/setup-node`をv7へ更新した。GitHub Actionsの現行runnerでv4がNode.js 20非推奨警告を出していたため、公式アクションのNode24実行版へ揃える。
