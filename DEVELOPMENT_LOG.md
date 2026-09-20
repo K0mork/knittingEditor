@@ -11,6 +11,14 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-21: ローカルWebのランタイム通信API検出を追加
+
+- 変更: 固定originのWebViewへ`fetch`、`XMLHttpRequest`、`WebSocket`、`EventSource`の呼び出しを記録するテスト用スクリプトを注入し、エディタ起動後に要求が空であることをSwift XCTestで検証する。既存の生成bundle静的検査と組み合わせ、外部通信を追加しない方針をCIで回帰検証する。
+- 主なファイル: `Tests/KnittingEditorAppTests/LocalWebSchemeHandlerTests.swift`、`TODO.md`
+- テスト: XcodeBuildMCPでiPhone 16 Simulator（1件成功、2026-09-21）とiPad (10th generation) Simulator（1件成功、2026-09-21）を実行した。GitHub Actionsでは次のCIで実行する。機内モードそのもの、実機の通信監視は別の配布前ゲートとして残す。
+- 未実施: 変更後CI、機内モード実機、Apple Developer署名、TestFlight。
+- 配布影響: アプリ本体のWeb実装・外部通信設定は変更せず、テスト用JavaScript注入だけを追加した。
+
 ## 2026-09-21: CI全matrix成功を確認
 
 - 変更: `aee8d19`のCI再試行設定とSimulator再boot修正を含むGitHub Actions run `35526038656`を確認した。Web、Swift/XCUITestのiPhone／iPad matrix、同一Bundle IDのアプリ更新復元matrix、Release Archive、bundle検査が全て成功した。

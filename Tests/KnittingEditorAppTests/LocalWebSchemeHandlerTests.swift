@@ -35,6 +35,17 @@ final class LocalWebSchemeHandlerTests: XCTestCase {
         )
     }
 
+    func testLocalEditorDoesNotInvokeRuntimeNetworkAPIs() async throws {
+        let webView = try makeWebView(networkProbe: true)
+        try await loadIndex(in: webView)
+        try await Task.sleep(nanoseconds: 500_000_000)
+
+        let hasNoRequests = try await webView.evaluateJavaScript(
+            "(window.__knittingEditorNetworkRequests ?? []).length === 0"
+        )
+        XCTAssertEqual(hasNoRequests as? Int, 1)
+    }
+
     @MainActor
     func testStableOriginAndWebsiteDataSurviveWebViewReplacement() async throws {
         let firstWebView = try makeWebView()
@@ -90,9 +101,41 @@ final class LocalWebSchemeHandlerTests: XCTestCase {
     }
 
     @MainActor
-    private func makeWebView() throws -> WKWebView {
+    private func makeWebView(networkProbe: Bool = false) throws -> WKWebView {
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .default()
+        if networkProbe {
+            let probe = """
+            (() => {
+              const requests = [];
+              window.__knittingEditorNetworkRequests = requests;
+              const record = (value) => requests.push(String(value ?? ''));
+              const originalFetch = window.fetch;
+              window.fetch = function(input) {
+                record(typeof input === 'string' ? input : input?.url);
+                return originalFetch.apply(this, arguments);
+              };
+              const originalOpen = XMLHttpRequest.prototype.open;
+              XMLHttpRequest.prototype.open = function(method, url) {
+                record(url);
+                return originalOpen.apply(this, arguments);
+              };
+              const OriginalWebSocket = window.WebSocket;
+              window.WebSocket = function(url) {
+                record(url);
+                return new OriginalWebSocket(...arguments);
+              };
+              const OriginalEventSource = window.EventSource;
+              window.EventSource = function(url) {
+                record(url);
+                return new OriginalEventSource(...arguments);
+              };
+            })();
+            """
+            configuration.userContentController.addUserScript(
+                WKUserScript(source: probe, injectionTime: .atDocumentStart, forMainFrameOnly: false)
+            )
+        }
         configuration.setURLSchemeHandler(
             LocalWebSchemeHandler(bundle: Bundle(for: LocalWebSchemeHandler.self)),
             forURLScheme: LocalWebSchemeHandler.scheme
