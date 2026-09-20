@@ -11,6 +11,14 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-21: 起動画面のSimulator下書きを追加
+
+- 変更: iPhone 16とiPad (10th generation)を一度アンインストールして再インストールし、`UILaunchScreen`表示中の下書きを`docs/screenshots/`へ保存した。起動画面下書きの端末解像度をRelease資産検査へ追加し、申請資料から参照できるようにした。実機・TestFlightの最終素材とは区別する。
+- 主なファイル: `docs/screenshots/iphone-16-launch-simulator.png`、`docs/screenshots/ipad-10-launch-simulator.png`、`docs/SCREENSHOTS.md`、`docs/APP_STORE_CHECKLIST.md`、`scripts/check-release-assets.sh`、`scripts/check-app-store-docs.sh`
+- テスト: `scripts/check-release-assets.sh`、`scripts/check-app-store-docs.sh`、`git diff --check`を実行し、起動画面下書きのiPhone 1179×2556、iPad 1640×2360を確認した。両画像を目視し、asset catalogの背景色とSafe Areaが表示されることを確認した。
+- 未実施: 実機の起動画面確認、iPhone縦横・iPad可変幅の最終スクリーンショット、Apple Developer署名、TestFlight、App Store Connect登録。Simulator下書きだけでは外部配布ゲートを完了にしない。
+- 配布影響: アプリ本体、保存形式、Bundle ID、外部通信方針は変更しない。提出前素材の下書きと静的検査対象を追加した。
+
 ## 2026-09-21: M6リリース資産と申請資料の静的検証を更新
 
 - 変更: `docs/APP_STORE_CHECKLIST.md`のCI証跡を、Web、Swift、iPhone／iPad UIテスト、iPhone／iPad app-update、Release Archiveの全6ジョブが成功したrun `35544029559`へ更新した。M6のSimulator画面下書き、起動画面定義、AppIcon、Privacy Manifest、提出資料の参照関係を現行Archiveで再検証した。

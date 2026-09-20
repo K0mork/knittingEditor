@@ -72,5 +72,7 @@ check_screenshot() {
 
 check_screenshot "$REPO_ROOT/docs/screenshots/iphone-16-editor-simulator.png" 1179 2556
 check_screenshot "$REPO_ROOT/docs/screenshots/ipad-10-editor-simulator.png" 1640 2360
+check_screenshot "$REPO_ROOT/docs/screenshots/iphone-16-launch-simulator.png" 1179 2556
+check_screenshot "$REPO_ROOT/docs/screenshots/ipad-10-launch-simulator.png" 1640 2360
 
 echo "release assets are valid: bundle=$bundle_id version=$short_version($build_version) display=$display_name"
