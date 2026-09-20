@@ -35,6 +35,14 @@
 - 未実施: iPad Simulator、iPhone／iPad実機、TestFlight。
 - 配布影響: アプリ本体のbundleやデータ形式は変更しない。テストターゲットの生成設定のみ変更した。
 
+## 2026-09-20: iPhone・iPad SimulatorでXCTestを実行
+
+- 変更: TODOのXCUITest項目を、実行済みのiPhone 16／iPad (10th generation) Simulator検証へ更新した。
+- 主なファイル: `TODO.md`
+- テスト: XcodeBuildMCPの`test_sim`で各Simulatorを実行し、Swift XCTest 7件とXCUITest 2件の計9件が両方とも成功した。
+- 未実施: 実機のタッチ・Apple Pencil・VoiceOver・機内モード通信監視、TestFlight。
+- 配布影響: コード・bundle・保存形式は変更しない。Simulator実行証跡のみを記録した。
+
 ## 2026-09-20: AppIcon・起動画面を含むRelease Archiveを再検証
 
 - 変更: コード変更はない。AppIconと`LaunchBackground`追加後の提出候補bundleをRelease Archiveから再検査した。
