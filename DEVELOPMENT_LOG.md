@@ -11,6 +11,14 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-21: 実装品質監査に基づく保存・ブリッジ・バックアップ検証の強化
+
+- 変更: Swiftのnative bridgeでバージョン不一致を`unsupportedVersion`として分類し、外部リンクはメインフレームだけをSafariへ渡すよう制限した。出力一時ファイルの上書き時に前回ファイルを確実に削除し、MIME型から拡張子を補えるようにした。バックグラウンド移行時はSwiftからWeb側の保存Promiseを呼び出し、ブラウザ互換用イベントも同じ保存処理へ接続した。起動失敗を読み込み中画面に隠さず再読み込み案内を表示し、nativeイベント購読を初回一度だけ登録するよう整理した。`.knit`復元では未知の記号ID、盤面・ブロックの範囲外／重複データ、形式不正を拒否し、旧fixtureの直接記号ID形式は受け入れて表示時にpacked形式へ正規化する。
+- 主なファイル: `App/NativeBridgeMessage.swift`、`App/WebViewContainer.swift`、`Tests/KnittingEditorAppTests/NativeBridgeMessageTests.swift`、`Web/src/App.tsx`、`Web/src/storage/database.ts`、`Web/src/storage/database.test.ts`、`DEVELOPMENT.md`
+- テスト: `(cd Web && npm test)`で6ファイル39テスト成功、`npm run typecheck`成功、`npm run build`成功。iPhone 16 Simulator（iOS 18.2）のSwift unit test 11件成功、iPad (10th generation) Simulator（iOS 18.2）のSwift unit test 11件成功。iPhone 16 SimulatorのiOSテスト（UIを含む、既存skip 2件）は16件成功・失敗0件。`xcodebuild build`後に`scripts/check-app-bundle.sh`を実行し、同梱Web資産・Privacy Manifest・外部通信参照検査に合格した。
+- 未実施: iPadのUI全件は今回のローカル監査では再実行せず、直前のCI全matrix成功記録を維持する。実機、機内モード実機、Apple Developer署名、TestFlight、App Store提出は未実施。
+- 配布影響: 保存完了待ちと不正バックアップ拒否によりデータ保全を強化した。`.knit` v2の正規形式、Bundle ID、外部通信なしの方針は維持し、TestFlight／App Storeへのアップロードは行わない。
+
 ## 2026-09-21: Simulator配布スクリーンショットを再撮影
 
 - 変更: iPhone 16／iPad (10th generation) Simulatorから、アプリを一度削除して再インストールした初期状態のスクリーンショットを`docs/screenshots/`へ再保存した。画面仕様・アプリ本体は変更していない。

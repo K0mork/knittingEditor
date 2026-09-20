@@ -46,10 +46,20 @@ final class WebViewModel {
     }
 
     func flushPendingSave() {
-        webView?.evaluateJavaScript(
-            "window.dispatchEvent(new Event('knittingEditorAppWillResignActive'))",
-            completionHandler: nil
-        )
+        guard webContentReady, let webView else { return }
+        Task { @MainActor [weak webView] in
+            guard let webView else { return }
+            do {
+                _ = try await webView.callAsyncJavaScript(
+                    "return await window.knittingEditorFlushPendingSave?.() ?? true;",
+                    arguments: [:],
+                    in: nil,
+                    contentWorld: .page
+                )
+            } catch {
+                NSLog("バックグラウンド移行前の保存処理を開始できませんでした: %@", error.localizedDescription)
+            }
+        }
     }
 
     private func dispatchBackup(_ data: Data, filename: String) {
@@ -173,6 +183,10 @@ struct WebViewContainer: UIViewRepresentable {
             decidePolicyFor navigationAction: WKNavigationAction,
             decisionHandler: @escaping @MainActor @Sendable (WKNavigationActionPolicy) -> Void
         ) {
+            if navigationAction.targetFrame?.isMainFrame == false {
+                decisionHandler(.cancel)
+                return
+            }
             guard let url = navigationAction.request.url else {
                 decisionHandler(.cancel)
                 return
@@ -232,13 +246,16 @@ struct WebViewContainer: UIViewRepresentable {
         }
 
         private func presentExportOptions(data: Data, filename: String, mimeType: String) {
+            cleanupPendingExport()
             guard let presenter = presenter() else {
                 dispatchError(message: "保存画面を表示できませんでした")
                 return
             }
+            let filenameExtension = URL(fileURLWithPath: filename).pathExtension
+            let fallbackExtension = UTType(mimeType: mimeType)?.preferredFilenameExtension
             let temporaryURL = FileManager.default.temporaryDirectory
                 .appendingPathComponent(UUID().uuidString)
-                .appendingPathExtension(URL(fileURLWithPath: filename).pathExtension)
+                .appendingPathExtension(filenameExtension.isEmpty ? (fallbackExtension ?? "dat") : filenameExtension)
             do {
                 try data.write(to: temporaryURL, options: [.atomic])
             } catch {
@@ -271,7 +288,6 @@ struct WebViewContainer: UIViewRepresentable {
                 popover.sourceRect = webView?.bounds ?? .zero
             }
             presenter.present(alert, animated: true)
-            _ = mimeType
         }
 
         private func presenter() -> UIViewController? {

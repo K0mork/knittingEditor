@@ -13,6 +13,10 @@ function decodeBase64(value: string): Uint8Array {
   return Uint8Array.from(binary, (character) => character.charCodeAt(0));
 }
 
+function backupBlob(payload: unknown): Blob {
+  return new Blob([gzipSync(strToU8(JSON.stringify(payload)))], { type: 'application/gzip' });
+}
+
 describe('backup restore', () => {
   it('round-trips the board and returns the restored document', async () => {
     const source = await createDocument('復元テスト', 3, 4);
@@ -58,6 +62,27 @@ describe('backup restore', () => {
       format: 'knitting-editor', version: 2, stitchCatalogVersion: 4, documents: [], blocks: [],
     })));
     await expect(importBackup(new Blob([backup]))).rejects.toThrow('新しい記号カタログ');
+  });
+
+  it('rejects unknown stitch IDs instead of silently clearing them', async () => {
+    const cells = new Uint32Array([0xff00_0001]);
+    await expect(importBackup(backupBlob({
+      format: 'knitting-editor', version: 2, stitchCatalogVersion: 3,
+      documents: [{ name: '不正', rows: 1, cols: 1, cells: btoa(String.fromCharCode(...new Uint8Array(cells.buffer))) }],
+      blocks: [],
+    }))).rejects.toThrow('未対応の記号');
+  });
+
+  it('rejects overlapping block anchors instead of dropping malformed blocks', async () => {
+    const packedKnit = (1 << 24) | 0x12_3456;
+    await expect(importBackup(backupBlob({
+      format: 'knitting-editor', version: 2, stitchCatalogVersion: 3,
+      documents: [],
+      blocks: [{
+        name: '不正ブロック', rows: 1, cols: 1,
+        anchors: [{ row: 0, col: 0, value: packedKnit }, { row: 0, col: 0, value: packedKnit }],
+      }],
+    }))).rejects.toThrow('重複');
   });
 
   it('restores the committed Web interchange fixture', async () => {

@@ -19,9 +19,13 @@ enum NativeBridgeMessage: Equatable {
 
     static func decode(body: Any) -> Result<NativeBridgeMessage, MessageError> {
         guard let dictionary = body as? [String: Any],
-              let version = dictionary["version"] as? NSNumber,
-              version.intValue == 1,
-              let type = dictionary["type"] as? String else {
+              let version = dictionary["version"] as? NSNumber else {
+            return .failure(.invalidEnvelope)
+        }
+        guard version.intValue == 1 else {
+            return .failure(.unsupportedVersion)
+        }
+        guard let type = dictionary["type"] as? String else {
             return .failure(.invalidEnvelope)
         }
 

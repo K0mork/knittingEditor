@@ -51,6 +51,13 @@ final class NativeBridgeMessageTests: XCTestCase {
         )
         XCTAssertEqual(
             NativeBridgeMessage.decode(body: ["version": 2, "type": "openBackup"]),
+            .failure(.unsupportedVersion)
+        )
+    }
+
+    func testDecodeRejectsMissingVersionAsInvalidEnvelope() {
+        XCTAssertEqual(
+            NativeBridgeMessage.decode(body: ["type": "openBackup"]),
             .failure(.invalidEnvelope)
         )
     }

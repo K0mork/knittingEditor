@@ -13,6 +13,12 @@ import {
 import { renderPdf, renderPng, saveBlob, validatePngSize } from './export/exporters';
 import { listenNativeBackupSelected, listenNativeError, notifyNativeReady, requestNativeBackupOpen } from './nativeBridge';
 
+declare global {
+  interface Window {
+    knittingEditorFlushPendingSave?: () => Promise<boolean>;
+  }
+}
+
 type BusyTask = 'PNGを生成中' | 'PDFを生成中' | 'バックアップを処理中';
 type Panel = 'documents' | 'grid' | 'blocks' | 'export';
 type DialogRequest =
@@ -36,11 +42,24 @@ export default function App() {
   const [panel, setPanel] = useState<Panel>();
   const [busy, setBusy] = useState<BusyTask>();
   const [message, setMessage] = useState('');
+  const [initializationError, setInitializationError] = useState<string>();
   const [dirty, setDirty] = useState(false);
   const [dialog, setDialog] = useState<DialogRequest>();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const activeDocumentIdRef = useRef<string | undefined>(undefined);
   const editGenerationRef = useRef(0);
+  const notificationTimeoutRef = useRef<number | undefined>(undefined);
+  const restoreRef = useRef<((file?: File) => Promise<void>) | undefined>(undefined);
+  const notifyRef = useRef<((text: string) => void) | undefined>(undefined);
+
+  const notify = useCallback((text: string) => {
+    setMessage(text);
+    if (notificationTimeoutRef.current !== undefined) window.clearTimeout(notificationTimeoutRef.current);
+    notificationTimeoutRef.current = window.setTimeout(() => {
+      setMessage('');
+      notificationTimeoutRef.current = undefined;
+    }, 4500);
+  }, []);
 
   const refreshDocuments = useCallback(async () => setDocuments(await listDocuments()), []);
   const refreshBlocks = useCallback(async () => setBlocks(await listBlocks()), []);
@@ -57,7 +76,7 @@ export default function App() {
       trackAnalyticsEvent('editor_ready', { document_count_bucket: countBucket(initialized.documents.length) });
     })().catch((error) => {
       trackAnalyticsEvent('operation_failed', { operation_name: 'editor_init' });
-      setMessage(error instanceof Error ? error.message : String(error));
+      setInitializationError(error instanceof Error ? error.message : String(error));
     });
   }, []);
 
@@ -86,19 +105,35 @@ export default function App() {
     return () => window.removeEventListener('beforeunload', handler);
   }, [dirty]);
 
+  const flushPendingSave = useCallback(async (): Promise<boolean> => {
+    if (!dirty || !activeDocument || !board) return true;
+    try {
+      const saved = await saveDocument(activeDocument, board);
+      if (activeDocumentIdRef.current !== saved.id) return false;
+      setActiveDocument((current) => current?.id === saved.id ? saved : current);
+      setDirty(false);
+      await refreshDocuments();
+      return true;
+    } catch {
+      notify('バックグラウンド移行前の自動保存に失敗しました。バックアップを保存してください。');
+      return false;
+    }
+  }, [activeDocument, board, dirty, notify, refreshDocuments]);
+
   useEffect(() => {
-    const handler = () => {
-      if (!dirty || !activeDocument || !board) return;
-      void saveDocument(activeDocument, board).then((saved) => {
-        if (activeDocumentIdRef.current !== saved.id) return;
-        setActiveDocument((current) => current?.id === saved.id ? saved : current);
-        setDirty(false);
-        void refreshDocuments();
-      }).catch(() => setMessage('バックグラウンド移行前の自動保存に失敗しました。バックアップを保存してください。'));
-    };
+    const handler = () => { void flushPendingSave(); };
     window.addEventListener('knittingEditorAppWillResignActive', handler);
-    return () => window.removeEventListener('knittingEditorAppWillResignActive', handler);
-  }, [activeDocument, board, dirty, refreshDocuments]);
+    const nativeFlush = async () => flushPendingSave();
+    window.knittingEditorFlushPendingSave = nativeFlush;
+    return () => {
+      window.removeEventListener('knittingEditorAppWillResignActive', handler);
+      if (window.knittingEditorFlushPendingSave === nativeFlush) delete window.knittingEditorFlushPendingSave;
+    };
+  }, [flushPendingSave]);
+
+  useEffect(() => () => {
+    if (notificationTimeoutRef.current !== undefined) window.clearTimeout(notificationTimeoutRef.current);
+  }, []);
 
   const changed = () => {
     trackFirstEdit();
@@ -106,7 +141,6 @@ export default function App() {
     setRevision((value) => value + 1);
     setDirty(true);
   };
-  const notify = (text: string) => { setMessage(text); window.setTimeout(() => setMessage(''), 4500); };
   const askText = useCallback((title: string, defaultValue = '') => new Promise<string | null>((resolve) => {
     setDialog({ kind: 'prompt', title, defaultValue, resolve });
   }), []);
@@ -285,25 +319,29 @@ export default function App() {
     finally { setBusy(undefined); }
   };
 
+  restoreRef.current = restore;
+  notifyRef.current = notify;
+
   useEffect(() => {
     const removeBackupListener = listenNativeBackupSelected(({ filename, dataBase64 }) => {
       try {
         const binary = atob(dataBase64);
         const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
-        void restore(new File([bytes], filename, { type: 'application/gzip' }));
+        void restoreRef.current?.(new File([bytes], filename, { type: 'application/gzip' }));
       } catch {
-        notify('バックアップを読み込めませんでした');
+        notifyRef.current?.('バックアップを読み込めませんでした');
       }
     });
-    const removeErrorListener = listenNativeError(notify);
+    const removeErrorListener = listenNativeError((message) => notifyRef.current?.(message));
     notifyNativeReady();
     return () => {
       removeBackupListener();
       removeErrorListener();
     };
-  }, [restore]);
+  }, []);
 
-  const currentStitch = useMemo(() => STITCHES.find((item) => item.key === selectedStitch)!, [selectedStitch]);
+  const currentStitch = useMemo(() => STITCHES.find((item) => item.key === selectedStitch) ?? STITCHES[0], [selectedStitch]);
+  if (initializationError) return <main className="loading" role="alert">編み図を読み込めませんでした：{initializationError}<button onClick={() => window.location.reload()}>再読み込み</button></main>;
   if (!board || !activeDocument) return <main className="loading">編み図を読み込んでいます…</main>;
 
   return <div className="app-shell">
