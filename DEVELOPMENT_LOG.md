@@ -11,6 +11,15 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-21: 実UIスクリーンショットQAで狭幅レイアウトを改善
+
+- 変更: iPhone Simulatorの実画面で、上部ツールバーの「範囲」が横スクロールなしで見えるよう、狭幅時の余白・記号選択幅・ボタン幅を調整した。iPadの右側「ブロック」と記号ピッカーの「閉じる」が2行へ折り返されないよう、操作ラベルを1行固定にした。修正後のiPhone／iPad実画面をApp Storeスクリーンショット下書きへ更新した。
+- 根拠: XcodeBuildMCPでiPhone 16／iPad (10th generation) Simulatorを起動し、初期画面、保存ドロワー、記号ピッカー、縦横回転後の画面をスクリーンショットで目視確認した。修正前はiPhoneの「範囲」、iPadの「ブロック」、記号ピッカーの「閉じる」に折返し／発見性の問題があった。修正後は3つの主要操作ラベルが1行で表示され、iPhoneの主要ツールが同一画面に収まることを確認した。
+- 主なファイル: `Web/src/styles.css`、`docs/screenshots/iphone-16-editor-simulator.png`、`docs/screenshots/ipad-10-editor-simulator.png`
+- テスト: `npm --prefix Web test -- --run`（39件成功）、`npm --prefix Web run typecheck`（成功）、iPhone／iPad Simulatorの`testCoreEditorControlsExposeAccessibleNamesAndState`、`testPrimaryControlsRemainUsableInPortraitAndLandscape`（成功）。画像はiPhone 1179×2556、iPad 1640×2360で再取得した。
+- 未実施: 実機・Split View・可変ウィンドウ・VoiceOver・Apple Pencil・最終App Store素材の確認。Simulatorの目視結果だけでは実機ゲートを完了扱いにしない。
+- 配布影響: データ形式、保存処理、Bundle ID、外部通信方針は変更しない。狭幅／iPad操作ラベルの視認性とスクリーンショット下書きのみを改善した。
+
 ## 2026-09-21: M4 Simulatorレイアウト項目の証跡を明確化
 
 - 変更: TODOのM4項目を、既存のiPhone 16／iPad (10th generation) Simulator試験で完了した範囲（縦横、狭幅ツールバー、Safe Area考慮、キーボード表示中のダイアログ）と、Split View・可変ウィンドウ・実機確認が必要な範囲に分離した。
