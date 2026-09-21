@@ -11,6 +11,13 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-21: iPad横画面のApp Store下書きを追加
+
+- 変更: UI回帰試験で取得済みのiPad (10th generation)横画面スクリーンショットを`docs/screenshots/ipad-10-editor-landscape-simulator.png`として保存し、`docs/SCREENSHOTS.md`へ取得条件を追記した。`scripts/check-app-store-docs.sh`と`scripts/check-release-assets.sh`で2360×1640の存在・解像度を検査する。
+- 根拠: `testPrimaryControlsRemainUsableInPortraitAndLandscape`後の安定した横画面を目視し、編み図、描く／消す／範囲、盤面／ブロック／保存が切れずに表示されることを確認した。
+- テスト: `sh scripts/check-app-store-docs.sh`、`sh scripts/check-release-assets.sh /Users/komorikouki/Library/Developer/XcodeBuildMCP/workspaces/knittingEditor_app-2e497d8fe210/DerivedData/knittingEditor-41ffcc54eb3e/Build/Products/Debug-iphonesimulator/knittingEditor.app`、`git diff --check`を実行する。実機最終スクリーンショットは未実施。
+- 配布影響: アプリ本体・データ形式・署名設定は変更しない。提出用Simulator下書きと静的検査対象だけを追加した。
+
 ## 2026-09-21: M6提出資料のCI証跡を最新成功runへ更新
 
 - 変更: `docs/APP_STORE_CHECKLIST.md`のCI証跡を、Web、Release Archive、iPhone／iPad UIテスト、iPhone／iPad app-updateの全6ジョブが成功したrun `35561142482`へ更新した。M6の実機・署名・TestFlight項目は未完了のまま維持した。

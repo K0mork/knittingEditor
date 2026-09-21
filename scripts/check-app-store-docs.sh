@@ -116,6 +116,10 @@ grep -qE -- 'ipad-10-editor-simulator\.png' "$SCREENSHOTS" || {
   echo "iPad simulator screenshot is not documented" >&2
   exit 1
 }
+grep -qE -- 'ipad-10-editor-landscape-simulator\.png' "$SCREENSHOTS" || {
+  echo "iPad landscape simulator screenshot is not documented" >&2
+  exit 1
+}
 grep -qE -- 'iphone-16-launch-simulator\.png' "$SCREENSHOTS" || {
   echo "iPhone simulator launch screenshot is not documented" >&2
   exit 1
