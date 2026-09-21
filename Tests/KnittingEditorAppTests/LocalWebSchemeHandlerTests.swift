@@ -3,6 +3,15 @@ import XCTest
 @testable import knittingEditor
 
 final class LocalWebSchemeHandlerTests: XCTestCase {
+    @MainActor
+    func testWebContentReadinessStartsFalseAndBecomesTrue() {
+        let model = WebViewModel()
+
+        XCTAssertFalse(model.webContentReady)
+        model.webContentDidBecomeReady()
+        XCTAssertTrue(model.webContentReady)
+    }
+
     func testEditorWebViewStartsWithNonZeroFrame() {
         XCTAssertGreaterThan(WebViewContainer.initialFrameSize.width, 0)
         XCTAssertGreaterThan(WebViewContainer.initialFrameSize.height, 0)

@@ -11,6 +11,14 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-21: 初回WebKit起動中の白画面を読み込み表示へ変更
+
+- 変更: `ContentView`を`ZStack`構成にし、Web側から`webReady`を受け取るまで、ネイティブのProgressViewと「編み図を準備しています…」を表示する。iOS 27のコールドSimulatorでWebKit起動に約20秒かかった際も、白画面だけを見せず処理中であることを伝える。`WebViewModel.webContentReady`は読み取り専用状態としてSwiftUIから監視する。
+- 主なファイル: `App/KnittingEditorApp.swift`、`App/WebViewContainer.swift`、`Tests/KnittingEditorAppTests/LocalWebSchemeHandlerTests.swift`
+- テスト: 初期状態が未準備で、Web側の準備通知後に準備済みへ変わることをSwift単体テストへ追加する。変更後に最新iPhone／iPad Simulatorで起動表示と実UIを目視し、対象UI試験を再実行する。
+- 未実施: 実機のコールド起動時間、低メモリ状態のWebKit起動、TestFlightでの起動時間。Simulatorの初回WebKitプロセス生成時間を実機性能とは扱わない。
+- 配布影響: 保存形式、Bundle ID、オフライン通信方針は変更しない。初回表示中のフィードバックだけを改善する。
+
 ## 2026-09-21: ローカル保存初期化の無期限待機を防止
 
 - 変更: `Web/src/App.tsx`の起動処理を、編み図とブロックのIndexedDB初期化全体に10秒の上限を設けるようにした。時間内に完了しない場合はスピナーを無期限に表示せず、原因を示したエラーと再読み込み操作を表示する。タイマー処理は`Web/src/async.ts`の`withTimeout`へ分離し、成功時に必ず解除する。

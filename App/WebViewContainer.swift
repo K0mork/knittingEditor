@@ -9,7 +9,7 @@ import UniformTypeIdentifiers
 final class WebViewModel {
     @ObservationIgnored weak var webView: WKWebView?
     private var pendingBackup: (data: Data, filename: String)?
-    private var webContentReady = false
+    private(set) var webContentReady = false
 
     func attach(_ webView: WKWebView) {
         if self.webView !== webView {

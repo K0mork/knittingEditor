@@ -24,9 +24,25 @@ struct ContentView: View {
     let model: WebViewModel
 
     var body: some View {
-        WebViewContainer(model: model)
-            .ignoresSafeArea(.container, edges: .bottom)
-            .accessibilityLabel("棒針編み図エディタ")
-            .accessibilityIdentifier("knittingEditorWebView")
+        ZStack {
+            WebViewContainer(model: model)
+                .ignoresSafeArea(.container, edges: .bottom)
+                .accessibilityLabel("棒針編み図エディタ")
+                .accessibilityIdentifier("knittingEditorWebView")
+
+            if !model.webContentReady {
+                Color(.systemBackground)
+                    .ignoresSafeArea()
+                VStack(spacing: 12) {
+                    ProgressView()
+                    Text("編み図を準備しています…")
+                        .font(.body)
+                        .foregroundStyle(.secondary)
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("編み図を準備しています")
+                .accessibilityIdentifier("editorLoadingOverlay")
+            }
+        }
     }
 }
