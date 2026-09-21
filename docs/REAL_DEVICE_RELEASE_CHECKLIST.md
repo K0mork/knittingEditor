@@ -6,12 +6,12 @@ M0、M2、M3、M4、M6で残っている実機・署名・TestFlight確認を、
 
 | 項目 | 記録 |
 |---|---|
-| 実施日 | 2026-09-21（iPhoneのみ着手） |
+| 実施日 | 2026-09-21（iPhone・iPadへ着手） |
 | 実施者 | K0mork |
 | Git commit | `aca03e8`時点のワークツリー（本記録と同じコミットで更新） |
 | Xcode / macOS | Xcode 27.0 (27A266a) / macOS 27.0 |
 | iPhone機種・iOS | iPhone 17 (iPhone18,3) / iOS 27.0 |
-| iPad機種・iPadOS | 未接続 |
+| iPad機種・iPadOS | iPad Air (5th generation) (iPad13,16) / iPadOS 27.0 |
 | Apple Developer Team / Bundle ID | 無料Personal Team / `com.k0mork.knittingEditor` |
 | 署名方式・証明書 | Automatic、Apple Development（`iOS Team Provisioning Profile`、7日で失効） |
 
@@ -99,6 +99,15 @@ M0、M2、M3、M4、M6で残っている実機・署名・TestFlight確認を、
 - VoiceOverのフォーカス順、Apple Pencil、タッチ・ピンチ・トラックパッド操作、文字の切れ・重なりの目視。
 - iPad実機に関する全項目（未接続）。
 - TestFlight・App Store提出（無料Personal Teamのため、有料加入後）。
+
+## 2026-09-21 実機実行記録（iPad Air 第5世代 / iPadOS 27.0）
+
+- デベロッパモードを有効化し、署名ビルド・インストール・起動を確認した。`scripts/check-device-readiness.sh`はiPhoneとiPadの両方をオンライン端末として検出する。
+- Swift単体テスト22件成功、XCUITest 11件成功（2件はアプリ更新プローブのためスキップ、206.5秒）。
+- iPadで発見して直したもの。
+  - 書き出しの保存シートは、iPadでは「×」が`label`の`Cancel`ボタンとして押せる（`frame=(14, 46, 36x36)`、`isHittable=true`）。iPhone向けに実装した下スワイプはiPadでは閉じられなかったため、押せる場合はボタンを使い、押せない場合だけスワイプへ落とすようにした。
+  - ダイアログ入力で先頭文字を取りこぼしていた。`M2切替A`が`2切替A`になり、さらに初期値「新しい編み図」が消えずに残って`2切替A新しい編み図`という名前になっていた。キーボード表示を待ってから初期値を消して入力し、入力結果を検査するようにした。アプリ側も`window.prompt`と同じく初期値を選択状態にして開くようにした。
+- 未実施: 全画面・Split View・可変ウィンドウの操作確認（XCUITestからウィンドウ分割を作れないため、分割状態を作ったうえで実行する必要がある）、Apple Pencil、タッチ・ピンチ、VoiceOver、Files実保存とAirDrop、iPad版スクリーンショット。
 
 ## 記録ルール
 

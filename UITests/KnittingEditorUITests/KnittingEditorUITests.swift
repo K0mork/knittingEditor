@@ -76,8 +76,7 @@ final class KnittingEditorUITests: XCTestCase {
         newDocument.tap()
         let nameField = app.textFields["入力"]
         XCTAssertTrue(nameField.waitForExistence(timeout: 15))
-        nameField.tap()
-        nameField.typeText("再起動復元テスト")
+        replaceText("再起動復元テスト", in: nameField, app: app)
         app.buttons["決定"].tap()
 
         let webView = app.webViews.firstMatch
@@ -118,8 +117,7 @@ final class KnittingEditorUITests: XCTestCase {
         newDocument.tap()
         let nameField = app.textFields["入力"]
         XCTAssertTrue(nameField.waitForExistence(timeout: 15))
-        nameField.tap()
-        nameField.typeText("M2切替A")
+        replaceText("M2切替A", in: nameField, app: app)
         app.buttons["決定"].tap()
 
         let webView = app.webViews.firstMatch
@@ -137,8 +135,7 @@ final class KnittingEditorUITests: XCTestCase {
         documents.tap()
         newDocument.tap()
         XCTAssertTrue(nameField.waitForExistence(timeout: 15))
-        nameField.tap()
-        nameField.typeText("M2切替B")
+        replaceText("M2切替B", in: nameField, app: app)
         app.buttons["決定"].tap()
 
         let secondEmptyCanvas = webView.otherElements
@@ -195,8 +192,7 @@ final class KnittingEditorUITests: XCTestCase {
         newDocument.tap()
         let nameField = app.textFields["入力"]
         XCTAssertTrue(nameField.waitForExistence(timeout: appUpdateElementTimeout))
-        nameField.tap()
-        nameField.typeText("アプリ更新復元fixture")
+        replaceText("アプリ更新復元fixture", in: nameField, app: app)
         app.buttons["決定"].tap()
 
         let webView = app.webViews.firstMatch
@@ -434,14 +430,35 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertTrue(element.isHittable, app.debugDescription)
     }
 
-    /// 別プロセスのシートは要素タップが届かないため、画面座標の下スワイプで閉じる。
+    /// 保存シートを閉じる。iPadは「×」ボタン（label `Cancel`）を押せるため、そちらを使う。
+    /// iPhoneでは同じボタンへ到達できず`isHittable`もfalseになるため、画面座標の下スワイプで閉じる。
     private func dismissSystemSheet(in app: XCUIApplication) {
+        let closeButton = app.buttons.matching(NSPredicate(format: "label == %@", "Cancel")).firstMatch
+        if closeButton.waitForExistence(timeout: 5), closeButton.isHittable {
+            closeButton.tap()
+            return
+        }
         app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.15)).press(
             forDuration: 0.05,
             thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.98)),
             withVelocity: .default,
             thenHoldForDuration: 0.0
         )
+    }
+
+    /// ダイアログの入力欄を確実に置き換える。
+    ///
+    /// 実機ではキーボードの表示前に入力が始まると先頭文字を取りこぼす（iPadで`M2切替A`が
+    /// `2切替A`になった）。初期値が残ると意図しない名前になるため、消してから入力し、
+    /// 最後に入力結果を検査する。
+    private func replaceText(_ text: String, in field: XCUIElement, app: XCUIApplication) {
+        field.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 10), app.debugDescription)
+        if let current = field.value as? String, !current.isEmpty {
+            field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count))
+        }
+        field.typeText(text)
+        XCTAssertEqual(field.value as? String, text, app.debugDescription)
     }
 
     private func assertBecomesHittable(_ element: XCUIElement, in app: XCUIApplication) {

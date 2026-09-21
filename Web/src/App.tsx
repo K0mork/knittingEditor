@@ -42,7 +42,12 @@ function useModalFocus<T extends HTMLElement>(onEscape: () => void, initialSelec
       'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
     )).filter((element) => !element.hidden && element.getClientRects().length > 0);
     const initial = initialSelector ? root.querySelector<HTMLElement>(initialSelector) : undefined;
-    const frame = requestAnimationFrame(() => (initial ?? focusable()[0])?.focus());
+    const frame = requestAnimationFrame(() => {
+      const target = initial ?? focusable()[0];
+      target?.focus();
+      // window.promptと同じく初期値を選択状態にし、そのまま上書き入力できるようにする。
+      if (target instanceof HTMLInputElement && target.type === 'text') target.select();
+    });
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();

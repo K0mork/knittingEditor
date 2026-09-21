@@ -11,6 +11,17 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-21: iPad実機ゲートに着手し入力取りこぼしとシート操作を修正
+
+- 実機導入: iPad Air 第5世代（iPadOS 27.0）でデベロッパモードを有効化し、同じPersonal Teamでインストール・起動した。
+- 修正1: 保存シートの閉じ方が端末で異なる。iPadでは「×」が`label`の`Cancel`ボタンとして`isHittable=true`で押せる（`frame=(14, 46, 36x36)`）一方、iPhoneでは同じボタンへ到達できない。iPhone向けの下スワイプはiPadでは閉じられなかったため、押せるときはボタンを使い、押せないときだけスワイプへ落とすようにした。
+- 修正2: XCUITestのダイアログ入力が実機で先頭文字を取りこぼしていた。iPadで`M2切替A`が`2切替A`となり、さらにダイアログの初期値「新しい編み図」が残って`2切替A新しい編み図`という編み図名になっていた。iPhoneでは前方一致の検査だったため気付けなかった。キーボードの表示を待ち、初期値を消してから入力し、最後に入力結果を検査する`replaceText`へ統一した。
+- 修正3（アプリ側）: `window.prompt`は初期値を選択状態で開くが、置き換えたアプリ内ダイアログは初期値を選択していなかった。利用者が名前を入力すると初期値が残ってしまうため、prompt入力欄を選択状態で開くようにした。
+- 主なファイル: `UITests/KnittingEditorUITests/KnittingEditorUITests.swift`、`Web/src/App.tsx`、`docs/REAL_DEVICE_RELEASE_CHECKLIST.md`、`docs/WEB_SYNC.md`
+- 実行コマンドと結果: iPad Air 第5世代 実機で単体22件・XCUITest 11件成功（206.5秒）。iPhone 16 Simulatorで単体22件・XCUITest 11件成功（205.3秒）、iPad (10th generation) Simulatorで同22件・11件成功（189.0秒）。`npx vitest run`成功（43 tests）、`npm run typecheck`・`npm run build`成功。
+- 未実施: iPhone実機での再確認（本作業中に取り外されたため）。iPadの全画面・Split View・可変ウィンドウ、Apple Pencil、タッチ・ピンチ、VoiceOver、Files実保存とAirDrop、iPad版スクリーンショット。
+- 配布影響: 保存形式、記号ID、`.knit`互換、Bundle ID、オフライン通信方針は変更しない。新規作成・名称変更のダイアログで初期値を上書き入力できるようになる。
+
 ## 2026-09-21: iPhone実機ゲートに着手しDynamic Type横向きの欠陥を修正
 
 - 実機導入: iPhone 17（iOS 27.0）へ無料Personal Team（Automatic署名）でインストールし、起動を確認した。`scripts/check-device-readiness.sh`は`KNITTING_EDITOR_DEVELOPMENT_TEAM`指定で通過し、Team IDはリポジトリへ保存していない。
