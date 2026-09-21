@@ -19,6 +19,15 @@
 - `src/storage/database.test.ts`: Safari旧版移行テストを除外し、`.knit`復元テストを維持する。
 - `index.html`、使い方ページ: SEO、CNAME、サイトマップ、外部プライバシーURLを除外し、アプリ内の同梱ページとして動作させる。
 
+次はWeb版との共通コードに対するアプリ側の不具合修正である。`rsync --delete`を使う同期で失われるため、同期後に再適用すること。Web版へも反映するかは別途判断する。
+
+- `src/App.tsx`: 盤面設定の段数変更を増減とも上端側で行い、往復しても編み始め（段1）を失わない。Web版は増加のみ上端、減少は下端だった。
+- `src/App.tsx`: 使い方ページへ遷移する前に保留中の自動保存をflushする（WKWebViewは`beforeunload`の確認を表示しないため）。待ち時間は2秒で区切る。
+- `src/App.tsx`: 自動保存のuseEffect依存に`activeDocument`自体を含め、保存待ち中の名称変更を古い名前で上書きしない。
+- `src/canvas/BoardCanvas.tsx`: 起点セルが表示範囲外にある複数セル記号も描画する。
+- `src/canvas/BoardCanvas.tsx`: wheelを非passiveリスナーで処理し、トラックパッドのピンチでページ全体が拡大しないようにする。
+- `src/model/Board.ts`: `parseColor`が3桁カラー表記を展開する。
+
 Web版が更新された場合は、先に新しい同期元コミット、カタログバージョン、既存IDの不変性を確認し、`catalog.ts`と`glyphs.ts`を同じ同期単位で取り込むこと。同期後は上記のアプリ専用差分を再適用し、Web単体テストとオフライン資産検査を実行する。
 
 ## 永続記号IDスナップショット
