@@ -40,19 +40,49 @@ final class LocalWebSchemeHandler: NSObject, WKURLSchemeHandler {
 
         let path = requestURL.path
         let components = path.split(separator: "/", omittingEmptySubsequences: true)
-        guard !components.isEmpty,
-              components.allSatisfy({ $0 != "." && $0 != ".." }) else { return nil }
+        guard components.allSatisfy({ $0 != "." && $0 != ".." }) else { return nil }
 
         let relativePath = components.joined(separator: "/")
-        let resourceURL = bundle.url(forResource: relativePath, withExtension: nil, subdirectory: "Web")
-            ?? bundle.url(forResource: relativePath, withExtension: nil)
-        guard let resourceURL else { return nil }
+        let candidates = relativePath.isEmpty || path.hasSuffix("/")
+            ? [relativePath.isEmpty ? "index.html" : "\(relativePath)/index.html"]
+            : [relativePath, "\(relativePath)/index.html"]
 
-        let standardizedResource = resourceURL.standardizedFileURL
-        let standardizedRoot = (bundle.url(forResource: "Web", withExtension: nil) ?? bundle.bundleURL)
-            .standardizedFileURL
-        guard standardizedResource.path.hasPrefix(standardizedRoot.path + "/") else { return nil }
-        return standardizedResource
+        for candidate in candidates {
+            guard let resourceURL = Self.bundleURL(for: candidate, bundle: bundle) else { continue }
+            var isDirectory = ObjCBool(false)
+            guard FileManager.default.fileExists(atPath: resourceURL.path, isDirectory: &isDirectory), !isDirectory.boolValue else { continue }
+
+            let standardizedResource = resourceURL.standardizedFileURL
+            let standardizedRoot = (bundle.url(forResource: "Web", withExtension: nil) ?? bundle.bundleURL)
+                .standardizedFileURL
+            guard standardizedResource.path.hasPrefix(standardizedRoot.path + "/") else { return nil }
+            return standardizedResource
+        }
+        return nil
+    }
+
+    private static func bundleURL(for relativePath: String, bundle: Bundle) -> URL? {
+        if let webIndex = bundle.url(forResource: "index.html", withExtension: nil, subdirectory: "Web") {
+            let candidate = webIndex.deletingLastPathComponent().appendingPathComponent(relativePath)
+            if FileManager.default.fileExists(atPath: candidate.path) {
+                return candidate
+            }
+        }
+        let path = relativePath as NSString
+        let filename = path.lastPathComponent as NSString
+        let name = filename.deletingPathExtension
+        let ext = filename.pathExtension
+        let directory = path.deletingLastPathComponent
+        let webDirectory = directory == "." ? "Web" : "Web/\(directory)"
+        return bundle.url(
+            forResource: name,
+            withExtension: ext.isEmpty ? nil : ext,
+            subdirectory: webDirectory
+        ) ?? bundle.url(
+            forResource: name,
+            withExtension: ext.isEmpty ? nil : ext,
+            subdirectory: directory == "." ? nil : directory
+        )
     }
 
     private static func mimeType(for pathExtension: String) -> String {

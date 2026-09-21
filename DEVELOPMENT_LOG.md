@@ -19,6 +19,14 @@
 - 未実施: 実機のアプリ更新、署名、TestFlight。CI Simulatorの起動待機改善であり、実機ゲートの代替ではない。
 - 配布影響: アプリ本体、保存形式、Bundle ID、App Store資産は変更しない。更新耐性UI試験の待機時間だけを調整した。
 
+## 2026-09-21: ネイティブ内の使い方リンクでディレクトリindexを解決
+
+- 変更: `knitting-local://bundle/` と `/guide/` のようなディレクトリURLを、同階層の`index.html`へ解決するよう`LocalWebSchemeHandler`を修正した。WebView内の「使い方」導線とガイドからエディタへ戻る導線をネイティブ版でも利用できるようにする。
+- 根拠: 実UIスクリーンショットとソース導線の突合で、ネイティブURLスキームにはディレクトリindexのフォールバックがなく、ガイド導線がナビゲーション失敗になる経路を確認した。
+- テスト: ルートと`guide/`のindex解決ユニットテストを追加し、`xcodebuild test -only-testing:knittingEditorTests/LocalWebSchemeHandlerTests`で7件成功を確認した。`guide/` URLの実ロードとタイトル取得も確認済みである。未実施の実機・TestFlight検証は別ゲートとして残す。
+- 未実施: 実機のSafari／Files連携、署名、TestFlight。
+- 配布影響: Web資産、保存形式、Bundle ID、外部通信方針は変更しない。ローカルURLの静的リソース解決のみを補正した。
+
 ## 2026-09-21: iPad横画面のApp Store下書きを追加
 
 - 変更: UI回帰試験で取得済みのiPad (10th generation)横画面スクリーンショットを`docs/screenshots/ipad-10-editor-landscape-simulator.png`として保存し、`docs/SCREENSHOTS.md`へ取得条件を追記した。`scripts/check-app-store-docs.sh`と`scripts/check-release-assets.sh`で2360×1640の存在・解像度を検査する。

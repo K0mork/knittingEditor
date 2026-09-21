@@ -34,6 +34,33 @@ final class LocalWebSchemeHandlerTests: XCTestCase {
         )
     }
 
+    func testResourceURLResolvesDirectoryIndexes() {
+        let bundle = Bundle(for: LocalWebSchemeHandler.self)
+        let root = LocalWebSchemeHandler.resourceURL(
+            for: URL(string: "knitting-local://bundle/")!,
+            bundle: bundle
+        )
+        let guide = LocalWebSchemeHandler.resourceURL(
+            for: URL(string: "knitting-local://bundle/guide/")!,
+            bundle: bundle
+        )
+        XCTAssertEqual(root?.lastPathComponent, "index.html")
+        XCTAssertEqual(guide?.lastPathComponent, "index.html")
+        XCTAssertEqual(guide?.deletingLastPathComponent().lastPathComponent, "guide")
+    }
+
+    @MainActor
+    func testGuideDirectoryURLLoadsBundledIndex() async throws {
+        let webView = try makeWebView()
+        let delegate = NavigationDelegate()
+        webView.navigationDelegate = delegate
+        webView.load(URLRequest(url: URL(string: "knitting-local://bundle/guide/")!))
+        try await delegate.waitForLoad()
+
+        let title = try await webView.evaluateJavaScript("document.title")
+        XCTAssertEqual(title as? String, "棒針編み図エディタの使い方")
+    }
+
     @MainActor
     func testLocalEditorDoesNotInvokeRuntimeNetworkAPIs() async throws {
         let webView = try makeWebView(networkProbe: true)
