@@ -11,6 +11,14 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-21: iPad app-update probeの起動遅延待機を延長
+
+- 変更: `testSeedDocumentForAppUpdateProbe`と`testUpdatedAppRestoresSeedDocument`のWebView、編み図、ダイアログ入力、復元文書の取得待機を60秒へ統一した。Xcode 15.4 GitHub ActionsのiPad初回WebView起動が15秒を超え、retryが長時間化していたためである。
+- 根拠: CI run `35565764128`のiPad app-updateログで、初回seedの「編み図」取得が15秒待機で失敗し、二回目は起動遅延後に成功した。iPad通常UI、iPhone通常UI、iPhone app-updateは同runで成功しており、失敗箇所はprobeの待機条件に限定された。
+- テスト: 変更後にiPad app-update probeを再実行し、seed／version 2復元が成功することを確認する。Swift UI testのbuildと`git diff --check`も実施する。
+- 未実施: 実機のアプリ更新、署名、TestFlight。CI Simulatorの起動待機改善であり、実機ゲートの代替ではない。
+- 配布影響: アプリ本体、保存形式、Bundle ID、App Store資産は変更しない。更新耐性UI試験の待機時間だけを調整した。
+
 ## 2026-09-21: iPad横画面のApp Store下書きを追加
 
 - 変更: UI回帰試験で取得済みのiPad (10th generation)横画面スクリーンショットを`docs/screenshots/ipad-10-editor-landscape-simulator.png`として保存し、`docs/SCREENSHOTS.md`へ取得条件を追記した。`scripts/check-app-store-docs.sh`と`scripts/check-release-assets.sh`で2360×1640の存在・解像度を検査する。

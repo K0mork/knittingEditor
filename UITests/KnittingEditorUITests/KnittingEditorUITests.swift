@@ -152,17 +152,18 @@ final class KnittingEditorUITests: XCTestCase {
     func testSeedDocumentForAppUpdateProbe() throws {
         try requireAppUpdateProbe()
         let app = XCUIApplication()
+        let appUpdateElementTimeout: TimeInterval = 60
         app.launch()
 
-        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 15))
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: appUpdateElementTimeout))
         let documents = app.buttons["編み図"]
-        XCTAssertTrue(documents.waitForExistence(timeout: 15))
+        XCTAssertTrue(documents.waitForExistence(timeout: appUpdateElementTimeout))
         documents.tap()
         let newDocument = app.buttons["新しい編み図"]
-        XCTAssertTrue(newDocument.waitForExistence(timeout: 15))
+        XCTAssertTrue(newDocument.waitForExistence(timeout: appUpdateElementTimeout))
         newDocument.tap()
         let nameField = app.textFields["入力"]
-        XCTAssertTrue(nameField.waitForExistence(timeout: 15))
+        XCTAssertTrue(nameField.waitForExistence(timeout: appUpdateElementTimeout))
         nameField.tap()
         nameField.typeText("アプリ更新復元fixture")
         app.buttons["決定"].tap()
@@ -185,16 +186,17 @@ final class KnittingEditorUITests: XCTestCase {
     func testUpdatedAppRestoresSeedDocument() throws {
         try requireAppUpdateProbe()
         let app = XCUIApplication()
+        let appUpdateElementTimeout: TimeInterval = 60
         app.launch()
 
-        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 15))
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: appUpdateElementTimeout))
         let documents = app.buttons["編み図"]
-        XCTAssertTrue(documents.waitForExistence(timeout: 15))
+        XCTAssertTrue(documents.waitForExistence(timeout: appUpdateElementTimeout))
         documents.tap()
         let restoredDocument = app.buttons
             .matching(NSPredicate(format: "label BEGINSWITH %@", "アプリ更新復元fixture"))
             .firstMatch
-        XCTAssertTrue(restoredDocument.waitForExistence(timeout: 15), app.debugDescription)
+        XCTAssertTrue(restoredDocument.waitForExistence(timeout: appUpdateElementTimeout), app.debugDescription)
         restoredDocument.tap()
 
         XCTAssertTrue(
