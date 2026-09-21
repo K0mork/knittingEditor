@@ -343,7 +343,7 @@ final class KnittingEditorUITests: XCTestCase {
         app.buttons["閉じる"].tap()
 
         app.buttons["保存"].tap()
-        let drawer = app.otherElements
+        let drawer = app.descendants(matching: .any)
             .matching(NSPredicate(format: "label == %@", "補足"))
             .firstMatch
         XCTAssertTrue(drawer.waitForExistence(timeout: 5), app.debugDescription)

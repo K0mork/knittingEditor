@@ -11,6 +11,14 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-21: Dynamic Type UIテストのXcode 15互換性を修正
+
+- 変更: 保存ドロワーの取得をXCUITestの要素型`Other`へ依存させず、アクセシビリティラベルを全要素型から検索するよう修正した。
+- 主なファイル: `UITests/KnittingEditorUITests/KnittingEditorUITests.swift`
+- 根拠: GitHub ActionsのXcode 15.4では同じWeb要素が`WebView`として分類され、`Other`限定クエリが3回とも失敗した。ローカル環境では修正後の最大アクセシビリティサイズ試験がiPhone 16 Simulatorで成功した。
+- 未実施: 実機での最大Dynamic Type表示確認。CI結果はpush後に確認する。
+- 配布影響: アプリ本体の挙動は変更せず、CIのUIテスト取得方法だけをXcodeバージョン差に耐える形へ変更する。
+
 ## 2026-09-21: Dynamic TypeをiOS文字サイズ設定へ連動
 
 - 変更: Web UIのルートフォントを`-apple-system-body`へ接続し、既存の`rem`指定がiOS/iPadOSのDynamic Type設定に追従するようにした。最大アクセシビリティサイズでも横方向へ画面が拡張しないようGrid/Flexの最小幅を明示し、主要ツール、編み図管理、保存・出力へ到達できるXCUITestを追加した。
