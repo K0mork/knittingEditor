@@ -11,6 +11,14 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-21: 個人Team IDを保存しない実機準備確認に対応
+
+- 変更: `scripts/check-device-readiness.sh`が`KNITTING_EDITOR_DEVELOPMENT_TEAM`を一時的なXcodeビルド設定として受け取り、10文字の英大文字・数字であることを検証するようにした。Team IDを`project.yml`や生成Xcodeプロジェクトへ保存せず、Bundle ID・署名Team・Xcode上でオンラインのiOS実機を同じ事前確認で検査できる。
+- 主なファイル: `scripts/check-device-readiness.sh`、`docs/REAL_DEVICE_RELEASE_CHECKLIST.md`
+- テスト: 未指定時は従来どおりTeam未設定で失敗すること、ローカルの有効なTeam IDを環境変数で指定するとTeamを解決し、現在オフラインの実機だけを未達として失敗すること、不正なTeam IDを終了コード2で拒否することを確認する。
+- 未実施: iPhoneは`xcdevice`の一覧には存在するが、`xctrace`ではOfflineのため、署名ビルド・インストール・実機操作は未実施。iPad実機も未接続。
+- 配布影響: 署名設定やアプリ本体は変更しない。実機がオンラインになれば、個人Team情報をコミットせずM0以降の実機ゲートへ進める。
+
 ## 2026-09-21: 初回WebKit起動中の白画面を読み込み表示へ変更
 
 - 変更: `ContentView`を`ZStack`構成にし、Web側から`webReady`を受け取るまで、ネイティブのProgressViewと「編み図を準備しています…」を表示する。iOS 27のコールドSimulatorでWebKit起動に約20秒かかった際も、白画面だけを見せず処理中であることを伝える。`WebViewModel.webContentReady`は読み取り専用状態としてSwiftUIから監視する。
