@@ -11,6 +11,14 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-21: レスポンシブ表示とアクセシビリティのUI回帰検証を追加
+
+- 変更: 描画・消去・範囲・貼付モードの選択状態を`aria-pressed`で支援技術へ公開した。縦横回転後の主要操作、狭幅ツールバーの横スクロール、キーボード表示中のアプリ内ダイアログ、Canvas名とモード状態をXCUITestで検証する。
+- 主なファイル: `Web/src/App.tsx`、`UITests/KnittingEditorUITests/KnittingEditorUITests.swift`、`TODO.md`
+- テスト: `npm --prefix Web test -- --run`（39件成功）。iPhone 16／iPad (10th generation) Simulatorで追加した3 XCUITestが各3件成功。初回実行では`aria-pressed`がWebKit上でSwitchとして公開されることをButton照会して2件失敗したため、実際のアクセシビリティツリーと横スクロール操作を検証するよう修正後に再実行した。
+- 未実施: 実機の縦横表示、Split View、キーボード、VoiceOverフォーカス順、Dynamic Type、Apple Pencil。Simulator結果でこれらを完了扱いにしない。
+- 配布影響: データ形式、Bundle ID、外部通信方針は変更しない。支援技術から編集モードの選択状態を判別でき、今後のCIで画面回帰を検出できる。
+
 ## 2026-09-21: 実機リリース前の読み取り専用preflightを追加
 
 - 変更: 署名Team、Bundle ID、オンラインiOS端末を確認する`scripts/check-device-readiness.sh`を追加し、実機チェックリストの開始手順へ組み込んだ。署名情報や端末データは保存・変更しない。

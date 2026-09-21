@@ -2,6 +2,11 @@ import XCTest
 
 @MainActor
 final class KnittingEditorUITests: XCTestCase {
+    override func tearDown() {
+        XCUIDevice.shared.orientation = .portrait
+        super.tearDown()
+    }
+
     func testLaunchShowsLocalEditorContainer() {
         let app = XCUIApplication()
         app.launch()
@@ -261,6 +266,66 @@ final class KnittingEditorUITests: XCTestCase {
         cancelExportAlert(in: app)
     }
 
+    func testPrimaryControlsRemainUsableInPortraitAndLandscape() {
+        let app = XCUIApplication()
+        app.launch()
+
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 15))
+        assertPrimaryControlsAreUsable(in: app)
+
+        XCUIDevice.shared.orientation = .landscapeLeft
+        XCTAssertTrue(app.windows.firstMatch.waitForExistence(timeout: 5))
+        assertPrimaryControlsAreUsable(in: app)
+
+        app.buttons["編み図"].tap()
+        XCTAssertTrue(app.buttons["新しい編み図"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["閉じる"].isHittable, app.debugDescription)
+    }
+
+    func testDocumentDialogRemainsUsableWithKeyboardVisible() {
+        let app = XCUIApplication()
+        app.launch()
+
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 15))
+        app.buttons["編み図"].tap()
+        let newDocument = app.buttons["新しい編み図"]
+        XCTAssertTrue(newDocument.waitForExistence(timeout: 10))
+        newDocument.tap()
+
+        let nameField = app.textFields["入力"]
+        XCTAssertTrue(nameField.waitForExistence(timeout: 10))
+        nameField.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["キャンセル"].isHittable, app.debugDescription)
+        XCTAssertTrue(app.buttons["決定"].isHittable, app.debugDescription)
+    }
+
+    func testCoreEditorControlsExposeAccessibleNamesAndState() {
+        let app = XCUIApplication()
+        app.launch()
+
+        let webView = app.webViews.firstMatch
+        XCTAssertTrue(webView.waitForExistence(timeout: 15))
+        let stitchPicker = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label == %@", "編み目記号を選ぶ"))
+            .firstMatch
+        XCTAssertTrue(stitchPicker.waitForExistence(timeout: 10))
+        XCTAssertEqual(app.switches["描く"].value as? String, "1")
+        XCTAssertEqual(app.switches["消す"].value as? String, "0")
+        XCTAssertEqual(app.switches["範囲"].value as? String, "0")
+        XCTAssertTrue(app.buttons["保存"].exists)
+
+        let canvas = webView.otherElements
+            .matching(NSPredicate(format: "label CONTAINS %@", "編み図編集盤面"))
+            .firstMatch
+        XCTAssertTrue(canvas.waitForExistence(timeout: 10), webView.debugDescription)
+        XCTAssertTrue(canvas.label.contains("描画モード"), canvas.debugDescription)
+
+        stitchPicker.tap()
+        XCTAssertTrue(app.staticTexts["編み目記号"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["閉じる"].isHittable, app.debugDescription)
+    }
+
     private func cancelDocumentPicker(in app: XCUIApplication) {
         let localizedCancel = app.descendants(matching: .any)
             .matching(identifier: "キャンセル")
@@ -276,6 +341,32 @@ final class KnittingEditorUITests: XCTestCase {
             cancel.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
         }
         assertDisappears(cancel, from: app)
+    }
+
+    private func assertPrimaryControlsAreUsable(in app: XCUIApplication) {
+        for name in ["編み図", "盤面", "ブロック", "保存"] {
+            let button = app.buttons[name]
+            XCTAssertTrue(button.waitForExistence(timeout: 10), "\(name) が見つかりません: \(app.debugDescription)")
+            XCTAssertTrue(button.isHittable, "\(name) を操作できません: \(app.debugDescription)")
+        }
+
+        let stitchPicker = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label == %@", "編み目記号を選ぶ"))
+            .firstMatch
+        XCTAssertTrue(stitchPicker.waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertTrue(stitchPicker.isHittable, app.debugDescription)
+
+        for name in ["描く", "消す", "範囲"] {
+            XCTAssertTrue(app.switches[name].waitForExistence(timeout: 10), "\(name) が見つかりません: \(app.debugDescription)")
+        }
+        if !app.switches["範囲"].isHittable {
+            let toolbar = app.otherElements
+                .matching(NSPredicate(format: "label BEGINSWITH %@", "編集ツール"))
+                .firstMatch
+            XCTAssertTrue(toolbar.waitForExistence(timeout: 5), app.debugDescription)
+            toolbar.swipeLeft()
+        }
+        XCTAssertTrue(app.switches["範囲"].isHittable, app.debugDescription)
     }
 
     private func cancelExportAlert(in app: XCUIApplication) {

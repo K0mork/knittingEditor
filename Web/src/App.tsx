@@ -405,10 +405,10 @@ export default function App() {
           <span className="stitch-tool-name">{currentStitch.name}</span>
           <span className="stitch-tool-chevron" aria-hidden="true">⌄</span>
         </button>
-        <button className={mode === 'draw' ? 'active' : ''} onClick={() => { setMode('draw'); setSelection(undefined); }}>描く</button>
-        <button className={mode === 'erase' ? 'active' : ''} onClick={() => { setMode('erase'); setSelection(undefined); }}>消す</button>
-        <button className={mode === 'select' ? 'active' : ''} onClick={() => { setMode('select'); setSelection(undefined); }}>範囲</button>
-        {copiedBlock && <button className={mode === 'paste' ? 'active' : ''} onClick={() => { setPasteBlock(copiedBlock); setMode('paste'); setSelection(undefined); }}>貼付</button>}
+        <button className={mode === 'draw' ? 'active' : ''} aria-pressed={mode === 'draw'} onClick={() => { setMode('draw'); setSelection(undefined); }}>描く</button>
+        <button className={mode === 'erase' ? 'active' : ''} aria-pressed={mode === 'erase'} onClick={() => { setMode('erase'); setSelection(undefined); }}>消す</button>
+        <button className={mode === 'select' ? 'active' : ''} aria-pressed={mode === 'select'} onClick={() => { setMode('select'); setSelection(undefined); }}>範囲</button>
+        {copiedBlock && <button className={mode === 'paste' ? 'active' : ''} aria-pressed={mode === 'paste'} onClick={() => { setPasteBlock(copiedBlock); setMode('paste'); setSelection(undefined); }}>貼付</button>}
       </section>
 
       {stitchPickerOpen && <div className="stitch-picker-backdrop" onMouseDown={(event) => {
