@@ -16,6 +16,7 @@
 - 変更: Xcode 27.0のiOS 27.0（24A434、arm64）Simulatorランタイムを追加し、iPhone 18 ProとiPad Pro 11-inch（M5）でアプリをビルド・起動した。最新OS用に自動生成された未使用デバイス9台は削除し、検証後は最新OS用2台をeraseして定義だけ保持した。既存のiOS 18.2基準デバイス2台は保持し、全4台をshutdownした。XcodeBuildMCPの現行検証より前のテスト成果物は監査後にゴミ箱へ移動した。
 - 主なファイル: `AGENTS.md`、`TODO.md`、`docs/SCREENSHOTS.md`、`docs/screenshots/iphone-18-pro-ios-27-editor-simulator.jpg`、`docs/screenshots/ipad-pro-11-ios-27-editor-simulator.png`、`Tests/KnittingEditorAppTests/LocalWebSchemeHandlerTests.swift`、`UITests/KnittingEditorUITests/KnittingEditorUITests.swift`
 - テスト: iOS／iPadOS 27.0の両Simulatorで`LocalWebSchemeHandlerTests`を実行し、iPad 7件、iPhone 7件が成功した。主要UIの`testCoreEditorControlsExposeAccessibleNamesAndState`と`testPrimaryControlsRemainUsableInPortraitAndLandscape`はiPad 2件、iPhone 2件が成功した。iPhoneは合計9件成功。`build_run_sim`はiPhone／iPadとも成功し、実UIスクリーンショットで編集盤面と操作列を目視確認した。iOS 27でゼロサイズ`WKWebView`のナビゲーション完了が不安定だったため、テスト用WebViewに320×320の最小サイズを与え、状態ラベルの完全一致を`CONTAINS`へ変更した。修正前の全テスト試行は5分でタイムアウトしたため成功とは扱わない。
+- CI: GitHub Actions run `35572127914`でWeb、Release Archive、iPhone／iPad UI、iPhone／iPad app-updateの全6ジョブが成功した。
 - 容量: 検証前のCoreSimulatorは2.5GB。最新ランタイム導入後のテストで7.7GBまで増加したが、最新OS用デバイスをerase後は2.5GBへ戻った。古いXcodeBuildMCPの`test-products`／`result-bundles`を監査して約571MBをゴミ箱へ移動し、ワークスペースは434MB、空き容量は15GBになった。今後の運用規則を`AGENTS.md`へ追加した。
 - 未実施: 実機、iPad Split View／可変ウィンドウ、Apple Pencil、VoiceOver実機、TestFlight、App Store Connect。Simulatorの最新OS確認はこれらのゲートを完了扱いにしない。
 - 配布影響: アプリ本体の保存形式、Bundle ID、オフライン通信方針は変更しない。最新OSでのテスト安定性、QA証跡、Simulator容量管理の文書とテストコードだけを更新した。
