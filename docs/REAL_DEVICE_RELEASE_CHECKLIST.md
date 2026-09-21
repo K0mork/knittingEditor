@@ -58,7 +58,7 @@ M0、M2、M3、M4、M6で残っている実機・署名・TestFlight確認を、
 ## M4: 画面・入力・アクセシビリティ
 
 - [ ] iPhone狭幅の縦／横、キーボード表示中、Safe Area端でヘッダー・ツールバー・ダイアログが欠けない。
-- [ ] iPad全画面、Split View、可変ウィンドウで編集盤面・保存パネルが操作できる。
+- [x] iPad全画面、Split View、可変ウィンドウで編集盤面・保存パネルが操作できる。（2026-09-22、iPad Air 第5世代 / iPadOS 27.0。全画面954x1373・可変ウィンドウ584x861・Split View 681.5x954の3配置で`testManualWindowKeepsPrimaryFlowsUsable`が成功）
 - [ ] タッチ描画、2本指パン／ピンチ、マウス／トラックパッドを確認する。
 - [ ] Apple Pencilで描画・選択・スクロールを確認する。
 - [ ] VoiceOverで見出し、記号選択、描画／消去／範囲、保存、ダイアログのラベル・状態・フォーカス順を確認する。
@@ -107,8 +107,9 @@ M0、M2、M3、M4、M6で残っている実機・署名・TestFlight確認を、
 - iPadで発見して直したもの。
   - 書き出しの保存シートは、iPadでは「×」が`label`の`Cancel`ボタンとして押せる（`frame=(14, 46, 36x36)`、`isHittable=true`）。iPhone向けに実装した下スワイプはiPadでは閉じられなかったため、押せる場合はボタンを使い、押せない場合だけスワイプへ落とすようにした。
   - ダイアログ入力で先頭文字を取りこぼしていた。`M2切替A`が`2切替A`になり、さらに初期値「新しい編み図」が消えずに残って`2切替A新しい編み図`という名前になっていた。キーボード表示を待ってから初期値を消して入力し、入力結果を検査するようにした。アプリ側も`window.prompt`と同じく初期値を選択状態にして開くようにした。
-- 可変ウィンドウ（584x861、画面は1373x954）で、主要操作・各パネルの開閉・ダイアログ入力・盤面への描画を確認した。`testManualWindowKeepsPrimaryFlowsUsable`として手順化してある。
-- 未実施: Split Viewでの同確認（可変ウィンドウのみ実施）、Apple Pencil、タッチ・ピンチ、VoiceOver、Files実保存とAirDrop、iPad版スクリーンショット。
+- 全画面（954x1373）、可変ウィンドウ（584x861）、Split View（681.5x954）のいずれでも、主要操作・各パネルの開閉・ダイアログ入力・盤面への描画が成立した。画面サイズは1373x954。`testManualWindowKeepsPrimaryFlowsUsable`として手順化してある。
+- 未解決: iPad実機のフルスイートで`testBackupExportSheetDismissesBackToEditor`が断続的に失敗する（単独実行では毎回成功）。失敗時の診断情報と画面添付を入れてあるので、次に発生した結果bundleで切り分ける。
+- 未実施: Apple Pencil、タッチ・ピンチ、VoiceOver、Files実保存とAirDrop、iPad版スクリーンショット。
 
 ### 可変ウィンドウ・Split Viewの確認手順
 

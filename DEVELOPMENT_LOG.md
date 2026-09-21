@@ -11,6 +11,17 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-22: iPadのSplit Viewを検証しウィンドウ内判定へ許容幅を追加
+
+- 検証: iPad Air 第5世代（iPadOS 27.0）のSplit View（ウィンドウ681.5x954、画面1373x954）で`testManualWindowKeepsPrimaryFlowsUsable`が成功した。可変ウィンドウ（584x861）、全画面（954x1373）とあわせて3配置で主要操作・パネル開閉・ダイアログ入力・盤面描画を確認したため、実機チェックリストのM4「iPad全画面、Split View、可変ウィンドウで編集盤面・保存パネルが操作できる」を完了にした。
+- 修正: ウィンドウ内判定`assertWithinWindow`に1ptの許容幅を追加した。Split Viewではウィンドウ幅が小数になり（681.5に対しWebViewは682.0）、丸め誤差で0.5ptはみ出して見えて失敗していた。実際のはみ出しではない。最大Dynamic Typeの回帰は-58ptであり、1ptの許容では見逃さない。
+- 追加: 検証したウィンドウサイズを`XCTContext.runActivity`で必ず記録するようにした。どの配置で通したかがテストログに残る。
+- 主なファイル: `UITests/KnittingEditorUITests/KnittingEditorUITests.swift`、`docs/REAL_DEVICE_RELEASE_CHECKLIST.md`
+- 実行コマンドと結果: Split Viewで手動ウィンドウ検証が成功（29.2秒、window=681.5x954）。許容幅追加後にiPad実機とiPhone 16 Simulatorでフルスイートを再実行した。
+- 未解決: iPad実機のフルスイートで`testBackupExportSheetDismissesBackToEditor`が断続的に失敗する。直近のフルスイート5回のうち3回目と4回目が約58秒で失敗し、1回目は原因が判明した別要因（下スワイプがiPadで効かない）、2回目と5回目は成功した。単独実行3回と、アクセシビリティ試験に続けて実行する順序再現は毎回成功しており、原因を特定できていない。失敗時のログを採取できていないため、どの手段まで試したか、×ボタンの存在と押下可否、ウィンドウ寸法を失敗メッセージへ含め、シートが残っている場合は画面を添付するようにした。次の発生時に切り分ける。
+- 未実施: Apple Pencil、タッチ・ピンチ、VoiceOver、Files実保存とAirDrop、iPad版スクリーンショット、iPhone実機の再確認、機内モード、1000x1000盤面の計測。
+- 配布影響: アプリの実装は変更していない。テストと検証手順のみ。
+
 ## 2026-09-22: iPadの可変ウィンドウ検証を手順化し偽の成功を防ぐ
 
 - 追加: iPadのSplit View・可変ウィンドウを検証する`testManualWindowKeepsPrimaryFlowsUsable`を追加した。ウィンドウ分割はXCUITestから作れないため、端末側で配置してから`TEST_RUNNER_KNITTING_EDITOR_MANUAL_WINDOW=1`を付けて実行する。既定ではskipするのでCIと通常実行には影響しない。

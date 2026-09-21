@@ -212,6 +212,8 @@ final class KnittingEditorUITests: XCTestCase {
             window.width < screen.width - 1 || window.height < screen.height - 1,
             "Split View・可変ウィンドウの配置になっていない window=\(window) screen=\(screen)"
         )
+        // 証跡としてどの大きさで検証したかを残す。
+        XCTContext.runActivity(named: "検証したウィンドウ window=\(window) screen=\(screen)") { _ in }
 
         assertPrimaryControlsAreUsable(in: app)
         assertWithinWindow(app.buttons["編み図"], in: app)
@@ -305,11 +307,16 @@ final class KnittingEditorUITests: XCTestCase {
         let systemSheet = app.descendants(matching: .any).matching(identifier: "Cancel").firstMatch
         XCTAssertTrue(systemSheet.waitForExistence(timeout: 20), app.debugDescription)
 
-        dismissSystemSheet(in: app)
+        let dismissal = dismissSystemSheet(in: app)
 
-        assertDisappears(systemSheet, from: app)
-        assertBecomesHittable(app.webViews.firstMatch, in: app)
-        XCTAssertEqual(app.state, .runningForeground, app.debugDescription)
+        // 実機のフルスイートでまれに閉じられないことがある。原因究明のため、
+        // 失敗時にどの手段まで試したかと画面を必ず残す。
+        if systemSheet.exists {
+            add(screenshotAttachment(named: "保存シートが閉じない"))
+        }
+        assertDisappears(systemSheet, from: app, note: dismissal)
+        assertBecomesHittable(app.webViews.firstMatch, in: app, note: dismissal)
+        XCTAssertEqual(app.state, .runningForeground, "\(dismissal): \(app.debugDescription)")
     }
 
     func testPngAndPdfExportsReachNativeFileActions() {
@@ -443,10 +450,13 @@ final class KnittingEditorUITests: XCTestCase {
         assertPrimaryControlsAreUsable(in: app)
     }
 
-    /// 要素がウィンドウの内側に完全に収まっていることを確認する。
-    private func assertWithinWindow(_ element: XCUIElement, in app: XCUIApplication) {
+    /// 要素がウィンドウの内側に収まっていることを確認する。
+    ///
+    /// Split Viewではウィンドウ幅が小数になり（681.5に対しWebViewは682.0）、
+    /// 丸め誤差で1pt未満はみ出して見えることがあるため、その分だけ許容する。
+    private func assertWithinWindow(_ element: XCUIElement, in app: XCUIApplication, tolerance: CGFloat = 1) {
         XCTAssertTrue(element.exists, app.debugDescription)
-        let window = app.windows.firstMatch.frame
+        let window = app.windows.firstMatch.frame.insetBy(dx: -tolerance, dy: -tolerance)
         let frame = element.frame
         XCTAssertTrue(
             window.contains(frame),
@@ -476,13 +486,17 @@ final class KnittingEditorUITests: XCTestCase {
     /// iPadは「×」ボタン（label `Cancel`）を押せるが、iPhoneでは同じボタンへ到達できず
     /// `isHittable`もfalseになる。ウィンドウ状態によっても押せるかどうかが変わるため、
     /// 押してから閉じたことを確かめ、閉じていなければ画面座標の下スワイプへ落とす。
-    private func dismissSystemSheet(in app: XCUIApplication) {
+    /// 戻り値は失敗時の診断用に、どの手段まで試したかを表す。
+    @discardableResult
+    private func dismissSystemSheet(in app: XCUIApplication) -> String {
         let sheet = app.descendants(matching: .any).matching(identifier: "Cancel").firstMatch
         let closeButton = app.buttons.matching(NSPredicate(format: "label == %@", "Cancel")).firstMatch
-        if closeButton.waitForExistence(timeout: 5), closeButton.isHittable {
+        let buttonExists = closeButton.waitForExistence(timeout: 5)
+        let buttonHittable = buttonExists && closeButton.isHittable
+        if buttonHittable {
             closeButton.tap()
             if waitForDisappearance(of: sheet, timeout: 5) {
-                return
+                return "閉じ方=×ボタン"
             }
         }
         app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.15)).press(
@@ -491,6 +505,14 @@ final class KnittingEditorUITests: XCTestCase {
             withVelocity: .default,
             thenHoldForDuration: 0.0
         )
+        return "閉じ方=下スワイプ(×ボタン exists=\(buttonExists) hittable=\(buttonHittable)) window=\(app.windows.firstMatch.frame)"
+    }
+
+    private func screenshotAttachment(named name: String) -> XCTAttachment {
+        let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        return attachment
     }
 
     private func waitForDisappearance(of element: XCUIElement, timeout: TimeInterval) -> Bool {
@@ -516,7 +538,7 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertEqual(field.value as? String, text, app.debugDescription)
     }
 
-    private func assertBecomesHittable(_ element: XCUIElement, in app: XCUIApplication) {
+    private func assertBecomesHittable(_ element: XCUIElement, in app: XCUIApplication, note: String = "") {
         let hittable = XCTNSPredicateExpectation(
             predicate: NSPredicate(format: "isHittable == true"),
             object: element
@@ -524,7 +546,7 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertEqual(
             XCTWaiter.wait(for: [hittable], timeout: 20),
             .completed,
-            "シートを閉じたあとに編集画面へ戻れていない: \(app.debugDescription)"
+            "シートを閉じたあとに編集画面へ戻れていない \(note): \(app.debugDescription)"
         )
     }
 
@@ -583,13 +605,13 @@ final class KnittingEditorUITests: XCTestCase {
         )
     }
 
-    private func assertDisappears(_ element: XCUIElement, from app: XCUIApplication) {
+    private func assertDisappears(_ element: XCUIElement, from app: XCUIApplication, note: String = "") {
         let disappearance = XCTNSPredicateExpectation(
             predicate: NSPredicate(format: "exists == false"),
             object: element
         )
         let result = XCTWaiter.wait(for: [disappearance], timeout: 15)
-        XCTAssertTrue(result == .completed, app.debugDescription)
+        XCTAssertTrue(result == .completed, "\(note): \(app.debugDescription)")
     }
 
     private func requireAppUpdateProbe() throws {
