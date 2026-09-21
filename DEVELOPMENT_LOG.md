@@ -32,6 +32,13 @@
 - 未実施: 現在のrun `35562306235`はiPad app-updateが25分以上`in_progress`で、キャンセル要求後もGitHub側の終了待ち。新しいタイムアウト設定は次回runから適用される。
 - 配布影響: アプリ本体、保存形式、署名、App Store資産は変更しない。CIがハングした際の検出時間だけを制限する。
 
+## 2026-09-21: Simulator CIタイムアウト設定を全ジョブ成功で確認
+
+- 変更: `7428709`で追加した20分タイムアウト付きCIをrun `35563949791`で再実行し、Web、Release Archive、iPhone／iPad UI、iPhone／iPad app-updateの全6ジョブ成功を確認した。前run `35562306235`のiPad app-updateはrunner側の長時間`in_progress`後にキャンセルした。
+- テスト: GitHub Actions run `35563949791`の全ジョブがsuccess。ローカルでは`ruby -e 'require "yaml"; YAML.load_file(".github/workflows/ci.yml")'`と`git diff --check`が成功した。
+- 未実施: 実機・署名・TestFlight。CIのタイムアウトは外部端末ゲートの代替ではない。
+- 配布影響: アプリ本体と配布物は変更せず、CIのハング検出と証跡だけを改善した。
+
 ## 2026-09-21: 実UIスクリーンショットQAで狭幅レイアウトを改善
 
 - 変更: iPhone Simulatorの実画面で、上部ツールバーの「範囲」が横スクロールなしで見えるよう、狭幅時の余白・記号選択幅・ボタン幅を調整した。iPadの右側「ブロック」と記号ピッカーの「閉じる」が2行へ折り返されないよう、操作ラベルを1行固定にした。修正後のiPhone／iPad実画面をApp Storeスクリーンショット下書きへ更新した。
