@@ -2,6 +2,12 @@ import XCTest
 
 @MainActor
 final class KnittingEditorUITests: XCTestCase {
+    /// 実機は起動時に端末の物理的な向きを引き継ぐため、各テストを縦向きから始める。
+    override func setUp() {
+        super.setUp()
+        XCUIDevice.shared.orientation = .portrait
+    }
+
     override func tearDown() {
         XCUIDevice.shared.orientation = .portrait
         super.tearDown()
@@ -233,7 +239,13 @@ final class KnittingEditorUITests: XCTestCase {
         )
     }
 
-    func testBackupExportShowsNativeFileActions() throws {
+    /// `.knit`の書き出しがシステムの保存UIまで到達し、閉じたあと編集画面へ戻れることを確認する。
+    ///
+    /// iOS 27のDocument Pickerは別プロセスのUIで「キャンセル」ボタンを持たず、
+    /// 閉じる操作は「<」→「×」か下スワイプである。要素は`isHittable`がfalseで直接タップできないため、
+    /// 画面座標の下スワイプで閉じる。シートの有無はidentifier `Cancel`の存在で判定する
+    /// （実機で表示中のみ存在し、閉じると消えることを確認済み）。
+    func testBackupExportSheetDismissesBackToEditor() throws {
         if ProcessInfo.processInfo.environment["CI"] == "true" {
             throw XCTSkip("Xcode 15.4 CI SimulatorではWebKitがgzipバックアップ生成中に無応答になるため、保存パネル・PNG/PDF導線とローカルSimulatorで検証する")
         }
@@ -249,24 +261,18 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertTrue(currentDocument.waitForExistence(timeout: 15))
         currentDocument.tap()
 
-        XCTAssertTrue(app.buttons["ファイルに保存"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["ファイルに保存"].waitForExistence(timeout: 15))
         XCTAssertTrue(app.buttons["共有"].exists)
         app.buttons["ファイルに保存"].tap()
 
-        let pickerCancel = app.descendants(matching: .any)
-            .matching(identifier: "キャンセル")
-            .firstMatch
-        let englishPickerCancel = app.descendants(matching: .any)
-            .matching(identifier: "Cancel")
-            .firstMatch
-        XCTAssertTrue(
-            pickerCancel.waitForExistence(timeout: 10) || englishPickerCancel.waitForExistence(timeout: 10),
-            app.debugDescription
-        )
-        if ProcessInfo.processInfo.environment["SIMULATOR_DEVICE_NAME"] != nil {
-            throw XCTSkip("iOS SimulatorのUIDocumentPicker外部ウィンドウはXCTestからキャンセル操作できないため、実機で検証する")
-        }
-        cancelDocumentPicker(in: app)
+        let systemSheet = app.descendants(matching: .any).matching(identifier: "Cancel").firstMatch
+        XCTAssertTrue(systemSheet.waitForExistence(timeout: 20), app.debugDescription)
+
+        dismissSystemSheet(in: app)
+
+        assertDisappears(systemSheet, from: app)
+        assertBecomesHittable(app.webViews.firstMatch, in: app)
+        XCTAssertEqual(app.state, .runningForeground, app.debugDescription)
     }
 
     func testPngAndPdfExportsReachNativeFileActions() {
@@ -389,6 +395,26 @@ final class KnittingEditorUITests: XCTestCase {
         assertHittableAfterScrolling(app.buttons["PNGを保存"], in: app)
         assertHittableAfterScrolling(app.buttons["PDFを保存"], in: app)
         assertHittableAfterScrolling(app.buttons["この編み図"], in: app)
+        app.buttons["閉じる"].tap()
+
+        // 横向きの回帰防止。ヘッダーを固定高にしていたため、最大アクセシビリティサイズでは
+        // 「編み図」「使い方」が画面上端の外（y=-58）へ押し出されて操作できなかった。
+        XCUIDevice.shared.orientation = .landscapeLeft
+        XCTAssertTrue(app.buttons["編み図"].waitForExistence(timeout: 10), app.debugDescription)
+        assertWithinWindow(app.buttons["編み図"], in: app)
+        assertWithinWindow(app.links["使い方"], in: app)
+        assertPrimaryControlsAreUsable(in: app)
+    }
+
+    /// 要素がウィンドウの内側に完全に収まっていることを確認する。
+    private func assertWithinWindow(_ element: XCUIElement, in app: XCUIApplication) {
+        XCTAssertTrue(element.exists, app.debugDescription)
+        let window = app.windows.firstMatch.frame
+        let frame = element.frame
+        XCTAssertTrue(
+            window.contains(frame),
+            "要素が画面外へはみ出している frame=\(frame) window=\(window): \(app.debugDescription)"
+        )
     }
 
     private func assertHittableAfterScrolling(
@@ -408,21 +434,26 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertTrue(element.isHittable, app.debugDescription)
     }
 
-    private func cancelDocumentPicker(in app: XCUIApplication) {
-        let localizedCancel = app.descendants(matching: .any)
-            .matching(identifier: "キャンセル")
-            .firstMatch
-        let englishCancel = app.descendants(matching: .any)
-            .matching(identifier: "Cancel")
-            .firstMatch
-        let cancel = localizedCancel.waitForExistence(timeout: 10) ? localizedCancel : englishCancel
-        XCTAssertTrue(cancel.waitForExistence(timeout: 15), app.debugDescription)
-        if cancel.isHittable {
-            cancel.tap()
-        } else {
-            cancel.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
-        }
-        assertDisappears(cancel, from: app)
+    /// 別プロセスのシートは要素タップが届かないため、画面座標の下スワイプで閉じる。
+    private func dismissSystemSheet(in app: XCUIApplication) {
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.15)).press(
+            forDuration: 0.05,
+            thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.98)),
+            withVelocity: .default,
+            thenHoldForDuration: 0.0
+        )
+    }
+
+    private func assertBecomesHittable(_ element: XCUIElement, in app: XCUIApplication) {
+        let hittable = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "isHittable == true"),
+            object: element
+        )
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [hittable], timeout: 20),
+            .completed,
+            "シートを閉じたあとに編集画面へ戻れていない: \(app.debugDescription)"
+        )
     }
 
     private func assertPrimaryControlsAreUsable(in app: XCUIApplication) {

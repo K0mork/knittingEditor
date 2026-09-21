@@ -6,14 +6,14 @@ M0、M2、M3、M4、M6で残っている実機・署名・TestFlight確認を、
 
 | 項目 | 記録 |
 |---|---|
-| 実施日 | YYYY-MM-DD |
-| 実施者 |  |
-| Git commit | `git rev-parse HEAD` |
-| Xcode / macOS |  |
-| iPhone機種・iOS |  |
-| iPad機種・iPadOS |  |
-| Apple Developer Team / Bundle ID | `com.k0mork.knittingEditor` |
-| 署名方式・証明書 |  |
+| 実施日 | 2026-09-21（iPhoneのみ着手） |
+| 実施者 | K0mork |
+| Git commit | `aca03e8`時点のワークツリー（本記録と同じコミットで更新） |
+| Xcode / macOS | Xcode 27.0 (27A266a) / macOS 27.0 |
+| iPhone機種・iOS | iPhone 17 (iPhone18,3) / iOS 27.0 |
+| iPad機種・iPadOS | 未接続 |
+| Apple Developer Team / Bundle ID | 無料Personal Team / `com.k0mork.knittingEditor` |
+| 署名方式・証明書 | Automatic、Apple Development（`iOS Team Provisioning Profile`、7日で失効） |
 
 実機へインストールする前に、XcodeのSigning & CapabilitiesでTeam、Bundle ID、証明書、Provisioning Profileを確定し、`xcodebuild -showBuildSettings`の`DEVELOPMENT_TEAM`と`PRODUCT_BUNDLE_IDENTIFIER`を記録する。Teamや証明書をリポジトリへ保存しない。
 
@@ -76,6 +76,29 @@ M0、M2、M3、M4、M6で残っている実機・署名・TestFlight確認を、
 - [ ] `docs/APP_STORE_CHECKLIST.md`の全項目を更新し、承認前に「配布完了」と報告しない。
 
 証跡: Archiveのビルド番号、TestFlightテスター・実施端末、クラッシュ／メモリ結果、App Store Connectの各登録画面、最終スクリーンショット。
+
+## 2026-09-21 実機実行記録（iPhone 17 / iOS 27.0）
+
+上のチェック欄は、目視・機内モード・計測を伴う項目が残っているため未完了のままとする。この日に実機で確認できた内容だけを記録する。
+
+実施できたこと。
+
+- 署名ビルド、インストール、起動。`scripts/check-device-readiness.sh`が`Device release preflight is ready.`で通過。
+- Swift単体テスト22件成功。実機のWebKitでローカルorigin読み込み、IndexedDB永続化、ネットワークAPI未使用検出が成立する。
+- XCUITest 11件成功（2件はアプリ更新プローブのためスキップ）。起動、編集、自動保存、再起動復元、編み図切替、使い方ページ往復、PNG／PDFのネイティブ保存導線、キーボード表示中のダイアログ、縦横回転、最大Dynamic Typeを実機で通した。
+- `.knit`書き出しのシステム保存シート表示と、シートを閉じて編集画面へ戻るところまでを自動化した。
+- 利用者による手動確認: 保存シートから実際に`.knit`をFilesへ保存し、書き出し完了が取り込みとして処理されないこと（「〜（復元）」が増えないこと）を端末のIndexedDBを読み出して確認した。
+
+実機で見つけて直したこと。
+
+- 最大Dynamic Type かつ横向きで、ヘッダーの「編み図」`frame=(658, -58, 141x180)`、「使い方」`frame=(525, -36, 107x136)`が画面上端の外へ出て操作できなかった。`.app-header`の固定高を`min-height`へ変更し、ヘッダー操作の文字サイズ上限を全幅へ適用して解消した（修正後は`(714, 44, 84x81)`）。横向きの回帰テストを追加した。
+
+残っていること。
+
+- 機内モードでの起動と主要フロー、1000×1000盤面の時間・ピークメモリ測定、PNG／PDFのFiles実保存、AirDrop・共有先、`.knit`のAirDrop往復。
+- VoiceOverのフォーカス順、Apple Pencil、タッチ・ピンチ・トラックパッド操作、文字の切れ・重なりの目視。
+- iPad実機に関する全項目（未接続）。
+- TestFlight・App Store提出（無料Personal Teamのため、有料加入後）。
 
 ## 記録ルール
 

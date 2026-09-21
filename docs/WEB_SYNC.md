@@ -27,6 +27,7 @@
 - `src/canvas/BoardCanvas.tsx`: 起点セルが表示範囲外にある複数セル記号も描画する。
 - `src/canvas/BoardCanvas.tsx`: wheelを非passiveリスナーで処理し、トラックパッドのピンチでページ全体が拡大しないようにする。
 - `src/model/Board.ts`: `parseColor`が3桁カラー表記を展開する。
+- `src/styles.css`: `.app-header`を固定高から`min-height`へ変更し、ヘッダー操作の文字サイズ上限を全幅へ適用する。最大Dynamic Type かつ iPhone 横向きで「編み図」「使い方」が画面上端の外へ押し出される問題の修正。
 
 Web版が更新された場合は、先に新しい同期元コミット、カタログバージョン、既存IDの不変性を確認し、`catalog.ts`と`glyphs.ts`を同じ同期単位で取り込むこと。同期後は上記のアプリ専用差分を再適用し、Web単体テストとオフライン資産検査を実行する。
 

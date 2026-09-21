@@ -11,6 +11,19 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-21: iPhone実機ゲートに着手しDynamic Type横向きの欠陥を修正
+
+- 実機導入: iPhone 17（iOS 27.0）へ無料Personal Team（Automatic署名）でインストールし、起動を確認した。`scripts/check-device-readiness.sh`は`KNITTING_EDITOR_DEVELOPMENT_TEAM`指定で通過し、Team IDはリポジトリへ保存していない。
+- 修正1（実機で発見）: 最大Dynamic Type（AccessibilityXXXL）かつiPhone横向きで、ヘッダーの「編み図」と「使い方」が画面上端の外へ押し出され操作できなかった。`.app-header`が`height: 64px`の固定高で、幅420px超では文字サイズ上限が効かず中身が180ptへ膨らんでいた。`min-height`へ変更し、ヘッダー操作の`font-size: min(1rem, 20px)`を全幅へ適用した。実測は`(658, -58, 141x180)` → `(714, 44, 84x81)`。
+- 修正2: `.knit`書き出しのUIテストがiOS 27の実態と合っていなかった。iOS 27のDocument Pickerに「キャンセル」ボタンは無く、閉じる操作は「<」→「×」か下スワイプである。またピッカーは別プロセスのUIで、identifier `Cancel`の要素は存在が見えても`isHittable`がfalseで直接タップできない。実機で観測したうえで、シートの有無をidentifier `Cancel`の存在で判定し、画面座標の下スワイプで閉じて編集画面へ戻ることを確認する形へ書き換えた。Simulator専用の`XCTSkip`と到達不能だった`cancelDocumentPicker`を削除し、Simulatorと実機の両方で実行できるようにした。テスト名変更に合わせて`.github/workflows/ci.yml`の`-skip-testing`も更新した（CIのskip理由はXcode 15.4でのgzip生成時のWebKit無応答であり、ピッカーとは別件のため維持）。
+- 修正3: 実機は起動時に端末の物理的な向きを引き継ぐため、XCUITestの`setUp`で縦向きへ固定した。最初の1件が横向きで始まり結果が変わる非決定性を除いた。
+- 主なファイル: `Web/src/styles.css`、`UITests/KnittingEditorUITests/KnittingEditorUITests.swift`、`.github/workflows/ci.yml`、`docs/WEB_SYNC.md`、`docs/REAL_DEVICE_RELEASE_CHECKLIST.md`
+- テスト: 最大Dynamic Typeの横向きでヘッダー操作がウィンドウ内に収まることを検査する回帰テストを追加した。CSS修正を戻すと`frame=(658, -58, 141x180)`を示して失敗し、修正を適用すると成功することを実機で確認した。
+- 実行コマンドと結果: 実機iPhone 17で`xcodebuild test`が単体22件・XCUITest 11件成功（2件はアプリ更新プローブのためskip、195.0秒）。iPhone 16 Simulator（iOS 18.2）でも同じ構成で単体22件・XCUITest 11件成功（193.8秒）。`npm --prefix Web run build`成功。
+- 利用者による手動確認: 保存シートから`.knit`をFilesへ実保存し、端末のIndexedDBを読み出して「〜（復元）」の編み図が増えていないことを確認した（書き出し完了を取り込みとして処理していた不具合の実機確認）。
+- 未実施: 機内モード起動、1000×1000盤面の計測、PNG／PDFのFiles実保存、AirDropと共有先、VoiceOverのフォーカス順、Apple Pencil、文字の切れ・重なりの目視、iPad実機の全項目、TestFlight（無料Personal Teamのため）。
+- 配布影響: 保存形式、記号ID、`.knit`互換、Bundle ID、オフライン通信方針は変更しない。最大アクセシビリティサイズの横向きでヘッダー操作に到達できるようになる。
+
 ## 2026-09-21: 盤面の段数変更を上端側へそろえる
 
 - 変更: 盤面設定の段数変更を、増加・減少のどちらでも上端側で行うようにした。従来は増加のみ上端へ追加し、減少は下端（段1側）から削除していたため、20→25→20と往復すると編み始めの5段が消えていた。修正後は残る段の段番号も保たれる。列数の増減は従来どおり右端で行う。

@@ -24,13 +24,13 @@ button.danger { color: #9b2929; border-color: #d8aaaa; }
 button:disabled { opacity: .45; cursor: not-allowed; }
 
 .app-shell { min-width: 0; display: grid; grid-template-rows: auto 1fr auto; height: 100%; }
-.app-header { min-width: 0; height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 14px; color: white; background: linear-gradient(120deg, #346f42, #55945e); box-shadow: 0 2px 12px rgba(0,0,0,.16); z-index: 5; }
+.app-header { min-width: 0; min-height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 14px; color: white; background: linear-gradient(120deg, #346f42, #55945e); box-shadow: 0 2px 12px rgba(0,0,0,.16); z-index: 5; }
 .app-title { min-width: 0; flex: 1 1 auto; }
 .app-header h1 { font-size: 1.1rem; margin: 0; letter-spacing: .02em; }
 .app-header h1, .app-header p { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .app-header p { margin: 2px 0 0; font-size: .76rem; opacity: .85; }
 .header-actions { min-width: 0; display: flex; align-items: center; flex: 0 1 auto; gap: 7px; }
-.header-guide, .header-document { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,.55); border-radius: 10px; padding: 8px 13px; color: white; background: rgba(255,255,255,.12); text-decoration: none; }
+.header-guide, .header-document { min-height: 44px; font-size: min(1rem, 20px); display: inline-flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,.55); border-radius: 10px; padding: 8px 13px; color: white; background: rgba(255,255,255,.12); text-decoration: none; }
 .header-guide:hover, .header-document:hover { border-color: white; }
 .header-guide:focus-visible { outline: 3px solid rgba(255,255,255,.45); outline-offset: 2px; }
 
@@ -114,14 +114,14 @@ footer { display: none; }
   .app-header h1 { font-size: 1rem; }
   .app-header p { font-size: .68rem; }
   .header-actions { gap: 5px; }
-  .header-guide, .header-document { min-width: 0; max-width: 96px; padding-inline: 9px; font-size: min(1rem, 20px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .header-guide, .header-document { min-width: 0; max-width: 96px; padding-inline: 9px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .primary-tools { gap: 5px; padding: 6px; scrollbar-width: thin; }
   .primary-tools > button { padding-inline: 8px; }
   .stitch-tool { min-width: 136px; }
 }
 
 @media (min-width: 760px) {
-  .app-header { height: 74px; padding-inline: 24px; }
+  .app-header { min-height: 74px; padding-inline: 24px; }
   .app-header h1 { font-size: 1.35rem; }
   .workspace { grid-template: auto 1fr / 1fr 96px; }
   .primary-tools { grid-column: 1 / 3; padding-inline: 16px; }

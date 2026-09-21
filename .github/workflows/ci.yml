@@ -45,7 +45,7 @@ jobs:
           -test-timeouts-enabled YES
           -default-test-execution-time-allowance 90
           -maximum-test-execution-time-allowance 120
-          -skip-testing:knittingEditorUITests/KnittingEditorUITests/testBackupExportShowsNativeFileActions
+          -skip-testing:knittingEditorUITests/KnittingEditorUITests/testBackupExportSheetDismissesBackToEditor
           CODE_SIGNING_ALLOWED=NO
       - name: Verify generated app bundle
         run: |
