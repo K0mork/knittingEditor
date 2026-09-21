@@ -11,6 +11,14 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-21: M4 Simulatorレイアウト項目の証跡を明確化
+
+- 変更: TODOのM4項目を、既存のiPhone 16／iPad (10th generation) Simulator試験で完了した範囲（縦横、狭幅ツールバー、Safe Area考慮、キーボード表示中のダイアログ）と、Split View・可変ウィンドウ・実機確認が必要な範囲に分離した。
+- 根拠: `testPrimaryControlsRemainUsableInPortraitAndLandscape`、`testDocumentDialogRemainsUsableWithKeyboardVisible`、`testAccessibilityExtraExtraExtraLargeKeepsPrimaryFlowsUsable`がCI run `35558355652`でiPhone／iPadとも成功している。CSSは`env(safe-area-inset-*)`と狭幅メディアクエリを使用している。
+- 主なファイル: `TODO.md`、`DEVELOPMENT_LOG.md`
+- 未実施: iPad Split View・可変ウィンドウ、実機でのSafe Area・キーボード・タッチ入力確認。
+- 配布影響: 実装は変更せず、完了範囲と残ゲートの記録だけを明確化した。
+
 ## 2026-09-21: App StoreチェックリストのCI証跡を更新
 
 - 変更: App Store提出チェックリストのCI成功run番号を、アクセシビリティ改善を含む最新成功run `35550754342`へ更新した。

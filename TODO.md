@@ -63,9 +63,9 @@
 ## M4: iPhone・iPad品質（P0）
 
 - [x] iPhone／iPad Simulatorで縦横回転、キーボード表示中のダイアログ、主要操作のアクセシブルな名前・選択状態を回帰検証する（実機確認は別途）
-- [ ] iPhoneの狭幅・縦横レイアウトを確認する
+- [x] iPhone 16／iPad (10th generation) Simulatorの狭幅・縦横レイアウトを回帰検証する（実機確認は別途必要）
 - [ ] iPad全画面・Split View・可変ウィンドウを確認する
-- [ ] Safe Areaとキーボード表示時のレイアウトを修正する
+- [x] Safe Areaを考慮したレイアウトとキーボード表示時のダイアログをSimulatorで回帰検証する（実機確認は別途必要）
 - [ ] タッチ、ピンチ、パン、マウス、トラックパッドを実機確認する
 - [ ] Apple Pencilを通常入力として確認する
 - [x] `prompt`／`confirm`をアプリ内ダイアログへ置換する
