@@ -47,6 +47,10 @@ echo "[2/4] version 1でfixtureを保存"
     -scheme knittingEditor \
     -destination "$destination" \
     -retry-tests-on-failure \
+    -test-iterations 2 \
+    -test-timeouts-enabled YES \
+    -default-test-execution-time-allowance 90 \
+    -maximum-test-execution-time-allowance 120 \
     -only-testing:knittingEditorUITests/KnittingEditorUITests/testSeedDocumentForAppUpdateProbe \
     CODE_SIGNING_ALLOWED=NO
 )
@@ -80,6 +84,10 @@ echo "[4/4] version 2でfixtureが復元されることを確認"
     -xctestrun "$updated_xctestrun" \
     -destination "$destination" \
     -retry-tests-on-failure \
+    -test-iterations 2 \
+    -test-timeouts-enabled YES \
+    -default-test-execution-time-allowance 90 \
+    -maximum-test-execution-time-allowance 120 \
     -only-testing:knittingEditorUITests/KnittingEditorUITests/testUpdatedAppRestoresSeedDocument \
     CODE_SIGNING_ALLOWED=NO
 )

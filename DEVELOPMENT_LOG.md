@@ -11,6 +11,15 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-21: CIの停止したUI試験をテスト単位で打ち切る
+
+- 変更: iPhone／iPadのCIとアプリ更新試験で、各テストの標準上限を90秒、絶対上限を120秒、失敗時の最大試行を2回に固定した。1件のXCUITestが応答を失ってもジョブ全体を20分占有せず、失敗箇所を結果bundleへ残して再試行できる。
+- 根拠: GitHub Actions run `35583866772`で、iPhoneの`testDocumentSwitchAutosavesEachDocument`とiPadの更新試験が進行しないままジョブの20分上限に達した。直前runでは同じ構成が成功し、今回もiPad通常試験・iPhone更新試験を含む他4ジョブは成功しているため、機能削除やskipではなく個別テストの停止制御を追加する。
+- 主なファイル: `.github/workflows/ci.yml`、`scripts/simulate-app-update.sh`
+- テスト: `xcodebuild -help`で利用中のXcodeが3つのtimeoutオプションと`-test-iterations`をサポートすることを確認。変更をpushし、iPhone／iPadの通常試験・更新試験を含む全CIジョブを再実行する。
+- 未実施: 変更後CIの結果はpush後に確認する。実機試験の停止監視はTestFlightゲートで別途確認する。
+- 配布影響: アプリ本体の動作は変更しない。CIが無期限に近い待機へ陥ることを防ぎ、実際の失敗を短時間で診断可能にする。
+
 ## 2026-09-21: 個人Team IDを保存しない実機準備確認に対応
 
 - 変更: `scripts/check-device-readiness.sh`が`KNITTING_EDITOR_DEVELOPMENT_TEAM`を一時的なXcodeビルド設定として受け取り、10文字の英大文字・数字であることを検証するようにした。Team IDを`project.yml`や生成Xcodeプロジェクトへ保存せず、Bundle ID・署名Team・Xcode上でオンラインのiOS実機を同じ事前確認で検査できる。
