@@ -289,7 +289,9 @@ final class KnittingEditorUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 15))
-        app.buttons["編み図"].tap()
+        let documents = app.buttons["編み図"]
+        XCTAssertTrue(documents.waitForExistence(timeout: 15), app.debugDescription)
+        documents.tap()
         let newDocument = app.buttons["新しい編み図"]
         XCTAssertTrue(newDocument.waitForExistence(timeout: 10))
         newDocument.tap()
@@ -426,9 +428,11 @@ final class KnittingEditorUITests: XCTestCase {
 
     private func cancelExportAlert(in app: XCUIApplication) {
         let cancel = app.buttons["キャンセル"]
+        let fileSave = app.buttons["ファイルに保存"]
         XCTAssertTrue(cancel.waitForExistence(timeout: 15))
         cancel.tap()
         assertDisappears(cancel, from: app)
+        assertDisappears(fileSave, from: app)
     }
 
     private func waitForDocumentSave(named name: String, in webView: XCUIElement) {

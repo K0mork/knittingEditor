@@ -271,8 +271,7 @@ struct WebViewContainer: UIViewRepresentable {
             }
             pendingExportURL = temporaryURL
 
-            let alertStyle: UIAlertController.Style = UIDevice.current.userInterfaceIdiom == .pad ? .alert : .actionSheet
-            let alert = UIAlertController(title: "ファイルを保存", message: filename, preferredStyle: alertStyle)
+            let alert = UIAlertController(title: "ファイルを保存", message: filename, preferredStyle: .alert)
             alert.addAction(UIAlertAction(title: "ファイルに保存", style: .default) { [weak self, weak presenter] _ in
                 DispatchQueue.main.async { [weak self, weak presenter] in
                     guard let self, let presenter, let pendingExportURL = self.pendingExportURL else { return }
