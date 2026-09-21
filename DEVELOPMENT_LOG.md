@@ -11,6 +11,13 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-21: M6提出資料のCI証跡を最新成功runへ更新
+
+- 変更: `docs/APP_STORE_CHECKLIST.md`のCI証跡を、Web、Release Archive、iPhone／iPad UIテスト、iPhone／iPad app-updateの全6ジョブが成功したrun `35561142482`へ更新した。M6の実機・署名・TestFlight項目は未完了のまま維持した。
+- 検証: `sh scripts/check-app-store-docs.sh`、`sh scripts/check-release-assets.sh /Users/komorikouki/Library/Developer/XcodeBuildMCP/workspaces/knittingEditor_app-2e497d8fe210/DerivedData/knittingEditor-41ffcc54eb3e/Build/Products/Debug-iphonesimulator/knittingEditor.app`、`git diff --check`を実行し、いずれも成功した。`sh scripts/check-device-readiness.sh`はApple Developer Team未設定・オンライン実機0台のため期待どおり非ゼロで終了した。
+- 未実施: 署名済みArchive、実機の機内モード／Files／アクセシビリティ／性能確認、TestFlight内部テスト、App Store Connect登録。外部アカウントと端末が必要なため、Simulatorと静的検証で完了扱いにしない。
+- 配布影響: アプリ本体、保存形式、Bundle ID、外部通信方針は変更しない。提出前チェックリストの証跡リンクだけを更新した。
+
 ## 2026-09-21: 実UIスクリーンショットQAで狭幅レイアウトを改善
 
 - 変更: iPhone Simulatorの実画面で、上部ツールバーの「範囲」が横スクロールなしで見えるよう、狭幅時の余白・記号選択幅・ボタン幅を調整した。iPadの右側「ブロック」と記号ピッカーの「閉じる」が2行へ折り返されないよう、操作ラベルを1行固定にした。修正後のiPhone／iPad実画面をApp Storeスクリーンショット下書きへ更新した。
