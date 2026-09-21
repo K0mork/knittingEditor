@@ -47,15 +47,17 @@ final class LocalWebSchemeHandler: NSObject, WKURLSchemeHandler {
             ? [relativePath.isEmpty ? "index.html" : "\(relativePath)/index.html"]
             : [relativePath, "\(relativePath)/index.html"]
 
+        // 同梱Web資産の外側は配信しない。Webディレクトリを解決できない場合も、
+        // アプリバンドル全体へ範囲を広げず何も返さない。
+        guard let webRoot = bundle.url(forResource: "Web", withExtension: nil)?.standardizedFileURL else { return nil }
+
         for candidate in candidates {
             guard let resourceURL = Self.bundleURL(for: candidate, bundle: bundle) else { continue }
             var isDirectory = ObjCBool(false)
             guard FileManager.default.fileExists(atPath: resourceURL.path, isDirectory: &isDirectory), !isDirectory.boolValue else { continue }
 
             let standardizedResource = resourceURL.standardizedFileURL
-            let standardizedRoot = (bundle.url(forResource: "Web", withExtension: nil) ?? bundle.bundleURL)
-                .standardizedFileURL
-            guard standardizedResource.path.hasPrefix(standardizedRoot.path + "/") else { return nil }
+            guard standardizedResource.path.hasPrefix(webRoot.path + "/") else { return nil }
             return standardizedResource
         }
         return nil
@@ -78,10 +80,6 @@ final class LocalWebSchemeHandler: NSObject, WKURLSchemeHandler {
             forResource: name,
             withExtension: ext.isEmpty ? nil : ext,
             subdirectory: webDirectory
-        ) ?? bundle.url(
-            forResource: name,
-            withExtension: ext.isEmpty ? nil : ext,
-            subdirectory: directory == "." ? nil : directory
         )
     }
 

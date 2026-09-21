@@ -100,6 +100,19 @@ final class LocalWebSchemeHandlerTests: XCTestCase {
         )
     }
 
+    func testResourceURLRefusesAssetsOutsideTheWebDirectory() {
+        let bundle = Bundle(for: LocalWebSchemeHandler.self)
+        for path in ["/Info.plist", "/PrivacyInfo.xcprivacy", "/knittingEditor"] {
+            XCTAssertNil(
+                LocalWebSchemeHandler.resourceURL(
+                    for: URL(string: "knitting-local://bundle\(path)")!,
+                    bundle: bundle
+                ),
+                "同梱Web資産の外側を配信しない: \(path)"
+            )
+        }
+    }
+
     func testResourceURLFindsBundledWebAsset() {
         let bundle = Bundle(for: LocalWebSchemeHandler.self)
         XCTAssertNotNil(

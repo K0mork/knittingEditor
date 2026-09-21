@@ -22,9 +22,10 @@
   6. `BoardCanvas`が表示範囲内の起点セルしか走査せず、交差記号やすべり目の起点が画面外へ出ると記号全体が消えていた。最大記号の寸法だけ走査範囲を広げる。
   7. ReactのonWheelはpassiveで登録され`preventDefault`が効かないため、トラックパッドのピンチが盤面ではなくページ全体を拡大していた。非passiveのwheelリスナーへ置き換える。
   8. `parseColor`が`#0f0`を`#0f0000`として読み込んでいた。3桁表記を展開する。
-- 主なファイル: `App/WebViewContainer.swift`、`App/KnittingEditorApp.swift`、`Web/src/App.tsx`、`Web/src/canvas/BoardCanvas.tsx`、`Web/src/model/Board.ts`、`project.yml`
-- テスト: Swift単体テストへ書き出しPickerの分岐、Inbox複製だけを削除する判定、遷移中の配送保留と読み込み表示、ブリッジの拒否条件（未対応MIME、不正ファイル名、空・上限超過payload）を追加。XCUITestへ使い方ページ往復を追加。Web単体テストへ3桁色の展開を追加。`.knit`往復fixtureはSwiftへBase64を複製せず`test-fixtures/`の同一ファイルをテストバンドルへ同梱して読む。
-- 実行コマンド: `npm --prefix Web run typecheck`成功、`npx vitest run`成功（7 files、42 tests）、`npm --prefix Web run build`成功。iPhone 16（iOS 18.2）Simulatorで`xcodebuild test -only-testing:knittingEditorTests`成功（21 tests）、`testGuideNavigationReturnsToUsableEditor`、`testEditAndRelaunchRestoresLocalDocument`、`testCoreEditorControlsExposeAccessibleNamesAndState`、`testPngAndPdfExportsReachNativeFileActions`、`testLaunchShowsLocalEditorContainer`成功。
+  9. `LocalWebSchemeHandler`がWebディレクトリを解決できない場合にアプリバンドル全体を配信範囲へ広げる書き方になっていた。解決できなければ何も返さない。Web資産の外側を探す不要なフォールバックも削除した。
+- 主なファイル: `App/WebViewContainer.swift`、`App/KnittingEditorApp.swift`、`App/LocalWebSchemeHandler.swift`、`Web/src/App.tsx`、`Web/src/canvas/BoardCanvas.tsx`、`Web/src/model/Board.ts`、`project.yml`
+- テスト: Swift単体テストへ書き出しPickerの分岐、Inbox複製だけを削除する判定、遷移中の配送保留と読み込み表示、ブリッジの拒否条件（未対応MIME、不正ファイル名、空・上限超過payload）を追加。XCUITestへ使い方ページ往復を追加。同梱Web資産の外側（`Info.plist`、`PrivacyInfo.xcprivacy`、実行ファイル）を配信しないことも検査する。Web単体テストへ3桁色の展開を追加。`.knit`往復fixtureはSwiftへBase64を複製せず`test-fixtures/`の同一ファイルをテストバンドルへ同梱して読む。
+- 実行コマンド: `npm --prefix Web run typecheck`成功、`npx vitest run`成功（7 files、42 tests）、`npm --prefix Web run build`成功。iPhone 16（iOS 18.2）Simulatorで`xcodebuild test -only-testing:knittingEditorTests`成功（22 tests）、`testGuideNavigationReturnsToUsableEditor`、`testEditAndRelaunchRestoresLocalDocument`、`testCoreEditorControlsExposeAccessibleNamesAndState`、`testPngAndPdfExportsReachNativeFileActions`、`testLaunchShowsLocalEditorContainer`成功。
 - 未実施: 実機のFiles保存・AirDrop往復（SimulatorのDocument Pickerは外部ウィンドウでXCTestから操作できない）。iPad Simulatorでの再実行、iPadOS 27での再確認、トラックパッドのピンチ操作の実機確認。書き出しPickerの分岐はSimulatorのUI操作では再現できないため単体テストで検証した。
 - 配布影響: 保存形式、記号ID、Bundle ID、オフライン通信方針は変更しない。書き出し後に不要な復元が起きなくなり、Inboxの取り込みファイルが端末へ残らなくなる。
 
