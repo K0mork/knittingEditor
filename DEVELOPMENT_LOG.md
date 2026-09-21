@@ -11,6 +11,14 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-21: Dynamic TypeをiOS文字サイズ設定へ連動
+
+- 変更: Web UIのルートフォントを`-apple-system-body`へ接続し、既存の`rem`指定がiOS/iPadOSのDynamic Type設定に追従するようにした。最大アクセシビリティサイズでも横方向へ画面が拡張しないようGrid/Flexの最小幅を明示し、主要ツール、編み図管理、保存・出力へ到達できるXCUITestを追加した。
+- 主なファイル: `Web/src/styles.css`、`UITests/KnittingEditorUITests/KnittingEditorUITests.swift`、`TODO.md`
+- テスト: `npm --prefix Web test -- --run`（39件成功）。iPhone 16／iPad (10th generation) Simulatorで`UICTContentSizeCategoryAccessibilityXXXL`を指定した追加XCUITestが各1件成功。iPhone初回検証で横方向のオーバーフローと、保存パネル内の画面外操作を検出したため、レイアウトを修正し、小刻みなスクロールで各操作へ到達可能であることを検証して再実行した。
+- 未実施: 実機での最大Dynamic Type表示、文字の切れ・重なり、VoiceOver併用、各言語設定。Simulator結果だけではM4実機項目を完了扱いにしない。
+- 配布影響: データ形式、保存、Bundle ID、外部通信方針は変更しない。システムの文字サイズ設定をアプリ内Web UIへ反映する。
+
 ## 2026-09-21: レスポンシブ表示とアクセシビリティのUI回帰検証を追加
 
 - 変更: 描画・消去・範囲・貼付モードの選択状態を`aria-pressed`で支援技術へ公開した。縦横回転後の主要操作、狭幅ツールバーの横スクロール、キーボード表示中のアプリ内ダイアログ、Canvas名とモード状態をXCUITestで検証する。

@@ -326,6 +326,50 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertTrue(app.buttons["閉じる"].isHittable, app.debugDescription)
     }
 
+    func testAccessibilityExtraExtraExtraLargeKeepsPrimaryFlowsUsable() {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            "-UIPreferredContentSizeCategoryName",
+            "UICTContentSizeCategoryAccessibilityXXXL",
+        ]
+        app.launch()
+
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 15))
+        assertPrimaryControlsAreUsable(in: app)
+
+        app.buttons["編み図"].tap()
+        XCTAssertTrue(app.buttons["新しい編み図"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["閉じる"].isHittable, app.debugDescription)
+        app.buttons["閉じる"].tap()
+
+        app.buttons["保存"].tap()
+        let drawer = app.otherElements
+            .matching(NSPredicate(format: "label == %@", "補足"))
+            .firstMatch
+        XCTAssertTrue(drawer.waitForExistence(timeout: 5), app.debugDescription)
+        assertHittableAfterScrolling(app.buttons["PNGを保存"], in: drawer, app: app)
+        assertHittableAfterScrolling(app.buttons["PDFを保存"], in: drawer, app: app)
+        assertHittableAfterScrolling(app.buttons["この編み図"], in: drawer, app: app)
+    }
+
+    private func assertHittableAfterScrolling(
+        _ element: XCUIElement,
+        in container: XCUIElement,
+        app: XCUIApplication,
+        maximumScrolls: Int = 24
+    ) {
+        XCTAssertTrue(element.waitForExistence(timeout: 10), app.debugDescription)
+        let dragStart = container.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.78))
+        let dragEnd = container.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.62))
+        for _ in 0..<maximumScrolls {
+            if element.isHittable {
+                return
+            }
+            dragStart.press(forDuration: 0.05, thenDragTo: dragEnd)
+        }
+        XCTAssertTrue(element.isHittable, app.debugDescription)
+    }
+
     private func cancelDocumentPicker(in app: XCUIApplication) {
         let localizedCancel = app.descendants(matching: .any)
             .matching(identifier: "キャンセル")
