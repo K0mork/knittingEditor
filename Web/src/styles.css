@@ -18,7 +18,7 @@ html, body, #root { width: 100%; height: 100%; margin: 0; overflow: hidden; }
 button, input, select { font: inherit; }
 button { min-width: 44px; min-height: 44px; border: 1px solid var(--border); border-radius: 10px; background: var(--paper); color: inherit; padding: 8px 13px; cursor: pointer; }
 button:hover { border-color: var(--green); }
-button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid rgba(61, 122, 74, .3); outline-offset: 2px; }
+button:focus-visible, input:focus-visible, select:focus-visible, [tabindex="-1"]:focus-visible { outline: 3px solid rgba(61, 122, 74, .3); outline-offset: 2px; }
 button.primary, button.active { color: white; background: var(--green); border-color: var(--green); }
 button.danger { color: #9b2929; border-color: #d8aaaa; }
 button:disabled { opacity: .45; cursor: not-allowed; }

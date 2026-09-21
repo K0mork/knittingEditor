@@ -69,7 +69,7 @@
 - [ ] タッチ、ピンチ、パン、マウス、トラックパッドを実機確認する
 - [ ] Apple Pencilを通常入力として確認する
 - [x] `prompt`／`confirm`をアプリ内ダイアログへ置換する
-- [ ] VoiceOverラベル、フォーカス順、状態通知を整える
+- [x] VoiceOverラベル、パネル／ダイアログのフォーカス順・復帰、モード／保存状態通知を整える（実機VoiceOver確認は別途必要）
 - [x] Canvasと保存状態へアクセシブルな名前・状態通知を付与する（実機VoiceOver確認は別途必要）
 - [x] Dynamic Type対応のiOS system text style・rem縮尺と主要操作領域44px以上を実装し、最大アクセシビリティサイズをSimulatorで回帰検証する（実機表示確認は別途必要）
 - [ ] Dynamic Type、VoiceOverフォーカス順、全画面レイアウトを実機確認する

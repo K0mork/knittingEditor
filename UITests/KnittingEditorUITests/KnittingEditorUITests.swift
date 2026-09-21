@@ -320,6 +320,18 @@ final class KnittingEditorUITests: XCTestCase {
             .firstMatch
         XCTAssertTrue(canvas.waitForExistence(timeout: 10), webView.debugDescription)
         XCTAssertTrue(canvas.label.contains("描画モード"), canvas.debugDescription)
+        XCTAssertTrue(webView.staticTexts
+            .matching(NSPredicate(format: "label CONTAINS %@", "保存済み"))
+            .firstMatch
+            .waitForExistence(timeout: 10), webView.debugDescription)
+        XCTAssertTrue(webView.staticTexts["選択範囲なし"]
+            .waitForExistence(timeout: 10), webView.debugDescription)
+
+        app.buttons["保存"].tap()
+        XCTAssertTrue(app.staticTexts["保存・出力"].waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertTrue(app.buttons["閉じる"].isHittable, app.debugDescription)
+        app.buttons["閉じる"].tap()
+        XCTAssertTrue(app.buttons["保存"].isHittable, app.debugDescription)
 
         stitchPicker.tap()
         XCTAssertTrue(app.staticTexts["編み目記号"].waitForExistence(timeout: 10))

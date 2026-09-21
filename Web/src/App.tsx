@@ -90,6 +90,9 @@ export default function App() {
   const [dirty, setDirty] = useState(false);
   const [dialog, setDialog] = useState<DialogRequest>();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
+  const panelReturnFocusRef = useRef<HTMLElement | undefined>(undefined);
+  const panelWasOpenRef = useRef(false);
   const activeDocumentIdRef = useRef<string | undefined>(undefined);
   const editGenerationRef = useRef(0);
   const notificationTimeoutRef = useRef<number | undefined>(undefined);
@@ -199,9 +202,23 @@ export default function App() {
   };
   const togglePanel = (nextPanel: Panel) => {
     const opening = panel !== nextPanel;
+    if (opening && document.activeElement instanceof HTMLElement) panelReturnFocusRef.current = document.activeElement;
     setPanel(opening ? nextPanel : undefined);
     if (opening) trackAnalyticsEvent('feature_opened', { feature_name: nextPanel });
   };
+
+  useEffect(() => {
+    const wasOpen = panelWasOpenRef.current;
+    panelWasOpenRef.current = panel !== undefined;
+    if (panel) {
+      const frame = requestAnimationFrame(() => panelRef.current?.querySelector<HTMLElement>('h2')?.focus());
+      return () => cancelAnimationFrame(frame);
+    }
+    if (wasOpen) {
+      const frame = requestAnimationFrame(() => panelReturnFocusRef.current?.focus());
+      return () => cancelAnimationFrame(frame);
+    }
+  }, [panel]);
 
   const switchDocument = async (document: ChartDocument, saveCurrent = true) => {
     if (saveCurrent && dirty && activeDocument && board) await saveDocument(activeDocument, board);
@@ -385,15 +402,17 @@ export default function App() {
   }, []);
 
   const currentStitch = useMemo(() => STITCHES.find((item) => item.key === selectedStitch) ?? STITCHES[0], [selectedStitch]);
+  const modeLabel = mode === 'draw' ? '描画' : mode === 'erase' ? '消去' : mode === 'select' ? '範囲選択' : '貼り付け';
+  const panelTitle = panel === 'documents' ? '編み図' : panel === 'grid' ? '盤面設定' : panel === 'blocks' ? 'ブロック' : '保存・出力';
   if (initializationError) return <main className="loading" role="alert">編み図を読み込めませんでした：{initializationError}<button onClick={() => window.location.reload()}>再読み込み</button></main>;
   if (!board || !activeDocument) return <main className="loading">編み図を読み込んでいます…</main>;
 
   return <div className="app-shell">
     <header className="app-header">
-      <div className="app-title"><h1>棒針編み図エディタ</h1><p aria-live="polite" aria-atomic="true">{activeDocument.name}{dirty ? '（保存中…）' : ''}</p></div>
+      <div className="app-title"><h1>棒針編み図エディタ</h1><p aria-live="polite" aria-atomic="true">{activeDocument.name}<span aria-hidden="true">{dirty ? '（保存中…）' : ''}</span><span className="visually-hidden">、{dirty ? '保存中' : '保存済み'}</span></p></div>
       <div className="header-actions">
         <a className="header-guide" href="/guide/">使い方</a>
-        <button className="header-document" onClick={() => togglePanel('documents')}>編み図</button>
+        <button className="header-document" aria-controls="app-drawer" aria-expanded={panel === 'documents'} onClick={() => togglePanel('documents')}>編み図</button>
       </div>
     </header>
 
@@ -434,15 +453,17 @@ export default function App() {
         <div className="gesture-hint">1本指：{mode === 'erase' ? '消去' : mode === 'select' ? '範囲選択' : mode === 'paste' ? '貼り付け' : '描画'}　2本指：移動・拡大</div>
       </section>
 
+      <p className="visually-hidden" role="status" aria-live="polite" aria-atomic="true">{modeLabel}モード。{selection ? '選択範囲あり' : '選択範囲なし'}</p>
+
       <nav className="action-bar" aria-label="操作メニュー">
-        <button onClick={() => togglePanel('grid')}>盤面</button>
-        <button onClick={() => togglePanel('blocks')}>ブロック</button>
-        <button onClick={() => togglePanel('export')}>保存</button>
+        <button aria-controls="app-drawer" aria-expanded={panel === 'grid'} onClick={() => togglePanel('grid')}>盤面</button>
+        <button aria-controls="app-drawer" aria-expanded={panel === 'blocks'} onClick={() => togglePanel('blocks')}>ブロック</button>
+        <button aria-controls="app-drawer" aria-expanded={panel === 'export'} onClick={() => togglePanel('export')}>保存</button>
       </nav>
     </main>
 
-    {panel && <aside className="drawer">
-      <div className="drawer-heading"><h2>{panel === 'documents' ? '編み図' : panel === 'grid' ? '盤面設定' : panel === 'blocks' ? 'ブロック' : '保存・出力'}</h2><button onClick={() => setPanel(undefined)}>閉じる</button></div>
+    {panel && <aside ref={panelRef} id="app-drawer" className="drawer" aria-labelledby="app-drawer-title">
+      <div className="drawer-heading"><h2 id="app-drawer-title" tabIndex={-1}>{panelTitle}</h2><button onClick={() => setPanel(undefined)}>閉じる</button></div>
       {panel === 'documents' && <>
         <button className="primary" onClick={() => void createNewDocument()}>新しい編み図</button>
         <div className="document-list">{documents.map((document) => <div className={document.id === activeDocument.id ? 'document active' : 'document'} key={document.id}>

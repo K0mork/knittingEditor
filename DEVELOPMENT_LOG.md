@@ -11,6 +11,14 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-21: VoiceOver向けの状態通知とパネルフォーカスを整備
+
+- 変更: 保存済み／保存中、編集モード、選択状態をライブリージョンで通知する。編み図・盤面・ブロック・保存ボタンへパネルの開閉状態と関連先を付与し、開いたパネルの見出しへフォーカスを移し、閉じた後は起点のボタンへ戻す。パネル見出しもアクセシブル名として関連付けた。
+- 主なファイル: `Web/src/App.tsx`、`Web/src/styles.css`、`UITests/KnittingEditorUITests/KnittingEditorUITests.swift`、`TODO.md`
+- テスト: `npm --prefix Web test -- --run`（39件成功）、`npm --prefix Web run typecheck`（成功）。`testCoreEditorControlsExposeAccessibleNamesAndState`をiPhone 16／iPad (10th generation) Simulatorで各1件成功。初回iPhone試験ではWebKitが状態文を複数のStaticTextへ分割することを確認し、公開された状態文の構成要素を検証するよう試験を修正して再実行した。
+- 未実施: VoiceOverを有効にした実機での読み上げ順、ローター操作、外付けキーボード操作。実機確認項目は未完了のまま維持する。
+- 配布影響: データ形式や保存処理は変更しない。支援技術へ公開する名前、状態、フォーカス遷移のみを改善する。
+
 ## 2026-09-21: Dynamic Type UIテストのXcode 15互換性を修正
 
 - 変更: 保存ドロワーのスクロール操作をXCUITestの要素型やローカライズされたランドマーク名へ依存させず、iPhone/iPad共通で保存パネルが表示される画面右側を操作するよう修正した。
