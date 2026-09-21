@@ -2,11 +2,19 @@ import Foundation
 import XCTest
 @testable import knittingEditor
 
-private let interopFixtureBase64 = "H4sIALngr2oAA22OwUoDMRCG32XOiUyjtHRvq4J4FNSD0kOaTGvoblKys7ZQevDsTbz5Aj6C+DxC8S2cSHvrMHwM/P/M/BuYpdxahgoWMTCHONfkA6cMCp4pdyFFqIyCjgO7pwvLtknz+4NwqoDWy5SZfF1uGDRDjWNt8Bax+u8TRHyQYz65vqXIHVSPGwhe3LOw5j6TXtFUIw7EFG1LIuw+vn6+335fXnfvn3uTiDmtZFmyuNTIIL8dNWWC+qaWui64LDgvqO8Krgpk2WWy+5SDkRmOxngmwRAV9Et/VNlOFEyb5BYl8WT7B+a2uSkqAQAA"
-
 final class NativeBridgeMessageTests: XCTestCase {
+    /// Web側の復元テストと同じfixtureファイルを読む。Base64をテストへ複製すると、
+    /// fixtureを更新したときに往復互換が壊れても気付けない。
+    private func interopFixtureBase64() throws -> String {
+        let url = try XCTUnwrap(
+            Bundle(for: Self.self).url(forResource: "knitting-editor-v2-interop.knit", withExtension: "b64"),
+            "`.knit`往復fixtureがテストバンドルへ同梱されていません"
+        )
+        return try String(contentsOf: url, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     func testInteropFixtureSurvivesNativeBridgeEnvelope() throws {
-        let fixtureData = try XCTUnwrap(Data(base64Encoded: interopFixtureBase64))
+        let fixtureData = try XCTUnwrap(Data(base64Encoded: try interopFixtureBase64()))
 
         let message = NativeBridgeMessage.decode(body: [
             "version": 1,
@@ -42,6 +50,49 @@ final class NativeBridgeMessageTests: XCTestCase {
             "dataBase64": Data([1]).base64EncodedString(),
         ])
         XCTAssertEqual(result, .failure(.invalidFile))
+    }
+
+    func testDecodeRejectsUnsupportedMimeTypeAndUnsafeFilenames() {
+        func decode(filename: String, mimeType: String = "application/gzip") -> Result<NativeBridgeMessage, NativeBridgeMessage.MessageError> {
+            NativeBridgeMessage.decode(body: [
+                "version": 1,
+                "type": "exportFile",
+                "filename": filename,
+                "mimeType": mimeType,
+                "dataBase64": Data([1]).base64EncodedString(),
+            ])
+        }
+
+        XCTAssertEqual(decode(filename: "chart.knit", mimeType: "text/html"), .failure(.invalidFile))
+        XCTAssertEqual(decode(filename: "sub/chart.knit"), .failure(.invalidFile))
+        XCTAssertEqual(decode(filename: "sub\\chart.knit"), .failure(.invalidFile))
+        XCTAssertEqual(decode(filename: "chart\u{0}.knit"), .failure(.invalidFile))
+        XCTAssertEqual(decode(filename: "chart\n.knit"), .failure(.invalidFile))
+        XCTAssertEqual(decode(filename: "   "), .failure(.invalidFile))
+        XCTAssertEqual(decode(filename: String(repeating: "a", count: 181)), .failure(.invalidFile))
+    }
+
+    func testDecodeRejectsEmptyAndOversizedPayloads() {
+        XCTAssertEqual(
+            NativeBridgeMessage.decode(body: [
+                "version": 1,
+                "type": "exportFile",
+                "filename": "chart.png",
+                "mimeType": "image/png",
+                "dataBase64": "",
+            ]),
+            .failure(.invalidFile)
+        )
+        XCTAssertEqual(
+            NativeBridgeMessage.decode(body: [
+                "version": 1,
+                "type": "exportFile",
+                "filename": "chart.png",
+                "mimeType": "image/png",
+                "dataBase64": Data(count: NativeBridgeLimits.maxFileBytes + 1).base64EncodedString(),
+            ]),
+            .failure(.fileTooLarge)
+        )
     }
 
     func testDecodeRejectsUnknownTypeAndVersion() {

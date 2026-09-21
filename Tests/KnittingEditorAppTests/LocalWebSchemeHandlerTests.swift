@@ -8,8 +8,70 @@ final class LocalWebSchemeHandlerTests: XCTestCase {
         let model = WebViewModel()
 
         XCTAssertFalse(model.webContentReady)
+        XCTAssertTrue(model.isPreparingEditor)
         model.webContentDidBecomeReady()
         XCTAssertTrue(model.webContentReady)
+        XCTAssertFalse(model.isPreparingEditor)
+    }
+
+    @MainActor
+    func testNavigationSuspendsBridgeDeliveryUntilEditorReportsReadyAgain() {
+        let model = WebViewModel()
+        model.webContentDidBecomeReady()
+
+        model.webContentDidStartNavigation(to: URL(string: "knitting-local://bundle/guide/index.html"))
+        XCTAssertFalse(model.webContentReady, "使い方ページではバックアップイベントの購読者が存在しない")
+        XCTAssertFalse(model.isPreparingEditor, "編集画面以外で読み込み表示を出したままにしない")
+
+        model.webContentDidStartNavigation(to: LocalWebSchemeHandler.indexURL)
+        XCTAssertFalse(model.webContentReady)
+        XCTAssertTrue(model.isPreparingEditor)
+
+        model.webContentDidBecomeReady()
+        XCTAssertTrue(model.webContentReady)
+        XCTAssertFalse(model.isPreparingEditor)
+    }
+
+    func testEditorPageDetectionAcceptsOnlyBundledIndex() {
+        XCTAssertTrue(WebViewModel.isEditorPage(LocalWebSchemeHandler.indexURL))
+        XCTAssertTrue(WebViewModel.isEditorPage(URL(string: "knitting-local://bundle/")))
+        XCTAssertFalse(WebViewModel.isEditorPage(URL(string: "knitting-local://bundle/guide/")))
+        XCTAssertFalse(WebViewModel.isEditorPage(URL(string: "https://knittingeditor.com/index.html")))
+        XCTAssertFalse(WebViewModel.isEditorPage(nil))
+    }
+
+    func testExportPickerResultIsNotTreatedAsBackupImport() {
+        let exported = URL(fileURLWithPath: "/private/var/mobile/Documents/chart.knit")
+
+        XCTAssertEqual(
+            WebViewContainer.Coordinator.pickerOutcome(purpose: .exportFile, urls: [exported]),
+            .finishExport,
+            "書き出し完了のURLを取り込むと、保存した編み図が複製されてしまう"
+        )
+        XCTAssertEqual(
+            WebViewContainer.Coordinator.pickerOutcome(purpose: .importBackup, urls: [exported]),
+            .importBackup(exported)
+        )
+        XCTAssertEqual(WebViewContainer.Coordinator.pickerOutcome(purpose: .importBackup, urls: []), .ignore)
+        XCTAssertEqual(WebViewContainer.Coordinator.pickerOutcome(purpose: nil, urls: [exported]), .ignore)
+    }
+
+    func testOnlyInboxCopiesAreDeletedAfterImport() {
+        let documents = URL(fileURLWithPath: "/private/var/mobile/Containers/Data/Application/App/Documents", isDirectory: true)
+
+        XCTAssertTrue(
+            WebViewModel.isImportedCopy(documents.appendingPathComponent("Inbox/chart.knit"), documentsDirectory: documents)
+        )
+        XCTAssertFalse(
+            WebViewModel.isImportedCopy(documents.appendingPathComponent("chart.knit"), documentsDirectory: documents),
+            "in-place編集を有効化しても利用者の原本を削除しない"
+        )
+        XCTAssertFalse(
+            WebViewModel.isImportedCopy(URL(fileURLWithPath: "/private/var/mobile/InboxOther/chart.knit"), documentsDirectory: documents)
+        )
+        XCTAssertFalse(
+            WebViewModel.isImportedCopy(URL(string: "knitting-local://bundle/chart.knit")!, documentsDirectory: documents)
+        )
     }
 
     func testEditorWebViewStartsWithNonZeroFrame() {

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Board, cellColor, cellStitchId, colorHex, type PatternBlock, type Point, type Rect } from '../model/Board';
-import { STITCH_BY_ID, STITCH_BY_KEY } from '../stitches/catalog';
+import { STITCH_BY_ID, STITCH_BY_KEY, STITCHES } from '../stitches/catalog';
 import { drawGlyph } from '../stitches/glyphs';
 
 export type CanvasMode = 'draw' | 'erase' | 'select' | 'paste';
@@ -22,6 +22,10 @@ interface Viewport { x: number; y: number; cell: number }
 interface PointerPosition { x: number; y: number }
 
 const LABEL_SIZE = 28;
+// 複数セルを占める記号は、起点セルが表示範囲の外にあっても一部が画面へかかる。
+// 起点の探索範囲を最大記号の寸法だけ広げ、端で記号が丸ごと消えないようにする。
+const MAX_STITCH_WIDTH = Math.max(...STITCHES.map((stitch) => stitch.width));
+const MAX_STITCH_HEIGHT = Math.max(...STITCHES.map((stitch) => stitch.height));
 
 function rasterLine(from: Point, to: Point): Point[] {
   const points: Point[] = [];
@@ -102,8 +106,10 @@ export function BoardCanvas(props: Props) {
     context.lineWidth = 1;
     context.stroke();
 
-    for (let row = firstRow; row <= lastRow; row++) {
-      for (let col = firstCol; col <= lastCol; col++) {
+    const firstGlyphRow = Math.max(0, firstRow - MAX_STITCH_HEIGHT + 1);
+    const firstGlyphCol = Math.max(0, firstCol - MAX_STITCH_WIDTH + 1);
+    for (let row = firstGlyphRow; row <= lastRow; row++) {
+      for (let col = firstGlyphCol; col <= lastCol; col++) {
         const value = board.valueAt(row, col);
         if (!value) continue;
         const stitch = STITCH_BY_ID.get(cellStitchId(value));
@@ -160,6 +166,30 @@ export function BoardCanvas(props: Props) {
   }, []);
 
   useEffect(requestDraw, [props.revision, props.selection, props.mode, props.pasteBlock]);
+
+  // ReactのonWheelはpassiveで登録されるためpreventDefaultが効かず、
+  // トラックパッドのピンチが盤面ではなくページ全体を拡大してしまう。
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const handleWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      const position = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+      const view = viewportRef.current;
+      if (event.ctrlKey || event.metaKey) {
+        const worldX = (position.x - view.x) / view.cell;
+        const worldY = (position.y - view.y) / view.cell;
+        const cell = Math.min(72, Math.max(4, view.cell * Math.exp(-event.deltaY * 0.002)));
+        viewportRef.current = { x: position.x - worldX * cell, y: position.y - worldY * cell, cell };
+      } else {
+        viewportRef.current = { ...view, x: view.x - event.deltaX, y: view.y - event.deltaY };
+      }
+      requestDraw();
+    };
+    canvas.addEventListener('wheel', handleWheel, { passive: false });
+    return () => canvas.removeEventListener('wheel', handleWheel);
+  }, []);
 
   const eventPosition = (event: React.PointerEvent<HTMLCanvasElement>): PointerPosition => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -283,21 +313,6 @@ export function BoardCanvas(props: Props) {
     requestDraw();
   };
 
-  const handleWheel = (event: React.WheelEvent<HTMLCanvasElement>) => {
-    event.preventDefault();
-    const view = viewportRef.current;
-    if (event.ctrlKey || event.metaKey) {
-      const position = eventPosition(event as unknown as React.PointerEvent<HTMLCanvasElement>);
-      const worldX = (position.x - view.x) / view.cell;
-      const worldY = (position.y - view.y) / view.cell;
-      const cell = Math.min(72, Math.max(4, view.cell * Math.exp(-event.deltaY * 0.002)));
-      viewportRef.current = { x: position.x - worldX * cell, y: position.y - worldY * cell, cell };
-    } else {
-      viewportRef.current = { ...view, x: view.x - event.deltaX, y: view.y - event.deltaY };
-    }
-    requestDraw();
-  };
-
   const modeLabel = props.mode === 'draw' ? '描画' : props.mode === 'erase' ? '消去' : props.mode === 'select' ? '範囲選択' : '貼り付け';
   const selectionLabel = props.selection
     ? `選択範囲は${props.selection.bottom - props.selection.top + 1}段、${props.selection.right - props.selection.left + 1}目`
@@ -317,7 +332,6 @@ export function BoardCanvas(props: Props) {
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerEnd}
       onPointerCancel={handlePointerEnd}
-      onWheel={handleWheel}
     />
   </>;
 }

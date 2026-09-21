@@ -30,7 +30,7 @@ struct ContentView: View {
                 .accessibilityLabel("棒針編み図エディタ")
                 .accessibilityIdentifier("knittingEditorWebView")
 
-            if !model.webContentReady {
+            if model.isPreparingEditor {
                 Color(.systemBackground)
                     .ignoresSafeArea()
                 VStack(spacing: 12) {

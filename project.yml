@@ -46,6 +46,9 @@ targets:
     platform: iOS
     sources:
       - path: Tests/KnittingEditorAppTests
+      # Web側と同じ`.knit`バイト列でブリッジを検証する。テストへ複製すると無言で乖離する。
+      - path: test-fixtures/knitting-editor-v2-interop.knit.b64
+        buildPhase: resources
     dependencies:
       - target: knittingEditor
     settings:

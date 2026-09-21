@@ -27,6 +27,7 @@ type DialogRequest =
   | { kind: 'confirm'; title: string; resolve: (value: boolean) => void };
 const STITCH_CATEGORY_ORDER: StitchCategory[] = ['basic', 'decrease', 'cable', 'twist', 'utility'];
 export const STORAGE_INITIALIZATION_TIMEOUT_MS = 10_000;
+export const GUIDE_NAVIGATION_SAVE_TIMEOUT_MS = 2_000;
 
 function useModalFocus<T extends HTMLElement>(onEscape: () => void, initialSelector?: string) {
   const ref = useRef<T | null>(null);
@@ -152,7 +153,7 @@ export default function App() {
       }).catch(() => setMessage('自動保存に失敗しました。バックアップを保存してください。'));
     }, 400);
     return () => clearTimeout(timer);
-  }, [dirty, revision, activeDocument?.id, board]);
+  }, [dirty, revision, activeDocument, board, refreshDocuments]);
 
   useEffect(() => {
     const handler = (event: BeforeUnloadEvent) => {
@@ -394,6 +395,17 @@ export default function App() {
   restoreRef.current = restore;
   notifyRef.current = notify;
 
+  // 使い方ページへの遷移でReactは破棄される。WKWebViewはbeforeunloadの確認を
+  // 表示しないため、保留中の自動保存を完了させてから移動する。
+  const openGuide = useCallback((event: React.MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    const destination = event.currentTarget.href;
+    // 保存が滞っても使い方ページを開けなくならないよう、待ち時間を区切る。
+    void withTimeout(flushPendingSave(), GUIDE_NAVIGATION_SAVE_TIMEOUT_MS, '保存の完了を待てませんでした')
+      .catch(() => false)
+      .finally(() => window.location.assign(destination));
+  }, [flushPendingSave]);
+
   useEffect(() => {
     const removeBackupListener = listenNativeBackupSelected(({ filename, dataBase64 }) => {
       try {
@@ -422,7 +434,7 @@ export default function App() {
     <header className="app-header">
       <div className="app-title"><h1>棒針編み図エディタ</h1><p aria-live="polite" aria-atomic="true">{activeDocument.name}<span aria-hidden="true">{dirty ? '（保存中…）' : ''}</span><span className="visually-hidden">、{dirty ? '保存中' : '保存済み'}</span></p></div>
       <div className="header-actions">
-        <a className="header-guide" href="/guide/">使い方</a>
+        <a className="header-guide" href="/guide/" onClick={openGuide}>使い方</a>
         <button className="header-document" aria-controls="app-drawer" aria-expanded={panel === 'documents'} onClick={() => togglePanel('documents')}>編み図</button>
       </div>
     </header>
@@ -497,7 +509,7 @@ export default function App() {
     {dialog && <AppDialog request={dialog} onResolve={resolveDialog} />}
     {busy && <div className="busy" role="status" aria-live="polite"><span className="spinner" />{busy}</div>}
     {message && <div className="toast" role="status" aria-live="polite" aria-atomic="true">{message}</div>}
-    <footer><span>© 2026 棒針編み図エディタ</span><a href="/guide/">使い方</a></footer>
+    <footer><span>© 2026 棒針編み図エディタ</span><a href="/guide/" onClick={openGuide}>使い方</a></footer>
   </div>;
 }
 

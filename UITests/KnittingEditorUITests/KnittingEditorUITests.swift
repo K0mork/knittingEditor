@@ -17,6 +17,31 @@ final class KnittingEditorUITests: XCTestCase {
         )
     }
 
+    /// 使い方ページは同梱資産だがReactの`webReady`を送らない。編集画面と同じ
+    /// 読み込み表示を出したままにせず、戻ったときに編集画面が再び使えることを確認する。
+    func testGuideNavigationReturnsToUsableEditor() {
+        let app = XCUIApplication()
+        app.launch()
+
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 15))
+        let guideLink = app.links["使い方"]
+        XCTAssertTrue(guideLink.waitForExistence(timeout: 15), app.debugDescription)
+        guideLink.tap()
+
+        XCTAssertTrue(
+            app.webViews.firstMatch.staticTexts["ブラウザで棒針編み図を作る方法"].waitForExistence(timeout: 15),
+            app.debugDescription
+        )
+        XCTAssertFalse(
+            app.otherElements["editorLoadingOverlay"].exists,
+            "使い方ページで編集画面の読み込み表示を残さない: \(app.debugDescription)"
+        )
+
+        app.links["棒針編み図エディタへ戻る"].tap()
+        XCTAssertTrue(app.buttons["保存"].waitForExistence(timeout: 20), app.debugDescription)
+        XCTAssertFalse(app.otherElements["editorLoadingOverlay"].exists, app.debugDescription)
+    }
+
     func testSavePanelShowsBackupActions() {
         let app = XCUIApplication()
         app.launch()

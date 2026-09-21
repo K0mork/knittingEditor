@@ -9,11 +9,16 @@ import UniformTypeIdentifiers
 final class WebViewModel {
     @ObservationIgnored weak var webView: WKWebView?
     private var pendingBackup: (data: Data, filename: String)?
+    /// バックアップイベントを購読するReactが動作中かどうか。
     private(set) var webContentReady = false
+    /// 編集画面の読み込み待ちを利用者へ伝えるかどうか。使い方ページのように
+    /// `webReady`を送らない同梱ページでは表示しない。
+    private(set) var isPreparingEditor = true
 
     func attach(_ webView: WKWebView) {
         if self.webView !== webView {
             webContentReady = false
+            isPreparingEditor = true
         }
         self.webView = webView
         flushPendingBackupIfReady()
@@ -21,28 +26,62 @@ final class WebViewModel {
 
     func webContentDidBecomeReady() {
         webContentReady = true
+        isPreparingEditor = false
         flushPendingBackupIfReady()
+    }
+
+    /// 使い方ページなどへ遷移すると、バックアップイベントを購読するReactは
+    /// 一度破棄される。新しい文書が`webReady`を送るまで配送を保留する。
+    func webContentDidStartNavigation(to url: URL?) {
+        webContentReady = false
+        isPreparingEditor = Self.isEditorPage(url)
+    }
+
+    /// 同梱ページのうち、Reactの編集画面を読み込むものだけを判定する。
+    nonisolated static func isEditorPage(_ url: URL?) -> Bool {
+        guard let url, url.scheme == LocalWebSchemeHandler.scheme else { return false }
+        let path = url.path
+        return path.isEmpty || path == "/" || path == "/index.html"
     }
 
     func handleIncomingURL(_ url: URL) {
         guard url.pathExtension.lowercased() == "knit" else {
-            dispatchError("対応していないファイル形式です")
+            presentError("対応していないファイル形式です")
             return
         }
         do {
             let data = try Data(contentsOf: url, options: [.mappedIfSafe])
             guard data.count <= NativeBridgeLimits.maxFileBytes else {
-                dispatchError("バックアップが大きすぎます")
+                presentError("バックアップが大きすぎます")
                 return
             }
-            guard webView != nil, webContentReady else {
-                pendingBackup = (data: data, filename: url.lastPathComponent)
-                return
-            }
-            dispatchBackup(data, filename: url.lastPathComponent)
+            deliverBackup(data, filename: url.lastPathComponent)
+            Self.removeImportedCopy(at: url)
         } catch {
-            dispatchError("バックアップを読み込めませんでした")
+            presentError("バックアップを読み込めませんでした")
         }
+    }
+
+    /// WebViewが準備できていない間は保留し、`webReady`到着後に一度だけ配送する。
+    func deliverBackup(_ data: Data, filename: String) {
+        guard let webView, webContentReady else {
+            pendingBackup = (data: data, filename: filename)
+            return
+        }
+        dispatchBackup(to: webView, data: data, filename: filename)
+    }
+
+    func presentError(_ message: String) {
+        guard let webView else {
+            NSLog("Web側へ通知できないネイティブエラー: %@", message)
+            return
+        }
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: message, options: [.fragmentsAllowed]),
+              let json = String(data: jsonData, encoding: .utf8) else { return }
+        webView.evaluateJavaScript(
+            "window.dispatchEvent(new CustomEvent('knittingEditorNativeError',{detail:\(json)}));",
+            completionHandler: nil
+        )
     }
 
     func flushPendingSave() {
@@ -62,41 +101,43 @@ final class WebViewModel {
         }
     }
 
-    private func dispatchBackup(_ data: Data, filename: String) {
-        guard let webView else { return }
+    /// `LSSupportsOpeningDocumentsInPlace`が無効なため、Files・AirDrop・他アプリからの
+    /// `.knit`は`Documents/Inbox`へ複製される。読み込み後に消さないと端末内へ蓄積する。
+    /// 将来in-place編集を有効化しても利用者の原本を消さないよう、複製だけを対象にする。
+    nonisolated static func isImportedCopy(_ url: URL, documentsDirectory: URL) -> Bool {
+        guard url.isFileURL else { return false }
+        let inbox = documentsDirectory.appendingPathComponent("Inbox", isDirectory: true)
+            .standardizedFileURL.resolvingSymlinksInPath()
+        let candidate = url.standardizedFileURL.resolvingSymlinksInPath()
+        return candidate.path.hasPrefix(inbox.path + "/")
+    }
+
+    nonisolated private static func removeImportedCopy(at url: URL) {
+        guard let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first,
+              isImportedCopy(url, documentsDirectory: documents) else { return }
+        try? FileManager.default.removeItem(at: url)
+    }
+
+    private func dispatchBackup(to webView: WKWebView, data: Data, filename: String) {
         let detail: [String: String] = [
             "filename": filename,
             "dataBase64": data.base64EncodedString(),
         ]
         guard let jsonData = try? JSONSerialization.data(withJSONObject: detail),
               let json = String(data: jsonData, encoding: .utf8) else {
-            dispatchError("バックアップを渡せませんでした")
+            presentError("バックアップを渡せませんでした")
             return
         }
-        evaluateOnWebView(
-            webView,
-            script: "window.dispatchEvent(new CustomEvent('knittingEditorNativeBackupSelected',{detail:\(json)}));"
+        webView.evaluateJavaScript(
+            "window.dispatchEvent(new CustomEvent('knittingEditorNativeBackupSelected',{detail:\(json)}));",
+            completionHandler: nil
         )
     }
 
     private func flushPendingBackupIfReady() {
-        guard webContentReady, let pendingBackup else { return }
+        guard webContentReady, let webView, let pendingBackup else { return }
         self.pendingBackup = nil
-        dispatchBackup(pendingBackup.data, filename: pendingBackup.filename)
-    }
-
-    private func dispatchError(_ message: String) {
-        guard let webView,
-              let jsonData = try? JSONSerialization.data(withJSONObject: message),
-              let json = String(data: jsonData, encoding: .utf8) else { return }
-        evaluateOnWebView(
-            webView,
-            script: "window.dispatchEvent(new CustomEvent('knittingEditorNativeError',{detail:\(json)}));"
-        )
-    }
-
-    private func evaluateOnWebView(_ webView: WKWebView, script: String) {
-        webView.evaluateJavaScript(script, completionHandler: nil)
+        dispatchBackup(to: webView, data: pendingBackup.data, filename: pendingBackup.filename)
     }
 }
 
@@ -148,9 +189,25 @@ struct WebViewContainer: UIViewRepresentable {
     @MainActor
     final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler, UIDocumentPickerDelegate {
         static let messageHandlerName = "knittingEditor"
+
+        /// `UIDocumentPickerViewController`は取り込みと書き出しの両方で
+        /// `documentPicker(_:didPickDocumentsAt:)`を呼ぶ。書き出し完了で受け取ったURLを
+        /// 取り込みとして扱うと、保存した`.knit`がそのまま再インポートされてしまう。
+        enum PickerPurpose: Equatable {
+            case importBackup
+            case exportFile
+        }
+
+        enum PickerOutcome: Equatable {
+            case importBackup(URL)
+            case finishExport
+            case ignore
+        }
+
         private let model: WebViewModel
         private weak var webView: WKWebView?
         private var pendingExportURL: URL?
+        private var pickerPurpose: PickerPurpose?
 
         init(model: WebViewModel) {
             self.model = model
@@ -161,11 +218,17 @@ struct WebViewContainer: UIViewRepresentable {
         }
 
         func detach() {
-            if let pendingExportURL {
-                try? FileManager.default.removeItem(at: pendingExportURL)
-            }
-            pendingExportURL = nil
+            cleanupPendingExport()
+            pickerPurpose = nil
             webView = nil
+        }
+
+        nonisolated static func pickerOutcome(purpose: PickerPurpose?, urls: [URL]) -> PickerOutcome {
+            switch purpose {
+            case .exportFile: return .finishExport
+            case .importBackup: return urls.first.map(PickerOutcome.importBackup) ?? .ignore
+            case nil: return .ignore
+            }
         }
 
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
@@ -182,9 +245,10 @@ struct WebViewContainer: UIViewRepresentable {
                     self?.presentExportOptions(data: data, filename: filename, mimeType: mimeType)
                 }
             case let .failure(error):
-                dispatchError(message: bridgeErrorMessage(error))
+                model.presentError(bridgeErrorMessage(error))
             }
         }
+
         func webView(
             _ webView: WKWebView,
             decidePolicyFor navigationAction: WKNavigationAction,
@@ -208,6 +272,10 @@ struct WebViewContainer: UIViewRepresentable {
             }
         }
 
+        func webView(_ webView: WKWebView, didCommit navigation: WKNavigation?) {
+            model.webContentDidStartNavigation(to: webView.url)
+        }
+
         func webView(
             _ webView: WKWebView,
             didFail navigation: WKNavigation?,
@@ -225,37 +293,61 @@ struct WebViewContainer: UIViewRepresentable {
         }
 
         func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
-            guard let url = urls.first else { return }
-            do {
-                let data = try Data(contentsOf: url, options: [.mappedIfSafe])
-                guard data.count <= NativeBridgeLimits.maxFileBytes else {
-                    dispatchError(message: "バックアップが大きすぎます")
-                    return
-                }
-                dispatchBackup(data, filename: url.lastPathComponent)
-            } catch {
-                dispatchError(message: "バックアップを読み込めませんでした")
+            let outcome = Self.pickerOutcome(purpose: pickerPurpose, urls: urls)
+            pickerPurpose = nil
+            switch outcome {
+            case .finishExport:
+                cleanupPendingExport()
+            case .ignore:
+                break
+            case let .importBackup(url):
+                importBackup(from: url)
             }
         }
 
         func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
+            pickerPurpose = nil
             cleanupPendingExport()
+        }
+
+        private func importBackup(from url: URL) {
+            defer { Self.removePickedCopy(at: url) }
+            do {
+                let data = try Data(contentsOf: url, options: [.mappedIfSafe])
+                guard data.count <= NativeBridgeLimits.maxFileBytes else {
+                    model.presentError("バックアップが大きすぎます")
+                    return
+                }
+                model.deliverBackup(data, filename: url.lastPathComponent)
+            } catch {
+                model.presentError("バックアップを読み込めませんでした")
+            }
+        }
+
+        /// `asCopy: true`のDocument Pickerはアプリの一時領域へ複製を作る。
+        /// 読み込み後に消さないと一時領域へ蓄積するため、一時領域内だけを削除する。
+        nonisolated private static func removePickedCopy(at url: URL) {
+            let temporary = FileManager.default.temporaryDirectory.standardizedFileURL.resolvingSymlinksInPath()
+            let candidate = url.standardizedFileURL.resolvingSymlinksInPath()
+            guard candidate.path.hasPrefix(temporary.path + "/") else { return }
+            try? FileManager.default.removeItem(at: url)
         }
 
         private func presentBackupPicker() {
             guard let presenter = presenter() else {
-                dispatchError(message: "ファイル選択画面を表示できませんでした")
+                model.presentError("ファイル選択画面を表示できませんでした")
                 return
             }
             let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.knittingEditorBackup], asCopy: true)
             picker.delegate = self
+            pickerPurpose = .importBackup
             presenter.present(picker, animated: true)
         }
 
         private func presentExportOptions(data: Data, filename: String, mimeType: String) {
             cleanupPendingExport()
             guard let presenter = presenter() else {
-                dispatchError(message: "保存画面を表示できませんでした")
+                model.presentError("保存画面を表示できませんでした")
                 return
             }
             let filenameExtension = URL(fileURLWithPath: filename).pathExtension
@@ -266,7 +358,7 @@ struct WebViewContainer: UIViewRepresentable {
             do {
                 try data.write(to: temporaryURL, options: [.atomic])
             } catch {
-                dispatchError(message: "出力ファイルを準備できませんでした")
+                model.presentError("出力ファイルを準備できませんでした")
                 return
             }
             pendingExportURL = temporaryURL
@@ -277,6 +369,7 @@ struct WebViewContainer: UIViewRepresentable {
                     guard let self, let presenter, let pendingExportURL = self.pendingExportURL else { return }
                     let picker = UIDocumentPickerViewController(forExporting: [pendingExportURL], asCopy: true)
                     picker.delegate = self
+                    self.pickerPurpose = .exportFile
                     presenter.present(picker, animated: true)
                 }
             })
@@ -304,29 +397,6 @@ struct WebViewContainer: UIViewRepresentable {
             var current = webView?.window?.rootViewController
             while let presented = current?.presentedViewController { current = presented }
             return current
-        }
-
-        private func dispatchBackup(_ data: Data, filename: String) {
-            guard let webView,
-                  let jsonData = try? JSONSerialization.data(withJSONObject: [
-                    "filename": filename,
-                    "dataBase64": data.base64EncodedString(),
-                  ]),
-                  let json = String(data: jsonData, encoding: .utf8) else { return }
-            webView.evaluateJavaScript(
-                "window.dispatchEvent(new CustomEvent('knittingEditorNativeBackupSelected',{detail:\(json)}));",
-                completionHandler: nil
-            )
-        }
-
-        private func dispatchError(message: String) {
-            guard let webView,
-                  let jsonData = try? JSONSerialization.data(withJSONObject: message),
-                  let json = String(data: jsonData, encoding: .utf8) else { return }
-            webView.evaluateJavaScript(
-                "window.dispatchEvent(new CustomEvent('knittingEditorNativeError',{detail:\(json)}));",
-                completionHandler: nil
-            )
         }
 
         private func bridgeErrorMessage(_ error: NativeBridgeMessage.MessageError) -> String {

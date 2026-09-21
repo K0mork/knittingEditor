@@ -13,6 +13,7 @@
 		399AE0908FE88F56457A7A54 /* WebViewContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E643EAB3D8627886E3EDCB9 /* WebViewContainer.swift */; };
 		4C2C861608AD1B104C9DB85F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 594A6F94A2E8CE6BB9AB667E /* Assets.xcassets */; };
 		72A7C34CF22FD0138A1E8FE7 /* KnittingEditorUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 049604E8F16625AD6FE9AA3F /* KnittingEditorUITests.swift */; };
+		79639A7ABA8D77F463DE6AEF /* knitting-editor-v2-interop.knit.b64 in Resources */ = {isa = PBXBuildFile; fileRef = 81817C83F1B327D22010A448 /* knitting-editor-v2-interop.knit.b64 */; };
 		80BB0B545C49794374C7C699 /* KnittingEditorApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79CFD1A36C16A062BF1E7D49 /* KnittingEditorApp.swift */; };
 		CF285C11B3A112C566D556C3 /* NativeBridgeMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DA6B84D7E98986674AF1841 /* NativeBridgeMessage.swift */; };
 		D3CA49E4EE8BA3B56DA80D0E /* NativeBridgeMessageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE539ADB212ECD98B46BDB /* NativeBridgeMessageTests.swift */; };
@@ -47,6 +48,7 @@
 		4E643EAB3D8627886E3EDCB9 /* WebViewContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebViewContainer.swift; sourceTree = "<group>"; };
 		594A6F94A2E8CE6BB9AB667E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		79CFD1A36C16A062BF1E7D49 /* KnittingEditorApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnittingEditorApp.swift; sourceTree = "<group>"; };
+		81817C83F1B327D22010A448 /* knitting-editor-v2-interop.knit.b64 */ = {isa = PBXFileReference; path = "knitting-editor-v2-interop.knit.b64"; sourceTree = "<group>"; };
 		8D40BDC62512CFC6F6D66BE6 /* knittingEditorUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = knittingEditorUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9E89D10B53EB561502464406 /* KnittingEditorUTType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnittingEditorUTType.swift; sourceTree = "<group>"; };
 		B879541A0716033B76781073 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -96,10 +98,19 @@
 			children = (
 				E33E4B0F767B0C1D8E5B0686 /* App */,
 				3AD645916EC8D81985BD1DE0 /* AppResources */,
+				AF74E6E504C078A345D8C5EC /* test-fixtures */,
 				B6E58702385CDAD5F7E3FD6A /* Tests */,
 				EBD817725BFEA64E0012F938 /* UITests */,
 				78E8927B1B271B6F47270280 /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		AF74E6E504C078A345D8C5EC /* test-fixtures */ = {
+			isa = PBXGroup;
+			children = (
+				81817C83F1B327D22010A448 /* knitting-editor-v2-interop.knit.b64 */,
+			);
+			path = "test-fixtures";
 			sourceTree = "<group>";
 		};
 		B6E58702385CDAD5F7E3FD6A /* Tests */ = {
@@ -141,6 +152,7 @@
 			buildConfigurationList = 86D2495A880917BED7BDAF57 /* Build configuration list for PBXNativeTarget "knittingEditorTests" */;
 			buildPhases = (
 				FCDDFA2210ED11330DA40EE6 /* Sources */,
+				60E3291448795F572F1898F1 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -237,6 +249,14 @@
 				4C2C861608AD1B104C9DB85F /* Assets.xcassets in Resources */,
 				3169FE3B0B8F832ABA6E5440 /* PrivacyInfo.xcprivacy in Resources */,
 				2E279AF776F175B3F77DA1A5 /* Web in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		60E3291448795F572F1898F1 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				79639A7ABA8D77F463DE6AEF /* knitting-editor-v2-interop.knit.b64 in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

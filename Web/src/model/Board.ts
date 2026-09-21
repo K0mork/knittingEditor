@@ -10,8 +10,12 @@ export interface BlockAnchor extends Point { value: number }
 export interface PatternBlock { id: string; name: string; rows: number; cols: number; anchors: BlockAnchor[]; createdAt: number }
 
 export function parseColor(color: string): number {
-  const normalized = color.replace('#', '');
-  return Number.parseInt(normalized.padEnd(6, '0').slice(0, 6), 16) & COLOR_MASK;
+  const normalized = color.trim().replace('#', '');
+  // #rgb 表記は各桁を複製して展開する。#0f0 を #0f0000 として取り込まない。
+  const expanded = normalized.length === 3
+    ? normalized.replace(/./g, (digit) => digit + digit)
+    : normalized;
+  return Number.parseInt(expanded.padEnd(6, '0').slice(0, 6), 16) & COLOR_MASK;
 }
 
 export function colorHex(value: number): string {

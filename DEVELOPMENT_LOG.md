@@ -11,6 +11,23 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-21: 既存実装の点検とファイル連携・描画の不具合修正
+
+- 変更: コードベース全体を点検し、確認できた不具合を修正した。
+  1. `UIDocumentPickerViewController`は取り込みと書き出しの両方で`documentPicker(_:didPickDocumentsAt:)`を呼ぶが、Coordinatorが用途を区別していなかった。「ファイルに保存」で書き出した`.knit`がそのまま再インポートされ「（復元）」付きの複製が増え、PNG／PDFでは取り込み失敗の通知が出ていた。書き出し完了時に一時ファイルも消えていなかった。用途を`PickerPurpose`として保持し、`pickerOutcome(purpose:urls:)`で分岐する。
+  2. Files・AirDrop・他アプリから開いた`.knit`は`Documents/Inbox`へ複製されるが削除しておらず、端末内に無期限で蓄積していた。`Documents/Inbox`配下だけを対象に読み込み後へ削除する。Document Pickerの`asCopy`複製も一時領域内だけ削除する。
+  3. 使い方ページへ遷移するとReactが破棄されるのに`webContentReady`が真のままで、その間に受け取った`.knit`のバックアップイベントが購読者不在で失われていた。`didCommit`で配送を保留し、編集画面が再び`webReady`を送ってから配送する。読み込み表示は編集画面の読み込み時だけに限定し、使い方ページで残さない。
+  4. WKWebViewは`beforeunload`の確認を表示しないため、使い方ページへ移動すると400msの自動保存デバウンス中の編集が失われ得た。遷移前に保存をflushし、待ち時間は2秒で区切る。
+  5. 自動保存のuseEffectが`activeDocument?.id`のみを依存にしており、保存待ちの間に名称変更すると古い名前で上書きし得た。`activeDocument`自体を依存にする。
+  6. `BoardCanvas`が表示範囲内の起点セルしか走査せず、交差記号やすべり目の起点が画面外へ出ると記号全体が消えていた。最大記号の寸法だけ走査範囲を広げる。
+  7. ReactのonWheelはpassiveで登録され`preventDefault`が効かないため、トラックパッドのピンチが盤面ではなくページ全体を拡大していた。非passiveのwheelリスナーへ置き換える。
+  8. `parseColor`が`#0f0`を`#0f0000`として読み込んでいた。3桁表記を展開する。
+- 主なファイル: `App/WebViewContainer.swift`、`App/KnittingEditorApp.swift`、`Web/src/App.tsx`、`Web/src/canvas/BoardCanvas.tsx`、`Web/src/model/Board.ts`、`project.yml`
+- テスト: Swift単体テストへ書き出しPickerの分岐、Inbox複製だけを削除する判定、遷移中の配送保留と読み込み表示、ブリッジの拒否条件（未対応MIME、不正ファイル名、空・上限超過payload）を追加。XCUITestへ使い方ページ往復を追加。Web単体テストへ3桁色の展開を追加。`.knit`往復fixtureはSwiftへBase64を複製せず`test-fixtures/`の同一ファイルをテストバンドルへ同梱して読む。
+- 実行コマンド: `npm --prefix Web run typecheck`成功、`npx vitest run`成功（7 files、42 tests）、`npm --prefix Web run build`成功。iPhone 16（iOS 18.2）Simulatorで`xcodebuild test -only-testing:knittingEditorTests`成功（21 tests）、`testGuideNavigationReturnsToUsableEditor`、`testEditAndRelaunchRestoresLocalDocument`、`testCoreEditorControlsExposeAccessibleNamesAndState`、`testPngAndPdfExportsReachNativeFileActions`、`testLaunchShowsLocalEditorContainer`成功。
+- 未実施: 実機のFiles保存・AirDrop往復（SimulatorのDocument Pickerは外部ウィンドウでXCTestから操作できない）。iPad Simulatorでの再実行、iPadOS 27での再確認、トラックパッドのピンチ操作の実機確認。書き出しPickerの分岐はSimulatorのUI操作では再現できないため単体テストで検証した。
+- 配布影響: 保存形式、記号ID、Bundle ID、オフライン通信方針は変更しない。書き出し後に不要な復元が起きなくなり、Inboxの取り込みファイルが端末へ残らなくなる。
+
 ## 2026-09-21: CIの停止したUI試験をテスト単位で打ち切る
 
 - 変更: iPhone／iPadのCIとアプリ更新試験で、各テストの標準上限を90秒、絶対上限を120秒、失敗時の最大試行を2回に固定した。1件のXCUITestが応答を失ってもジョブ全体を20分占有せず、失敗箇所を結果bundleへ残して再試行できる。
