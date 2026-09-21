@@ -343,24 +343,19 @@ final class KnittingEditorUITests: XCTestCase {
         app.buttons["閉じる"].tap()
 
         app.buttons["保存"].tap()
-        let drawer = app.descendants(matching: .any)
-            .matching(NSPredicate(format: "label == %@", "補足"))
-            .firstMatch
-        XCTAssertTrue(drawer.waitForExistence(timeout: 5), app.debugDescription)
-        assertHittableAfterScrolling(app.buttons["PNGを保存"], in: drawer, app: app)
-        assertHittableAfterScrolling(app.buttons["PDFを保存"], in: drawer, app: app)
-        assertHittableAfterScrolling(app.buttons["この編み図"], in: drawer, app: app)
+        assertHittableAfterScrolling(app.buttons["PNGを保存"], in: app)
+        assertHittableAfterScrolling(app.buttons["PDFを保存"], in: app)
+        assertHittableAfterScrolling(app.buttons["この編み図"], in: app)
     }
 
     private func assertHittableAfterScrolling(
         _ element: XCUIElement,
-        in container: XCUIElement,
-        app: XCUIApplication,
+        in app: XCUIApplication,
         maximumScrolls: Int = 24
     ) {
         XCTAssertTrue(element.waitForExistence(timeout: 10), app.debugDescription)
-        let dragStart = container.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.78))
-        let dragEnd = container.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.62))
+        let dragStart = app.coordinate(withNormalizedOffset: CGVector(dx: 0.75, dy: 0.78))
+        let dragEnd = app.coordinate(withNormalizedOffset: CGVector(dx: 0.75, dy: 0.62))
         for _ in 0..<maximumScrolls {
             if element.isHittable {
                 return

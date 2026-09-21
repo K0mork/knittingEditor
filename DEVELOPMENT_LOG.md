@@ -13,9 +13,9 @@
 
 ## 2026-09-21: Dynamic Type UIテストのXcode 15互換性を修正
 
-- 変更: 保存ドロワーの取得をXCUITestの要素型`Other`へ依存させず、アクセシビリティラベルを全要素型から検索するよう修正した。
+- 変更: 保存ドロワーのスクロール操作をXCUITestの要素型やローカライズされたランドマーク名へ依存させず、iPhone/iPad共通で保存パネルが表示される画面右側を操作するよう修正した。
 - 主なファイル: `UITests/KnittingEditorUITests/KnittingEditorUITests.swift`
-- 根拠: GitHub ActionsのXcode 15.4では同じWeb要素が`WebView`として分類され、`Other`限定クエリが3回とも失敗した。ローカル環境では修正後の最大アクセシビリティサイズ試験がiPhone 16 Simulatorで成功した。
+- 根拠: GitHub ActionsのXcode 15.4では同じWeb要素が`WebView`として分類され、iPadではランドマーク名も日本語の`補足`ではなく`complementary`として公開された。ローカルのiPhone 16／iPad (10th generation) Simulatorで修正後の最大アクセシビリティサイズ試験が各1件成功した。
 - 未実施: 実機での最大Dynamic Type表示確認。CI結果はpush後に確認する。
 - 配布影響: アプリ本体の挙動は変更せず、CIのUIテスト取得方法だけをXcodeバージョン差に耐える形へ変更する。
 
