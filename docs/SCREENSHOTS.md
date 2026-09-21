@@ -1,12 +1,14 @@
 # スクリーンショット下書き
 
-App Store提出前の画面確認用に、iOS 18.2 Simulatorから取得した下書きです。2026-09-21にアプリをSimulatorから一度削除して再インストールし、個人データを含まない初期状態で再撮影しました。実機・TestFlightで撮影する最終素材ではありません。
+App Store提出前の画面確認用に、iOS 18.2および最新のiOS／iPadOS 27.0 Simulatorから取得した下書きです。2026-09-21に初期状態のアプリを起動し、個人データを含まない画面を確認しました。実機・TestFlightで撮影する最終素材ではありません。
 
 | 対象 | 解像度 | 下書き |
 | --- | ---: | --- |
 | iPhone 16 Simulator | 1179×2556 | [iphone-16-editor-simulator.png](screenshots/iphone-16-editor-simulator.png) |
 | iPad (10th generation) Simulator | 1640×2360 | [ipad-10-editor-simulator.png](screenshots/ipad-10-editor-simulator.png) |
 | iPad (10th generation) Simulator 横画面 | 2360×1640 | [ipad-10-editor-landscape-simulator.png](screenshots/ipad-10-editor-landscape-simulator.png) |
+| iPhone 18 Pro Simulator（iOS 27.0、最新OS確認用） | 368×800 | [iphone-18-pro-ios-27-editor-simulator.jpg](screenshots/iphone-18-pro-ios-27-editor-simulator.jpg) |
+| iPad Pro 11-inch (M5) Simulator（iPadOS 27.0、最新OS確認用） | 1668×2420 | [ipad-pro-11-ios-27-editor-simulator.png](screenshots/ipad-pro-11-ios-27-editor-simulator.png) |
 | iPhone 16 Simulator 起動画面 | 1179×2556 | [iphone-16-launch-simulator.png](screenshots/iphone-16-launch-simulator.png) |
 | iPad (10th generation) Simulator 起動画面 | 1640×2360 | [ipad-10-launch-simulator.png](screenshots/ipad-10-launch-simulator.png) |
 
@@ -18,3 +20,4 @@ App Store提出前の画面確認用に、iOS 18.2 Simulatorから取得した�
 - 端末内のテストデータや個人情報は含めていない。
 - ステータスバーはSimulatorの表示を含む。起動画面の色・Safe Areaと解像度の確認用であり、App Store Connect登録前に実機またはTestFlightで撮り直す。
 - これらはSimulator下書きであり、App Store Connect向けの実機／TestFlight最終素材ではない。
+- iOS／iPadOS 27.0の2枚は最新OSの実UI確認証跡であり、XcodeBuildMCPの最適化スクリーンショットを含むため提出用解像度ではない。

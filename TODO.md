@@ -64,6 +64,7 @@
 
 - [x] iPhone／iPad Simulatorで縦横回転、キーボード表示中のダイアログ、主要操作のアクセシブルな名前・選択状態を回帰検証する（実機確認は別途）
 - [x] iPhone 16／iPad (10th generation) Simulatorの狭幅・縦横レイアウトを回帰検証する（実機確認は別途必要）
+- [x] 最新iOS／iPadOS 27.0 Simulator（iPhone 18 Pro／iPad Pro 11-inch）でローカルWebView、主要UI、オフライン資産を確認する（実機・Split Viewは別途）
 - [ ] iPad全画面・Split View・可変ウィンドウを確認する
 - [x] Safe Areaを考慮したレイアウトとキーボード表示時のダイアログをSimulatorで回帰検証する（実機確認は別途必要）
 - [ ] タッチ、ピンチ、パン、マウス、トラックパッドを実機確認する

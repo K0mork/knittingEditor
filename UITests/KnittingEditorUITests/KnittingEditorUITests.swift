@@ -326,7 +326,9 @@ final class KnittingEditorUITests: XCTestCase {
             .matching(NSPredicate(format: "label CONTAINS %@", "保存済み"))
             .firstMatch
             .waitForExistence(timeout: 10), webView.debugDescription)
-        XCTAssertTrue(webView.staticTexts["選択範囲なし"]
+        XCTAssertTrue(webView.staticTexts
+            .matching(NSPredicate(format: "label CONTAINS %@", "選択範囲なし"))
+            .firstMatch
             .waitForExistence(timeout: 10), webView.debugDescription)
 
         app.buttons["保存"].tap()

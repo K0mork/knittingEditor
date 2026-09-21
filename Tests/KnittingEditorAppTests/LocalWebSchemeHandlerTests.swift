@@ -167,7 +167,9 @@ final class LocalWebSchemeHandlerTests: XCTestCase {
             LocalWebSchemeHandler(bundle: Bundle(for: LocalWebSchemeHandler.self)),
             forURLScheme: LocalWebSchemeHandler.scheme
         )
-        return WKWebView(frame: .zero, configuration: configuration)
+        // iOS 27 ではゼロサイズの WKWebView が WebKit プロセスを起動せず、
+        // ナビゲーション完了通知が返らない場合がある。実画面に近い最小サイズを与える。
+        return WKWebView(frame: CGRect(x: 0, y: 0, width: 320, height: 320), configuration: configuration)
     }
 
     @MainActor

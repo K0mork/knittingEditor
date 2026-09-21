@@ -93,6 +93,13 @@ docs/                additional design and release records
 - データ形式変更: Web→アプリ、アプリ→Webの`.knit`往復試験
 - リリース候補: 機内モードでP0フローを通すオフライン試験
 
+## Simulator運用と容量管理
+
+- 最新OSを確認するときは、各ランタイムにつき検証用のiPhone・iPadを原則1台ずつに限定する。Xcodeが自動生成した未使用デバイスは、UDIDを一覧で確認してから明示的に削除する。
+- 検証前後に`xcrun simctl list runtimes`、`xcrun simctl list devices available`、`du -sh /Users/komorikouki/Library/Developer/CoreSimulator`、`df -h /`を記録する。
+- 検証終了後は全Simulatorをshutdownする。最新OS用に新規作成したデバイスはテストデータを`erase`して保持し、既存のCI基準デバイスはユーザーの明示なしに消去しない。
+- ランタイム自体、既存のユーザーデータ、実機データを容量都合で削除しない。XcodeBuildMCPの古い生成ログ・テスト成果物を整理する場合は、対象と保持する最新証跡を先に列挙し、復元可能なゴミ箱移動を優先する。
+
 テストコマンドはXcodeプロジェクトとWebビルド基盤の作成時にこの文書へ追記します。対象が存在しない段階で架空のコマンドを定義しません。
 
 ## Generated Files and Secrets
