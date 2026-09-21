@@ -17,6 +17,8 @@ M0、M2、M3、M4、M6で残っている実機・署名・TestFlight確認を、
 
 実機へインストールする前に、XcodeのSigning & CapabilitiesでTeam、Bundle ID、証明書、Provisioning Profileを確定し、`xcodebuild -showBuildSettings`の`DEVELOPMENT_TEAM`と`PRODUCT_BUNDLE_IDENTIFIER`を記録する。Teamや証明書をリポジトリへ保存しない。
 
+実機作業の開始時は、`scripts/check-device-readiness.sh`を実行する。このスクリプトは署名Team、Bundle ID、オンラインiOS端末だけを読み取り、未設定なら失敗する。現在の開発環境での失敗は実機ゲート未実施の証跡であり、Simulatorの結果で置き換えない。
+
 ## M0: オフライン起動とWeb API PoC
 
 - [ ] 機内モードを有効にしてアプリを新規起動できる。

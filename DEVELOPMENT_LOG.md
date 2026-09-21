@@ -11,6 +11,14 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-21: 実機リリース前の読み取り専用preflightを追加
+
+- 変更: 署名Team、Bundle ID、オンラインiOS端末を確認する`scripts/check-device-readiness.sh`を追加し、実機チェックリストの開始手順へ組み込んだ。署名情報や端末データは保存・変更しない。
+- 主なファイル: `scripts/check-device-readiness.sh`、`docs/REAL_DEVICE_RELEASE_CHECKLIST.md`
+- テスト: `sh -n scripts/check-device-readiness.sh`と実行確認を行った。現在の環境ではBundle IDは`com.k0mork.knittingEditor`、Apple Developer Teamは未設定、オンラインiOS端末は0台（`MEのiPhone`は`Devices Offline`）のため、期待どおり非ゼロで終了した。
+- 未実施: Team設定、実機接続・信頼、署名済みArchive、TestFlight。preflightの失敗は外部環境が未準備であることを示し、アプリの不具合を意味しない。
+- 配布影響: アプリ本体、保存形式、Bundle ID、外部通信方針は変更しない。実機ゲート開始条件の判定だけを再現可能にした。
+
 ## 2026-09-21: Simulator／Webの性能基準値を記録
 
 - 変更: 既存の1000×1000保存・復元テストと密集PDFテストを実行し、開発環境での観測値を`docs/SIMULATOR_PERFORMANCE_BASELINE.md`へ記録した。申請資料検査から基準値文書の存在と見出しも検証する。
