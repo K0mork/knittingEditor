@@ -101,6 +101,7 @@ final class WebViewModel {
 }
 
 struct WebViewContainer: UIViewRepresentable {
+    static let initialFrameSize = CGSize(width: 320, height: 320)
     let model: WebViewModel
 
     func makeCoordinator() -> Coordinator {
@@ -116,7 +117,13 @@ struct WebViewContainer: UIViewRepresentable {
             forURLScheme: LocalWebSchemeHandler.scheme
         )
 
-        let webView = WKWebView(frame: .zero, configuration: configuration)
+        // iOS 27ではゼロサイズのWKWebViewがWebKitプロセスの起動を待つことがある。
+        // SwiftUIのレイアウト確定前にもローカルHTMLの読み込みを開始できるよう、
+        // 実画面に近い初期サイズを与え、レイアウト確定後はSwiftUIにサイズを委ねる。
+        let webView = WKWebView(
+            frame: CGRect(origin: .zero, size: Self.initialFrameSize),
+            configuration: configuration
+        )
         webView.navigationDelegate = context.coordinator
         webView.allowsBackForwardNavigationGestures = false
         webView.isOpaque = false

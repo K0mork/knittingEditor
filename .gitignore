@@ -22,6 +22,7 @@ playwright-report/
 # Generated local Web bundle (created by scripts/build-web.sh)
 AppResources/Web/*
 !AppResources/Web/.gitkeep
+AppResources/.web-build.stamp
 
 # Local files
 .DS_Store

@@ -11,6 +11,15 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-21: 起動・ビルド待ちの実測とWebView初期化の短縮
+
+- 変更: `App/WebViewContainer.swift`で`WKWebView`をゼロサイズではなく320×320で生成するようにした。iOS 27ではゼロサイズのWebViewがWebKitプロセスの起動とローカルHTML読み込みを遅延させるため、SwiftUIのレイアウト確定前から読み込みを開始できるようにした。`scripts/build-web.sh`にはWeb入力ファイルのハッシュを使った生成物キャッシュを追加し、変更がない再ビルドではWebのTypeScript／Viteビルドと資産コピーを省略する。キャッシュ印は`AppResources/.web-build.stamp`に置き、追跡しない。
+- 主なファイル: `App/WebViewContainer.swift`、`Tests/KnittingEditorAppTests/LocalWebSchemeHandlerTests.swift`、`scripts/build-web.sh`、`.gitignore`、`docs/SIMULATOR_PERFORMANCE_BASELINE.md`
+- 回帰テスト: ゼロサイズへ戻らないことを`testEditorWebViewStartsWithNonZeroFrame`で検査する。WebViewを含むiOS 27起動テストは成功し、iPhone 18 Proの`testLaunchShowsLocalEditorContainer`は1件成功（テストケース7.3秒、テストランナー込み20.9秒）だった。
+- 実測: Webビルド初回0.82秒、入力不変時のキャッシュ再実行0.04秒。iPhone 18 Pro（iOS 27.0）のキャッシュ済み`build_run_sim`は6.2秒。iPad 10（iOS 18.2）の縦横UI試験はテストケース29.1秒、テストランナー込み63.7秒で、Xcode／Simulatorのビルド・起動オーバーヘッドを含む。初回のiOS 27ランタイム起動を含む`build_run_sim`66.6秒はSimulatorのブート・インストール込みであり、アプリの毎回の起動時間とは区別する。
+- 未実施: 実機のコールド起動、実機メモリ・クラッシュ、TestFlight性能。Simulatorの時間は実機SLAの代替にしない。
+- 配布影響: 保存形式、Bundle ID、オフライン通信方針は変更しない。Web資産の内容が変わった場合はハッシュ不一致で従来どおり再生成する。
+
 ## 2026-09-21: 最新iOS／iPadOS 27.0の実UI検証とSimulator容量整理
 
 - 変更: Xcode 27.0のiOS 27.0（24A434、arm64）Simulatorランタイムを追加し、iPhone 18 ProとiPad Pro 11-inch（M5）でアプリをビルド・起動した。最新OS用に自動生成された未使用デバイス9台は削除し、検証後は最新OS用2台をeraseして定義だけ保持した。既存のiOS 18.2基準デバイス2台は保持し、全4台をshutdownした。XcodeBuildMCPの現行検証より前のテスト成果物は監査後にゴミ箱へ移動した。

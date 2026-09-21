@@ -3,6 +3,11 @@ import XCTest
 @testable import knittingEditor
 
 final class LocalWebSchemeHandlerTests: XCTestCase {
+    func testEditorWebViewStartsWithNonZeroFrame() {
+        XCTAssertGreaterThan(WebViewContainer.initialFrameSize.width, 0)
+        XCTAssertGreaterThan(WebViewContainer.initialFrameSize.height, 0)
+    }
+
     func testIndexURLUsesStableLocalOrigin() {
         XCTAssertEqual(LocalWebSchemeHandler.indexURL.absoluteString, "knitting-local://bundle/index.html")
         XCTAssertEqual(LocalWebSchemeHandler.indexURL.scheme, LocalWebSchemeHandler.scheme)
@@ -52,6 +57,7 @@ final class LocalWebSchemeHandlerTests: XCTestCase {
     @MainActor
     func testGuideDirectoryURLLoadsBundledIndex() async throws {
         let webView = try makeWebView()
+        defer { dispose(webView) }
         let delegate = NavigationDelegate()
         webView.navigationDelegate = delegate
         webView.load(URLRequest(url: URL(string: "knitting-local://bundle/guide/")!))
@@ -64,6 +70,7 @@ final class LocalWebSchemeHandlerTests: XCTestCase {
     @MainActor
     func testLocalEditorDoesNotInvokeRuntimeNetworkAPIs() async throws {
         let webView = try makeWebView(networkProbe: true)
+        defer { dispose(webView) }
         try await loadIndex(in: webView)
         try await Task.sleep(nanoseconds: 500_000_000)
 
@@ -76,6 +83,7 @@ final class LocalWebSchemeHandlerTests: XCTestCase {
     @MainActor
     func testStableOriginAndWebsiteDataSurviveWebViewReplacement() async throws {
         let firstWebView = try makeWebView()
+        defer { dispose(firstWebView) }
         try await loadIndex(in: firstWebView)
         let stored = try await firstWebView.callAsyncJavaScript(
             """
@@ -103,6 +111,7 @@ final class LocalWebSchemeHandlerTests: XCTestCase {
         firstWebView.stopLoading()
         firstWebView.navigationDelegate = nil
         let secondWebView = try makeWebView()
+        defer { dispose(secondWebView) }
         try await loadIndex(in: secondWebView)
         let restored = try await secondWebView.callAsyncJavaScript(
             """
@@ -170,6 +179,14 @@ final class LocalWebSchemeHandlerTests: XCTestCase {
         // iOS 27 ではゼロサイズの WKWebView が WebKit プロセスを起動せず、
         // ナビゲーション完了通知が返らない場合がある。実画面に近い最小サイズを与える。
         return WKWebView(frame: CGRect(x: 0, y: 0, width: 320, height: 320), configuration: configuration)
+    }
+
+    @MainActor
+    private func dispose(_ webView: WKWebView) {
+        webView.stopLoading()
+        webView.navigationDelegate = nil
+        webView.uiDelegate = nil
+        webView.configuration.userContentController.removeAllUserScripts()
     }
 
     @MainActor
