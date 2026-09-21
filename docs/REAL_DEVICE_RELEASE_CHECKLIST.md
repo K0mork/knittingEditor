@@ -107,7 +107,22 @@ M0、M2、M3、M4、M6で残っている実機・署名・TestFlight確認を、
 - iPadで発見して直したもの。
   - 書き出しの保存シートは、iPadでは「×」が`label`の`Cancel`ボタンとして押せる（`frame=(14, 46, 36x36)`、`isHittable=true`）。iPhone向けに実装した下スワイプはiPadでは閉じられなかったため、押せる場合はボタンを使い、押せない場合だけスワイプへ落とすようにした。
   - ダイアログ入力で先頭文字を取りこぼしていた。`M2切替A`が`2切替A`になり、さらに初期値「新しい編み図」が消えずに残って`2切替A新しい編み図`という名前になっていた。キーボード表示を待ってから初期値を消して入力し、入力結果を検査するようにした。アプリ側も`window.prompt`と同じく初期値を選択状態にして開くようにした。
-- 未実施: 全画面・Split View・可変ウィンドウの操作確認（XCUITestからウィンドウ分割を作れないため、分割状態を作ったうえで実行する必要がある）、Apple Pencil、タッチ・ピンチ、VoiceOver、Files実保存とAirDrop、iPad版スクリーンショット。
+- 可変ウィンドウ（584x861、画面は1373x954）で、主要操作・各パネルの開閉・ダイアログ入力・盤面への描画を確認した。`testManualWindowKeepsPrimaryFlowsUsable`として手順化してある。
+- 未実施: Split Viewでの同確認（可変ウィンドウのみ実施）、Apple Pencil、タッチ・ピンチ、VoiceOver、Files実保存とAirDrop、iPad版スクリーンショット。
+
+### 可変ウィンドウ・Split Viewの確認手順
+
+XCUITestからウィンドウ分割は作れないため、端末側で配置してから次を実行する。向きを変えると配置が全画面へ戻るので、この実行では`setUp`が向きに触れないようにしてある。
+
+```sh
+TEST_RUNNER_KNITTING_EDITOR_MANUAL_WINDOW=1 xcodebuild test \
+  -project knittingEditor.xcodeproj -scheme knittingEditor \
+  -destination 'platform=iOS,id=<UDID>' -allowProvisioningUpdates \
+  DEVELOPMENT_TEAM=<TeamID> \
+  -only-testing:knittingEditorUITests/KnittingEditorUITests/testManualWindowKeepsPrimaryFlowsUsable
+```
+
+配置が失われた状態で実行すると、ウィンドウが画面と同じ大きさであることを検出して失敗する。全画面のまま成功したことにはならない。
 
 ## 記録ルール
 

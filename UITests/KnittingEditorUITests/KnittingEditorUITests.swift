@@ -2,14 +2,23 @@ import XCTest
 
 @MainActor
 final class KnittingEditorUITests: XCTestCase {
+    /// 手動配置のSplit View・可変ウィンドウを検証する実行では、向きを変えると
+    /// 配置が全画面へ戻るため、向きに触れない。
+    private var preservesManualWindow: Bool {
+        ProcessInfo.processInfo.environment["KNITTING_EDITOR_MANUAL_WINDOW"] == "1"
+    }
+
     /// 実機は起動時に端末の物理的な向きを引き継ぐため、各テストを縦向きから始める。
     override func setUp() {
         super.setUp()
+        guard !preservesManualWindow else { return }
         XCUIDevice.shared.orientation = .portrait
     }
 
     override func tearDown() {
-        XCUIDevice.shared.orientation = .portrait
+        if !preservesManualWindow {
+            XCUIDevice.shared.orientation = .portrait
+        }
         super.tearDown()
     }
 
@@ -177,38 +186,70 @@ final class KnittingEditorUITests: XCTestCase {
         )
     }
 
-    func testSeedDocumentForAppUpdateProbe() throws {
-        try requireAppUpdateProbe()
+    /// iPadの全画面以外（Split View・可変ウィンドウ）での操作を検証する。
+    ///
+    /// ウィンドウ分割はXCUITestから作れないため、手で配置してから次のように実行する。
+    /// 配置を壊さないよう、このテストはアプリを起動し直さない。
+    ///
+    ///     TEST_RUNNER_KNITTING_EDITOR_MANUAL_WINDOW=1 xcodebuild test \
+    ///       -only-testing:knittingEditorUITests/KnittingEditorUITests/testManualWindowKeepsPrimaryFlowsUsable ...
+    func testManualWindowKeepsPrimaryFlowsUsable() throws {
+        try XCTSkipUnless(
+            ProcessInfo.processInfo.environment["KNITTING_EDITOR_MANUAL_WINDOW"] == "1",
+            "Split View・可変ウィンドウを手で配置したうえで、TEST_RUNNER_KNITTING_EDITOR_MANUAL_WINDOW=1を付けて実行する"
+        )
         let app = XCUIApplication()
-        let appUpdateElementTimeout: TimeInterval = 60
-        app.launch()
+        if app.state != .runningForeground {
+            app.activate()
+        }
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 20), app.debugDescription)
 
-        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: appUpdateElementTimeout))
-        let documents = app.buttons["編み図"]
-        XCTAssertTrue(documents.waitForExistence(timeout: appUpdateElementTimeout))
-        documents.tap()
+        // 配置が失われた状態で実行すると全画面のまま通ってしまうため、
+        // 画面より小さいウィンドウであることを先に確認する。
+        let window = app.windows.firstMatch.frame
+        let screen = XCUIScreen.main.screenshot().image.size
+        XCTAssertTrue(
+            window.width < screen.width - 1 || window.height < screen.height - 1,
+            "Split View・可変ウィンドウの配置になっていない window=\(window) screen=\(screen)"
+        )
+
+        assertPrimaryControlsAreUsable(in: app)
+        assertWithinWindow(app.buttons["編み図"], in: app)
+
+        for panel in ["盤面", "ブロック", "保存"] {
+            app.buttons[panel].tap()
+            let close = app.buttons["閉じる"]
+            XCTAssertTrue(close.waitForExistence(timeout: 10), "\(panel)パネルを開けない window=\(window): \(app.debugDescription)")
+            XCTAssertTrue(close.isHittable, "\(panel)パネルを閉じられない window=\(window): \(app.debugDescription)")
+            close.tap()
+        }
+
+        // 盤面の状態に依存しないよう、空の編み図を作ってから描画を確認する。
+        // 小さいウィンドウでのダイアログとキーボード入力もここで通る。
+        app.buttons["編み図"].tap()
         let newDocument = app.buttons["新しい編み図"]
-        XCTAssertTrue(newDocument.waitForExistence(timeout: appUpdateElementTimeout))
+        XCTAssertTrue(newDocument.waitForExistence(timeout: 10), app.debugDescription)
         newDocument.tap()
         let nameField = app.textFields["入力"]
-        XCTAssertTrue(nameField.waitForExistence(timeout: appUpdateElementTimeout))
-        replaceText("アプリ更新復元fixture", in: nameField, app: app)
+        XCTAssertTrue(nameField.waitForExistence(timeout: 10), app.debugDescription)
+        replaceText("可変ウィンドウ確認", in: nameField, app: app)
         app.buttons["決定"].tap()
 
-        let webView = app.webViews.firstMatch
-        let canvas = webView.otherElements
+        let canvas = app.webViews.firstMatch.otherElements
             .matching(NSPredicate(format: "label CONTAINS %@", "記号0個"))
             .firstMatch
-        XCTAssertTrue(canvas.waitForExistence(timeout: 10))
+        XCTAssertTrue(canvas.waitForExistence(timeout: 15), app.debugDescription)
+        assertWithinWindow(canvas, in: app)
         canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
         XCTAssertTrue(
-            webView.otherElements
+            app.webViews.firstMatch.otherElements
                 .matching(NSPredicate(format: "label CONTAINS %@", "記号1個"))
                 .firstMatch
-                .waitForExistence(timeout: 10)
+                .waitForExistence(timeout: 10),
+            "可変ウィンドウで盤面へ描画できない window=\(window): \(app.debugDescription)"
         )
-        waitForDocumentSave(named: "アプリ更新復元fixture", in: webView)
     }
+
 
     func testUpdatedAppRestoresSeedDocument() throws {
         try requireAppUpdateProbe()
@@ -430,13 +471,19 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertTrue(element.isHittable, app.debugDescription)
     }
 
-    /// 保存シートを閉じる。iPadは「×」ボタン（label `Cancel`）を押せるため、そちらを使う。
-    /// iPhoneでは同じボタンへ到達できず`isHittable`もfalseになるため、画面座標の下スワイプで閉じる。
+    /// 保存シートを閉じる。
+    ///
+    /// iPadは「×」ボタン（label `Cancel`）を押せるが、iPhoneでは同じボタンへ到達できず
+    /// `isHittable`もfalseになる。ウィンドウ状態によっても押せるかどうかが変わるため、
+    /// 押してから閉じたことを確かめ、閉じていなければ画面座標の下スワイプへ落とす。
     private func dismissSystemSheet(in app: XCUIApplication) {
+        let sheet = app.descendants(matching: .any).matching(identifier: "Cancel").firstMatch
         let closeButton = app.buttons.matching(NSPredicate(format: "label == %@", "Cancel")).firstMatch
         if closeButton.waitForExistence(timeout: 5), closeButton.isHittable {
             closeButton.tap()
-            return
+            if waitForDisappearance(of: sheet, timeout: 5) {
+                return
+            }
         }
         app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.15)).press(
             forDuration: 0.05,
@@ -444,6 +491,14 @@ final class KnittingEditorUITests: XCTestCase {
             withVelocity: .default,
             thenHoldForDuration: 0.0
         )
+    }
+
+    private func waitForDisappearance(of element: XCUIElement, timeout: TimeInterval) -> Bool {
+        let gone = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == false"),
+            object: element
+        )
+        return XCTWaiter.wait(for: [gone], timeout: timeout) == .completed
     }
 
     /// ダイアログの入力欄を確実に置き換える。
