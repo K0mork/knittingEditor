@@ -12,6 +12,7 @@ import {
 } from './storage/database';
 import { renderPdf, renderPng, saveBlob, validatePngSize } from './export/exporters';
 import { listenNativeBackupSelected, listenNativeError, notifyNativeReady, requestNativeBackupOpen } from './nativeBridge';
+import { withTimeout } from './async';
 
 declare global {
   interface Window {
@@ -25,6 +26,7 @@ type DialogRequest =
   | { kind: 'prompt'; title: string; defaultValue: string; resolve: (value: string | null) => void }
   | { kind: 'confirm'; title: string; resolve: (value: boolean) => void };
 const STITCH_CATEGORY_ORDER: StitchCategory[] = ['basic', 'decrease', 'cable', 'twist', 'utility'];
+export const STORAGE_INITIALIZATION_TIMEOUT_MS = 10_000;
 
 function useModalFocus<T extends HTMLElement>(onEscape: () => void, initialSelector?: string) {
   const ref = useRef<T | null>(null);
@@ -113,14 +115,23 @@ export default function App() {
 
   useEffect(() => {
     void (async () => {
-      const initialized = await initializeStorage();
-      const document = initialized.documents.find((item) => item.id === initialized.activeId) ?? initialized.documents[0];
-      setDocuments(initialized.documents);
+      const initialized = await withTimeout(
+        (async () => {
+          const storage = await initializeStorage();
+          const availableBlocks = await listBlocks();
+          return { storage, availableBlocks };
+        })(),
+        STORAGE_INITIALIZATION_TIMEOUT_MS,
+        '端末内データの準備が10秒以内に完了しませんでした。再読み込みを試してください。',
+      );
+      const { storage, availableBlocks } = initialized;
+      const document = storage.documents.find((item) => item.id === storage.activeId) ?? storage.documents[0];
+      setDocuments(storage.documents);
       activeDocumentIdRef.current = document.id;
       setActiveDocument(document);
       setBoard(boardFromDocument(document));
-      setBlocks(await listBlocks());
-      trackAnalyticsEvent('editor_ready', { document_count_bucket: countBucket(initialized.documents.length) });
+      setBlocks(availableBlocks);
+      trackAnalyticsEvent('editor_ready', { document_count_bucket: countBucket(storage.documents.length) });
     })().catch((error) => {
       trackAnalyticsEvent('operation_failed', { operation_name: 'editor_init' });
       setInitializationError(error instanceof Error ? error.message : String(error));

@@ -11,6 +11,15 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-21: ローカル保存初期化の無期限待機を防止
+
+- 変更: `Web/src/App.tsx`の起動処理を、編み図とブロックのIndexedDB初期化全体に10秒の上限を設けるようにした。時間内に完了しない場合はスピナーを無期限に表示せず、原因を示したエラーと再読み込み操作を表示する。タイマー処理は`Web/src/async.ts`の`withTimeout`へ分離し、成功時に必ず解除する。
+- 根拠: iPadOS 27.0 Simulatorのクリーンな端末で、WebKitのHTML・サブリソース読込は約2.1秒で完了した一方、IndexedDBを含むReact初期化が完了せず、30秒以上「編み図を読み込んでいます…」が残る事象を確認した。アプリ内の問題とSimulator固有の停止を切り分けるため、無期限待機を許さない動作へ変更した。
+- テスト: `npm --prefix Web test -- --run`（7 files、41 tests成功）、`npm --prefix Web run typecheck`成功、`npm --prefix Web run build`成功。`withTimeout`の成功時タイマー解除とタイムアウト時エラーを単体テストで検査した。
+- 再検証: iPad Pro 11-inch（M5、iPadOS 27.0）をeraseした直後の`build_run_sim`はSimulatorブート・インストール込み78.4秒だった。初回の表示はSimulatorのWebKit起動中に黒いスプラッシュが続いたが、手動再起動後18秒で編み図画面を表示し、`testCoreEditorControlsExposeAccessibleNamesAndState`も34.0秒で成功した。アプリのWeb資産読込だけが78.4秒かかったわけではない。
+- 未実施: 実機ではIndexedDBの初期化が通常完了することを別途確認する。実機コールド起動、TestFlight性能は未実施。
+- 配布影響: 保存形式、Bundle ID、オフライン通信方針は変更しない。通常起動の成功経路は維持し、異常時だけ再読み込み可能な表示へ移行する。
+
 ## 2026-09-21: 起動・ビルド待ちの実測とWebView初期化の短縮
 
 - 変更: `App/WebViewContainer.swift`で`WKWebView`をゼロサイズではなく320×320で生成するようにした。iOS 27ではゼロサイズのWebViewがWebKitプロセスの起動とローカルHTML読み込みを遅延させるため、SwiftUIのレイアウト確定前から読み込みを開始できるようにした。`scripts/build-web.sh`にはWeb入力ファイルのハッシュを使った生成物キャッシュを追加し、変更がない再ビルドではWebのTypeScript／Viteビルドと資産コピーを省略する。キャッシュ印は`AppResources/.web-build.stamp`に置き、追跡しない。
