@@ -18,6 +18,13 @@
 - 未実施: 署名済みArchive、実機の機内モード／Files／アクセシビリティ／性能確認、TestFlight内部テスト、App Store Connect登録。外部アカウントと端末が必要なため、Simulatorと静的検証で完了扱いにしない。
 - 配布影響: アプリ本体、保存形式、Bundle ID、外部通信方針は変更しない。提出前チェックリストの証跡リンクだけを更新した。
 
+## 2026-09-21: App Storeメタデータ文字数を提出前検査へ追加
+
+- 変更: `scripts/check-app-store-docs.sh`へApp名30文字、サブタイトル30文字、キーワード100文字の上限検査を追加した。App Store表示名の製品判断や`Info.plist`の表示名は変更していない。
+- テスト: `sh scripts/check-app-store-docs.sh`、`sh -n scripts/check-app-store-docs.sh`、`git diff --check`を実行し成功した。現行メタデータは各上限内である。
+- 未実施: App Store Connect上での実入力、ローカライズ別文字数確認、実機・署名・TestFlight。提出時にConnectの実入力結果で再確認する。
+- 配布影響: アプリ本体と配布設定は変更せず、提出資料の静的検査だけを厳格化した。
+
 ## 2026-09-21: 実UIスクリーンショットQAで狭幅レイアウトを改善
 
 - 変更: iPhone Simulatorの実画面で、上部ツールバーの「範囲」が横スクロールなしで見えるよう、狭幅時の余白・記号選択幅・ボタン幅を調整した。iPadの右側「ブロック」と記号ピッカーの「閉じる」が2行へ折り返されないよう、操作ラベルを1行固定にした。修正後のiPhone／iPad実画面をApp Storeスクリーンショット下書きへ更新した。

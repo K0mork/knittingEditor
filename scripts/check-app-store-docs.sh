@@ -44,11 +44,34 @@ metadata_value_is_nonempty() {
   }
 }
 
+metadata_value_within_limit() {
+  key="$1"
+  limit="$2"
+  value=$(awk -F '|' -v key="$key" '
+    function trim(value) {
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+      return value
+    }
+    trim($2) == key {
+      print trim($3)
+      exit
+    }
+  ' "$METADATA")
+  length=$(printf '%s\n' "$value" | perl -CS -ne 'chomp; print length($_)')
+  if [ "$length" -gt "$limit" ]; then
+    echo "metadata value exceeds App Store limit: $key (${length}/${limit})" >&2
+    exit 1
+  fi
+}
+
 metadata_value_is_nonempty "App名" "$METADATA"
 metadata_value_is_nonempty "サブタイトル" "$METADATA"
 metadata_value_is_nonempty "主カテゴリ" "$METADATA"
 metadata_value_is_nonempty "副カテゴリ" "$METADATA"
 metadata_value_is_nonempty "キーワード" "$METADATA"
+metadata_value_within_limit "App名" 30
+metadata_value_within_limit "サブタイトル" 30
+metadata_value_within_limit "キーワード" 100
 
 grep -qE -- 'サポートURL: `https://github\.com/K0mork/knittingEditor_app/issues`' "$METADATA" || {
   echo "support URL is missing or does not target the public repository" >&2
