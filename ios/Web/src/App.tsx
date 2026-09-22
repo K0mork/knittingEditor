@@ -590,8 +590,11 @@ function AppDialog({ request, onResolve }: {
   const [value, setValue] = useState(request.kind === 'prompt' ? request.defaultValue : '');
   useEffect(() => { setValue(request.kind === 'prompt' ? request.defaultValue : ''); }, [request]);
   const dialogRef = useModalFocus<HTMLElement>(() => onResolve(request.kind === 'prompt' ? null : false), request.kind === 'prompt' ? 'input' : 'button.primary');
+  // promptは背景タップで閉じない。入力欄をタップするとキーボードが出てダイアログが上へ
+  // ずれるため、続けて置いた指が背景へ当たり、入力した名前ごと取り消されていた。
+  // 取り消しは「キャンセル」とEscapeで行う。confirmは失うものがないので従来どおり閉じる。
   return <div className="app-dialog-backdrop" role="presentation" onMouseDown={(event) => {
-    if (event.target === event.currentTarget) onResolve(request.kind === 'prompt' ? null : false);
+    if (request.kind !== 'prompt' && event.target === event.currentTarget) onResolve(false);
   }}>
     <section ref={dialogRef} className="app-dialog" role="dialog" aria-modal="true" aria-labelledby="app-dialog-title" aria-describedby="app-dialog-description" onKeyDown={(event) => {
       if (event.key === 'Enter' && request.kind === 'prompt' && event.target instanceof HTMLInputElement) onResolve(value);

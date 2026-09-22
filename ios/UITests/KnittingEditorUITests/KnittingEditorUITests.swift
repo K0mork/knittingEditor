@@ -103,6 +103,36 @@ final class KnittingEditorUITests: XCTestCase {
         )
     }
 
+    /// 入力を伴うダイアログは背景タップで閉じない。入力欄をタップするとキーボードが出て
+    /// ダイアログが上へずれるため、続けて置いた指が背景へ当たり、入力した名前ごと
+    /// 取り消されていた。
+    func testPromptDialogIgnoresBackgroundTaps() {
+        let app = XCUIApplication()
+        app.launch()
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
+
+        let documents = app.buttons["編み図"]
+        XCTAssertTrue(documents.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+        documents.tap()
+        let newDocument = app.buttons["新しい編み図"]
+        XCTAssertTrue(newDocument.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+        newDocument.tap()
+
+        let nameField = app.textFields["入力"]
+        XCTAssertTrue(nameField.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+
+        // ダイアログの下は背景。実際の事故はキーボードでダイアログが上へずれた直後に
+        // 起きるが、ここでは同じ背景を直接叩いて、閉じないことだけを確かめる。
+        // キーボードを出すとWebKitの待機で実行時間がCIの上限を超えるため出さない。
+        let backdrop = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.92))
+        XCTAssertGreaterThan(backdrop.screenPoint.y, nameField.frame.maxY, app.debugDescription)
+        backdrop.tap()
+
+        XCTAssertTrue(nameField.exists, "背景タップでpromptダイアログを閉じてはいけない: \(app.debugDescription)")
+        app.buttons["キャンセル"].tap()
+        XCTAssertFalse(nameField.waitForExistence(timeout: 2), app.debugDescription)
+    }
+
     func testSavePanelShowsBackupActions() {
         let app = XCUIApplication()
         app.launch()
@@ -732,23 +762,21 @@ final class KnittingEditorUITests: XCTestCase {
     }
 
     private func replaceText(_ text: String, in field: XCUIElement, app: XCUIApplication) {
-        // 3回タップで既存の文字列を全選択し、入力で置き換える。1回のタップだと
-        // キャレットが文字の途中に入り、削除が途中で止まることがある
-        // （段数欄の`20`が`0`だけ残り、`1000`を入れて`01000`になった）。
-        field.tap(withNumberOfTaps: 3, numberOfTouches: 1)
+        // タップは1回だけにする。連続タップだと、1回目でキーボードが出て入力欄が上へ
+        // スクロールしたあと、2回目以降が元の座標に残った別の要素へ当たる
+        // （ダイアログが背景へずれ、入力した名前ごと取り消された）。
+        field.tap()
         // キーボードが出る前に入力すると先頭文字を取りこぼす。出ない環境でも
         // 入力自体は可能なので、待つだけで失敗にはしない。
         _ = app.keyboards.firstMatch.waitForExistence(timeout: 10)
-        field.typeText(text)
 
-        if (field.value as? String) != text {
-            // 全選択できなかった場合は、末尾へキャレットを置いて消してから入れ直す。
-            field.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
-            if let current = field.value as? String, !current.isEmpty {
-                field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count + 2))
-            }
-            field.typeText(text)
+        // 末尾へキャレットを置いてから消す。全選択に頼るとキャレットが文字の途中に入った
+        // ときに削除が途中で止まる（段数欄の`20`が`0`だけ残り、`1000`を入れて`01000`になった）。
+        field.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+        if let current = field.value as? String, !current.isEmpty {
+            field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count + 2))
         }
+        field.typeText(text)
         XCTAssertEqual(field.value as? String, text, app.debugDescription)
     }
 
