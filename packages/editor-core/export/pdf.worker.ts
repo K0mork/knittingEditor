@@ -3,14 +3,12 @@ import { Zlib, strToU8, zlibSync } from 'fflate';
 import { STITCH_BY_ID, STITCHES } from '../stitches/catalog';
 import { GLYPH_CELL, glyphPdfCommands } from '../stitches/glyphs';
 import { cellColor, cellStitchId } from '../model/Board';
+import { pdfPageLayout, type PdfLayoutOptions } from './pdfLayout';
 
-export interface PdfRequest {
+export interface PdfRequest extends PdfLayoutOptions {
   rows: number;
   cols: number;
   cells: ArrayBuffer;
-  layout: 'single' | 'tiled';
-  orientation: 'portrait' | 'landscape';
-  cellMillimeters: number;
 }
 
 type PdfObject = Uint8Array;
@@ -46,29 +44,7 @@ function escapePdfText(value: string): string { return value.replaceAll('\\', '\
 
 export function buildPdf(request: PdfRequest): Uint8Array {
   const cells = new Uint32Array(request.cells);
-  const portrait = request.orientation === 'portrait';
-  const pageWidth = portrait ? 595.28 : 841.89;
-  const pageHeight = portrait ? 841.89 : 595.28;
-  const margin = 24;
-  const footer = request.layout === 'tiled' ? 18 : 0;
-  const availableWidth = pageWidth - margin * 2;
-  const availableHeight = pageHeight - margin * 2 - footer;
-  const requestedCell = request.cellMillimeters * 72 / 25.4;
-  const cellSize = request.layout === 'single'
-    ? Math.min(availableWidth / request.cols, availableHeight / request.rows)
-    : requestedCell;
-  const tileCols = request.layout === 'single' ? request.cols : Math.max(1, Math.floor(availableWidth / cellSize));
-  const tileRows = request.layout === 'single' ? request.rows : Math.max(1, Math.floor(availableHeight / cellSize));
-  const stepCols = Math.max(1, tileCols - (request.layout === 'tiled' ? 1 : 0));
-  const stepRows = Math.max(1, tileRows - (request.layout === 'tiled' ? 1 : 0));
-  const tiles: Array<{ row: number; col: number; rows: number; cols: number }> = [];
-  for (let row = 0; row < request.rows; row += stepRows) {
-    for (let col = 0; col < request.cols; col += stepCols) {
-      tiles.push({ row, col, rows: Math.min(tileRows, request.rows - row), cols: Math.min(tileCols, request.cols - col) });
-      if (request.layout === 'single') break;
-    }
-    if (request.layout === 'single') break;
-  }
+  const { pageWidth, pageHeight, margin, cellSize, tiles } = pdfPageLayout(request.rows, request.cols, request);
 
   const objects: PdfObject[] = [];
   objects.push(ascii('<< /Type /Catalog /Pages 2 0 R >>'));

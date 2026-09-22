@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { unzlibSync } from 'fflate';
-import { packCell } from '../model/Board';
-import { STITCH_BY_KEY } from '../stitches/catalog';
-import { buildPdf, type PdfRequest } from '@knitting-editor/editor-core/export/pdf.worker';
+import { Board, packCell } from '../model/Board';
+import { STITCHES, STITCH_BY_KEY } from '../stitches/catalog';
+import { buildPdf, type PdfRequest } from './pdf.worker';
 
 function request(rows: number, cols: number, dense: boolean): PdfRequest {
   const cells = new Uint32Array(rows * cols);
@@ -49,5 +49,25 @@ describe('PDF worker', () => {
     new Uint32Array(input.cells)[0] = packCell(STITCH_BY_KEY.get('erase')!.id, 0xffffff);
     const commands = decodedStreams(buildPdf(input)).join('\n');
     expect(commands).toMatch(/1 1 1 rg [\d.]+ [\d.]+ [\d.]+ [\d.]+ re f/);
+  });
+
+  it('references every persistent glyph in a combined PDF fixture', () => {
+    const glyphs = STITCHES.filter((stitch) => stitch.renderKind === 'glyph');
+    const cols = glyphs.reduce((sum, stitch) => sum + stitch.width, 0) + 1;
+    const board = new Board(2, cols);
+    let col = 0;
+    for (const stitch of glyphs) {
+      expect(board.place(0, col, stitch.key, '#123456', false), stitch.key).toBe(true);
+      col += stitch.width;
+    }
+    expect(board.place(0, col, 'erase', '#ffffff', false)).toBe(true);
+
+    const streams = decodedStreams(buildPdf({
+      rows: board.rows, cols: board.cols, cells: board.cells.buffer as ArrayBuffer,
+      layout: 'single', orientation: 'portrait', cellMillimeters: 5,
+    })).join('\n');
+
+    for (const stitch of glyphs) expect(streams).toContain(`/S${stitch.id} Do`);
+    expect(streams).toMatch(/1 1 1 rg [\d.]+ [\d.]+ [\d.]+ [\d.]+ re f/);
   });
 });

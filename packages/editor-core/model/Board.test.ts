@@ -27,6 +27,7 @@ describe('Board', () => {
     expect(cellStitchId(board.valueAt(19, 0))).toBe(knit);
     expect(cellStitchId(board.valueAt(0, 1))).toBe(STITCH_BY_KEY.get('purl')!.id);
     expect(board.cells.reduce((count, value) => (value ? count + 1 : count), 0)).toBe(2);
+    expect(board.occupiedStitchCount).toBe(2);
   });
 
   it('places and clears a multi-cell stitch as one unit', () => {
@@ -68,6 +69,18 @@ describe('Board', () => {
   it('supports one million cells in a compact buffer', () => {
     const board = new Board(1000, 1000);
     expect(board.cells.byteLength).toBe(4_000_000);
+    board.place(0, 0, 'knit', '#123456', false);
+    board.place(999, 999, 'purl', '#abcdef', false);
+    expect(board.occupiedStitchCount).toBe(2);
+  });
+
+  it('counts placed stitch anchors for accessible status', () => {
+    const board = new Board(4, 4);
+    expect(board.occupiedStitchCount).toBe(0);
+    board.place(1, 1, 'knit', '#123456', false);
+    expect(board.occupiedStitchCount).toBe(1);
+    board.clearAt(1, 1);
+    expect(board.occupiedStitchCount).toBe(0);
   });
 
   it('clamps a selection made entirely outside the board', () => {

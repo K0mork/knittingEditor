@@ -59,7 +59,7 @@ jobs:
               ios/*)
                 ios=true
                 ;;
-              packages/*|package.json|package-lock.json|vite.config.ts|tsconfig*.json|playwright.config.ts|.github/workflows/*)
+              packages/*|package.json|package-lock.json|vite.config.ts|vite.shared.ts|tsconfig*.json|playwright.config.ts|.github/workflows/*)
                 web=true
                 ios=true
                 ;;

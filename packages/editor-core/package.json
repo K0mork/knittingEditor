@@ -9,6 +9,12 @@
     "./export/*": "./export/*.ts",
     "./storage/*": "./storage/*.ts",
     "./model/*": "./model/*.ts",
-    "./stitches/*": "./stitches/*.ts"
+    "./stitches/*": "./stitches/*.ts",
+    "./state/*": "./state/*.ts",
+    "./ui/StitchPicker": "./ui/StitchPicker.tsx",
+    "./ui/GridControls": "./ui/GridControls.tsx",
+    "./ui/ExportControls": "./ui/ExportControls.tsx",
+    "./ui/hooks": "./ui/hooks.ts",
+    "./styles/base.css": "./styles/base.css"
   }
 }
