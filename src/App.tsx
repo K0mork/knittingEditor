@@ -10,7 +10,7 @@ import {
   exportBackup, importBackup, initializeStorage, listBlocks, listDocuments,
   renameDocument, saveBlock, saveDocument, setSetting, type ChartDocument,
 } from './storage/database';
-import { defaultPngCellSize, downloadBlob, PNG_CELL_SIZE_RANGE, renderPdf, renderPng, validatePngSize } from './export/exporters';
+import { defaultPngCellSize, PNG_CELL_SIZE_RANGE, renderPdf, renderPng, saveBlob, validatePngSize } from './export/exporters';
 
 type BusyTask = 'PNGを生成中' | 'PDFを生成中' | 'バックアップを処理中';
 type Panel = 'documents' | 'grid' | 'blocks' | 'export';
@@ -195,7 +195,7 @@ export default function App() {
     if (!validation.valid) { notify(`${validation.reason}。PDF保存をおすすめします。`); return; }
     setBusy('PNGを生成中');
     try {
-      downloadBlob(await renderPng(board, cellSize), `${activeDocument.name}.png`);
+      await saveBlob(await renderPng(board, cellSize), `${activeDocument.name}.png`);
       trackAnalyticsEvent('chart_exported', { export_format: 'png', board_size_bucket: boardSizeBucket(board.rows, board.cols) });
     }
     catch (error) { trackAnalyticsEvent('operation_failed', { operation_name: 'png_export' }); notify(error instanceof Error ? error.message : String(error)); }
@@ -206,7 +206,7 @@ export default function App() {
     if (!board || !activeDocument) return;
     setBusy('PDFを生成中');
     try {
-      downloadBlob(await renderPdf(board, { layout, orientation, cellMillimeters }), `${activeDocument.name}.pdf`);
+      await saveBlob(await renderPdf(board, { layout, orientation, cellMillimeters }), `${activeDocument.name}.pdf`);
       trackAnalyticsEvent('chart_exported', { export_format: 'pdf', pdf_layout: layout, board_size_bucket: boardSizeBucket(board.rows, board.cols) });
     }
     catch (error) { trackAnalyticsEvent('operation_failed', { operation_name: 'pdf_export' }); notify(error instanceof Error ? error.message : String(error)); }
@@ -233,7 +233,7 @@ export default function App() {
         await refreshDocuments();
       }
       const blob = await exportBackup(all ? undefined : [activeDocument.id]);
-      downloadBlob(blob, all ? 'knitting-editor-backup.knit' : `${activeDocument.name}.knit`);
+      await saveBlob(blob, all ? 'knitting-editor-backup.knit' : `${activeDocument.name}.knit`);
       trackAnalyticsEvent('backup_exported', { backup_scope: all ? 'all' : 'current' });
     } catch (error) { trackAnalyticsEvent('operation_failed', { operation_name: 'backup_export' }); notify(error instanceof Error ? error.message : String(error)); }
     finally { setBusy(undefined); }
