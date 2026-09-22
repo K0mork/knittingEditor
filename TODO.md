@@ -13,7 +13,7 @@
 - [x] SwiftUIユニバーサルアプリのXcodeプロジェクトを作成する
 - [x] ローカルWeb資産を読み込む`WKWebView`の最小実装を作る
 - [x] ローカルoriginと永続`WKWebsiteDataStore`の更新耐性を確認する（固定originでWebView置換後のIndexedDB復元をSimulator／CIで検証）
-- [ ] module Worker、Blob、Canvas、IndexedDB、Pointer Eventsの実機PoCを行う
+- [x] module Worker、Blob、Canvas、IndexedDB、Pointer Eventsの実機PoCを行う（iPhone 17／iPadOS 27.0実機とiPad Air 第5世代で、盤面描画=Canvas・Pointer Events、自動保存と再起動復元=IndexedDB、PNG／PDFのネイティブ保存導線到達=Blob・PDF module Workerを確認。機内モードでの確認は別項目）
 - [x] iPhone／iPad SimulatorでCanvas・Blob・PDF module Workerの保存導線をスモーク検証する（実機PoCは別途）
 - [ ] 機内モードで起動でき、外部通信がないことを確認する（無料Personal Teamでは起動自体が検証エラーになるため、有料加入かTestFlight配布が前提。詳細は実機チェックリストのM0を参照）
 - [x] アプリ用Webビルド方式とXcodeへのコピー方式を自動化する
@@ -65,7 +65,7 @@
 - [x] iPhone／iPad Simulatorで縦横回転、キーボード表示中のダイアログ、主要操作のアクセシブルな名前・選択状態を回帰検証する（実機確認は別途）
 - [x] iPhone 16／iPad (10th generation) Simulatorの狭幅・縦横レイアウトを回帰検証する（実機確認は別途必要）
 - [x] 最新iOS／iPadOS 27.0 Simulator（iPhone 18 Pro／iPad Pro 11-inch）でローカルWebView、主要UI、オフライン資産を確認する（実機・Split Viewは別途）
-- [ ] iPad全画面・Split View・可変ウィンドウを確認する
+- [x] iPad全画面・Split View・可変ウィンドウを確認する（iPad Air 第5世代／iPadOS 27.0実機。全画面954×1373、可変ウィンドウ584×861、Split View 681.5×954の3配置で主要操作・パネル開閉・ダイアログ入力・盤面描画を確認）
 - [x] Safe Areaを考慮したレイアウトとキーボード表示時のダイアログをSimulatorで回帰検証する（実機確認は別途必要）
 - [ ] タッチ、ピンチ、パン、マウス、トラックパッドを実機確認する
 - [ ] Apple Pencilを通常入力として確認する
@@ -73,7 +73,7 @@
 - [x] VoiceOverラベル、パネル／ダイアログのフォーカス順・復帰、モード／保存状態通知を整える（実機VoiceOver確認は別途必要）
 - [x] Canvasと保存状態へアクセシブルな名前・状態通知を付与する（実機VoiceOver確認は別途必要）
 - [x] Dynamic Type対応のiOS system text style・rem縮尺と主要操作領域44px以上を実装し、最大アクセシビリティサイズをSimulatorで回帰検証する（実機表示確認は別途必要）
-- [ ] Dynamic Type、VoiceOverフォーカス順、全画面レイアウトを実機確認する
+- [ ] Dynamic Type、VoiceOverフォーカス順、全画面レイアウトを実機確認する（Dynamic Type最大と全画面レイアウトはiPhone 17／iPad Air 第5世代実機で確認済み。横向きでヘッダー操作が画面外へ出る不具合を修正した。VoiceOverのフォーカス順が未実施）
 - [ ] 大規模PNG/PDFの上限とエラー表示を実機検証する
 
 完了条件: 対象となるiPhone・iPad実機で主要操作、アクセシビリティ、出力が完了する。
