@@ -3,6 +3,23 @@ import { Board, cellStitchId } from './Board';
 import { STITCH_BY_KEY } from '../stitches/catalog';
 
 describe('Board', () => {
+  it('keeps the cast-on row when the row count grows and shrinks again', () => {
+    const board = new Board(20, 10);
+    const knit = STITCH_BY_KEY.get('knit')!.id;
+    board.place(19, 0, 'knit', '#111111');
+    board.place(0, 1, 'purl', '#222222');
+
+    // 盤面設定の段数変更が使うオフセット。上端側で増減する。
+    board.resize(25, 10, 25 - 20, 0);
+    expect(cellStitchId(board.valueAt(24, 0))).toBe(knit);
+    expect(board.valueAt(19, 0)).toBe(0);
+
+    board.resize(20, 10, 20 - 25, 0);
+    expect(cellStitchId(board.valueAt(19, 0))).toBe(knit);
+    expect(cellStitchId(board.valueAt(0, 1))).toBe(STITCH_BY_KEY.get('purl')!.id);
+    expect(board.cells.reduce((count, value) => (value ? count + 1 : count), 0)).toBe(2);
+  });
+
   it('places and clears a multi-cell stitch as one unit', () => {
     const board = new Board(10, 10);
     expect(board.place(2, 3, 'right_up_two_cross', '#ff0000')).toBe(true);

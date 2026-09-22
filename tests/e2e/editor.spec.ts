@@ -208,6 +208,41 @@ test('copies and repeatedly pastes a selection without saving a block', async ({
   await expect(page.getByText('保存済みブロックはありません。')).toBeVisible();
 });
 
+test('keeps the cast-on row when the row count grows and shrinks again', async ({ page }) => {
+  const readFilled = () => page.evaluate(async () => {
+    const request = indexedDB.open('knitting-editor-v2');
+    const db = await new Promise<IDBDatabase>((resolve) => { request.onsuccess = () => resolve(request.result); });
+    const transaction = db.transaction('documents');
+    const get = transaction.objectStore('documents').getAll();
+    const documents = await new Promise<Array<{ cells: ArrayBuffer; rows: number; cols: number }>>((resolve) => { get.onsuccess = () => resolve(get.result); });
+    const cells = new Uint32Array(documents[0].cells);
+    const indexes: number[] = [];
+    cells.forEach((value, index) => { if (value) indexes.push(index); });
+    return { indexes, rows: documents[0].rows, cols: documents[0].cols };
+  });
+
+  const canvas = page.getByLabel('編み図編集盤面');
+  const box = await canvas.boundingBox();
+  await page.mouse.click(box!.x + 75, box!.y + 75);
+  await page.waitForTimeout(700);
+  const before = await readFilled();
+  expect(before.indexes.length).toBe(1);
+
+  // 盤面設定の段数変更は増減のどちらでも上端側で行う。往復しても段番号は変わらない。
+  await page.getByRole('button', { name: '盤面' }).click();
+  await page.getByLabel('段数').fill('25');
+  await page.getByRole('button', { name: '変更' }).click();
+  await page.waitForTimeout(700);
+  await page.getByLabel('段数').fill('20');
+  await page.getByRole('button', { name: '変更' }).click();
+  await page.waitForTimeout(700);
+
+  const after = await readFilled();
+  expect(after.rows).toBe(before.rows);
+  expect(after.cols).toBe(before.cols);
+  expect(after.indexes).toEqual(before.indexes);
+});
+
 test('resizes to one million cells without creating cell DOM nodes', async ({ page }) => {
   await page.getByRole('button', { name: '盤面' }).click();
   await page.getByLabel('段数').fill('1000');

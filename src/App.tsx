@@ -362,7 +362,9 @@ function GridControls({ board, changed, mutateStructure, promptIndex, notify }: 
   const [rows, setRows] = useState(board.rows);
   const [cols, setCols] = useState(board.cols);
   useEffect(() => { setRows(board.rows); setCols(board.cols); }, [board.rows, board.cols]);
-  const resize = () => mutateStructure(() => board.resize(rows, cols, rows > board.rows ? rows - board.rows : 0, 0));
+  // 段番号は下から数える。増減のどちらでも上端側で調整し、編み始め（段1）と
+  // 既存の段番号を保つ。増加だけ上端、減少は下端では往復で編み始めが消える。
+  const resize = () => mutateStructure(() => board.resize(rows, cols, rows - board.rows, 0));
   return <div className="grid-controls">
     <div className="size-inputs"><label>段数<input type="number" min="1" max="1000" value={rows} onChange={(event) => setRows(Number(event.target.value))} /></label><label>列数<input type="number" min="1" max="1000" value={cols} onChange={(event) => setCols(Number(event.target.value))} /></label><button className="primary" onClick={resize}>変更</button></div>
     <h3>追加</h3><div className="button-grid"><button onClick={() => mutateStructure(() => board.resize(board.rows + 1, board.cols, 1, 0))}>上に段</button><button onClick={() => mutateStructure(() => board.resize(board.rows + 1, board.cols))}>下に段</button><button onClick={() => mutateStructure(() => board.resize(board.rows, board.cols + 1, 0, 1))}>左に列</button><button onClick={() => mutateStructure(() => board.resize(board.rows, board.cols + 1))}>右に列</button></div>
