@@ -52,14 +52,16 @@ jobs:
           while IFS= read -r path; do
             [[ -n "$path" ]] || continue
             case "$path" in
+              # Markdownはどちらのビルド入力でもない。App Store文書の検査は
+              # 常に走る`app_store_docs`が受け持つので、ここでは何も立てない。
+              *.md|docs/*)
+                ;;
               ios/*)
                 ios=true
                 ;;
               packages/*|package.json|package-lock.json|vite.config.ts|tsconfig*.json|playwright.config.ts|.github/workflows/*)
                 web=true
                 ios=true
-                ;;
-              docs/*|*.md)
                 ;;
               *)
                 web=true
@@ -97,6 +99,16 @@ jobs:
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
         with:
           path: dist
+
+  # App Store提出用の文書はMarkdownのテキスト検査だけで、ビルドもSimulatorも要らない。
+  # 変更範囲の判定に関係なく常に実行し、skipで素通りする経路を作らない。
+  app_store_docs:
+    runs-on: macos-14
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Check the App Store documents
+        run: ios/scripts/check-app-store-docs.sh
 
   ios_web:
     needs: changes
@@ -164,7 +176,9 @@ jobs:
           - 'iPhone 16'
           - 'iPad (10th generation)'
     runs-on: macos-14
-    timeout-minutes: 20
+    # 実作業は8〜10分。ランナーの後片付けが5分以上かかって20分を超え、
+    # 検証が全部成功しているのにcancelled扱いになったことがある。
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Install XcodeGen
@@ -202,7 +216,7 @@ jobs:
 
   ci-gate:
     if: always()
-    needs: [changes, web, ios_web, ios, app_update, release_archive]
+    needs: [changes, web, ios_web, ios, app_update, release_archive, app_store_docs]
     runs-on: ubuntu-latest
     steps:
       - name: Require the checks relevant to this change
@@ -215,8 +229,14 @@ jobs:
           IOS_RESULT: ${{ needs.ios.result }}
           UPDATE_RESULT: ${{ needs.app_update.result }}
           ARCHIVE_RESULT: ${{ needs.release_archive.result }}
+          DOCS_RESULT: ${{ needs.app_store_docs.result }}
         run: |
           set -eu
+          # 変更範囲によらず常に実行するジョブ。条件を持たないので、skipで素通りしない。
+          if [[ "$DOCS_RESULT" != success ]]; then
+            echo "App Store document result: $DOCS_RESULT" >&2
+            exit 1
+          fi
           # 変更範囲を判定できていなければ、必要なジョブが全部skipされていても検証済みとは言えない。
           if [[ "$CHANGES_RESULT" != success ]]; then
             echo "change detection result: $CHANGES_RESULT" >&2

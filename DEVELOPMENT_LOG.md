@@ -1,5 +1,14 @@
 # Development Log
 
+## 2026-09-22 — ドキュメント変更でiOSの重い検証を回さない
+
+- 影響: 変更範囲判定でMarkdownを先に除外し、`ios/**/*.md`だけの変更ではSimulatorを使うジョブを回さないようにした。代わりにApp Store提出文書の検査を、変更範囲によらず常に実行する`app_store_docs`ジョブへ切り出し、`ci-gate`がその成功を無条件に要求する。条件を持たないジョブなので、判定を誤ってもskipで素通りしない。`app_update`の`timeout-minutes`を20から30へ上げ、`ios`ジョブと揃えた。
+- 経緯: 直近50コミットのうち32件が`.md`のみの変更で、`ios/`配下を含むとそのたびにmacOSの6ジョブが約22分走っていた。run [`35720826016`](https://github.com/K0mork/knittingEditor/actions/runs/35720826016)では、`app_update (iPad)`の実作業が9分45秒で成功したあとランナーの後片付けに5分40秒かかり、20分の上限を超えてcancelled扱いになった。同ジョブの所要は直近3runでいずれも7〜8分で、遅いのはランナー側である。
+- 主なファイル: `.github/workflows/ci.yml`、`docs/ARCHITECTURE.md`
+- テスト: 判定の`case`文をローカルのbashで再現し、`ios/docs/*.md`→どちらも立てない、`ios/docs/screenshots/*.png`→ios、`ios/Web/src/**`→ios、`packages/**`→web+ios、`src/**`→web、`.github/workflows/*`→web+ios、`public/CNAME`→web になることを確認した。スクリーンショットは`check-app-store-docs.sh`と`check-release-assets.sh`の検査対象なので、Markdownと同じ扱いにはしない。
+- 検証: `ios/scripts/check-app-store-docs.sh`を単体実行し、0.6秒で成功することを確認した（`plutil`や`xcrun`を使わないテキスト検査のみ）。ワークフローのYAMLはPythonの`yaml.safe_load`で構文を確認した。CI結果は__CI__。
+- デプロイ影響: Web資産は変わらない。`.github/workflows/*`の変更は`web=true`を立てるため、mainへのpushで同じ内容のPagesが再公開される。
+
 ## 2026-09-22 — 統合の積み残しを解消し、入力ダイアログの取り消し事故を修正
 
 - 影響: (1) アプリ内の入力ダイアログ（prompt）を背景タップで閉じないようにした。入力欄をタップするとキーボードでダイアログが上へずれるため、続けて置いた指が背景へ当たり、入力した編み図名ごと取り消されていた。確認ダイアログ（confirm）は失うものがないので従来どおり背景タップで閉じる。(2) Web版の盤面Canvasへ、iOS版だけが持っていたアクセシビリティ情報（`role`、段数・目数・記号数・モード・選択範囲を読む`aria-label`、操作説明）を追加した。見た目は変えていない。(3) 統合後も複製のまま残っていた`pdf.worker.ts`、`exporters.ts`、`BoardCanvas.tsx`と共通テストを`packages/editor-core`へ移し、両ビルドは再エクスポートだけにした。`EditorPlatform`は実際に呼ばれる`saveFile`だけに縮小した。(4) iOS用Webビルドの入力ハッシュを、`ios/Web`・`packages`・ルートの依存定義・ビルドスクリプトだけに限定した。(5) CIの変更範囲判定が比較対象を決められないときに全検証へ倒れるようにし、`ci-gate`が判定ジョブ自体の失敗と未決定を検査するようにした。GitHub Actionsは可変タグからcommit SHAピンへ戻した。(6) 記号ID表と、共通化しないファイルの差分台帳を復活させ、旧リポジトリを指すURLを統合先へ移した。開発ログの記録先をルートへ一本化した。

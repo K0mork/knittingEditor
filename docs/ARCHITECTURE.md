@@ -24,6 +24,6 @@
 
 ルートの`package.json`と`package-lock.json`をworkspaceの唯一のNode依存定義とする。iOSの`ios/scripts/build-web.sh`はルート依存を使って`ios/Web`をビルドし、`ios/AppResources/Web/`へコピーする。
 
-`.github/workflows/ci.yml`は変更範囲を判定し、Web・共通コード・iOSの検証を必要な範囲で実行する。常に実行される`ci-gate`が、変更範囲判定そのものの失敗と、必要なジョブのskip・失敗・キャンセルを検査する。範囲を判定できないときは判定側がWeb・iOSの両方をtrueにして通す。Webまたは共通コードの`main`更新では、関連テスト成功後にPages artifactをデプロイし、iOS専用更新では再公開しない。
+`.github/workflows/ci.yml`は変更範囲を判定し、Web・共通コード・iOSの検証を必要な範囲で実行する。Markdownはどちらのビルド入力でもないため重い検証を起こさず、App Store提出文書の検査は変更範囲によらず常に実行する`app_store_docs`が受け持つ。常に実行される`ci-gate`が、`app_store_docs`の結果、変更範囲判定そのものの失敗、必要なジョブのskip・失敗・キャンセルを検査する。範囲を判定できないときは判定側がWeb・iOSの両方をtrueにして通す。Webまたは共通コードの`main`更新では、関連テスト成功後にPages artifactをデプロイし、iOS専用更新では再公開しない。
 
 本番公開後は、`CI and deploy Pages`の`web`と`deploy`、`https://knittingeditor.com/`のHTTPS応答、主要編集、PNG/PDF、`.knit`入出力を確認し、ルート`DEVELOPMENT_LOG.md`へ記録する。
