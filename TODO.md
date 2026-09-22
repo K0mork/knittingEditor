@@ -15,7 +15,7 @@
 - [x] ローカルoriginと永続`WKWebsiteDataStore`の更新耐性を確認する（固定originでWebView置換後のIndexedDB復元をSimulator／CIで検証）
 - [x] module Worker、Blob、Canvas、IndexedDB、Pointer Eventsの実機PoCを行う（iPhone 17／iPadOS 27.0実機とiPad Air 第5世代で、盤面描画=Canvas・Pointer Events、自動保存と再起動復元=IndexedDB、PNG／PDFのネイティブ保存導線到達=Blob・PDF module Workerを確認。機内モードでの確認は別項目）
 - [x] iPhone／iPad SimulatorでCanvas・Blob・PDF module Workerの保存導線をスモーク検証する（実機PoCは別途）
-- [ ] 機内モードで起動でき、外部通信がないことを確認する（iPad Air 第5世代実機で、機内モードでのホーム画面からの起動、編集、PNG／PDF保存、`.knit`往復を確認済み。26記号の目視と機内モード前後の通信監視が未了。機内モードでの自動テストは開発ツールが再インストールを行うため無料Personal Teamでは実行できない）
+- [ ] 機内モードで起動でき、外部通信がないことを確認する（iPad Air 第5世代実機で、機内モードでのホーム画面からの起動、26記号の表示、編集、PNG／PDF保存、`.knit`往復を確認済み。機内モード前後の通信監視のみ未了。機内モードでの自動テストは開発ツールが再インストールを行うため無料Personal Teamでは実行できない）
 - [x] アプリ用Webビルド方式とXcodeへのコピー方式を自動化する
 
 完了条件: iPhone・iPad実機でローカル資産から編集画面が起動し、再起動後も試験データが残る。

@@ -20,7 +20,9 @@
 - 実機確認の結果: iPad Air 第5世代でタッチ描画、2本指パン、2本指ピンチ、消去、範囲選択とブロック貼り付け、Apple Pencilでの描画・選択・スクロールを確認した。トラックパッド・マウスは機材が無く未実施。
 - 主なファイル: `Web/src/canvas/BoardCanvas.tsx`、`UITests/KnittingEditorUITests/KnittingEditorUITests.swift`、`docs/REAL_DEVICE_RELEASE_CHECKLIST.md`、`TODO.md`
 - 実行コマンドと結果: `npx vitest run`成功（8 files、46 tests）、`npm run typecheck`・`npm run build`成功。iPhone 16 SimulatorとiPad (10th generation) Simulatorで単体23件（機内モード用1件skip）、XCUITest 15件（3件skip）が失敗なしで成功。
-- 未実施: 修正後のiPad実機での再確認。26記号の機内モード目視、機内モード前後の通信監視、トラックパッド・マウス操作。
+- 修正後の実機確認: iPad Air 第5世代へ導入し、2本指のピンチ・パンで記号が入らないこと、1本指のタップとドラッグで従来どおり描けること、消去、範囲選択と貼り付けが問題なく動くことを利用者が確認した。
+- 26記号の機内モード目視も利用者が確認し、実機チェックリストのM0該当項目を完了にした。M0で残るのは機内モード前後の通信監視のみ。
+- 未実施: 機内モード前後の通信監視、トラックパッド・マウス操作、VoiceOverのフォーカス順。
 - 配布影響: 保存形式、記号ID、`.knit`互換は変更しない。1本指タップの記号は指を離した時点で確定するようになる。
 
 ## 2026-09-22: 機内モードでオフライン動作を実機確認しPNG既定解像度を引き上げ
