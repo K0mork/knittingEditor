@@ -299,6 +299,71 @@ final class KnittingEditorUITests: XCTestCase {
     }
 
 
+    /// 1000×1000盤面の保存と再起動復元にかかる時間を実機で測る。
+    ///
+    /// 盤面サイズの数値欄はXCUITestからの入力が安定しない（キャレット位置が定まらず
+    /// `20`から`01000`や`100020`になる）ため、盤面は手で1000×1000にしてから実行する。
+    ///
+    ///     TEST_RUNNER_KNITTING_EDITOR_LARGE_BOARD=1 xcodebuild test ... \
+    ///       -only-testing:knittingEditorUITests/KnittingEditorUITests/testLargeBoardSavesAndRestores
+    func testLargeBoardSavesAndRestores() throws {
+        try XCTSkipUnless(
+            ProcessInfo.processInfo.environment["KNITTING_EDITOR_LARGE_BOARD"] == "1",
+            "盤面を手で1000×1000にしたうえで、TEST_RUNNER_KNITTING_EDITOR_LARGE_BOARD=1を付けて実行する"
+        )
+        let app = XCUIApplication()
+        app.launch()
+        let webView = app.webViews.firstMatch
+        XCTAssertTrue(webView.waitForExistence(timeout: Self.editorAppearanceTimeout))
+
+        let large = webView.otherElements
+            .matching(NSPredicate(format: "label CONTAINS %@", "1000段、1000目"))
+            .firstMatch
+        XCTAssertTrue(
+            large.waitForExistence(timeout: 120),
+            "1000×1000の編み図を開いた状態で実行する: \(app.debugDescription)"
+        )
+        let before = try XCTUnwrap(stitchCount(of: large), app.debugDescription)
+
+        // 記号を1つ置いてから、保存が完了するまでを測る。
+        let editStart = Date()
+        large.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        let changed = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "NOT (label CONTAINS %@)", "記号\(before)個"),
+            object: large
+        )
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [changed], timeout: 60),
+            .completed,
+            "1000×1000盤面へ描画できない: \(app.debugDescription)"
+        )
+        let editSeconds = Date().timeIntervalSince(editStart)
+
+        let saveStart = Date()
+        let saving = webView.descendants(matching: .staticText)
+            .matching(NSPredicate(format: "label CONTAINS %@", "（保存中…）"))
+            .firstMatch
+        let saved = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: saving)
+        XCTAssertEqual(XCTWaiter.wait(for: [saved], timeout: 120), .completed, app.debugDescription)
+        let saveSeconds = Date().timeIntervalSince(saveStart)
+
+        app.terminate()
+        let restoreStart = Date()
+        app.launch()
+        let restored = app.webViews.firstMatch.otherElements
+            .matching(NSPredicate(format: "label CONTAINS %@", "1000段、1000目"))
+            .firstMatch
+        XCTAssertTrue(restored.waitForExistence(timeout: 180), "再起動後に1000×1000を復元できない: \(app.debugDescription)")
+        let restoreSeconds = Date().timeIntervalSince(restoreStart)
+
+        let summary = String(
+            format: "1000×1000 描画反映 %.1f秒 / 保存完了まで %.1f秒 / 再起動から復元まで %.1f秒",
+            editSeconds, saveSeconds, restoreSeconds
+        )
+        print("LARGEBOARD \(summary)")
+        XCTContext.runActivity(named: summary) { _ in }
+    }
+
     func testSeedDocumentForAppUpdateProbe() throws {
         try requireAppUpdateProbe()
         let app = XCUIApplication()
@@ -622,19 +687,31 @@ final class KnittingEditorUITests: XCTestCase {
     }
 
     private func replaceText(_ text: String, in field: XCUIElement, app: XCUIApplication) {
-        // 文字の無い右端をタップしてキャレットを末尾へ置く。中央をタップすると環境に
-        // よってはキャレットが先頭に入り、後続の削除が何も消さずに初期値が残る
-        // （CIのXcode 15.4 Simulatorで`M2切替A新しい編み図`になった）。
-        field.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+        // 3回タップで既存の文字列を全選択し、入力で置き換える。1回のタップだと
+        // キャレットが文字の途中に入り、削除が途中で止まることがある
+        // （段数欄の`20`が`0`だけ残り、`1000`を入れて`01000`になった）。
+        field.tap(withNumberOfTaps: 3, numberOfTouches: 1)
         // キーボードが出る前に入力すると先頭文字を取りこぼす。出ない環境でも
         // 入力自体は可能なので、待つだけで失敗にはしない。
         _ = app.keyboards.firstMatch.waitForExistence(timeout: 10)
-        for _ in 0..<5 {
-            guard let current = field.value as? String, !current.isEmpty else { break }
-            field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count + 2))
-        }
         field.typeText(text)
+
+        if (field.value as? String) != text {
+            // 全選択できなかった場合は、末尾へキャレットを置いて消してから入れ直す。
+            field.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+            if let current = field.value as? String, !current.isEmpty {
+                field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count + 2))
+            }
+            field.typeText(text)
+        }
         XCTAssertEqual(field.value as? String, text, app.debugDescription)
+    }
+
+    /// 盤面のアクセシブルな名前から現在の記号数を読む。
+    private func stitchCount(of canvas: XCUIElement) -> Int? {
+        let label = canvas.label
+        guard let range = label.range(of: "記号[0-9]+個", options: .regularExpression) else { return nil }
+        return Int(label[range].filter(\.isNumber))
     }
 
     private func assertBecomesHittable(_ element: XCUIElement, in app: XCUIApplication, note: String = "") {
