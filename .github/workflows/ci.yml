@@ -33,7 +33,20 @@ jobs:
           fi
           base='${{ github.event.pull_request.base.sha }}'
           if [[ -z "$base" ]]; then base='${{ github.event.before }}'; fi
-          if [[ -z "$base" || "$base" =~ ^0+$ ]]; then base="$(git rev-list --max-parents=1 HEAD)"; fi
+          # 比較対象を決められないとき（新規ブランチの初回pushなど）は範囲を絞らず全部検証する。
+          # ここで推測すると、検証を取りこぼしたままci-gateだけ緑になる。
+          if [[ -z "$base" ]] || [[ "$base" =~ ^0+$ ]] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
+            echo "base commit is unavailable; validating web and ios"
+            echo "web=true" >> "$GITHUB_OUTPUT"
+            echo "ios=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if ! changed="$(git diff --name-only "$base" "$GITHUB_SHA")"; then
+            echo "could not diff $base..$GITHUB_SHA; validating web and ios" >&2
+            echo "web=true" >> "$GITHUB_OUTPUT"
+            echo "ios=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           web=false
           ios=false
           while IFS= read -r path; do
@@ -52,7 +65,7 @@ jobs:
                 web=true
                 ;;
             esac
-          done < <(git diff --name-only "$base" "$GITHUB_SHA")
+          done <<< "$changed"
           echo "web=$web" >> "$GITHUB_OUTPUT"
           echo "ios=$ios" >> "$GITHUB_OUTPUT"
           echo "web=$web ios=$ios"
@@ -194,6 +207,7 @@ jobs:
     steps:
       - name: Require the checks relevant to this change
         env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
           WEB_NEEDED: ${{ needs.changes.outputs.web }}
           IOS_NEEDED: ${{ needs.changes.outputs.ios }}
           WEB_RESULT: ${{ needs.web.result }}
@@ -203,6 +217,15 @@ jobs:
           ARCHIVE_RESULT: ${{ needs.release_archive.result }}
         run: |
           set -eu
+          # 変更範囲を判定できていなければ、必要なジョブが全部skipされていても検証済みとは言えない。
+          if [[ "$CHANGES_RESULT" != success ]]; then
+            echo "change detection result: $CHANGES_RESULT" >&2
+            exit 1
+          fi
+          if [[ "$WEB_NEEDED" != true && "$WEB_NEEDED" != false ]] || [[ "$IOS_NEEDED" != true && "$IOS_NEEDED" != false ]]; then
+            echo "change detection produced no decision: web=$WEB_NEEDED ios=$IOS_NEEDED" >&2
+            exit 1
+          fi
           if [[ "$WEB_NEEDED" == true && "$WEB_RESULT" != success ]]; then
             echo "Web validation result: $WEB_RESULT" >&2
             exit 1
