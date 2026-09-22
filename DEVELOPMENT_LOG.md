@@ -6,7 +6,7 @@
 - 主なファイル: `packages/editor-core/`、`package.json`、`package-lock.json`、`ios/scripts/build-web.sh`、`.github/workflows/ci.yml`、`docs/ARCHITECTURE.md`、`ios/docs/WEB_SYNC.md`
 - CI: 既存のPages workflowとアプリ側workflowを統合し、変更範囲判定、Web検証、iOS Web検証、iPhone／iPad、更新復元、Release Archive、集約ゲート、Pages公開を定義した。共通またはWeb変更時だけPagesを公開し、iOS専用変更では公開しない。
 - 検証: Web `npm run typecheck`、`npm test`（7ファイル・33件）、`npm run build`、`npm run check:dist`、`npm run test:e2e`（Chromium mobile・WebKit mobile・Chromium desktop、57件）、iOS Web `tsc -p tsconfig.app.json --noEmit`、`vitest run`（8ファイル・46件）、`ios/scripts/build-web.sh`、`xcodegen generate --spec project.yml`、Swift単体テスト（24件、1件skip）、Simulator向けDebug build、bundle offline検査、unsigned Release Archive、release asset検査を実行し成功。ローカルiPhone Simulatorの全XCUITestは6件失敗した（Xcode 27.0／iOS 18.2で、キーボード表示後の`入力`TextField取得に失敗）が、PR CI run [`35698857415`](https://github.com/K0mork/knittingEditor/actions/runs/35698857415)では`web`、`ios_web`、iPhone／iPad `ios`、iPhone／iPad `app_update`、`release_archive`、`ci-gate`の全ジョブが成功した。
-- デプロイ影響: PRではPagesの`deploy`がskipされ、本番は未変更。`main`統合後は同じCIの`deploy`成功、`https://knittingeditor.com/`、双方向`.knit`互換性を確認する。
+- デプロイ影響: PR run [`35699930624`](https://github.com/K0mork/knittingEditor/actions/runs/35699930624)でWeb、iOS Web、iPhone／iPad XCUITest、iPhone／iPad更新復元、Release Archive、`ci-gate`がすべて成功した。PRではPagesの`deploy`をskipし、マージコミット`53de110a6df972bc87f5705851094c0dff70f910`のmain run [`35701025286`](https://github.com/K0mork/knittingEditor/actions/runs/35701025286)で全ジョブとPages `deploy`が成功した。デプロイログでPagesの`pages_build_version`が同じ統合コミットであること、環境URLが`https://knittingeditor.com/`であることを確認し、公開URLはHTTPS 200、GitHub Pages応答、CNAME由来のcanonicalと生成JS／CSSを確認した。
 
 ## 2026-09-22 — Search Consoleの実績に合わせてトップページのSEO表現を改善
 
