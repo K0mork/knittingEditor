@@ -7,7 +7,7 @@
 - テスト: 3桁カラー、画面外起点の記号探索範囲、PNG既定解像度と安全上限をVitestへ追加した。2本指操作、wheel抑止、段数往復、名称変更と保存競合、文字拡大時の横向きヘッダーをPlaywrightで検査する。
 - 検証: `npm run typecheck`、`npm test`（7ファイル・33件）、`npm run build`、`npm run check:dist`、`npm run test:e2e`（Chromium mobile・WebKit mobile・Chromium desktop、57件）を順に実行し、すべて成功。`dist/CNAME` が `knittingeditor.com`、生成HTML内のURLがHTTPSであることも確認した。
 - 実UI確認: 製品ビルドをWebKit mobile、667×375横向き、1440×900デスクトップで表示し、ヘッダー操作、編集ツール、盤面、下部・右側メニューに欠けや重なりがないことを確認した。確認画像は `/tmp/knitting-editor-{mobile,landscape,desktop}.png`（未コミット）。
-- デプロイ影響: 静的アプリの更新あり。未デプロイ。デプロイ後はGitHub Actionsの `deploy` 成功と `https://knittingeditor.com/` 上で2本指操作、段数往復、PNG既定24px、ヘッダー表示を確認する必要がある。
+- デプロイ影響: 2026-09-22にコミット `7172947`〜`9adae28` を `main` へデプロイした。GitHub Actions「Test and deploy Pages」run `35687614750` の `test-build` と `deploy` は成功。本番 `https://knittingeditor.com/` がHTTPS 200でJS `index-DPgFRRbH.js` とCSS `index-DUZLEV0q.css` を配信していることを確認した。本番操作では、2本指操作後の保存セル0、wheelイベントの抑止、PNG既定24px・上限60px・20×20で528×528px、段数20→25→20後のセル位置保持、文字サイズ32px相当の横向き667×375でヘッダー操作が画面内（操作文字20px）であることを確認した。
 
 ## 2026-09-22 — Googleタグのコマンド形式を公式実装へ修正
 
