@@ -6,7 +6,7 @@
 - 主なファイル: `index.html`、`src/App.tsx`、`src/styles.css`、`tests/e2e/seo.spec.ts`、`tests/e2e/editor.spec.ts`。
 - テスト: SEOメタデータ、構造化データ、クロール可能な説明文、実画面の説明表示をPlaywrightで更新し、復元後の編み図名検証を専用クラスへ変更した。
 - 検証: `npm run typecheck`、`npm test`（7ファイル・33件）、`npm run build`、`npm run check:dist`、`npm run test:e2e`（Chromium mobile・WebKit mobile・Chromium desktop、57件）を順に実行し、すべて成功。モバイル390×844とデスクトップ1440×900を目視確認し、説明文、編み図名、ヘッダー操作、編集領域に欠けや重なりがないことを確認した。確認画像は `/tmp/knitting-seo-{mobile,desktop}.png`（未コミット）。
-- デプロイ影響: なし。デプロイ後は本番HTMLのtitle・description・構造化データ、モバイル／デスクトップのヘッダー表示、GitHub Actionsの`test-build`・`deploy`成功を確認し、その後28日程度のSearch Consoleデータで対象クエリの順位・表示回数・CTRを比較する必要がある。
+- デプロイ影響: 2026-09-22にコミット `2185f7b` を `main` へデプロイした。GitHub Actions「Test and deploy Pages」run `35694881042` の `test-build` と `deploy` は成功。本番 `https://knittingeditor.com/` がHTTPS 200で更新後のtitle・description・構造化データを配信し、モバイル390×844とデスクトップ1440×900で説明文、編み図名、ヘッダー操作が正常に表示されることを確認した。本番確認画像は `/tmp/knitting-seo-live-{mobile,desktop}.png`（未コミット）。今後28日程度のSearch Consoleデータで対象クエリの順位・表示回数・CTRを比較する。
 
 ## 2026-09-22 — アプリ版で確認したWeb共通不具合を修正
 
