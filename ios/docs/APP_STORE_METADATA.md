@@ -23,8 +23,8 @@
 
 ## URLと提出メモ
 
-- サポートURL: `https://github.com/K0mork/knittingEditor_app/issues`（公開リポジトリが利用可能なことを提出前に確認）
-- プライバシーポリシーURL候補: `https://github.com/K0mork/knittingEditor_app/blob/main/docs/PRIVACY_POLICY.md`（App Store Connect登録前に公開状態と表示を確認）
+- サポートURL: `https://github.com/K0mork/knittingEditor/issues`（公開リポジトリが利用可能なことを提出前に確認）
+- プライバシーポリシーURL候補: `https://github.com/K0mork/knittingEditor/blob/main/ios/docs/PRIVACY_POLICY.md`（App Store Connect登録前に公開状態と表示を確認）
 - 審査メモ: [`APP_REVIEW_NOTES.md`](APP_REVIEW_NOTES.md)の4.2説明と機内モード手順を転記する。
 - スクリーンショット: iPhone縦、iPhone横、iPad全画面、iPad可変幅を実機またはTestFlightで撮影して差し替える。
 

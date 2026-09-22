@@ -184,7 +184,7 @@ SwiftDataへの移行は初回リリース後の選択肢とします。初回�
 
 ## 12. GitHub運用
 
-- 正式なリモートは`https://github.com/K0mork/knittingEditor_app.git`とする。
+- 正式なリモートは`https://github.com/K0mork/knittingEditor.git`とする。アプリは同リポジトリの`ios/`にある。
 - すべての変更は目的ごとにコミットし、作業完了時にそのコミットをGitHubへpushする。
 - push後にローカルHEADとリモート追跡ブランチが一致することを確認する。
 - ユーザーの明示的な指示なしにforce-push、履歴改変、タグ作成、GitHub Release作成を行わない。
