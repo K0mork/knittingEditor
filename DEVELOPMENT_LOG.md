@@ -1,5 +1,13 @@
 # Development Log
 
+## 2026-09-22 — Web・iOS共通workspaceの統合基盤を追加
+
+- 影響: iOS版のGit履歴を`ios/`へ取り込み、ルートworkspaceと`packages/editor-core`を追加した。盤面、記号カタログ、ベクター記号の実装をWeb版とiOS版から共通パッケージへ移し、両方のWeb bundleは同じ実装を再エクスポートする。iOS用Webビルドはルートの依存関係を使用する。
+- 主なファイル: `packages/editor-core/`、`package.json`、`package-lock.json`、`ios/scripts/build-web.sh`、`.github/workflows/ci.yml`、`docs/ARCHITECTURE.md`、`ios/docs/WEB_SYNC.md`
+- CI: 既存のPages workflowとアプリ側workflowを統合し、変更範囲判定、Web検証、iOS Web検証、iPhone／iPad、更新復元、Release Archive、集約ゲート、Pages公開を定義した。共通またはWeb変更時だけPagesを公開し、iOS専用変更では公開しない。
+- 検証: Web `npm run typecheck`、`npm test`（7ファイル・33件）、`npm run build`、`npm run check:dist`、`npm run test:e2e`（Chromium mobile・WebKit mobile・Chromium desktop、57件）、iOS Web `tsc -p tsconfig.app.json --noEmit`、`vitest run`（8ファイル・46件）、`ios/scripts/build-web.sh`、`xcodegen generate --spec project.yml`、Swift単体テスト（24件、1件skip）、Simulator向けDebug build、bundle offline検査、unsigned Release Archive、release asset検査を実行し成功。ローカルiPhone Simulatorの全XCUITestは6件失敗した（Xcode 27.0／iOS 18.2で、キーボード表示後の`入力`TextField取得に失敗）が、PR CI run [`35698857415`](https://github.com/K0mork/knittingEditor/actions/runs/35698857415)では`web`、`ios_web`、iPhone／iPad `ios`、iPhone／iPad `app_update`、`release_archive`、`ci-gate`の全ジョブが成功した。
+- デプロイ影響: PRではPagesの`deploy`がskipされ、本番は未変更。`main`統合後は同じCIの`deploy`成功、`https://knittingeditor.com/`、双方向`.knit`互換性を確認する。
+
 ## 2026-09-22 — Search Consoleの実績に合わせてトップページのSEO表現を改善
 
 - 影響: 検索流入で伸びしろがあった「編み図作成サイト」を自然に含むよう、トップページのtitle、description、OGP、構造化データ、JavaScript実行前の説明文を更新した。実画面のヘッダーにも「無料の棒針編み図作成サイト」を追加し、編み図名と操作ボタンを維持したまま画面幅に応じて折り返す。

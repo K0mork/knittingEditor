@@ -1,0 +1,229 @@
+name: CI and deploy Pages
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: knitting-editor-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      web: ${{ steps.detect.outputs.web }}
+      ios: ${{ steps.detect.outputs.ios }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: detect
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "web=true" >> "$GITHUB_OUTPUT"
+            echo "ios=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          base='${{ github.event.pull_request.base.sha }}'
+          if [[ -z "$base" ]]; then base='${{ github.event.before }}'; fi
+          if [[ -z "$base" || "$base" =~ ^0+$ ]]; then base="$(git rev-list --max-parents=1 HEAD)"; fi
+          web=false
+          ios=false
+          while IFS= read -r path; do
+            [[ -n "$path" ]] || continue
+            case "$path" in
+              ios/*)
+                ios=true
+                ;;
+              packages/*|package.json|package-lock.json|vite.config.ts|tsconfig*.json|playwright.config.ts|.github/workflows/*)
+                web=true
+                ios=true
+                ;;
+              docs/*|*.md)
+                ;;
+              *)
+                web=true
+                ;;
+            esac
+          done < <(git diff --name-only "$base" "$GITHUB_SHA")
+          echo "web=$web" >> "$GITHUB_OUTPUT"
+          echo "ios=$ios" >> "$GITHUB_OUTPUT"
+          echo "web=$web ios=$ios"
+
+  web:
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install workspace dependencies
+        run: npm ci --ignore-scripts
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium webkit
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm run check:dist
+      - run: npm run test:e2e
+      - name: Configure Pages
+        if: github.event_name != 'pull_request'
+        uses: actions/configure-pages@v6
+      - name: Upload Pages artifact
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist
+
+  ios_web:
+    needs: changes
+    if: needs.changes.outputs.ios == 'true'
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install workspace dependencies
+        run: npm ci --ignore-scripts
+      - name: Typecheck iOS Web bundle
+        working-directory: ios/Web
+        run: ../../node_modules/.bin/tsc -p tsconfig.app.json --noEmit
+      - name: Test iOS Web bundle
+        working-directory: ios/Web
+        run: ../../node_modules/.bin/vitest run --config vite.config.ts
+
+  ios:
+    needs: changes
+    if: needs.changes.outputs.ios == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        device:
+          - 'iPhone 16'
+          - 'iPad (10th generation)'
+    runs-on: macos-14
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        run: xcodegen generate --spec ios/project.yml
+      - name: Run iOS tests
+        run: >-
+          xcodebuild test
+          -project ios/knittingEditor.xcodeproj
+          -scheme knittingEditor
+          -destination 'platform=iOS Simulator,name=${{ matrix.device }},OS=latest'
+          -retry-tests-on-failure
+          -test-iterations 2
+          -test-timeouts-enabled YES
+          -default-test-execution-time-allowance 150
+          -maximum-test-execution-time-allowance 240
+          -skip-testing:knittingEditorUITests/KnittingEditorUITests/testBackupExportSheetDismissesBackToEditor
+          CODE_SIGNING_ALLOWED=NO
+      - name: Verify generated app bundle
+        run: |
+          xcodebuild build -project ios/knittingEditor.xcodeproj -scheme knittingEditor \
+            -sdk iphonesimulator -configuration Debug CODE_SIGNING_ALLOWED=NO \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData"
+          ios/scripts/check-app-bundle.sh "$RUNNER_TEMP/DerivedData/Build/Products/Debug-iphonesimulator/knittingEditor.app"
+
+  app_update:
+    needs: changes
+    if: needs.changes.outputs.ios == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        device:
+          - 'iPhone 16'
+          - 'iPad (10th generation)'
+    runs-on: macos-14
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        run: xcodegen generate --spec ios/project.yml
+      - name: Simulate app update and restore IndexedDB
+        run: |
+          ios/scripts/simulate-app-update.sh \
+            '${{ matrix.device }}' \
+            'platform=iOS Simulator,name=${{ matrix.device }},OS=latest'
+
+  release_archive:
+    needs: changes
+    if: needs.changes.outputs.ios == 'true'
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        run: xcodegen generate --spec ios/project.yml
+      - name: Create unsigned Release archive
+        run: >-
+          xcodebuild archive
+          -project ios/knittingEditor.xcodeproj
+          -scheme knittingEditor
+          -configuration Release
+          -destination 'generic/platform=iOS'
+          -archivePath "$RUNNER_TEMP/knittingEditor.xcarchive"
+          CODE_SIGNING_ALLOWED=NO
+          CODE_SIGNING_REQUIRED=NO
+      - name: Verify archived app bundle
+        run: ios/scripts/check-release-assets.sh "$RUNNER_TEMP/knittingEditor.xcarchive/Products/Applications/knittingEditor.app"
+
+  ci-gate:
+    if: always()
+    needs: [changes, web, ios_web, ios, app_update, release_archive]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require the checks relevant to this change
+        env:
+          WEB_NEEDED: ${{ needs.changes.outputs.web }}
+          IOS_NEEDED: ${{ needs.changes.outputs.ios }}
+          WEB_RESULT: ${{ needs.web.result }}
+          IOS_WEB_RESULT: ${{ needs.ios_web.result }}
+          IOS_RESULT: ${{ needs.ios.result }}
+          UPDATE_RESULT: ${{ needs.app_update.result }}
+          ARCHIVE_RESULT: ${{ needs.release_archive.result }}
+        run: |
+          set -eu
+          if [[ "$WEB_NEEDED" == true && "$WEB_RESULT" != success ]]; then
+            echo "Web validation result: $WEB_RESULT" >&2
+            exit 1
+          fi
+          if [[ "$IOS_NEEDED" == true ]]; then
+            for result in "$IOS_WEB_RESULT" "$IOS_RESULT" "$UPDATE_RESULT" "$ARCHIVE_RESULT"; do
+              [[ "$result" == success ]] || { echo "iOS validation result: $result" >&2; exit 1; }
+            done
+          fi
+
+  deploy:
+    if: github.event_name != 'pull_request' && needs.changes.outputs.web == 'true' && needs.ci-gate.result == 'success'
+    needs: [changes, ci-gate, web]
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
