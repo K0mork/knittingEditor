@@ -17,9 +17,28 @@ M0、M2、M3、M4、M6で残っている実機・署名・TestFlight確認を、
 
 実機へインストールする前に、XcodeのSigning & CapabilitiesでTeam、Bundle ID、証明書、Provisioning Profileを確定し、`xcodebuild -showBuildSettings`の`DEVELOPMENT_TEAM`と`PRODUCT_BUNDLE_IDENTIFIER`を記録する。Teamや証明書をリポジトリへ保存しない。
 
-実機作業の開始時は、`scripts/check-device-readiness.sh`を実行する。このスクリプトは署名Team、Bundle ID、Xcodeがオンラインと判定したiOS端末だけを読み取り、未設定なら失敗する。個人Team IDをプロジェクトへ保存しない場合は、`KNITTING_EDITOR_DEVELOPMENT_TEAM=XXXXXXXXXX scripts/check-device-readiness.sh`のように、そのターミナルでだけ環境変数を指定する。Team IDはApple DeveloperのMembership detailsまたは署名証明書から確認し、シェル設定やリポジトリへ書き込まない。現在の開発環境での失敗は実機ゲート未実施の証跡であり、Simulatorの結果で置き換えない。
+実機作業の開始時は、`scripts/check-device-readiness.sh`を実行する。署名Team、Bundle ID、ペアリング済み実機の接続状態を読み取り、未設定なら失敗する。個人Team IDをプロジェクトへ保存しない場合は、`KNITTING_EDITOR_DEVELOPMENT_TEAM=XXXXXXXXXX scripts/check-device-readiness.sh`のように、そのターミナルでだけ環境変数を指定する。Team IDはApple DeveloperのMembership detailsまたは署名証明書から確認し、シェル設定やリポジトリへ書き込まない。現在の開発環境での失敗は実機ゲート未実施の証跡であり、Simulatorの結果で置き換えない。
+
+### 接続状態の見方
+
+出力の`transport`を必ず確認する。
+
+| transport | 意味 | 使える作業 |
+|---|---|---|
+| `wired` | ケーブル接続 | すべて。機内モード試験もこれが必要 |
+| `localNetwork` | Wi-Fiペアリング（無線デバッグ） | 通常のビルド・テストは可能。機内モードでは切れて到達できなくなる |
+
+`xcrun devicectl device info ...`が応答したことを接続の根拠にしてはいけない。Wi-Fiペアリングでも成功し、さらに問い合わせ自体が`tunnelState`を`connected`へ変えるため、ケーブルの有無を判断できない。`xcrun xctrace list devices`の`Devices Offline`も、無線で到達できる端末を含むことがある。
+
+機内モード試験のようにケーブルが必須の作業では、次のように実行して有線接続を強制する。
+
+```sh
+KNITTING_EDITOR_DEVELOPMENT_TEAM=XXXXXXXXXX KNITTING_EDITOR_REQUIRE_WIRED=1 scripts/check-device-readiness.sh
+```
 
 ## M0: オフライン起動とWeb API PoC
+
+機内モードにするとWi-Fiペアリングの端末はMacから見えなくなる。**この節はケーブル接続で実施する**。有線であれば機内モード中もビルド・テスト・ログ取得を続けられるので、`KNITTING_EDITOR_REQUIRE_WIRED=1`で事前に確認してから始める。
 
 - [ ] 機内モードを有効にしてアプリを新規起動できる。
 - [ ] 新規編み図を作成し、26記号、Canvas描画、Blob生成、PNG保存、PDF保存を完了できる。

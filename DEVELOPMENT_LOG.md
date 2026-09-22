@@ -11,6 +11,16 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-22: 実機の接続確認を接続方式まで見るよう修正
+
+- 問題: 実機が接続されているかの判定が誤っていた。`xcrun devicectl device info lockState`が応答したことを接続の根拠にしていたが、この問い合わせはWi-Fiペアリング（`transportType=localNetwork`）でも成功し、しかも問い合わせ自体が`tunnelState`を`connected`へ変える。ケーブルが1本も挿さっていない状態で「両方つながっている」と報告していた。
+- 修正: `scripts/check-device-readiness.sh`を`xcrun devicectl list devices --json-output`ベースへ変更した。ペアリング済み実機ごとに名前、機種、OS、UDID、`tunnelState`、`transportType`、`developerModeStatus`を表示する。デベロッパモードが有効で接続済みの端末が1台も無ければ失敗する。
+- 追加: `KNITTING_EDITOR_REQUIRE_WIRED=1`を指定すると、ケーブル接続（`transportType=wired`）の端末が無い場合に失敗する。機内モードにするとWi-Fiペアリングの端末はMacから見えなくなるため、M0のオフライン試験はこの指定で事前確認してから始める。
+- 主なファイル: `scripts/check-device-readiness.sh`、`docs/REAL_DEVICE_RELEASE_CHECKLIST.md`
+- テスト: 現在の環境（iPhone 17とiPad Air 第5世代がいずれもWi-Fiペアリングのみ）で、通常実行は`connected=2 wired=0`として成功し、`KNITTING_EDITOR_REQUIRE_WIRED=1`ではケーブル未接続として終了コード1で失敗することを確認した。
+- 未実施: 有線接続時の`transport=wired`表示は、次に実機をケーブルで接続したときに確認する。
+- 配布影響: アプリの実装は変更していない。実機作業の事前確認のみ。
+
 ## 2026-09-22: CIの失敗を修正（入力欄のキャレット位置と削除したテストの復元）
 
 - 症状: `test: dismiss the save sheet on iPad and stop dropped dialog input`以降、CIのiPhone・iPadの`ios`と`app-update`の4ジョブが失敗していた。原因は2件あった。
