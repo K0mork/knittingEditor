@@ -99,7 +99,7 @@
 - [x] AppIcon 1024px資産を用意する（起動画面・App Storeスクリーンショットは別途必要）
 - [x] `UILaunchScreen`へasset catalogの起動画面背景色を設定する（実機目視は別途必要）
 - [x] iPhone／iPad SimulatorのApp Storeスクリーンショット下書きを`docs/screenshots/`へ保存する（実機最終版・起動画面は別途）
-- [ ] 起動画面とApp Storeスクリーンショットを用意する
+- [x] 起動画面とApp Storeスクリーンショットを用意する（提出サイズ1320×2868／2064×2752を`docs/screenshots/app-store-*.png`に保存。iPadの空白は盤面を40段×32列に広げて解消）
 - [x] アプリ内プライバシーポリシーとサポート導線を用意する
 - [x] App Privacyを「端末内のみ」の実装と一致させる
 - [x] Privacy Manifestと利用API理由を確認する

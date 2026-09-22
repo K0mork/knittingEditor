@@ -70,6 +70,12 @@ check_screenshot() {
   }
 }
 
+# App Store Connectが要求する提出サイズ。
+check_screenshot "$REPO_ROOT/docs/screenshots/app-store-iphone-6.9-editor.png" 1320 2868
+check_screenshot "$REPO_ROOT/docs/screenshots/app-store-iphone-6.9-launch.png" 1320 2868
+check_screenshot "$REPO_ROOT/docs/screenshots/app-store-ipad-13-editor.png" 2064 2752
+
+# 解像度確認用の旧下書き。
 check_screenshot "$REPO_ROOT/docs/screenshots/iphone-16-editor-simulator.png" 1179 2556
 check_screenshot "$REPO_ROOT/docs/screenshots/ipad-10-editor-simulator.png" 1640 2360
 check_screenshot "$REPO_ROOT/docs/screenshots/ipad-10-editor-landscape-simulator.png" 2360 1640

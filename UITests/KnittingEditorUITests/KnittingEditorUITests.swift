@@ -364,6 +364,51 @@ final class KnittingEditorUITests: XCTestCase {
         XCTContext.runActivity(named: summary) { _ in }
     }
 
+    /// App Storeスクリーンショット用に、画面を埋める大きさの盤面を用意する。
+    ///
+    /// 撮影対象のSimulatorに対して実行し、終了後に`xcrun simctl io <udid> screenshot`で撮る。
+    ///
+    ///     TEST_RUNNER_KNITTING_EDITOR_SCREENSHOT_ROWS=40 \
+    ///     TEST_RUNNER_KNITTING_EDITOR_SCREENSHOT_COLS=32 xcodebuild test ...
+    func testPrepareScreenshotBoard() throws {
+        let environment = ProcessInfo.processInfo.environment
+        let rows = environment["KNITTING_EDITOR_SCREENSHOT_ROWS"].flatMap(Int.init)
+        let cols = environment["KNITTING_EDITOR_SCREENSHOT_COLS"].flatMap(Int.init)
+        try XCTSkipUnless(
+            rows != nil && cols != nil,
+            "撮影用の盤面を用意するときだけ、TEST_RUNNER_KNITTING_EDITOR_SCREENSHOT_ROWS/COLSを指定して実行する"
+        )
+        let app = XCUIApplication()
+        app.launch()
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
+        createDocument(named: "サンプル編み図", in: app)
+
+        // 数値欄への入力はキャレット位置が安定しないため、追加ボタンを繰り返し押す。
+        app.buttons["盤面"].tap()
+        let addRow = app.buttons["上に段"]
+        XCTAssertTrue(addRow.waitForExistence(timeout: 15), app.debugDescription)
+        for _ in 0..<max(0, rows! - 20) { addRow.tap() }
+        for _ in 0..<max(0, cols! - 20) { app.buttons["右に列"].tap() }
+
+        let resized = app.webViews.firstMatch.otherElements
+            .matching(NSPredicate(format: "label CONTAINS %@", "\(rows!)段、\(cols!)目"))
+            .firstMatch
+        XCTAssertTrue(resized.waitForExistence(timeout: 60), "盤面を\(rows!)×\(cols!)にできない: \(app.debugDescription)")
+        app.buttons["閉じる"].tap()
+
+        // 記号を置いて編み図らしい見た目にする。
+        for (dx, dy) in [(0.30, 0.35), (0.38, 0.35), (0.46, 0.35), (0.34, 0.45), (0.42, 0.45), (0.38, 0.55)] {
+            resized.coordinate(withNormalizedOffset: CGVector(dx: dx, dy: dy)).tap()
+        }
+        XCTAssertTrue(
+            app.webViews.firstMatch.otherElements
+                .matching(NSPredicate(format: "label CONTAINS %@", "記号6個"))
+                .firstMatch
+                .waitForExistence(timeout: 20),
+            app.debugDescription
+        )
+    }
+
     func testSeedDocumentForAppUpdateProbe() throws {
         try requireAppUpdateProbe()
         let app = XCUIApplication()

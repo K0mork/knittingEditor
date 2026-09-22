@@ -5,7 +5,8 @@
 - [ ] Apple Developer Team、Bundle ID、署名証明書、Provisioning Profileを確定する。
 - [ ] AppIconの最終デザインと全サイズを登録する。
 - [ ] 起動画面を確認する。
-- [ ] iPhone／iPadの実機スクリーンショットを撮影する。
+- [x] App Store Connectの提出サイズ（iPhone 6.9インチ 1320×2868、iPad 13インチ 2064×2752）のスクリーンショットを`docs/screenshots/app-store-*.png`へ保存する。
+- [ ] iPhone／iPadの実機スクリーンショットを撮影する（任意。提出要件はSimulator素材で満たしている）。
 - [x] iPhone 16／iPad (10th generation) Simulatorのスクリーンショット下書きを`docs/screenshots/`へ保存する。
 - [x] iPhone 16／iPad (10th generation) Simulatorの起動画面下書きを`docs/screenshots/`へ保存する（最終素材ではない）。
 - [x] `App/PrivacyInfo.xcprivacy`を同梱し、収集データなし・トラッキングなしと一致させる。
