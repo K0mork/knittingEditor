@@ -54,6 +54,9 @@ export function BoardCanvas(props: Props) {
   const lastCellRef = useRef<Point | undefined>(undefined);
   const selectionStartRef = useRef<Point | undefined>(undefined);
   const strokeFootprintRef = useRef(new Set<number>());
+  // 1本指のタップは指を離すまで確定しない。触れた瞬間に置くと、2本指ジェスチャの
+  // 開始時に先に触れた指の位置へ記号が入ってしまうため。
+  const pendingTapRef = useRef<Point | undefined>(undefined);
   const propsRef = useRef(props);
   propsRef.current = props;
 
@@ -236,6 +239,8 @@ export function BoardCanvas(props: Props) {
     lastCellRef.current = cell;
     if (pointersRef.current.size === 2) {
       gestureBlockedRef.current = true;
+      // 2本目が触れた時点で、1本目の保留タップは取り消す。
+      pendingTapRef.current = undefined;
       const [a, b] = [...pointersRef.current.values()];
       gestureRef.current = {
         distance: Math.hypot(a.x - b.x, a.y - b.y),
@@ -256,13 +261,9 @@ export function BoardCanvas(props: Props) {
       }
       selectionStartRef.current = cell;
       props.onSelectionChange({ top: cell.row, left: cell.col, bottom: cell.row, right: cell.col });
-    } else if (props.mode === 'paste' && props.pasteBlock) {
-      props.onPasteComplete(props.board.pasteBlock(props.pasteBlock, cell.row, cell.col));
-    } else if (props.mode === 'erase') {
-      applyErase(cell, cell);
     } else {
-      strokeFootprintRef.current.clear();
-      applyStroke(cell, cell);
+      if (props.mode !== 'paste') strokeFootprintRef.current.clear();
+      pendingTapRef.current = cell;
     }
     requestDraw();
   };
@@ -271,7 +272,12 @@ export function BoardCanvas(props: Props) {
     const position = eventPosition(event);
     if (pointersRef.current.has(event.pointerId)) pointersRef.current.set(event.pointerId, position);
     const cell = cellAt(position);
-    if (props.mode === 'paste') { lastCellRef.current = cell; requestDraw(); }
+    if (props.mode === 'paste') {
+      lastCellRef.current = cell;
+      // 貼り付けはプレビューの位置で確定させる。
+      if (pendingTapRef.current) pendingTapRef.current = cell;
+      requestDraw();
+    }
     if (pointersRef.current.size >= 2 && gestureRef.current) {
       const [a, b] = [...pointersRef.current.values()];
       const distance = Math.max(1, Math.hypot(a.x - b.x, a.y - b.y));
@@ -290,8 +296,10 @@ export function BoardCanvas(props: Props) {
       const start = selectionStartRef.current;
       props.onSelectionChange({ top: start.row, left: start.col, bottom: cell.row, right: cell.col });
     } else if (props.mode === 'draw') {
+      pendingTapRef.current = undefined;
       applyStroke(lastCellRef.current, cell);
     } else if (props.mode === 'erase') {
+      pendingTapRef.current = undefined;
       applyErase(lastCellRef.current, cell);
     }
     lastCellRef.current = cell;
@@ -301,6 +309,20 @@ export function BoardCanvas(props: Props) {
   const handlePointerEnd = (event: React.PointerEvent<HTMLCanvasElement>) => {
     pointersRef.current.delete(event.pointerId);
     if (pointersRef.current.size < 2) gestureRef.current = undefined;
+
+    // 1本指で触れて離した場合だけ、保留していたタップを確定する。
+    const pendingTap = pendingTapRef.current;
+    pendingTapRef.current = undefined;
+    if (pendingTap && !gestureBlockedRef.current && event.type !== 'pointercancel') {
+      if (props.mode === 'paste' && props.pasteBlock) {
+        props.onPasteComplete(props.board.pasteBlock(props.pasteBlock, pendingTap.row, pendingTap.col));
+      } else if (props.mode === 'erase') {
+        applyErase(pendingTap, pendingTap);
+      } else if (props.mode === 'draw') {
+        applyStroke(pendingTap, pendingTap);
+      }
+    }
+
     if (pointersRef.current.size === 0 && props.mode === 'select' && props.selection) {
       props.onSelectionChange(props.board.normalizeSelection(props.selection));
     }

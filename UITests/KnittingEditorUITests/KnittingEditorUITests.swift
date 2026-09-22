@@ -57,6 +57,48 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertFalse(app.otherElements["editorLoadingOverlay"].exists, app.debugDescription)
     }
 
+    /// 2本指ジェスチャで盤面へ記号が入らないことを確認する。
+    ///
+    /// ほぼ同時に2本指で触れても、先に触れた指の位置へ記号が置かれてしまう不具合があった。
+    /// 触れた瞬間に記号を確定していたためで、1本指のタップは指を離すまで保留するようにした。
+    func testTwoFingerGestureDoesNotDrawOnBoard() {
+        let app = XCUIApplication()
+        app.launch()
+
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 15))
+        createDocument(named: "2本指確認", in: app)
+
+        let webView = app.webViews.firstMatch
+        let emptyCanvas = webView.otherElements
+            .matching(NSPredicate(format: "label CONTAINS %@", "記号0個"))
+            .firstMatch
+        XCTAssertTrue(emptyCanvas.waitForExistence(timeout: 15), app.debugDescription)
+
+        emptyCanvas.pinch(withScale: 2.0, velocity: 1.0)
+        emptyCanvas.pinch(withScale: 0.5, velocity: -1.0)
+
+        // 記号数は0のまま変わらない。増えていれば指の位置へ記号が入っている。
+        let stillEmpty = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "NOT (label CONTAINS %@)", "記号0個"),
+            object: emptyCanvas
+        )
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [stillEmpty], timeout: 3),
+            .timedOut,
+            "2本指ジェスチャで盤面へ記号が入った: \(app.debugDescription)"
+        )
+
+        // 1本指のタップでは従来どおり記号を置ける。
+        emptyCanvas.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        XCTAssertTrue(
+            webView.otherElements
+                .matching(NSPredicate(format: "label CONTAINS %@", "記号1個"))
+                .firstMatch
+                .waitForExistence(timeout: 10),
+            app.debugDescription
+        )
+    }
+
     func testSavePanelShowsBackupActions() {
         let app = XCUIApplication()
         app.launch()
@@ -561,6 +603,20 @@ final class KnittingEditorUITests: XCTestCase {
     /// 実機ではキーボードの表示前に入力が始まると先頭文字を取りこぼす（iPadで`M2切替A`が
     /// `2切替A`になった）。初期値が残ると意図しない名前になるため、消してから入力し、
     /// 最後に入力結果を検査する。
+    /// 空の盤面から始めるため、名前を指定して新しい編み図を作る。
+    private func createDocument(named name: String, in app: XCUIApplication) {
+        let documents = app.buttons["編み図"]
+        XCTAssertTrue(documents.waitForExistence(timeout: 15), app.debugDescription)
+        documents.tap()
+        let newDocument = app.buttons["新しい編み図"]
+        XCTAssertTrue(newDocument.waitForExistence(timeout: 15), app.debugDescription)
+        newDocument.tap()
+        let nameField = app.textFields["入力"]
+        XCTAssertTrue(nameField.waitForExistence(timeout: 15), app.debugDescription)
+        replaceText(name, in: nameField, app: app)
+        app.buttons["決定"].tap()
+    }
+
     private func replaceText(_ text: String, in field: XCUIElement, app: XCUIApplication) {
         // 文字の無い右端をタップしてキャレットを末尾へ置く。中央をタップすると環境に
         // よってはキャレットが先頭に入り、後続の削除が何も消さずに初期値が残る
