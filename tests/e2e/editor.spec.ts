@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 
 test.beforeEach(async ({ page }) => {
@@ -181,7 +182,8 @@ test('creates a block and exports backup and PDF', async ({ page }) => {
   expect(backupPath).not.toBeNull();
   await page.locator('input[type="file"]').setInputFiles(backupPath!);
   await expect(page.getByText('1件の編み図を復元しました')).toBeVisible();
-  await expect(page.locator('.app-document-name')).toHaveText('新しい編み図（復元）');
+  // 編み図名のあとに、読み上げ用の保存状態テキストが続く。
+  await expect(page.locator('.app-document-name')).toContainText('新しい編み図（復元）');
 
   await page.getByRole('button', { name: '保存' }).click();
   const pdfDownload = page.waitForEvent('download');
@@ -311,4 +313,84 @@ test('describes the board and the current mode for assistive technology', async 
   await page.getByRole('button', { name: '消す', exact: true }).click();
   await expect(canvas).toHaveAttribute('aria-label', /消去モード/);
   await expect(page.locator('#board-instructions')).toHaveText(/現在は消去モードです/);
+});
+
+
+for (const action of ['switch', 'restore'] as const) {
+  test(`preserves unsaved edits when ${action} cannot save`, async ({ page }) => {
+    await page.getByRole('button', { name: '編み図', exact: true }).click();
+    await page.getByRole('button', { name: '複製', exact: true }).click();
+    await expect(page.locator('.document')).toHaveCount(2);
+    await page.getByRole('button', { name: '閉じる', exact: true }).click();
+    await page.evaluate(() => {
+      const original = IDBObjectStore.prototype.put;
+      IDBObjectStore.prototype.put = function (...args) {
+        if (this.name === 'documents') throw new DOMException('test quota', 'QuotaExceededError');
+        return original.apply(this, args);
+      };
+    });
+    const canvas = page.getByLabel('編み図編集盤面');
+    const box = await canvas.boundingBox();
+    await page.mouse.click(box!.x + 75, box!.y + 75);
+    await expect(page.locator('.app-document-name')).toContainText('保存中');
+    if (action === 'switch') {
+      await page.getByRole('button', { name: '編み図', exact: true }).click();
+      await page.locator('.document').filter({ hasText: 'コピー' }).locator('button').first().click();
+      await expect(page.locator('.drawer')).toBeVisible();
+    } else {
+      const fixture = readFileSync('ios/test-fixtures/knitting-editor-v2-interop.knit.b64', 'utf8').trim();
+      await page.locator('input[type="file"]').setInputFiles({
+        name: 'restore.knit', mimeType: 'application/gzip', buffer: Buffer.from(fixture, 'base64'),
+      });
+      await expect(page.locator('.busy')).toHaveCount(0);
+      await page.getByRole('button', { name: '編み図', exact: true }).click();
+      await expect(page.locator('.document')).toHaveCount(2);
+    }
+    await expect(page.locator('.app-document-name')).toContainText('新しい編み図');
+    await expect(page.locator('.app-document-name')).not.toContainText('コピー');
+    await expect(page.locator('.app-document-name')).toContainText('保存中');
+    await expect(page.locator('.toast')).toContainText('保存');
+  });
+}
+
+test('explains why a switch is blocked by an edit that lands during the save', async ({ page }) => {
+  await page.getByRole('button', { name: '編み図', exact: true }).click();
+  await page.getByRole('button', { name: '複製', exact: true }).click();
+  await expect(page.locator('.document')).toHaveCount(2);
+  await page.getByRole('button', { name: '閉じる', exact: true }).click();
+
+  // 書き込みが始まるたびに次の編集を差し込み、「保存は成功したが、その最中に
+  // 編集が入った」状態を決定的に作る。盤面を差し替える操作はここで止まる。
+  await page.evaluate(() => {
+    const canvas = document.querySelector<HTMLCanvasElement>('.board-canvas')!;
+    // Synthetic PointerEvents are not registered in the browser's native pointer-capture table.
+    canvas.setPointerCapture = () => {};
+    const original = IDBObjectStore.prototype.put;
+    IDBObjectStore.prototype.put = function (this: IDBObjectStore, ...args: Parameters<IDBObjectStore['put']>) {
+      const request = original.apply(this, args);
+      if (this.name === 'documents') {
+        const rect = canvas.getBoundingClientRect();
+        for (const type of ['pointerdown', 'pointerup']) {
+          canvas.dispatchEvent(new PointerEvent(type, {
+            bubbles: true, cancelable: true, pointerId: 7, pointerType: 'touch',
+            clientX: rect.left + 135, clientY: rect.top + 135, button: 0, isPrimary: true,
+          }));
+        }
+      }
+      return request;
+    };
+  });
+
+  const canvas = page.getByLabel('編み図編集盤面');
+  const box = await canvas.boundingBox();
+  await page.mouse.click(box!.x + 75, box!.y + 75);
+  await expect(page.locator('.app-document-name')).toContainText('保存中');
+
+  await page.getByRole('button', { name: '編み図', exact: true }).click();
+  await page.locator('.document').filter({ hasText: 'コピー' }).locator('button').first().click();
+
+  await expect(page.locator('.toast')).toContainText('編集中のため切り替えできませんでした');
+  await expect(page.locator('.app-document-name')).toContainText('新しい編み図');
+  await expect(page.locator('.app-document-name')).not.toContainText('コピー');
+  await expect(page.locator('.drawer')).toBeVisible();
 });

@@ -1,16 +1,12 @@
 import { defineConfig } from 'vitest/config';
-import react from '@vitejs/plugin-react';
+import { sharedViteConfig } from './vite.shared.ts';
+
+const shared = sharedViteConfig();
 
 export default defineConfig({
-  base: '/',
-  plugins: [react()],
-  build: {
-    target: ['es2022', 'safari16.4'],
-    sourcemap: true,
-    chunkSizeWarningLimit: 900,
-  },
+  ...shared,
   test: {
-    environment: 'jsdom',
-    include: ['src/**/*.test.ts', 'packages/**/*.test.ts'],
+    ...shared.test,
+    include: ['src/**/*.test.{ts,tsx}', 'packages/**/*.test.{ts,tsx}'],
   },
 });

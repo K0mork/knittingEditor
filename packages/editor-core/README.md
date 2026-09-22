@@ -10,13 +10,20 @@ Web版（ルートの`src/`）とiOS版（`ios/Web/src/`）が共有する実装
 | `model/` | packed盤面、色、記号の配置。ReactにもDOMにも依存しない。 |
 | `stitches/` | 記号カタログとベクター記号。`catalog.ts`と`glyphs.ts`は一体で扱う。 |
 | `storage/` | IndexedDBと`.knit`バックアップの入出力・検証。 |
-| `export/` | PNG描画とPDF Worker。Canvas APIを使う。 |
+| `export/` | PNG描画、PDF Worker、PDFの用紙分割計算。Canvas APIを使う。 |
 | `canvas/` | 盤面のCanvasコンポーネント。Reactを使う。 |
+| `state/` | 編集セッション。読み込み・自動保存・即時保存・編み図切り替えを1本にまとめる。 |
+| `ui/` | 記号ピッカー、盤面設定、出力設定と、それらが使う共通フック。 |
+| `styles/` | 共通CSS。環境で変える寸法はカスタムプロパティで受け取る。 |
 | `platform.ts` | WebとiOSで実装が分かれるhost機能の型。 |
 
 `model/`はReactとDOMから独立させる。`export/`と`canvas/`はブラウザAPIを使うが、
 Web固有・iOS固有の分岐は持たない。分岐が要るものは`platform.ts`へ足すのではなく、
 まず各ビルド側に置けないかを検討する。`platform.ts`には、両方で実際に呼ばれる操作だけを置く。
+
+`ui/`の部品は環境固有の処理をpropsで受け取る。`window.prompt`とアプリ内ダイアログの違いは
+`askText`・`askConfirm`、案内文の違いは`backupNote`で渡し、部品の中で分岐させない。
+PDFの推定ページ数は`export/pdfLayout.ts`をPDF Workerと共有し、用紙寸法をUI側へ書き写さない。
 
 ここへ置かないもの: SEO、分析、旧Safari移行、`WKWebView`ブリッジ、Files・共有シート、
 そして`App.tsx`と`styles.css`（両ビルドで内容が異なる）。差分の一覧は
@@ -49,5 +56,5 @@ IndexedDBのDB名`knitting-editor-v2`、`.knit`の`format`・`version`・`stitch
 ## テスト
 
 共通コードのテストはこのパッケージ内に置き、ルートの`npm test`で実行する
-（`vite.config.ts`の`test.include`が`packages/**/*.test.ts`を拾う）。
+（`vite.config.ts`の`test.include`が`packages/**/*.test.{ts,tsx}`を拾う）。
 Web固有・iOS固有の検証だけを各ビルドの`src/`へ置く。
