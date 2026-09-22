@@ -243,6 +243,26 @@ test('keeps the cast-on row when the row count grows and shrinks again', async (
   expect(after.indexes).toEqual(before.indexes);
 });
 
+test('does not overwrite a renamed chart with a pending autosave', async ({ page }) => {
+  const canvas = page.getByLabel('編み図編集盤面');
+  const box = await canvas.boundingBox();
+  await page.mouse.click(box!.x + 75, box!.y + 75);
+
+  await page.getByRole('button', { name: '編み図' }).click();
+  page.once('dialog', async (dialog) => dialog.accept('名称変更後'));
+  await page.getByRole('button', { name: '名前変更' }).click();
+  await page.waitForTimeout(700);
+
+  const names = await page.evaluate(async () => {
+    const request = indexedDB.open('knitting-editor-v2');
+    const db = await new Promise<IDBDatabase>((resolve) => { request.onsuccess = () => resolve(request.result); });
+    const get = db.transaction('documents').objectStore('documents').getAll();
+    const documents = await new Promise<Array<{ name: string }>>((resolve) => { get.onsuccess = () => resolve(get.result); });
+    return documents.map((document) => document.name);
+  });
+  expect(names).toContain('名称変更後');
+});
+
 test('keeps header actions visible when text is enlarged in landscape', async ({ page }) => {
   await page.setViewportSize({ width: 667, height: 375 });
   await page.addStyleTag({ content: 'html { font-size: 32px; }' });

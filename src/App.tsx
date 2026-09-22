@@ -70,7 +70,7 @@ export default function App() {
       }).catch(() => setMessage('自動保存に失敗しました。バックアップを保存してください。'));
     }, 400);
     return () => clearTimeout(timer);
-  }, [dirty, revision, activeDocument?.id, board]);
+  }, [dirty, revision, activeDocument, board, refreshDocuments]);
 
   useEffect(() => {
     const handler = (event: BeforeUnloadEvent) => {

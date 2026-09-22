@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Board, cellColor, cellStitchId, colorHex, type PatternBlock, type Point, type Rect } from '../model/Board';
-import { STITCH_BY_ID, STITCH_BY_KEY } from '../stitches/catalog';
+import { STITCH_BY_ID, STITCH_BY_KEY, STITCHES } from '../stitches/catalog';
 import { drawGlyph } from '../stitches/glyphs';
 
 export type CanvasMode = 'draw' | 'erase' | 'select' | 'paste';
@@ -22,6 +22,17 @@ interface Viewport { x: number; y: number; cell: number }
 interface PointerPosition { x: number; y: number }
 
 const LABEL_SIZE = 28;
+// 複数セルを占める記号は、起点セルが表示範囲の外にあっても一部が画面へかかる。
+// 起点の探索範囲を最大記号の寸法だけ広げ、端で記号が丸ごと消えないようにする。
+const MAX_STITCH_WIDTH = Math.max(...STITCHES.map((stitch) => stitch.width));
+const MAX_STITCH_HEIGHT = Math.max(...STITCHES.map((stitch) => stitch.height));
+
+export function glyphSearchStart(firstRow: number, firstCol: number): Point {
+  return {
+    row: Math.max(0, firstRow - MAX_STITCH_HEIGHT + 1),
+    col: Math.max(0, firstCol - MAX_STITCH_WIDTH + 1),
+  };
+}
 
 function rasterLine(from: Point, to: Point): Point[] {
   const points: Point[] = [];
@@ -105,8 +116,9 @@ export function BoardCanvas(props: Props) {
     context.lineWidth = 1;
     context.stroke();
 
-    for (let row = firstRow; row <= lastRow; row++) {
-      for (let col = firstCol; col <= lastCol; col++) {
+    const { row: firstGlyphRow, col: firstGlyphCol } = glyphSearchStart(firstRow, firstCol);
+    for (let row = firstGlyphRow; row <= lastRow; row++) {
+      for (let col = firstGlyphCol; col <= lastCol; col++) {
         const value = board.valueAt(row, col);
         if (!value) continue;
         const stitch = STITCH_BY_ID.get(cellStitchId(value));

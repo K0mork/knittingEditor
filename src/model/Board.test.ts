@@ -1,8 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { Board, cellStitchId } from './Board';
+import { Board, cellColor, cellStitchId, colorHex, parseColor } from './Board';
 import { STITCH_BY_KEY } from '../stitches/catalog';
 
 describe('Board', () => {
+  it('expands three digit colors instead of padding them with zeros', () => {
+    expect(colorHex(parseColor('#0f0'))).toBe('#00ff00');
+    expect(colorHex(parseColor('#fff'))).toBe('#ffffff');
+    expect(colorHex(parseColor('#d33c32'))).toBe('#d33c32');
+    const board = new Board(4, 4);
+    board.place(0, 0, 'knit', '#0f0');
+    expect(colorHex(cellColor(board.valueAt(0, 0)))).toBe('#00ff00');
+  });
+
   it('keeps the cast-on row when the row count grows and shrinks again', () => {
     const board = new Board(20, 10);
     const knit = STITCH_BY_KEY.get('knit')!.id;
