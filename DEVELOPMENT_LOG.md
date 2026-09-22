@@ -1,5 +1,14 @@
 # Development Log
 
+## 2026-09-22 — アプリ版で確認したWeb共通不具合を修正
+
+- 影響: `knittingEditor_app` 側のコミット `dc014f6`、`aca03e8`、`98e9211`、`675389b`、`4ed8401` をWeb版へ同期した。2本指操作時の誤描画を防ぎ、段数増減を上端側へ統一し、大きな文字でもヘッダーを画面内へ保ち、PNG既定値を24px/セル（最大60px）へ拡大して大盤面では安全値へ自動調整する。画面端の複数セル記号、自動保存中の名称変更、3桁カラー、トラックパッドのピンチも修正した。`01e1643` の初期値選択はアプリ内WebView専用ダイアログの修正であり、本Web版は初期値を標準で選択する `window.prompt` を継続使用するため追加変更なし。
+- 主なファイル: `src/App.tsx`、`src/canvas/BoardCanvas.tsx`、`src/model/Board.ts`、`src/export/exporters.ts`、`src/styles.css`、各単体・E2Eテスト。
+- テスト: 3桁カラー、画面外起点の記号探索範囲、PNG既定解像度と安全上限をVitestへ追加した。2本指操作、wheel抑止、段数往復、名称変更と保存競合、文字拡大時の横向きヘッダーをPlaywrightで検査する。
+- 検証: `npm run typecheck`、`npm test`（7ファイル・33件）、`npm run build`、`npm run check:dist`、`npm run test:e2e`（Chromium mobile・WebKit mobile・Chromium desktop、57件）を順に実行し、すべて成功。`dist/CNAME` が `knittingeditor.com`、生成HTML内のURLがHTTPSであることも確認した。
+- 実UI確認: 製品ビルドをWebKit mobile、667×375横向き、1440×900デスクトップで表示し、ヘッダー操作、編集ツール、盤面、下部・右側メニューに欠けや重なりがないことを確認した。確認画像は `/tmp/knitting-editor-{mobile,landscape,desktop}.png`（未コミット）。
+- デプロイ影響: 静的アプリの更新あり。未デプロイ。デプロイ後はGitHub Actionsの `deploy` 成功と `https://knittingeditor.com/` 上で2本指操作、段数往復、PNG既定24px、ヘッダー表示を確認する必要がある。
+
 ## 2026-09-22 — Googleタグのコマンド形式を公式実装へ修正
 
 - 影響: GA4の初期化・カスタムイベントを、Google公式スニペットと同じ `dataLayer.push(arguments)` 形式でキューへ登録するようにした。タグの非同期読み込み、自動テスト時の計測除外、画面表示と操作手順は変更しない。
