@@ -594,10 +594,12 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertTrue(nameField.waitForExistence(timeout: 10))
         nameField.tap()
         // CIのiPad Simulatorはハードウェアキーボード接続状態になり、入力欄へ
-        // フォーカスしてもソフトウェアキーボードを公開しない場合がある。
-        // 製品側で保証するダイアログ操作の可否を、入力欄へのフォーカス後に検査する。
-        XCTAssertTrue(app.buttons["キャンセル"].isHittable, app.debugDescription)
-        XCTAssertTrue(app.buttons["決定"].isHittable, app.debugDescription)
+        // フォーカスしてもソフトウェアキーボードを公開しない場合がある。出ないことを
+        // 失敗にはしないが、出たときは本来の要件どおりキーボードで操作ボタンが
+        // 隠れないことまで確かめる。`isHittable`は上に乗った要素を考慮する。
+        let keyboardShown = app.keyboards.firstMatch.waitForExistence(timeout: 5)
+        XCTAssertTrue(app.buttons["キャンセル"].isHittable, "キーボード表示=\(keyboardShown): \(app.debugDescription)")
+        XCTAssertTrue(app.buttons["決定"].isHittable, "キーボード表示=\(keyboardShown): \(app.debugDescription)")
     }
 
     func testCoreEditorControlsExposeAccessibleNamesAndState() {
