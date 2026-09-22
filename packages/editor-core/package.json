@@ -5,6 +5,8 @@
   "type": "module",
   "exports": {
     "./platform": "./platform.ts",
+    "./canvas/BoardCanvas": "./canvas/BoardCanvas.tsx",
+    "./export/*": "./export/*.ts",
     "./storage/*": "./storage/*.ts",
     "./model/*": "./model/*.ts",
     "./stitches/*": "./stitches/*.ts"
