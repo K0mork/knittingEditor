@@ -243,6 +243,28 @@ test('keeps the cast-on row when the row count grows and shrinks again', async (
   expect(after.indexes).toEqual(before.indexes);
 });
 
+test('keeps header actions visible when text is enlarged in landscape', async ({ page }) => {
+  await page.setViewportSize({ width: 667, height: 375 });
+  await page.addStyleTag({ content: 'html { font-size: 32px; }' });
+
+  const layout = await page.locator('.app-header').evaluate((header) => {
+    const headerRect = header.getBoundingClientRect();
+    const actions = header.querySelector<HTMLElement>('.header-actions')!.getBoundingClientRect();
+    const button = header.querySelector<HTMLElement>('.header-document')!;
+    return {
+      headerTop: headerRect.top,
+      headerBottom: headerRect.bottom,
+      actionsTop: actions.top,
+      actionsBottom: actions.bottom,
+      buttonFontSize: Number.parseFloat(getComputedStyle(button).fontSize),
+    };
+  });
+  expect(layout.headerTop).toBeGreaterThanOrEqual(0);
+  expect(layout.actionsTop).toBeGreaterThanOrEqual(layout.headerTop);
+  expect(layout.actionsBottom).toBeLessThanOrEqual(layout.headerBottom);
+  expect(layout.buttonFontSize).toBeLessThanOrEqual(20);
+});
+
 test('resizes to one million cells without creating cell DOM nodes', async ({ page }) => {
   await page.getByRole('button', { name: '盤面' }).click();
   await page.getByLabel('段数').fill('1000');
