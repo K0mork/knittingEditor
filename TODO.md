@@ -6,7 +6,7 @@
 
 ## M0: 技術検証・基盤（P0）
 
-- [ ] Apple Developer Team、署名方法を決定する
+- [ ] Apple Developer Team、署名方法を決定する（無料Personal Teamで実機導入とM3・M4の確認まで到達済み。M0の機内モード試験とM6には有料加入が必要）
 - [x] Bundle IDを`com.k0mork.knittingEditor`として固定する
 - [ ] App Store表示名（アプリ名）を確定する
 - [x] 対象iOS・iPadOSの下限と対応端末を決定する（iOS 17.0以上、iPhone・iPad）
@@ -15,7 +15,7 @@
 - [x] ローカルoriginと永続`WKWebsiteDataStore`の更新耐性を確認する（固定originでWebView置換後のIndexedDB復元をSimulator／CIで検証）
 - [ ] module Worker、Blob、Canvas、IndexedDB、Pointer Eventsの実機PoCを行う
 - [x] iPhone／iPad SimulatorでCanvas・Blob・PDF module Workerの保存導線をスモーク検証する（実機PoCは別途）
-- [ ] 機内モードで起動でき、外部通信がないことを確認する
+- [ ] 機内モードで起動でき、外部通信がないことを確認する（無料Personal Teamでは起動自体が検証エラーになるため、有料加入かTestFlight配布が前提。詳細は実機チェックリストのM0を参照）
 - [x] アプリ用Webビルド方式とXcodeへのコピー方式を自動化する
 
 完了条件: iPhone・iPad実機でローカル資産から編集画面が起動し、再起動後も試験データが残る。

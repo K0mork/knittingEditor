@@ -40,6 +40,24 @@ KNITTING_EDITOR_DEVELOPMENT_TEAM=XXXXXXXXXX KNITTING_EDITOR_REQUIRE_WIRED=1 scri
 
 機内モードにするとWi-Fiペアリングの端末はMacから見えなくなる。**この節はケーブル接続で実施する**。有線であれば機内モード中もビルド・テスト・ログ取得を続けられるので、`KNITTING_EDITOR_REQUIRE_WIRED=1`で事前に確認してから始める。
 
+**前提: 無料のPersonal Teamではこの節を実施できない。** 2026-09-22にiPad Air 第5世代（iPadOS 27.0、有線接続）で確認した内容は次のとおり。
+
+- 無料Personal Teamで署名したアプリは、起動のたびに開発者証明書の検証でインターネット接続を要求する。機内モードでは「アプリを検証できません」となり起動できない。インストール済みのアプリを`devicectl device process launch`で起動しても同じく拒否される（`profile has not been explicitly trusted by the user`）。
+- オフラインで起動を試みると信頼が解除される。ネットワークを復帰させ、設定から信頼し直すまで起動できない。機内モードを解除してもWi-Fiが自動で戻らないことがあり、Wi-Fiを有効にして初めて起動できた。
+- したがってこの節は、有料のApple Developer Programに加入するか、TestFlight配布ビルドを使えるようになってから実施する。加入は従来M6の前提と整理していたが、**M0の完了条件でもある**。
+
+機内モードで実行するテストは用意済みで、既定ではスキップされる。加入後は端末を機内モードにし、有線接続で次を実行する。`navigator.onLine`がfalseであることを先に検査するため、機内モードでない状態で成功したことにはならない。
+
+```sh
+TEST_RUNNER_KNITTING_EDITOR_AIRPLANE_MODE=1 xcodebuild test \
+  -project knittingEditor.xcodeproj -scheme knittingEditor \
+  -destination 'platform=iOS,id=<UDID>' -allowProvisioningUpdates \
+  DEVELOPMENT_TEAM=<TeamID> \
+  -only-testing:knittingEditorTests/LocalWebSchemeHandlerTests/testAirplaneModeServesEditorWithoutNetwork
+```
+
+なお、オフライン要件そのものは別経路で裏付けている。生成バンドルの静的検査（外部URL・CDN・分析の不在、CIで毎回実行）、実機WebKitでの`fetch`／`XHR`／`WebSocket`／`EventSource`未使用の実測、Swift側に通信コードが無いこと。未確認なのは「機内モードで利用者が実際に使える」という最終確認だけである。
+
 - [ ] 機内モードを有効にしてアプリを新規起動できる。
 - [ ] 新規編み図を作成し、26記号、Canvas描画、Blob生成、PNG保存、PDF保存を完了できる。
 - [ ] `.knit`バックアップの圧縮・保存・復元を完了できる。

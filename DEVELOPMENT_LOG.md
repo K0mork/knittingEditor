@@ -11,6 +11,17 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-22: 機内モード試験に有料加入が必要と判明
+
+- 調査結果: 無料のPersonal Teamで署名したアプリは、起動のたびに開発者証明書の検証でインターネット接続を要求する。iPad Air 第5世代（iPadOS 27.0）を有線接続のまま機内モードにしたところ、`xcodebuild test`のインストールが`The application could not be launched because the Developer App Certificate`で失敗し、インストール済みアプリを`devicectl device process launch`で起動しても`profile has not been explicitly trusted by the user`で拒否された。
+- 復旧手順: オフラインでの起動試行で信頼が解除される。機内モードを解除しただけでは復旧せず、Wi-Fiを有効にしてインターネットへ出られる状態にしたうえで再インストールし、起動できることを確認した。設定からの「信頼」操作自体もネットワークを必要とする。
+- 影響: M0の完了条件である機内モード試験は、有料のApple Developer Programに加入するかTestFlight配布ビルドを使うまで実施できない。有料加入はM6だけでなくM0の前提でもある。`TODO.md`と実機チェックリストへ明記した。
+- 追加: 機内モードで実行するテスト`testAirplaneModeServesEditorWithoutNetwork`を追加した。`TEST_RUNNER_KNITTING_EDITOR_AIRPLANE_MODE=1`を付けたときだけ実行し、`navigator.onLine`がfalseであることを先に検査するため、機内モードでない状態で成功したことにはならない。あわせて同梱資産だけで盤面を描画できること、通信APIを一度も呼ばないことを検査する。
+- 主なファイル: `Tests/KnittingEditorAppTests/LocalWebSchemeHandlerTests.swift`、`docs/REAL_DEVICE_RELEASE_CHECKLIST.md`、`TODO.md`
+- テスト: iPad Air 第5世代 実機で単体23件中22件成功、機内モード用の1件はフラグ未指定でスキップ。
+- 未実施: 機内モードでの実行そのもの（有料加入後）。
+- 配布影響: アプリの実装は変更していない。オフライン要件の裏付けは、バンドルの静的検査、実機WebKitでの通信API未使用の実測、Swift側に通信コードが無いことで維持している。
+
 ## 2026-09-22: 実機の接続確認を接続方式まで見るよう修正
 
 - 問題: 実機が接続されているかの判定が誤っていた。`xcrun devicectl device info lockState`が応答したことを接続の根拠にしていたが、この問い合わせはWi-Fiペアリング（`transportType=localNetwork`）でも成功し、しかも問い合わせ自体が`tunnelState`を`connected`へ変える。ケーブルが1本も挿さっていない状態で「両方つながっている」と報告していた。

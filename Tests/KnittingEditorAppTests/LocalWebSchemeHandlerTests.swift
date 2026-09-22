@@ -164,6 +164,45 @@ final class LocalWebSchemeHandlerTests: XCTestCase {
         XCTAssertEqual(hasNoRequests as? Int, 1)
     }
 
+    /// 機内モードで編集資産がオフライン動作することを確認する。
+    ///
+    /// 端末を機内モードにしてから、有線接続で次のように実行する。
+    /// 無線ペアリングの端末は機内モードで到達できなくなるため、ケーブルが必要。
+    ///
+    ///     TEST_RUNNER_KNITTING_EDITOR_AIRPLANE_MODE=1 xcodebuild test ... \
+    ///       -only-testing:knittingEditorTests/LocalWebSchemeHandlerTests/testAirplaneModeServesEditorWithoutNetwork
+    @MainActor
+    func testAirplaneModeServesEditorWithoutNetwork() async throws {
+        try XCTSkipUnless(
+            ProcessInfo.processInfo.environment["KNITTING_EDITOR_AIRPLANE_MODE"] == "1",
+            "端末を機内モードにしたうえで、TEST_RUNNER_KNITTING_EDITOR_AIRPLANE_MODE=1を付けて実行する"
+        )
+        let webView = try makeWebView(networkProbe: true)
+        defer { dispose(webView) }
+        try await loadIndex(in: webView)
+        try await Task.sleep(nanoseconds: 1_000_000_000)
+
+        // 機内モードになっていない状態で成功したことにしない。
+        let online = try await webView.evaluateJavaScript("navigator.onLine")
+        XCTAssertEqual(
+            (online as? NSNumber)?.boolValue,
+            false,
+            "端末が機内モードになっていない。navigator.onLineがtrueのままである"
+        )
+
+        // 同梱資産だけで編集画面が構築できている。
+        let title = try await webView.evaluateJavaScript("document.title")
+        XCTAssertEqual(title as? String, "棒針編み図エディタ")
+        let hasCanvas = try await webView.evaluateJavaScript("document.querySelector('canvas.board-canvas') !== null")
+        XCTAssertEqual((hasCanvas as? NSNumber)?.boolValue, true, "オフラインで盤面を描画できていない")
+
+        // 実行中に通信APIを一切呼んでいない。
+        let requests = try await webView.evaluateJavaScript(
+            "JSON.stringify(window.__knittingEditorNetworkRequests ?? [])"
+        )
+        XCTAssertEqual(requests as? String, "[]", "機内モードで通信APIが呼ばれた")
+    }
+
     @MainActor
     func testStableOriginAndWebsiteDataSurviveWebViewReplacement() async throws {
         let firstWebView = try makeWebView()
