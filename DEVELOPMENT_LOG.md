@@ -10,7 +10,7 @@
 - CI追補: run [`35731641831`](https://github.com/K0mork/knittingEditor/actions/runs/35731641831)で`testCoreEditorControlsExposeAccessibleNamesAndState`が2回とも失敗した。起動直後に最初のページ内要素を待つ上限だけが10秒で、他のテストが使う45秒より短かった。`webViews.firstMatch`はWKWebViewの器が出た時点で成立し、Reactの描画完了を意味しない。ストレージ初期化だけでも最大10秒（`STORAGE_INITIALIZATION_TIMEOUT_MS`）かかり得るため、この待機を起動用の上限へ揃えた。iPhone 16／iOS 18.2 Simulatorでローカル実行し13.3秒で成功した。
 - CI追補2: run [`35733448871`](https://github.com/K0mork/knittingEditor/actions/runs/35733448871)で`app_update (iPad)`が失敗した。`testSeedDocumentForAppUpdateProbe`は178秒で成功していたが、1テストあたりの上限120秒を超えて`Failing tests:`へ載った。原因はこの一連の変更で`replaceText`の操作回数を増やしたことで、1操作が数秒かかるランナーで効いた。入力欄がダイアログのように全選択済みなら1回タップ後そのまま上書きし、一致しなかったときだけ末尾からの削除へ落ちる形に戻した。あわせて`ios/scripts/simulate-app-update.sh`の1テスト上限を90/120から180/240へ引き上げた。本当のハングはジョブの`timeout-minutes: 30`が捕まえる。ローカルのiPad 10で`simulate-app-update.sh`の全工程（seed 31.7秒、更新後の復元 21.6秒）、iPhone 16でXCUITest 18件（5件skip）がすべて成功した。
 - 訂正: ドキュメントのみのコミットを足しても重いジョブはskipされない。`pull_request`の判定は`pull_request.base.sha`との差分、つまりPR全体の差分を見るため、ワークフローを含むPRでは常に全検証になる。①の効果が出るのは`main`へのpush、またはPR全体がドキュメントだけの場合である。
-- デプロイ影響: Web資産は変わらない。`.github/workflows/*`の変更は`web=true`を立てるため、mainへのpushで同じ内容のPagesが再公開される。
+- デプロイ影響: PR [#8](https://github.com/K0mork/knittingEditor/pull/8) の最終run [`35737825912`](https://github.com/K0mork/knittingEditor/actions/runs/35737825912)で全10ジョブが成功し、`app_store_docs`はubuntuで5秒、`app_update (iPad)`は12分54秒だった。マージコミット`9c63e61`のmain run [`35739657855`](https://github.com/K0mork/knittingEditor/actions/runs/35739657855)で全ジョブとPages `deploy`が成功。Web資産は変わらないため、本番`https://knittingeditor.com/`はHTTPS 200で同じ`index-CLWjFZqB.js`と`index-CsQElkH0.css`を配信している。
 
 ## 2026-09-22 — 統合の積み残しを解消し、入力ダイアログの取り消し事故を修正
 
