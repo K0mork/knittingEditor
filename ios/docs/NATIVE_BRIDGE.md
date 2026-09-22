@@ -51,6 +51,6 @@ Web側はBase64を`File`へ戻し、既存の`.knit`インポート検証を通�
 
 Webのfixture復元、アプリWeb bundleのexport→bridge payload→import往復、Swiftのpayload保持、ready前後の配送方針を自動テストする。これはFiles／AirDropを使った実機往復の代替ではないため、実機またはTestFlightでの入出力確認は別の配布前ゲートとして残す。
 
-## 未完了の実機確認
+## 実機確認
 
-Simulator／実機でのFiles、AirDrop、共有先、アプリ再起動を伴う往復試験は、利用可能な起動済み端末がないため未実施である。M5のXCUITestとリリース候補の機内モード試験で完了させる。
+iPad Air（第5世代）ではPNG、PDF、`.knit`のFiles保存、共有シート、Filesから開く経路、Document Picker経路を確認済みである。iPhone 17では`.knit`のFiles保存まで確認した。iPhoneでのPNG／PDF保存と復元、両端末での異常系、TestFlightビルドによる最終往復は未完了であり、`REAL_DEVICE_RELEASE_CHECKLIST.md`をリリース判定の正とする。

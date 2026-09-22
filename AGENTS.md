@@ -6,7 +6,7 @@ This repository is a Vite/React knitting-chart editor deployed as a static GitHu
 
 ## Build, Test, and Development Commands
 
-Install pinned dependencies and start the development server:
+Use Node.js 24 and the single lockfile at the repository root. Install pinned dependencies and start the development server:
 
 ```sh
 npm ci
@@ -49,15 +49,16 @@ Never claim a check passed unless it was actually run. If a required check canno
 
 ## Change-specific Test Requirements
 
-Codex must add or update tests with each behavior change. Select checks based on the changed area, then run the full local suite before committing:
+Codex must add or update tests with each behavior change. Select checks based on the changed area:
 
 - Model, migration, storage, or export rules: add or update Vitest coverage with `npm test`.
 - User workflows, persistence, gestures, responsive behavior, PNG/PDF output, or browser-facing regressions: add or update Playwright coverage and run `npm run test:e2e` in both configured Chromium and WebKit projects.
 - UI or visual changes: manually inspect narrow/mobile and desktop viewports and save screenshots for the pull request; do not commit generated screenshots unless requested.
 - Build, public assets, metadata, routes, CNAME, or deployment changes: run `npm run build` and `npm run check:dist`, then inspect `dist/` for the expected production paths and `CNAME`.
-- Changes under `packages/` or `ios/`: run the iOS Web typecheck/tests, XcodeGen, Simulator tests, app-update test, unsigned Release Archive, and offline bundle inspection defined in `.github/workflows/ci.yml`.
+- Changes under `packages/`, iOS source, iOS build configuration, or iOS test code: run the iOS Web typecheck/tests, XcodeGen, Simulator tests, app-update test, unsigned Release Archive, and offline bundle inspection defined in `.github/workflows/ci.yml`.
+- Markdown-only documentation changes: run the relevant static document check. The CI `app_store_docs` job always validates App Store documents; Web and Simulator jobs intentionally remain skipped when the whole change is documentation-only.
 
-The mandatory pre-commit suite is:
+For Web source, shared code, dependencies, or root build configuration, the mandatory pre-commit suite is:
 
 ```sh
 npm run typecheck
@@ -67,7 +68,7 @@ npm run check:dist
 npm run test:e2e
 ```
 
-Targeted checks may be used during development, but they do not replace this suite. Codex must report which checks passed, failed, or were not run.
+Targeted checks may be used during development, but they do not replace this suite when it applies. Codex must report which checks passed, failed, or were not run.
 
 ## Deployment Procedure
 

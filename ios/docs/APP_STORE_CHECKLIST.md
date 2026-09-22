@@ -17,7 +17,7 @@
 
 ## 検証・配布
 
-- [x] GitHub ActionsのWeb、Release Archive、iPhone／iPad UIテスト、iPhone／iPad app-updateを成功させる（統合先のrun [`35719499164`](https://github.com/K0mork/knittingEditor/actions/runs/35719499164)、全9ジョブ。統合前は旧リポジトリのrun `35572127914`、全6ジョブ）。
+- [x] GitHub Actionsの文書検査、Web、Release Archive、iPhone／iPad UIテスト、iPhone／iPad app-update、集約ゲートを成功させる（統合先のrun [`35739657855`](https://github.com/K0mork/knittingEditor/actions/runs/35739657855)、失敗ジョブ再実行後に全11ジョブ成功。統合前は旧リポジトリのrun `35572127914`、全6ジョブ）。
 - [ ] 実機で機内モードのP0フローを完了する。
 - [ ] Files、AirDrop、共有先、外部`.knit`の往復を実機で確認する。
 - [ ] 1000×1000盤面のメモリ、PNG拒否、PDF出力時間を記録する。

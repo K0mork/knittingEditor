@@ -8,7 +8,7 @@
 
 `model/`はReactにもDOMにも依存させない。`export/`と`canvas/`はブラウザAPIを使うが、Web固有・iOS固有の分岐を持たない。共通化しないファイルとその理由は`ios/docs/WEB_SYNC.md`の表を正とする。
 
-`packages/*`、ルートの保存形式・ビルド設定、Web固有コードに変更がある場合は、WebとiOSの両方を検証する。IndexedDBのDB名、アプリの固定origin、`.knit`の形式・バージョン・カタログバージョン、永続記号IDは変更しない。
+`packages/*`またはルートの依存・共通ビルド設定に変更がある場合は、WebとiOSの両方を検証する。Web固有コードはWeb検証、iOS固有コードはiOS検証を行う。IndexedDBのDB名、アプリの固定origin、`.knit`の形式・バージョン・カタログバージョン、永続記号IDは互換試験なしに変更しない。
 
 ## 実行環境の境界
 

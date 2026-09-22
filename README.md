@@ -4,6 +4,8 @@
 
 Web版とiOS版はこのリポジトリで管理します。盤面、記号、`.knit`形式、PNG/PDF生成の共通実装は `packages/editor-core` にあり、Web版はルート、iOS版は `ios/` に配置しています。iOSのXcodeビルドはルートworkspaceから `ios/Web` を生成し、生成物をアプリへ同梱します。
 
+旧`knittingEditor_app`リポジトリは統合前の履歴参照用です。現在の開発、Issue、CI、Web公開はすべてこのリポジトリで行います。
+
 ## 主な機能
 
 - 26種類の編み目記号と色指定
@@ -51,3 +53,5 @@ cd Web
 `main`へのpush後、`.github/workflows/ci.yml`が変更範囲に応じたWeb・iOS検証を実行します。Webまたは共通コードに影響する変更では、Web検証とiOS検証の成功後に、生成した`dist/`だけをGitHub Pagesへ公開します。iOS専用変更ではPagesを再公開しません。公開先は[knittingeditor.com](https://knittingeditor.com/)です。
 
 編み図はブラウザ内に保存されるため、重要なデータは「保存」メニューから定期的に`.knit`バックアップを取得してください。
+
+残っているiOS実機・署名・TestFlight・App Store作業は[`ios/TODO.md`](ios/TODO.md)で管理します。

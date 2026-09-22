@@ -22,16 +22,17 @@ Web版「棒針編み図エディタ」を、インターネット接続なし�
 - [DEVELOPMENT.md](DEVELOPMENT.md): 開発方針、構成、工程、検証方法
 - [SPECIFICATION.md](SPECIFICATION.md): 機能仕様、データ互換、非機能要件
 - [TODO.md](TODO.md): 実装順序と完了条件
-- [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md): 完了した変更と検証記録
+- [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md): 統合前の変更と検証記録（凍結アーカイブ）
 - [AGENTS.md](AGENTS.md): このリポジトリで作業する開発者・エージェント向けの必須規則
 
 ## 現在の状態
 
-- 実装済み範囲: M0のSwiftUI・WKWebViewコンテナ、M1のWeb編集資産同期、M2のライフサイクル保存、M3のFiles／共有ブリッジ、M4のアプリ内ダイアログ、M5のCI／XCUITest基盤、M6のPrivacy Manifest／審査文書とSimulator用スクリーンショット下書き
-- Simulator検証: iPhone 16／iPad (10th generation)でXCTest・XCUITest 12件、PNG／PDF／`.knit`保存導線、編集後の再起動復元を確認済み
-- 未完了P0: Apple署名、実機の通信・ジェスチャー・アクセシビリティ・性能検証、Files実保存／共有先選択、TestFlight、App Store Connect提出
+- 実装済み範囲: SwiftUI・WKWebViewコンテナ、共通workspaceからのWeb bundle生成、ライフサイクル保存、Files／共有ブリッジ、アプリ内ダイアログ、CI／XCUITest基盤、Privacy Manifest／審査文書とSimulator用スクリーンショット下書き
+- Simulator検証: iPhone 16／iPad (10th generation)でXCTest・XCUITest、PNG／PDF／`.knit`保存導線、編集後の再起動復元、アプリ更新後のIndexedDB復元をCIで確認済み
+- 実機検証: iPhone 17とiPad Air（第5世代）で署名ビルド、主要編集、保存、Files／共有の一部、iPad可変ウィンドウ、機内モード主要フローを確認済み
+- 未完了P0: 機内モード前後の通信監視、残りの端末・アクセシビリティ・性能・Files往復確認、有料Apple Developer Programでの署名済みArchive、TestFlight、App Store Connect提出
 - Xcodeプロジェクト: `knittingEditor.xcodeproj`を作成済み
 - 対象OSの下限: iOS 17.0以上
 - App Store Connect設定: 未作成
 
-Web編集画面はM1で同梱済みです。M3でFiles・共有シート・`.knit`入出力のネイティブ連携を追加しました。実機でのFiles／AirDrop往復試験はM5で行います。
+Web編集画面、Files・共有シート、`.knit`入出力のネイティブ連携は実装済みです。実機で確認済みの範囲と残作業は[`TODO.md`](TODO.md)および[`docs/REAL_DEVICE_RELEASE_CHECKLIST.md`](docs/REAL_DEVICE_RELEASE_CHECKLIST.md)を正とします。

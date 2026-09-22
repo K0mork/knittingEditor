@@ -1,5 +1,12 @@
 # Development Log
 
+## 2026-09-23 — 統合後のドキュメントを現行構成へ更新
+
+- 影響: `AGENTS.md`を現在の変更範囲別CIに合わせ、文書のみの変更では静的文書検査だけを要求するようにした。旧`TODO.txt`の実装済み項目を整理して`TODO.md`からiOSの現行リリースゲートへ案内し、README、共通基盤、iOS開発方針、仕様、ネイティブブリッジ、App Storeチェックリストを単一リポジトリ・共通workspace・最新の実機／CI結果へ更新した。統合前の`ios/DEVELOPMENT_LOG.md`は凍結アーカイブとして変更していない。
+- 主なファイル: `AGENTS.md`、`README.md`、`TODO.md`、`docs/ARCHITECTURE.md`、`ios/AGENTS.md`、`ios/README.md`、`ios/DEVELOPMENT.md`、`ios/SPECIFICATION.md`、`ios/docs/NATIVE_BRIDGE.md`、`ios/docs/APP_STORE_CHECKLIST.md`
+- テスト: 文書内の旧リポジトリ境界、固定SHA同期、個別lockfile、旧CIジョブ名、未実施扱いの実機確認を`rg`で再検査し、意図した統合経緯の記述以外に残っていないことを確認した。ローカルMarkdownリンク検査、`ios/scripts/check-app-store-docs.sh`、ワークフローYAMLの構文検査が成功した。
+- デプロイ影響: なし。変更はMarkdown文書だけなので、CIでは`changes`、`app_store_docs`、`ci-gate`だけを実行し、Web・Simulator・Archive・Pages公開はskipされることを確認する。
+
 ## 2026-09-22 — ドキュメント変更でiOSの重い検証を回さない
 
 - 影響: 変更範囲判定でMarkdownを先に除外し、`ios/**/*.md`だけの変更ではSimulatorを使うジョブを回さないようにした。代わりにApp Store提出文書の検査を、変更範囲によらずUbuntuで常に実行する`app_store_docs`ジョブへ切り出し、`ci-gate`がその成功を無条件に要求する。条件を持たないジョブなので、判定を誤ってもskipで素通りしない。`app_update`の`timeout-minutes`を20から30へ上げ、`ios`ジョブと揃えた。

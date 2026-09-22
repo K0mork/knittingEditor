@@ -26,9 +26,9 @@ Web版は別リポジトリの参照元ではなく、このリポジトリの�
 
 これらを変更する必要がある場合は、実装前に理由、影響、代替案を提示し、ユーザーの確認を得てください。
 
-## Planned Structure
+## Repository Structure
 
-実装開始後は、概ね次の責務分離を守ります。
+現在の責務分離を維持します。
 
 ```text
 ios/App/             SwiftUI entry point and lifecycle
@@ -100,7 +100,7 @@ ios/docs/            additional app design and release records
 - 検証終了後は全Simulatorをshutdownする。最新OS用に新規作成したデバイスはテストデータを`erase`して保持し、既存のCI基準デバイスはユーザーの明示なしに消去しない。
 - ランタイム自体、既存のユーザーデータ、実機データを容量都合で削除しない。XcodeBuildMCPの古い生成ログ・テスト成果物を整理する場合は、対象と保持する最新証跡を先に列挙し、復元可能なゴミ箱移動を優先する。
 
-テストコマンドはXcodeプロジェクトとWebビルド基盤の作成時にこの文書へ追記します。対象が存在しない段階で架空のコマンドを定義しません。
+具体的なCIコマンドと対象端末はルートの`.github/workflows/ci.yml`を正とします。Markdownだけの変更は`app_store_docs`による静的検査を行い、Web・Simulator・Archiveジョブは実行しません。
 
 ## Generated Files and Secrets
 
@@ -133,7 +133,7 @@ until [ "$(gh run view "$RUN" --json status --jq .status)" = "completed" ]; do s
 gh run view "$RUN" --json conclusion,jobs --jq '"RUN: \(.conclusion)", (.jobs[] | "  \(.name): \(.conclusion)")'
 ```
 
-- 全ジョブ（`web`、`ios`×2、`app-update`×2、`release-archive`）の結果を個別に確認する。`RUN: success`だけを見て済ませない。
+- `changes`、`app_store_docs`、変更範囲に応じた`web`、`ios_web`、`ios`×2、`app_update`×2、`release_archive`、`ci-gate`を個別に確認する。Web影響のある`main`更新では`deploy`も確認する。`RUN: success`だけを見て済ませない。
 - 失敗したら、そのpushで完了とせずに原因を特定して直す。`gh run view <id> --log-failed`で失敗ジョブのログを読む。ローカルで再現できない場合は、CI環境（macos-14、Xcode 15.4）との差を疑う。
 - ローカルのSimulatorが通ってもCIが落ちることがある。過去の実例は次のとおりで、いずれもローカルでは再現しなかった。
   - 入力欄の中央タップでキャレットが先頭に入り、削除が効かず初期値が残った（Xcode 15.4 Simulator）。

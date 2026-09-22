@@ -16,11 +16,11 @@ Web版と同等の棒針編み図編集機能をiPhone・iPadへ移行し、通�
 | Web版との交換 | `.knit`の書き出し・読み込みで対応 |
 | アプリ内保存 | 初期版は永続`WKWebsiteDataStore`のIndexedDBを使用 |
 | ファイル連携 | Files、共有シート、他アプリから開く処理をSwiftで提供 |
-| 記号定義 | Web版の記号カタログを正とし、確定コミット単位で同期 |
+| 記号定義 | `packages/editor-core/stitches/`をWeb・iOS共通の正本とする |
 | 分析 | Google Analyticsを同梱しない。初期版は利用分析通信なし |
 | 対応端末 | iPhone・iPadの両方。縦横回転とiPadの可変ウィンドウに対応 |
 
-## 3. 想定アーキテクチャ
+## 3. 現在のアーキテクチャ
 
 ```text
 SwiftUI application
@@ -41,40 +41,44 @@ SwiftUI application
     └── PNG / PDF generators
 ```
 
-初期実装では`project.yml`をXcodeGen 2.46.0で生成し、生成物の`knittingEditor.xcodeproj`もリポジトリへ保存します。SwiftUIの入口は`App/KnittingEditorApp.swift`、ローカルWebコンテナは`App/WebViewContainer.swift`と`App/LocalWebSchemeHandler.swift`です。型付きファイル連携は`App/NativeBridgeMessage.swift`、`.knit`のUTTypeは`App/KnittingEditorUTType.swift`で定義します。Web資産は`AppResources/Web/`に置き、ビルド時にアプリバンドルへコピーします。
+`project.yml`からXcodeGenで生成する`knittingEditor.xcodeproj`もリポジトリへ保存します。SwiftUIの入口は`App/KnittingEditorApp.swift`、ローカルWebコンテナは`App/WebViewContainer.swift`と`App/LocalWebSchemeHandler.swift`です。型付きファイル連携は`App/NativeBridgeMessage.swift`、`.knit`のUTTypeは`App/KnittingEditorUTType.swift`で定義します。Web資産はルートworkspaceの依存関係と`ios/Web`、`packages/editor-core`から生成し、`AppResources/Web/`を経由してアプリバンドルへコピーします。
 
-対象OSは技術検証の初期値としてiOS 17.0以上、iPhone・iPad（`TARGETED_DEVICE_FAMILY=1,2`）に決定しました。実機での対応端末確認はM0の未完了項目です。
+対象OSはiOS 17.0以上、iPhone・iPad（`TARGETED_DEVICE_FAMILY=1,2`）です。確認済み端末と残る実機検証は`docs/REAL_DEVICE_RELEASE_CHECKLIST.md`へ記録します。
 
 プロジェクト生成とコンパイルの基本コマンドは次のとおりです。
 
 ```sh
-xcodegen generate --spec project.yml
-xcodebuild -project knittingEditor.xcodeproj -scheme knittingEditor \
+# リポジトリルートで実行
+npm ci --ignore-scripts
+xcodegen generate --spec ios/project.yml
+xcodebuild -project ios/knittingEditor.xcodeproj -scheme knittingEditor \
   -sdk iphonesimulator -configuration Debug CODE_SIGNING_ALLOWED=NO build
-xcodebuild -project knittingEditor.xcodeproj -scheme knittingEditor \
+xcodebuild -project ios/knittingEditor.xcodeproj -scheme knittingEditor \
   -sdk iphonesimulator -configuration Debug CODE_SIGNING_ALLOWED=NO build-for-testing
 
-(cd Web && npm ci --ignore-scripts && npm test && npm run build)
-scripts/check-app-bundle.sh /path/to/knittingEditor.app
+ios/scripts/build-web.sh
+(cd ios/Web && ../../node_modules/.bin/tsc -p tsconfig.app.json --noEmit)
+(cd ios/Web && ../../node_modules/.bin/vitest run --config vite.config.ts)
+ios/scripts/check-app-bundle.sh /path/to/knittingEditor.app
 
 # 同一Bundle IDの更新ビルドでIndexedDBが復元されることを確認する
-SIMULATOR_UDID=<booted-simulator-udid> scripts/simulate-app-update.sh "iPhone 16"
+SIMULATOR_UDID=<booted-simulator-udid> ios/scripts/simulate-app-update.sh "iPhone 16"
 ```
 
 公開中の`https://knittingeditor.com/`は読み込みません。Viteのアプリ用ビルドをXcodeバンドルへ格納し、HTML、JavaScript、記号、WorkerをローカルURLから読み込みます。
 
-M0の初期コンテナは`knitting-local://bundle/index.html`という固定originを`WKURLSchemeHandler`で提供します。`WKWebsiteDataStore.default()`を使い、実行時に外部URLを許可しません。M1以降の`AppResources/Web/`は`Web/`のViteビルド成果物であり、Canvas、Pointer Events、Blob、IndexedDB、module Worker、全26記号を含むWeb編集画面を同梱します。M3では型付きブリッジを通じてFiles・共有シート・ネイティブ保存を接続し、M6ではPrivacy Manifestとアプリ内のプライバシー／サポート説明を追加しています。実機での往復確認は未実施です。
+`knitting-local://bundle/index.html`という固定originを`WKURLSchemeHandler`で提供し、`WKWebsiteDataStore.default()`を使います。実行時に外部URLを許可しません。`AppResources/Web/`にはCanvas、Pointer Events、Blob、IndexedDB、module Worker、全26記号を含むVite成果物を同梱します。型付きブリッジを通じたFiles・共有シート・ネイティブ保存、Privacy Manifest、アプリ内のプライバシー／サポート説明も実装済みです。実機で確認済みの往復範囲と残作業は`docs/REAL_DEVICE_RELEASE_CHECKLIST.md`を正とします。
 
-## 4. Web版から再利用する範囲
+## 4. 共通実装と環境固有実装
 
-次の実装は原則として再利用します。
+次の実装は`packages/editor-core`を正本としてWeb版とiOS版で共有します。
 
-- `src/model/Board.ts`: packed `Uint32Array`盤面、複数セル記号、構造変更、ブロック
-- `src/canvas/`: 仮想Canvas描画、連続描画・消去、範囲選択、パン・ズーム
-- `src/stitches/catalog.ts`: 永続ID、記号メタデータ、カタログバージョン
-- `src/stitches/glyphs.ts`: Canvas、SVG、PDFに共通するベクター記号
-- `src/export/`: PNG、1ページPDF、A4分割PDF
-- `src/storage/database.ts`: IndexedDB、`.knit` v2のエンコード・検証
+- `packages/editor-core/model/Board.ts`: packed `Uint32Array`盤面、複数セル記号、構造変更、ブロック
+- `packages/editor-core/canvas/`: 仮想Canvas描画、連続描画・消去、範囲選択、パン・ズーム
+- `packages/editor-core/stitches/catalog.ts`: 永続ID、記号メタデータ、カタログバージョン
+- `packages/editor-core/stitches/glyphs.ts`: Canvas、SVG、PDFに共通するベクター記号
+- `packages/editor-core/export/`: PNG、1ページPDF、A4分割PDF
+- `packages/editor-core/storage/database.ts`: IndexedDB、`.knit` v2のエンコード・検証
 - React UIの編み図管理、盤面編集、ブロック、出力画面
 
 次はアプリ用に差し替えます。
@@ -86,18 +90,18 @@ M0の初期コンテナは`knitting-local://bundle/index.html`という固定ori
 - Google Analytics → 初期版では無効化・除去
 - Safari旧データ移行処理 → アプリビルドでは実行しない
 
-## 5. 記号カタログの同期規則
+## 5. 記号カタログの変更規則
 
-Web版の記号定義はアプリ版の互換性に直結します。手作業で同じ記号を別実装しません。
+共通の記号定義はWeb版とアプリ版の互換性に直結します。手作業で同じ記号を別実装しません。
 
-1. 同期元コミットを固定する。
-2. `STITCH_CATALOG_VERSION`、全記号の`id`、`key`、寸法、`consumes`、`produces`、カテゴリ、標準区分をスナップショットに記録する。
-3. `catalog.ts`と`glyphs.ts`を同じ変更単位で取り込む。
-4. Web版とアプリ版で全記号のSVGまたは描画コマンドを比較する。
+1. `packages/editor-core/stitches/catalog.ts`と`glyphs.ts`を同じ変更単位で更新する。
+2. `STITCH_CATALOG_VERSION`、全記号の`id`、`key`、寸法、`consumes`、`produces`、カテゴリ、標準区分をスナップショットテストで固定する。
+3. Web版とアプリ版の共通テスト、Canvas、PNG、PDF描画を検証する。
+4. 形式やカタログバージョンを変える場合は既存fixtureとの互換試験を追加する。
 5. 既存IDの変更・再利用を禁止する。追加記号には未使用IDを割り当てる。
 6. `.knit`の`stitchCatalogVersion`がアプリより新しい場合は読み込みを拒否し、破損扱いにしない。
 
-初期基準はWeb版コミット`8d33857`、カタログv3、ID 1〜26の26記号です。IDの並び順と表示順は同一とは限らないため、配列インデックスを永続IDとして扱ってはいけません。
+統合時の基準はカタログv3、ID 1〜26の26記号です。IDの並び順と表示順は同一とは限らないため、配列インデックスを永続IDとして扱ってはいけません。
 
 ## 6. 保存とデータ保全
 
@@ -132,15 +136,15 @@ SwiftDataへの移行は初回リリース後の選択肢とします。初回�
 - Safe Area、ホームインジケータ、Dynamic Type、VoiceOver、外付けキーボード、マウス・トラックパッドを確認する。
 - 1本指編集と2本指パン・ズームを維持する。
 - Apple Pencilは初回リリースでは指と同じポインタ入力として扱い、筆圧などの専用機能は追加しない。
-- `window.prompt`と`confirm`は初期移植後にネイティブ相当のアプリ内ダイアログへ置換する。
+- `window.prompt`と`confirm`はアプリ内ダイアログへ置換済みであり、キーボード表示中と取り消し操作をXCUITestで回帰確認する。
 
 ## 9. テスト戦略
 
 ### Webロジック
 
-- Web版由来のVitestをアプリ用Webソースでも実行する。
+- ルートの共通Vitestと、アプリ固有の`ios/Web` Vitestを実行する。
 - 盤面、記号カタログ、保存形式、PNG/PDFを重点対象とする。
-- Web版が更新されたときは同期差分と既存fixtureを確認する。
+- 共通コードが更新されたときはWeb・iOSの両方と既存fixtureを確認する。
 
 ### iOS統合
 
@@ -156,18 +160,9 @@ SwiftDataへの移行は初回リリース後の選択肢とします。初回�
 - アプリが出力した`.knit`をWeb版で復元する。
 - 全記号を含むfixtureについて、ID、色、占有範囲、PNG/PDF表現を照合する。
 
-## 10. 開発工程と概算
+## 10. 現在の実装状況
 
-| フェーズ | 内容 | 目安 |
-|---|---|---:|
-| 0 | Xcode、署名、対象OS、ローカルWebViewの技術検証 | 2〜4日 |
-| 1 | Web資産のアプリ用ビルド、全編集機能の起動 | 3〜5日 |
-| 2 | 永続保存、scene phase、オフライン検証 | 3〜5日 |
-| 3 | Files、UTType、共有、PNG/PDF、`.knit` | 4〜7日 |
-| 4 | iPhone/iPad UI、アクセシビリティ、実機性能 | 4〜7日 |
-| 5 | TestFlight、プライバシー、App Store提出準備 | 3〜5日 |
-
-合計は経験者1名で約3〜6週間を想定します。Appleの審査待ち時間と、審査指摘による追加作業は含みません。
+ローカルWebView、共通編集基盤、永続保存、scene phase、Files、UTType、共有、PNG/PDF、`.knit`、iPhone／iPad UI、自動テスト、unsigned Release Archive、プライバシー文書は実装済みです。未完了の実機検証、署名、TestFlight、App Store提出準備は`TODO.md`と`docs/REAL_DEVICE_RELEASE_CHECKLIST.md`で管理します。
 
 ## 11. リリース判定
 
