@@ -6,7 +6,7 @@
 - 経緯: 直近50コミットのうち32件が`.md`のみの変更で、`ios/`配下を含むとそのたびにmacOSの6ジョブが約22分走っていた。run [`35720826016`](https://github.com/K0mork/knittingEditor/actions/runs/35720826016)では、`app_update (iPad)`の実作業が9分45秒で成功したあとランナーの後片付けに5分40秒かかり、20分の上限を超えてcancelled扱いになった。同ジョブの所要は直近3runでいずれも7〜8分で、遅いのはランナー側である。
 - 主なファイル: `.github/workflows/ci.yml`、`docs/ARCHITECTURE.md`
 - テスト: 判定の`case`文をローカルのbashで再現し、`ios/docs/*.md`→どちらも立てない、`ios/docs/screenshots/*.png`→ios、`ios/Web/src/**`→ios、`packages/**`→web+ios、`src/**`→web、`.github/workflows/*`→web+ios、`public/CNAME`→web になることを確認した。スクリーンショットは`check-app-store-docs.sh`と`check-release-assets.sh`の検査対象なので、Markdownと同じ扱いにはしない。
-- 検証: `ios/scripts/check-app-store-docs.sh`を単体実行し、0.6秒で成功することを確認した（`plutil`や`xcrun`を使わないテキスト検査のみ）。ワークフローのYAMLはPythonの`yaml.safe_load`で構文を確認した。CI結果は__CI__。
+- 検証: `ios/scripts/check-app-store-docs.sh`を単体実行し、0.6秒で成功することを確認した（`plutil`や`xcrun`を使わないテキスト検査のみ）。ワークフローのYAMLはPythonの`yaml.safe_load`で構文を確認した。PR [#8](https://github.com/K0mork/knittingEditor/pull/8) の run [`35730361619`](https://github.com/K0mork/knittingEditor/actions/runs/35730361619)で全10ジョブが成功した。新しい`app_store_docs`は5秒、`app_update (iPad)`は9分22秒で、30分の上限に対して余裕がある。
 - デプロイ影響: Web資産は変わらない。`.github/workflows/*`の変更は`web=true`を立てるため、mainへのpushで同じ内容のPagesが再公開される。
 
 ## 2026-09-22 — 統合の積み残しを解消し、入力ダイアログの取り消し事故を修正
