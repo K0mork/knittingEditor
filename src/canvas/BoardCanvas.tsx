@@ -341,14 +341,25 @@ export function BoardCanvas(props: Props) {
     requestDraw();
   };
 
-  return <canvas
-    ref={canvasRef}
-    className={`board-canvas mode-${props.mode}`}
-    aria-label="編み図編集盤面"
-    onContextMenu={(event) => event.preventDefault()}
-    onPointerDown={handlePointerDown}
-    onPointerMove={handlePointerMove}
-    onPointerUp={handlePointerEnd}
-    onPointerCancel={handlePointerEnd}
-  />;
+  const modeLabel = props.mode === 'draw' ? '描画' : props.mode === 'erase' ? '消去' : props.mode === 'select' ? '範囲選択' : '貼り付け';
+  const selectionLabel = props.selection
+    ? `選択範囲は${props.selection.bottom - props.selection.top + 1}段、${props.selection.right - props.selection.left + 1}目`
+    : '選択範囲なし';
+
+  return <>
+    <p id="board-instructions" className="visually-hidden">盤面をタップまたはドラッグして編集します。2本指またはトラックパッドで移動・拡大できます。現在は{modeLabel}モードです。</p>
+    <canvas
+      ref={canvasRef}
+      className={`board-canvas mode-${props.mode}`}
+      role="application"
+      tabIndex={0}
+      aria-label={`編み図編集盤面。${props.board.rows}段、${props.board.cols}目。記号${props.board.occupiedStitchCount}個。${modeLabel}モード。${selectionLabel}`}
+      aria-describedby="board-instructions"
+      onContextMenu={(event) => event.preventDefault()}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerEnd}
+      onPointerCancel={handlePointerEnd}
+    />
+  </>;
 }
