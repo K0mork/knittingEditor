@@ -7,6 +7,8 @@
 - 主なファイル: `.github/workflows/ci.yml`、`docs/ARCHITECTURE.md`
 - テスト: 判定の`case`文をローカルのbashで再現し、`ios/docs/*.md`→どちらも立てない、`ios/docs/screenshots/*.png`→ios、`ios/Web/src/**`→ios、`packages/**`→web+ios、`src/**`→web、`.github/workflows/*`→web+ios、`public/CNAME`→web になることを確認した。スクリーンショットは`check-app-store-docs.sh`と`check-release-assets.sh`の検査対象なので、Markdownと同じ扱いにはしない。
 - 検証: `ios/scripts/check-app-store-docs.sh`を単体実行し、0.6秒で成功することを確認した（`plutil`や`xcrun`を使わないテキスト検査のみ）。ワークフローのYAMLはPythonの`yaml.safe_load`で構文を確認した。PR [#8](https://github.com/K0mork/knittingEditor/pull/8) の run [`35730361619`](https://github.com/K0mork/knittingEditor/actions/runs/35730361619)で全10ジョブが成功した。新しい`app_store_docs`は5秒、`app_update (iPad)`は9分22秒で、30分の上限に対して余裕がある。
+- CI追補: run [`35731641831`](https://github.com/K0mork/knittingEditor/actions/runs/35731641831)で`testCoreEditorControlsExposeAccessibleNamesAndState`が2回とも失敗した。起動直後に最初のページ内要素を待つ上限だけが10秒で、他のテストが使う45秒より短かった。`webViews.firstMatch`はWKWebViewの器が出た時点で成立し、Reactの描画完了を意味しない。ストレージ初期化だけでも最大10秒（`STORAGE_INITIALIZATION_TIMEOUT_MS`）かかり得るため、この待機を起動用の上限へ揃えた。iPhone 16／iOS 18.2 Simulatorでローカル実行し13.3秒で成功した。
+- 訂正: ドキュメントのみのコミットを足しても重いジョブはskipされない。`pull_request`の判定は`pull_request.base.sha`との差分、つまりPR全体の差分を見るため、ワークフローを含むPRでは常に全検証になる。①の効果が出るのは`main`へのpush、またはPR全体がドキュメントだけの場合である。
 - デプロイ影響: Web資産は変わらない。`.github/workflows/*`の変更は`web=true`を立てるため、mainへのpushで同じ内容のPagesが再公開される。
 
 ## 2026-09-22 — 統合の積み残しを解消し、入力ダイアログの取り消し事故を修正

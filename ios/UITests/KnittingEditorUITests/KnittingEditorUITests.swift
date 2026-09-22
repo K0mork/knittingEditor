@@ -611,7 +611,10 @@ final class KnittingEditorUITests: XCTestCase {
         let stitchPicker = app.descendants(matching: .any)
             .matching(NSPredicate(format: "label == %@", "編み目記号を選ぶ"))
             .firstMatch
-        XCTAssertTrue(stitchPicker.waitForExistence(timeout: 10))
+        // `webViews.firstMatch`はWKWebViewの器が出た時点で成立し、Reactの描画完了を
+        // 意味しない。起動直後に最初のページ内要素を待つ箇所は、他のテストと同じく
+        // 起動用の待機上限を使う。ストレージ初期化だけでも最大10秒かかり得る。
+        XCTAssertTrue(stitchPicker.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
         XCTAssertEqual(app.switches["描く"].value as? String, "1")
         XCTAssertEqual(app.switches["消す"].value as? String, "0")
         XCTAssertEqual(app.switches["範囲"].value as? String, "0")
