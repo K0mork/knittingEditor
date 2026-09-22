@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { unzlibSync } from 'fflate';
 import { packCell } from '../model/Board';
 import { STITCH_BY_KEY } from '../stitches/catalog';
-import { buildPdf, type PdfRequest } from './pdf.worker';
+import { buildPdf, type PdfRequest } from '@knitting-editor/editor-core/export/pdf.worker';
 
 function request(rows: number, cols: number, dense: boolean): PdfRequest {
   const cells = new Uint32Array(rows * cols);

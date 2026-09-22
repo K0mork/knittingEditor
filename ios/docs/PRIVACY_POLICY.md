@@ -16,7 +16,7 @@ PNG、PDF、`.knit`バックアップは、ユーザーが保存先または共�
 
 ## 問い合わせ
 
-不具合や質問は [GitHub Issues](https://github.com/K0mork/knittingEditor_app/issues) から受け付けます。問い合わせに添付された情報はGitHubのプライバシーポリシーに従って扱われます。
+不具合や質問は [GitHub Issues](https://github.com/K0mork/knittingEditor/issues) から受け付けます。問い合わせに添付された情報はGitHubのプライバシーポリシーに従って扱われます。
 
 ## 変更
 

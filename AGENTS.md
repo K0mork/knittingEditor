@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-This repository is a Vite/React knitting-chart editor deployed as a static GitHub Pages site and the shared source repository for the iOS/iPadOS app under `ios/`. Platform-independent board and stitch code lives in `packages/editor-core`; the root `src/` and `ios/Web/src/` entrypoints re-export it. Browser tests live in `tests/e2e/`; static SEO and domain files are in `public/`.
+This repository is a Vite/React knitting-chart editor deployed as a static GitHub Pages site and the shared source repository for the iOS/iPadOS app under `ios/`. Code shared by both builds lives in `packages/editor-core` (`model/`, `stitches/`, `storage/`, `export/`, `canvas/`, `platform.ts`) together with its tests; the root `src/` and `ios/Web/src/` entrypoints re-export it and keep only the differences listed in `ios/docs/WEB_SYNC.md`. Browser tests live in `tests/e2e/`; static SEO and domain files are in `public/`.
 
 ## Build, Test, and Development Commands
 
@@ -36,7 +36,7 @@ Codex must treat the following as production requirements:
 
 ## Development Log
 
-Codex must maintain `DEVELOPMENT_LOG.md` for every user-visible feature, bug fix, behavior change, migration, build/test configuration change, and deployment change. Create the file if it does not exist. Documentation-only edits with no runtime, test, or deployment impact may be omitted.
+Codex must maintain the root `DEVELOPMENT_LOG.md` for every user-visible feature, bug fix, behavior change, migration, build/test configuration change, and deployment change, in both the Web and the iOS parts of this repository. It is the only active log; `ios/DEVELOPMENT_LOG.md` is a frozen archive of the app history from before the repositories were merged and must not receive new entries. Documentation-only edits with no runtime, test, or deployment impact may be omitted.
 
 Add one concise entry per completed change, newest first, containing:
 
@@ -77,7 +77,7 @@ Codex must use the following production deployment procedure:
 2. Run the complete pre-commit suite above and resolve every failure.
 3. Commit focused changes according to the commit rules below. Do not deploy uncommitted work.
 4. Push the reviewed commit to `main` only when the user has requested or approved deployment. Opening a pull request or pushing another branch runs validation but must not be described as a production deployment.
-5. Confirm the `Test and deploy Pages` GitHub Actions workflow succeeded, including the `deploy` job. A successful local build or push alone is not proof of deployment.
+5. Confirm the `CI and deploy Pages` GitHub Actions workflow succeeded, including every job required by `ci-gate` and the `deploy` job. A successful local build or push alone is not proof of deployment.
 6. Verify `https://knittingeditor.com/` over HTTPS after deployment. Exercise the changed user flow and confirm the expected assets, metadata, and custom domain. Record the result in `DEVELOPMENT_LOG.md`.
 
 If GitHub Actions fails or the live site does not match the deployed commit, stop, report the exact failure, and fix or revert through a new focused commit. Never bypass the test job, deploy a locally modified `dist/`, force-push production history, or claim deployment success without checking both the workflow and live site.
@@ -88,7 +88,7 @@ Use two-space indentation and strict TypeScript. Use `camelCase` for functions a
 
 ## Testing Guidelines
 
-Vitest covers board and export logic; Playwright covers Chromium/WebKit at mobile and desktop sizes. Add unit tests for model rules and E2E tests for user workflows. Verify grid resizing, gestures, block copy/paste, persistence, migration, backup, PNG, and PDF behavior. For visual changes, check narrow and desktop widths and include screenshots in the pull request.
+Vitest covers board and export logic; Playwright covers Chromium/WebKit at mobile and desktop sizes. Put tests for shared code in `packages/editor-core` next to the module they cover — the root `npm test` picks them up — and keep only Web-specific tests in `src/`. Add unit tests for model rules and E2E tests for user workflows. Verify grid resizing, gestures, block copy/paste, persistence, migration, backup, PNG, and PDF behavior. For visual changes, check narrow and desktop widths and include screenshots in the pull request.
 
 ## Commit & Pull Request Guidelines
 

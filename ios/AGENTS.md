@@ -59,7 +59,9 @@ ios/docs/            additional app design and release records
 
 ## Development Log
 
-`DEVELOPMENT_LOG.md`をすべてのユーザー可視変更、挙動変更、データ移行、記号同期、テスト・ビルド・署名・配布設定変更で更新してください。
+記録先はリポジトリルートの`DEVELOPMENT_LOG.md`だけです。iOS側の変更もここへ書き、`ios/DEVELOPMENT_LOG.md`へは追記しません（統合前のアプリ履歴の凍結アーカイブです）。
+
+ルートの`DEVELOPMENT_LOG.md`を、すべてのユーザー可視変更、挙動変更、データ移行、記号同期、テスト・ビルド・署名・配布設定変更で更新してください。
 
 新しい項目を先頭へ追加し、以下を必ず記録します。
 
