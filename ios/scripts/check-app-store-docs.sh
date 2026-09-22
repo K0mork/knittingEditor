@@ -73,11 +73,11 @@ metadata_value_within_limit "App名" 30
 metadata_value_within_limit "サブタイトル" 30
 metadata_value_within_limit "キーワード" 100
 
-grep -qE -- 'サポートURL: `https://github\.com/K0mork/knittingEditor_app/issues`' "$METADATA" || {
+grep -qE -- 'サポートURL: `https://github\.com/K0mork/knittingEditor/issues`' "$METADATA" || {
   echo "support URL is missing or does not target the public repository" >&2
   exit 1
 }
-grep -qE -- 'プライバシーポリシーURL候補: `https://github\.com/K0mork/knittingEditor_app/blob/main/docs/PRIVACY_POLICY\.md`' "$METADATA" || {
+grep -qE -- 'プライバシーポリシーURL候補: `https://github\.com/K0mork/knittingEditor/blob/main/ios/docs/PRIVACY_POLICY\.md`' "$METADATA" || {
   echo "privacy policy URL is missing or does not target the public repository" >&2
   exit 1
 }
