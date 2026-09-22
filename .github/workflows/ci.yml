@@ -27,7 +27,7 @@ jobs:
           - 'iPhone 16'
           - 'iPad (10th generation)'
     runs-on: macos-14
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
       - name: Install XcodeGen
@@ -43,8 +43,8 @@ jobs:
           -retry-tests-on-failure
           -test-iterations 2
           -test-timeouts-enabled YES
-          -default-test-execution-time-allowance 90
-          -maximum-test-execution-time-allowance 120
+          -default-test-execution-time-allowance 150
+          -maximum-test-execution-time-allowance 240
           -skip-testing:knittingEditorUITests/KnittingEditorUITests/testBackupExportSheetDismissesBackToEditor
           CODE_SIGNING_ALLOWED=NO
       - name: Verify generated app bundle

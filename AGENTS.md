@@ -138,5 +138,6 @@ gh run view "$RUN" --json conclusion,jobs --jq '"RUN: \(.conclusion)", (.jobs[] 
 - ローカルのSimulatorが通ってもCIが落ちることがある。過去の実例は次のとおりで、いずれもローカルでは再現しなかった。
   - 入力欄の中央タップでキャレットが先頭に入り、削除が効かず初期値が残った（Xcode 15.4 Simulator）。
   - `-only-testing`の対象テストを誤って削除し、「Executed 0 tests」が成功扱いになった。テスト関数を消していないか、変更前コミットとの関数一覧の差分で確認する。
+  - UIテストがランナーの遅さで実行時間の上限を超えた（`exceeded execution time allowance`）。`-retry-tests-on-failure`はタイムアウトを救ってくれないため、`-default-test-execution-time-allowance`／`-maximum-test-execution-time-allowance`とジョブの`timeout-minutes`を見直す。
 - 断続的に失敗するテストは、原因を特定できるまで「直った」と記録しない。失敗時の診断情報と画面添付を仕込み、次の発生を待つ。
 - CIが赤いまま別の作業へ移る場合は、赤であることと原因の切り分け状況をユーザーへ明示する。
