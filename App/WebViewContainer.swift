@@ -207,6 +207,7 @@ struct WebViewContainer: UIViewRepresentable {
         private let model: WebViewModel
         private weak var webView: WKWebView?
         private var pendingExportURL: URL?
+        private var pendingExportDirectory: URL?
         private var pickerPurpose: PickerPurpose?
 
         init(model: WebViewModel) {
@@ -350,18 +351,22 @@ struct WebViewContainer: UIViewRepresentable {
                 model.presentError("保存画面を表示できませんでした")
                 return
             }
-            let filenameExtension = URL(fileURLWithPath: filename).pathExtension
-            let fallbackExtension = UTType(mimeType: mimeType)?.preferredFilenameExtension
-            let temporaryURL = FileManager.default.temporaryDirectory
-                .appendingPathComponent(UUID().uuidString)
-                .appendingPathExtension(filenameExtension.isEmpty ? (fallbackExtension ?? "dat") : filenameExtension)
+            // 保存画面には一時ファイルの名前がそのまま出る。UUIDを名前にすると
+            // 利用者に意味のない名前を提案してしまうため、編み図名のファイル名を
+            // 一意なディレクトリの中へ置く。
+            let directory = FileManager.default.temporaryDirectory
+                .appendingPathComponent(UUID().uuidString, isDirectory: true)
+            let temporaryURL = Self.exportFileURL(in: directory, filename: filename, mimeType: mimeType)
             do {
+                try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
                 try data.write(to: temporaryURL, options: [.atomic])
             } catch {
+                try? FileManager.default.removeItem(at: directory)
                 model.presentError("出力ファイルを準備できませんでした")
                 return
             }
             pendingExportURL = temporaryURL
+            pendingExportDirectory = directory
 
             let alert = UIAlertController(title: "ファイルを保存", message: filename, preferredStyle: .alert)
             alert.addAction(UIAlertAction(title: "ファイルに保存", style: .default) { [weak self, weak presenter] _ in
@@ -408,10 +413,24 @@ struct WebViewContainer: UIViewRepresentable {
         }
 
         private func cleanupPendingExport() {
-            if let pendingExportURL {
+            if let pendingExportDirectory {
+                try? FileManager.default.removeItem(at: pendingExportDirectory)
+            } else if let pendingExportURL {
                 try? FileManager.default.removeItem(at: pendingExportURL)
             }
             pendingExportURL = nil
+            pendingExportDirectory = nil
+        }
+
+        /// 保存画面へ提案するファイル名を組み立てる。
+        ///
+        /// `filename`は`NativeBridgeMessage`が区切り文字と制御文字を拒否済みなので、
+        /// そのままパス要素として使える。拡張子が無い場合だけMIME種別から補う。
+        nonisolated static func exportFileURL(in directory: URL, filename: String, mimeType: String) -> URL {
+            let url = directory.appendingPathComponent(filename)
+            guard url.pathExtension.isEmpty else { return url }
+            let fallback = UTType(mimeType: mimeType)?.preferredFilenameExtension ?? "dat"
+            return url.appendingPathExtension(fallback)
         }
     }
 }

@@ -48,7 +48,7 @@ final class KnittingEditorUITests: XCTestCase {
         guideLink.tap()
 
         XCTAssertTrue(
-            app.webViews.firstMatch.staticTexts["ブラウザで棒針編み図を作る方法"].waitForExistence(timeout: Self.editorAppearanceTimeout),
+            app.webViews.firstMatch.staticTexts["棒針編み図の作り方"].waitForExistence(timeout: Self.editorAppearanceTimeout),
             app.debugDescription
         )
         XCTAssertFalse(

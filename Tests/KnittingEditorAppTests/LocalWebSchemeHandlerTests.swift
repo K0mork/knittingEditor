@@ -40,6 +40,25 @@ final class LocalWebSchemeHandlerTests: XCTestCase {
         XCTAssertFalse(WebViewModel.isEditorPage(nil))
     }
 
+    func testExportFileKeepsTheDocumentNameForTheSaveSheet() {
+        let directory = URL(fileURLWithPath: "/tmp/AAAA-BBBB", isDirectory: true)
+
+        XCTAssertEqual(
+            WebViewContainer.Coordinator.exportFileURL(in: directory, filename: "冬のセーター.knit", mimeType: "application/gzip").lastPathComponent,
+            "冬のセーター.knit",
+            "保存画面には編み図名のファイル名を提案する"
+        )
+        XCTAssertEqual(
+            WebViewContainer.Coordinator.exportFileURL(in: directory, filename: "冬のセーター", mimeType: "image/png").lastPathComponent,
+            "冬のセーター.png",
+            "拡張子が無い場合はMIME種別から補う"
+        )
+        XCTAssertEqual(
+            WebViewContainer.Coordinator.exportFileURL(in: directory, filename: "chart", mimeType: "application/octet-stream").pathExtension,
+            "dat"
+        )
+    }
+
     func testExportPickerResultIsNotTreatedAsBackupImport() {
         let exported = URL(fileURLWithPath: "/private/var/mobile/Documents/chart.knit")
 

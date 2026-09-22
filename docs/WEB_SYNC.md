@@ -18,6 +18,7 @@
 - `src/storage/database.ts`: Safariの`localStorage`旧版移行関数を削除する。IndexedDBと`.knit`入出力は維持する。
 - `src/storage/database.test.ts`: Safari旧版移行テストを除外し、`.knit`復元テストを維持する。
 - `index.html`、使い方ページ: SEO、CNAME、サイトマップ、外部プライバシーURLを除外し、アプリ内の同梱ページとして動作させる。
+- 使い方ページと保存パネルの文言: ブラウザ前提の記述をアプリ前提へ置き換える。見出しは「棒針編み図の作り方」、機能一覧は「iPhoneとiPadでのタッチ操作とApple Pencil」、保存パネルの注意書きは「アプリを削除すると端末内のデータも消えます」とする。
 
 次はWeb版との共通コードに対するアプリ側の不具合修正である。`rsync --delete`を使う同期で失われるため、同期後に再適用すること。Web版へも反映するかは別途判断する。
 

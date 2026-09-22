@@ -11,6 +11,17 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-22: 保存画面のファイル名とブラウザ前提の文言を修正
+
+- 修正1: 保存画面が提案するファイル名がUUIDになっていた。書き出し用の一時ファイルを`UUID.png`のような名前で作り、そのまま`UIDocumentPickerViewController(forExporting:)`へ渡していたため、利用者に意味のない名前を提案していた。一意なディレクトリを作り、その中へ編み図名のファイル名で置くようにした。拡張子が無い場合だけMIME種別から補う。後片付けはディレクトリごと削除する。
+- 修正2: ブラウザ前提の文言が3箇所残っていた。保存パネルの「端末内データはブラウザ操作で消える場合があります」をアプリ削除を前提とした記述へ、使い方ページの見出し「ブラウザで棒針編み図を作る方法」を「棒針編み図の作り方」へ、機能一覧の「スマートフォンとPCのブラウザ操作」を「iPhoneとiPadでのタッチ操作とApple Pencil」へ置き換えた。AGENTS.mdのWeb版専用記述の除外に該当する。
+- M3のiPhone側往復: iPhone 17（iOS 27.0）で新規編み図の作成、PNG・PDF・`.knit`のFiles保存、アプリ内「復元」とFilesから開く`onOpenURL`の両経路での復元、共有シートからの送信を実施した。端末内IndexedDBを読み出し、`iPhone往復確認（復元）`が2件作成されたことを実測した。
+- 主なファイル: `App/WebViewContainer.swift`、`Web/src/App.tsx`、`Web/public/guide/index.html`、`UITests/KnittingEditorUITests/KnittingEditorUITests.swift`、`docs/WEB_SYNC.md`
+- テスト: `exportFileURL`の単体テストを追加し、編み図名がそのままファイル名になること、拡張子が無い場合にMIME種別から補うこと、未知のMIME種別で`dat`になることを検査した。使い方ページの見出しを参照するUIテストの期待値も更新した。
+- 実行コマンドと結果: `npm run typecheck`・`npx vitest run`・`npm run build`成功。iPhone 17実機で単体24件（機内モード用1件skip）が成功。`testGuideNavigationReturnsToUsableEditor`と`testPngAndPdfExportsReachNativeFileActions`も成功。利用者が実機で保存画面のファイル名と文言を確認した。
+- 未実施: iPad実機での再確認。機内モード前後の通信監視、VoiceOverのフォーカス順、1000×1000盤面の測定。
+- 配布影響: 保存形式と`.knit`互換は変更しない。保存画面が編み図名を提案するようになり、アプリに合わない文言が消える。
+
 ## 2026-09-22: M3の共有シートとFilesからの取り込みを実機確認
 
 - 確認: iPad Air 第5世代（iPadOS 27.0）で、共有シートから`.knit`とPNGを送って編集画面へ復帰すること、Filesから`.knit`を開く`onOpenURL`経路で復元できることを確認した。
