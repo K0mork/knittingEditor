@@ -11,6 +11,16 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-22: CIの失敗を修正（入力欄のキャレット位置と削除したテストの復元）
+
+- 症状: `test: dismiss the save sheet on iPad and stop dropped dialog input`以降、CIのiPhone・iPadの`ios`と`app-update`の4ジョブが失敗していた。原因は2件あった。
+- 原因1と修正: `replaceText`が入力欄の中央をタップしていたため、環境によってはキャレットが先頭に入り、後続のバックスペースが何も消さずに初期値が残っていた。CIのXcode 15.4 Simulatorで`M2切替A新しい編み図`となり、入力結果の検査で失敗していた。文字の無い右端をタップしてキャレットを末尾へ置き、値が空になるまで削除を繰り返すようにした。キーボードの待機は、出ない環境でも入力自体は可能なため、待つだけで失敗にはしないよう緩めた。
+- 原因2と修正: 可変ウィンドウのテストを書き直した際の範囲指定編集で、`testSeedDocumentForAppUpdateProbe`を誤って削除していた。`-only-testing`が何も一致せず「Executed 0 tests」となってfixtureが作られないまま、`testUpdatedAppRestoresSeedDocument`が失敗していた。Gitの履歴から復元した。他に失われた定義がないことを、変更前のコミットとの関数一覧の差分で確認した。
+- 主なファイル: `UITests/KnittingEditorUITests/KnittingEditorUITests.swift`
+- 実行コマンドと結果: iPhone 16 SimulatorとiPad (10th generation) Simulatorで`testDocumentSwitchAutosavesEachDocument`と`testEditAndRelaunchRestoresLocalDocument`が成功。`scripts/simulate-app-update.sh 'KnittingEditor iPhone 16'`が成功（seed 16.4秒、restore 8.5秒）。
+- 未実施: CIのXcode 15.4環境は手元で再現できないため、キャレット位置の修正はCIの実行で確認する。
+- 配布影響: アプリの実装は変更していない。テストのみ。
+
 ## 2026-09-22: iPadのSplit Viewを検証しウィンドウ内判定へ許容幅を追加
 
 - 検証: iPad Air 第5世代（iPadOS 27.0）のSplit View（ウィンドウ681.5x954、画面1373x954）で`testManualWindowKeepsPrimaryFlowsUsable`が成功した。可変ウィンドウ（584x861）、全画面（954x1373）とあわせて3配置で主要操作・パネル開閉・ダイアログ入力・盤面描画を確認したため、実機チェックリストのM4「iPad全画面、Split View、可変ウィンドウで編集盤面・保存パネルが操作できる」を完了にした。

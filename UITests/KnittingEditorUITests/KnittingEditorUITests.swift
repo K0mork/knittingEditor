@@ -253,6 +253,39 @@ final class KnittingEditorUITests: XCTestCase {
     }
 
 
+    func testSeedDocumentForAppUpdateProbe() throws {
+        try requireAppUpdateProbe()
+        let app = XCUIApplication()
+        let appUpdateElementTimeout: TimeInterval = 60
+        app.launch()
+
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: appUpdateElementTimeout))
+        let documents = app.buttons["編み図"]
+        XCTAssertTrue(documents.waitForExistence(timeout: appUpdateElementTimeout))
+        documents.tap()
+        let newDocument = app.buttons["新しい編み図"]
+        XCTAssertTrue(newDocument.waitForExistence(timeout: appUpdateElementTimeout))
+        newDocument.tap()
+        let nameField = app.textFields["入力"]
+        XCTAssertTrue(nameField.waitForExistence(timeout: appUpdateElementTimeout))
+        replaceText("アプリ更新復元fixture", in: nameField, app: app)
+        app.buttons["決定"].tap()
+
+        let webView = app.webViews.firstMatch
+        let canvas = webView.otherElements
+            .matching(NSPredicate(format: "label CONTAINS %@", "記号0個"))
+            .firstMatch
+        XCTAssertTrue(canvas.waitForExistence(timeout: 10))
+        canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        XCTAssertTrue(
+            webView.otherElements
+                .matching(NSPredicate(format: "label CONTAINS %@", "記号1個"))
+                .firstMatch
+                .waitForExistence(timeout: 10)
+        )
+        waitForDocumentSave(named: "アプリ更新復元fixture", in: webView)
+    }
+
     func testUpdatedAppRestoresSeedDocument() throws {
         try requireAppUpdateProbe()
         let app = XCUIApplication()
@@ -529,10 +562,16 @@ final class KnittingEditorUITests: XCTestCase {
     /// `2切替A`になった）。初期値が残ると意図しない名前になるため、消してから入力し、
     /// 最後に入力結果を検査する。
     private func replaceText(_ text: String, in field: XCUIElement, app: XCUIApplication) {
-        field.tap()
-        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 10), app.debugDescription)
-        if let current = field.value as? String, !current.isEmpty {
-            field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count))
+        // 文字の無い右端をタップしてキャレットを末尾へ置く。中央をタップすると環境に
+        // よってはキャレットが先頭に入り、後続の削除が何も消さずに初期値が残る
+        // （CIのXcode 15.4 Simulatorで`M2切替A新しい編み図`になった）。
+        field.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+        // キーボードが出る前に入力すると先頭文字を取りこぼす。出ない環境でも
+        // 入力自体は可能なので、待つだけで失敗にはしない。
+        _ = app.keyboards.firstMatch.waitForExistence(timeout: 10)
+        for _ in 0..<5 {
+            guard let current = field.value as? String, !current.isEmpty else { break }
+            field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count + 2))
         }
         field.typeText(text)
         XCTAssertEqual(field.value as? String, text, app.debugDescription)
