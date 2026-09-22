@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  web:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: Web/package-lock.json
+      - name: Test and build web bundle
+        working-directory: Web
+        run: npm ci --ignore-scripts && npm test && npm run build
+
+  ios:
+    strategy:
+      fail-fast: false
+      matrix:
+        device:
+          - 'iPhone 16'
+          - 'iPad (10th generation)'
+    runs-on: macos-14
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        run: xcodegen generate --spec project.yml
+      - name: Run iOS tests
+        run: >-
+          xcodebuild test
+          -project knittingEditor.xcodeproj
+          -scheme knittingEditor
+          -destination 'platform=iOS Simulator,name=${{ matrix.device }},OS=latest'
+          -retry-tests-on-failure
+          -test-iterations 2
+          -test-timeouts-enabled YES
+          -default-test-execution-time-allowance 150
+          -maximum-test-execution-time-allowance 240
+          -skip-testing:knittingEditorUITests/KnittingEditorUITests/testBackupExportSheetDismissesBackToEditor
+          CODE_SIGNING_ALLOWED=NO
+      - name: Verify generated app bundle
+        run: |
+          xcodebuild build -project knittingEditor.xcodeproj -scheme knittingEditor \
+            -sdk iphonesimulator -configuration Debug CODE_SIGNING_ALLOWED=NO \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData"
+          scripts/check-app-bundle.sh "$RUNNER_TEMP/DerivedData/Build/Products/Debug-iphonesimulator/knittingEditor.app"
+
+  app-update:
+    strategy:
+      fail-fast: false
+      matrix:
+        device:
+          - 'iPhone 16'
+          - 'iPad (10th generation)'
+    runs-on: macos-14
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        run: xcodegen generate --spec project.yml
+      - name: Simulate app update and restore IndexedDB
+        run: >-
+          scripts/simulate-app-update.sh
+          '${{ matrix.device }}'
+          'platform=iOS Simulator,name=${{ matrix.device }},OS=latest'
+
+  release-archive:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        run: xcodegen generate --spec project.yml
+      - name: Create unsigned Release archive
+        run: >-
+          xcodebuild archive
+          -project knittingEditor.xcodeproj
+          -scheme knittingEditor
+          -configuration Release
+          -destination 'generic/platform=iOS'
+          -archivePath "$RUNNER_TEMP/knittingEditor.xcarchive"
+          CODE_SIGNING_ALLOWED=NO
+          CODE_SIGNING_REQUIRED=NO
+      - name: Verify archived app bundle
+        run: scripts/check-release-assets.sh "$RUNNER_TEMP/knittingEditor.xcarchive/Products/Applications/knittingEditor.app"

@@ -1,0 +1,142 @@
+:root {
+  font: -apple-system-body;
+  font-family: Inter, "Hiragino Sans", "Yu Gothic", system-ui, sans-serif;
+  color: #26322c;
+  background: #f3f0e8;
+  font-synthesis: none;
+  --green: #3d7a4a;
+  --green-dark: #285d35;
+  --paper: #fffef9;
+  --border: #d5dbd3;
+  --shadow: 0 8px 28px rgba(34, 56, 42, .13);
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+html, body, #root { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+.visually-hidden { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
+button, input, select { font: inherit; }
+button { min-width: 44px; min-height: 44px; border: 1px solid var(--border); border-radius: 10px; background: var(--paper); color: inherit; padding: 8px 13px; cursor: pointer; }
+button:hover { border-color: var(--green); }
+button:focus-visible, input:focus-visible, select:focus-visible, [tabindex="-1"]:focus-visible { outline: 3px solid rgba(61, 122, 74, .3); outline-offset: 2px; }
+button.primary, button.active { color: white; background: var(--green); border-color: var(--green); }
+button.danger { color: #9b2929; border-color: #d8aaaa; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+
+.app-shell { min-width: 0; display: grid; grid-template-rows: auto 1fr auto; height: 100%; }
+.app-header { min-width: 0; min-height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 14px; color: white; background: linear-gradient(120deg, #346f42, #55945e); box-shadow: 0 2px 12px rgba(0,0,0,.16); z-index: 5; }
+.app-title { min-width: 0; flex: 1 1 auto; }
+.app-header h1 { font-size: 1.1rem; margin: 0; letter-spacing: .02em; }
+.app-header h1, .app-header p { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-header p { margin: 2px 0 0; font-size: .76rem; opacity: .85; }
+.header-actions { min-width: 0; display: flex; align-items: center; flex: 0 1 auto; gap: 7px; }
+.header-guide, .header-document { min-height: 44px; font-size: min(1rem, 20px); display: inline-flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,.55); border-radius: 10px; padding: 8px 13px; color: white; background: rgba(255,255,255,.12); text-decoration: none; }
+.header-guide:hover, .header-document:hover { border-color: white; }
+.header-guide:focus-visible { outline: 3px solid rgba(255,255,255,.45); outline-offset: 2px; }
+
+.workspace { min-width: 0; min-height: 0; display: grid; grid-template: auto 1fr auto / minmax(0, 1fr); position: relative; }
+.primary-tools { display: flex; gap: 7px; align-items: center; padding: 8px; background: rgba(255,254,249,.98); border-bottom: 1px solid var(--border); overflow-x: auto; z-index: 3; }
+.primary-tools button { flex: 0 0 auto; }
+.color-tool { display: flex; align-items: center; gap: 5px; font-size: .8rem; }
+.color-tool input { width: 44px; height: 44px; border: 0; padding: 2px; background: none; }
+.stitch-tool { min-width: 170px; display: flex; align-items: center; gap: 7px; padding: 4px 8px; text-align: left; background: white; }
+.stitch-tool > span:first-child { display: block; flex: 0 0 32px; width: 32px; height: 32px; color: #222; }
+.stitch-tool-name { flex: 1; white-space: nowrap; }
+.stitch-tool-chevron { color: #647269; font-size: 1.1rem; }
+.stitch-picker-backdrop { position: fixed; inset: 0; z-index: 12; display: grid; place-items: end center; padding-top: 24px; background: rgba(26, 39, 31, .32); }
+.stitch-picker { width: min(100%, 760px); max-height: min(82vh, 760px); max-height: min(82dvh, 760px); overflow: auto; padding: 14px max(14px, env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left)); border-radius: 18px 18px 0 0; background: var(--paper); box-shadow: 0 -12px 40px rgba(20, 38, 27, .24); }
+.stitch-picker-heading { position: sticky; top: -14px; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: -14px 0 8px; padding: 14px 0 9px; background: var(--paper); }
+.stitch-picker-heading > div { min-width: 0; }
+.stitch-picker-heading h2 { margin: 0; font-size: 1.15rem; }
+.stitch-picker-heading > button { flex: 0 0 auto; white-space: nowrap; }
+.stitch-picker-heading p { margin: 2px 0 0; color: #67756e; font-size: .76rem; }
+.stitch-category h3 { margin: 15px 0 7px; color: #53605a; font-size: .86rem; }
+.stitch-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+.stitch-option { min-width: 0; min-height: 104px; display: grid; grid-template-rows: 50px auto auto; place-items: center; gap: 3px; padding: 7px 4px; text-align: center; }
+.stitch-option.selected { border-color: var(--green); background: #edf7ef; box-shadow: inset 0 0 0 1px var(--green); }
+.stitch-option-symbol { display: block; width: min(92px, 100%); height: 50px; color: #202622; }
+.stitch-option-symbol svg { stroke-width: 2.5; }
+.stitch-option-symbol svg > * { vector-effect: non-scaling-stroke; }
+.stitch-option-name { max-width: 100%; font-size: .78rem; line-height: 1.25; overflow-wrap: anywhere; }
+.stitch-option small { color: #718078; font-size: .68rem; }
+.canvas-wrap { min-height: 0; position: relative; overflow: hidden; }
+.board-canvas { display: block; width: 100%; height: 100%; touch-action: none; user-select: none; cursor: crosshair; }
+.board-canvas.mode-erase { cursor: cell; }
+.gesture-hint { position: absolute; right: 8px; bottom: 8px; padding: 5px 8px; border-radius: 12px; color: #526059; background: rgba(255,255,255,.88); font-size: .68rem; pointer-events: none; }
+.selection-actions { position: fixed; z-index: 8; left: 50%; bottom: calc(72px + env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; gap: 7px; width: max-content; max-width: calc(100% - 20px); padding: 7px; border: 1px solid var(--border); border-radius: 14px; background: rgba(255,254,249,.97); box-shadow: var(--shadow); }
+.action-bar { min-width: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 8px max(8px, env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)); background: var(--paper); border-top: 1px solid var(--border); z-index: 3; }
+.action-bar button { font-weight: 700; padding-inline: 8px; white-space: nowrap; }
+
+.drawer { position: fixed; inset: auto 0 0 0; z-index: 10; max-height: min(72vh, 650px); max-height: min(72dvh, 650px); overflow: auto; overscroll-behavior: contain; padding: 14px max(14px, env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left)); background: var(--paper); border-radius: 18px 18px 0 0; box-shadow: 0 -12px 40px rgba(20, 38, 27, .22); }
+.drawer-heading { position: sticky; top: -14px; display: flex; align-items: center; justify-content: space-between; margin: -14px -2px 12px; padding: 14px 2px 8px; background: var(--paper); z-index: 2; }
+.drawer-heading > button, .app-dialog-actions button { white-space: nowrap; }
+.drawer-heading h2 { margin: 0; font-size: 1.15rem; }
+.drawer h3 { margin: 18px 0 8px; font-size: .9rem; color: #53605a; }
+.document-list, .block-list { display: grid; gap: 8px; margin-top: 12px; }
+.document { display: grid; grid-template-columns: 1fr auto; gap: 6px; border: 1px solid var(--border); border-radius: 12px; padding: 6px; }
+.document.active { border-color: var(--green); background: #f0f8f1; }
+.document > button, .block-list div > button:first-child { text-align: left; border: 0; background: transparent; }
+.document small, .block-list small { display: block; color: #718078; }
+.document > div { display: flex; gap: 4px; align-items: center; }
+.document > div button { min-width: 44px; min-height: 44px; padding: 5px 7px; font-size: .75rem; }
+.block-list div { display: grid; grid-template-columns: 1fr auto; gap: 6px; border: 1px solid var(--border); border-radius: 12px; padding: 5px; }
+.button-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 7px; }
+.size-inputs { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: end; }
+.size-inputs label, .export-controls label { display: grid; gap: 4px; font-size: .8rem; color: #53605a; }
+.size-inputs input, .export-controls select { min-height: 44px; width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: 5px 8px; background: white; }
+.export-controls input[type="range"] { min-height: 44px; }
+.grid-controls > .danger { width: 100%; margin-top: 20px; }
+.export-controls { display: grid; gap: 8px; }
+.export-controls h3 { margin-bottom: 0; }
+.export-controls p { margin: 0; color: #67756e; font-size: .8rem; }
+.export-controls label:has(input[type="range"]) { grid-template-columns: 1fr auto; }
+.export-controls label:has(input[type="range"]) input { grid-column: 1 / 2; width: 100%; }
+.export-controls output { grid-column: 2; grid-row: 2; }
+.recommend { color: #9b5b18 !important; font-weight: 700; }
+
+.app-dialog-backdrop { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; overflow: auto; padding: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left)); background: rgba(26, 39, 31, .38); }
+.app-dialog { width: min(100%, 420px); max-height: min(90vh, 560px); max-height: min(90dvh, 560px); overflow: auto; padding: 20px; border: 1px solid var(--border); border-radius: 18px; background: var(--paper); box-shadow: var(--shadow); }
+.app-dialog h2 { margin: 0 0 14px; font-size: 1.05rem; line-height: 1.5; }
+.app-dialog input { width: 100%; min-height: 44px; margin-bottom: 14px; border: 1px solid var(--border); border-radius: 9px; padding: 8px 10px; background: white; }
+.app-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+.busy, .toast { position: fixed; z-index: 20; left: 50%; transform: translateX(-50%); border-radius: 14px; box-shadow: var(--shadow); }
+.busy { top: 50%; display: flex; align-items: center; gap: 10px; padding: 14px 18px; background: white; }
+.toast { bottom: calc(78px + env(safe-area-inset-bottom)); width: max-content; max-width: calc(100% - 30px); padding: 10px 14px; color: white; background: #283c30; }
+.spinner { width: 18px; height: 18px; border: 3px solid #bed2c2; border-top-color: var(--green); border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; } }
+.loading { display: grid; place-items: center; width: 100%; height: 100%; }
+footer { display: none; }
+
+@media (max-width: 420px) {
+  .app-header { gap: 8px; padding-inline: 10px; }
+  .app-header h1 { font-size: 1rem; }
+  .app-header p { font-size: .68rem; }
+  .header-actions { gap: 5px; }
+  .header-guide, .header-document { min-width: 0; max-width: 96px; padding-inline: 9px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .primary-tools { gap: 5px; padding: 6px; scrollbar-width: thin; }
+  .primary-tools > button { padding-inline: 8px; }
+  .stitch-tool { min-width: 136px; }
+}
+
+@media (min-width: 760px) {
+  .app-header { min-height: 74px; padding-inline: 24px; }
+  .app-header h1 { font-size: 1.35rem; }
+  .workspace { grid-template: auto 1fr / 1fr 96px; }
+  .primary-tools { grid-column: 1 / 3; padding-inline: 16px; }
+  .canvas-wrap { grid-column: 1; grid-row: 2; }
+  .action-bar { grid-column: 2; grid-row: 2; grid-template: repeat(3, auto) 1fr / 1fr; align-content: start; border-left: 1px solid var(--border); border-top: 0; padding: 12px 8px; }
+  .drawer { inset: 74px 0 0 auto; width: 390px; max-height: none; border-radius: 18px 0 0 18px; box-shadow: -12px 0 40px rgba(20, 38, 27, .2); }
+  .toast { bottom: 24px; }
+  .selection-actions { bottom: 18px; }
+  .stitch-picker-backdrop { place-items: center; padding: 24px; }
+  .stitch-picker { border-radius: 18px; }
+  .stitch-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
+
+@media (min-width: 1180px) {
+  .workspace { grid-template: auto 1fr / 1fr 118px; }
+  .action-bar { padding-inline: 12px; }
+  .gesture-hint { font-size: .76rem; }
+}
