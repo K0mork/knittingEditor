@@ -181,7 +181,7 @@ test('creates a block and exports backup and PDF', async ({ page }) => {
   expect(backupPath).not.toBeNull();
   await page.locator('input[type="file"]').setInputFiles(backupPath!);
   await expect(page.getByText('1件の編み図を復元しました')).toBeVisible();
-  await expect(page.locator('.app-header p')).toHaveText('新しい編み図（復元）');
+  await expect(page.locator('.app-document-name')).toHaveText('新しい編み図（復元）');
 
   await page.getByRole('button', { name: '保存' }).click();
   const pdfDownload = page.waitForEvent('download');

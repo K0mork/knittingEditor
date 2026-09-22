@@ -1,5 +1,13 @@
 # Development Log
 
+## 2026-09-22 — Search Consoleの実績に合わせてトップページのSEO表現を改善
+
+- 影響: 検索流入で伸びしろがあった「編み図作成サイト」を自然に含むよう、トップページのtitle、description、OGP、構造化データ、JavaScript実行前の説明文を更新した。実画面のヘッダーにも「無料の棒針編み図作成サイト」を追加し、編み図名と操作ボタンを維持したまま画面幅に応じて折り返す。
+- 主なファイル: `index.html`、`src/App.tsx`、`src/styles.css`、`tests/e2e/seo.spec.ts`、`tests/e2e/editor.spec.ts`。
+- テスト: SEOメタデータ、構造化データ、クロール可能な説明文、実画面の説明表示をPlaywrightで更新し、復元後の編み図名検証を専用クラスへ変更した。
+- 検証: `npm run typecheck`、`npm test`（7ファイル・33件）、`npm run build`、`npm run check:dist`、`npm run test:e2e`（Chromium mobile・WebKit mobile・Chromium desktop、57件）を順に実行し、すべて成功。モバイル390×844とデスクトップ1440×900を目視確認し、説明文、編み図名、ヘッダー操作、編集領域に欠けや重なりがないことを確認した。確認画像は `/tmp/knitting-seo-{mobile,desktop}.png`（未コミット）。
+- デプロイ影響: なし。デプロイ後は本番HTMLのtitle・description・構造化データ、モバイル／デスクトップのヘッダー表示、GitHub Actionsの`test-build`・`deploy`成功を確認し、その後28日程度のSearch Consoleデータで対象クエリの順位・表示回数・CTRを比較する必要がある。
+
 ## 2026-09-22 — アプリ版で確認したWeb共通不具合を修正
 
 - 影響: `knittingEditor_app` 側のコミット `dc014f6`、`aca03e8`、`98e9211`、`675389b`、`4ed8401` をWeb版へ同期した。2本指操作時の誤描画を防ぎ、段数増減を上端側へ統一し、大きな文字でもヘッダーを画面内へ保ち、PNG既定値を24px/セル（最大60px）へ拡大して大盤面では安全値へ自動調整する。画面端の複数セル記号、自動保存中の名称変更、3桁カラー、トラックパッドのピンチも修正した。`01e1643` の初期値選択はアプリ内WebView専用ダイアログの修正であり、本Web版は初期値を標準で選択する `window.prompt` を継続使用するため追加変更なし。

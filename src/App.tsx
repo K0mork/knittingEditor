@@ -260,7 +260,13 @@ export default function App() {
 
   return <div className="app-shell">
     <header className="app-header">
-      <div className="app-title"><h1>棒針編み図エディタ</h1><p>{activeDocument.name}{dirty ? '（保存中…）' : ''}</p></div>
+      <div className="app-title">
+        <div className="app-heading-row">
+          <h1>棒針編み図エディタ</h1>
+          <p className="app-tagline">無料の棒針編み図作成サイト</p>
+        </div>
+        <p className="app-document-name">{activeDocument.name}{dirty ? '（保存中…）' : ''}</p>
+      </div>
       <div className="header-actions">
         <a className="header-guide" href="/guide/">使い方</a>
         <button className="header-document" onClick={() => togglePanel('documents')}>編み図</button>
