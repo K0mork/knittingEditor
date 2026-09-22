@@ -16,14 +16,17 @@ if [[ ! -x "$REPO_ROOT/node_modules/.bin/vite" ]]; then
   (cd "$REPO_ROOT" && npm ci --ignore-scripts)
 fi
 
+# ハッシュはこのビルドの入力だけを対象にする。リポジトリ全体を走査すると、
+# `.git`やテスト成果物の更新でスタンプが毎回変わってスキップが効かず、
+# 走査中に消えたファイルで`shasum`が失敗してビルドフェーズごと落ちる。
 input_hash="$(
   cd "$REPO_ROOT"
-  LC_ALL=C find . -type f \
-    ! -path './node_modules/*' \
-    ! -path './dist/*' \
+  LC_ALL=C find ./ios/Web ./ios/scripts/build-web.sh ./packages ./package.json ./package-lock.json -type f \
     ! -path './ios/Web/dist/*' \
-    ! -path './ios/AppResources/Web/*' \
+    ! -path './ios/Web/node_modules/*' \
+    ! -path './packages/*/node_modules/*' \
     ! -name '*.tsbuildinfo' \
+    ! -name '.DS_Store' \
     -print0 \
     | LC_ALL=C sort -z \
     | xargs -0 shasum -a 256 \
