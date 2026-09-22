@@ -41,6 +41,50 @@ test('draws continuously and restores the board after reload', async ({ page }) 
   expect(storedAfter).toBe(storedBefore.filled);
 });
 
+test('does not draw when a second touch turns a tap into a two-finger gesture', async ({ page }) => {
+  const canvas = page.getByLabel('編み図編集盤面');
+  await canvas.evaluate((element) => {
+    // Synthetic PointerEvents are not registered in the browser's native pointer-capture table.
+    element.setPointerCapture = () => {};
+    const rect = element.getBoundingClientRect();
+    const dispatch = (type: string, pointerId: number, x: number, y: number) => element.dispatchEvent(new PointerEvent(type, {
+      bubbles: true,
+      cancelable: true,
+      pointerId,
+      pointerType: 'touch',
+      clientX: rect.left + x,
+      clientY: rect.top + y,
+      button: 0,
+      isPrimary: pointerId === 1,
+    }));
+    dispatch('pointerdown', 1, 75, 75);
+    dispatch('pointerdown', 2, 135, 75);
+    dispatch('pointermove', 1, 70, 75);
+    dispatch('pointermove', 2, 140, 75);
+    dispatch('pointerup', 2, 140, 75);
+    dispatch('pointerup', 1, 70, 75);
+  });
+  await page.waitForTimeout(700);
+
+  const filled = await page.evaluate(async () => {
+    const request = indexedDB.open('knitting-editor-v2');
+    const db = await new Promise<IDBDatabase>((resolve) => { request.onsuccess = () => resolve(request.result); });
+    const get = db.transaction('documents').objectStore('documents').getAll();
+    const documents = await new Promise<Array<{ cells: ArrayBuffer }>>((resolve) => { get.onsuccess = () => resolve(get.result); });
+    return new Uint32Array(documents[0].cells).filter(Boolean).length;
+  });
+  expect(filled).toBe(0);
+});
+
+test('prevents the canvas wheel gesture from reaching page zoom', async ({ page }) => {
+  const prevented = await page.getByLabel('編み図編集盤面').evaluate((element) => {
+    const event = new WheelEvent('wheel', { bubbles: true, cancelable: true, ctrlKey: true, deltaY: -20 });
+    element.dispatchEvent(event);
+    return event.defaultPrevented;
+  });
+  expect(prevented).toBe(true);
+});
+
 test('erases stitches continuously', async ({ page }) => {
   const canvas = page.getByLabel('編み図編集盤面');
   const box = await canvas.boundingBox();
