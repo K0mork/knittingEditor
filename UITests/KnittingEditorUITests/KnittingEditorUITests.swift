@@ -8,6 +8,10 @@ final class KnittingEditorUITests: XCTestCase {
         ProcessInfo.processInfo.environment["KNITTING_EDITOR_MANUAL_WINDOW"] == "1"
     }
 
+    /// CIのSimulatorはWebKitの初回起動が遅く、15秒では足りずに失敗することがある。
+    /// 待機は要素が現れ次第終わるため、上限を広げても通常実行の所要時間は伸びない。
+    static let editorAppearanceTimeout: TimeInterval = 45
+
     /// 実機は起動時に端末の物理的な向きを引き継ぐため、各テストを縦向きから始める。
     override func setUp() {
         super.setUp()
@@ -26,7 +30,7 @@ final class KnittingEditorUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
         XCTAssertTrue(
-            app.webViews.firstMatch.waitForExistence(timeout: 15)
+            app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout)
                 || app.otherElements["knittingEditorWebView"].waitForExistence(timeout: 1),
             "SwiftUI root should expose the local WebView container"
         )
@@ -38,13 +42,13 @@ final class KnittingEditorUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 15))
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
         let guideLink = app.links["使い方"]
-        XCTAssertTrue(guideLink.waitForExistence(timeout: 15), app.debugDescription)
+        XCTAssertTrue(guideLink.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
         guideLink.tap()
 
         XCTAssertTrue(
-            app.webViews.firstMatch.staticTexts["ブラウザで棒針編み図を作る方法"].waitForExistence(timeout: 15),
+            app.webViews.firstMatch.staticTexts["ブラウザで棒針編み図を作る方法"].waitForExistence(timeout: Self.editorAppearanceTimeout),
             app.debugDescription
         )
         XCTAssertFalse(
@@ -65,14 +69,14 @@ final class KnittingEditorUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 15))
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
         createDocument(named: "2本指確認", in: app)
 
         let webView = app.webViews.firstMatch
         let emptyCanvas = webView.otherElements
             .matching(NSPredicate(format: "label CONTAINS %@", "記号0個"))
             .firstMatch
-        XCTAssertTrue(emptyCanvas.waitForExistence(timeout: 15), app.debugDescription)
+        XCTAssertTrue(emptyCanvas.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
 
         emptyCanvas.pinch(withScale: 2.0, velocity: 1.0)
         emptyCanvas.pinch(withScale: 0.5, velocity: -1.0)
@@ -102,13 +106,13 @@ final class KnittingEditorUITests: XCTestCase {
     func testSavePanelShowsBackupActions() {
         let app = XCUIApplication()
         app.launch()
-        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 15))
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
 
         let save = app.buttons["保存"]
-        XCTAssertTrue(save.waitForExistence(timeout: 15))
+        XCTAssertTrue(save.waitForExistence(timeout: Self.editorAppearanceTimeout))
         save.tap()
 
-        XCTAssertTrue(app.buttons["この編み図"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.buttons["この編み図"].waitForExistence(timeout: Self.editorAppearanceTimeout))
         XCTAssertTrue(app.buttons["全データ"].exists)
         XCTAssertTrue(app.buttons["復元"].exists)
     }
@@ -117,16 +121,16 @@ final class KnittingEditorUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 15))
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
         let documents = app.buttons["編み図"]
-        XCTAssertTrue(documents.waitForExistence(timeout: 15))
+        XCTAssertTrue(documents.waitForExistence(timeout: Self.editorAppearanceTimeout))
         documents.tap()
 
         let newDocument = app.buttons["新しい編み図"]
-        XCTAssertTrue(newDocument.waitForExistence(timeout: 15))
+        XCTAssertTrue(newDocument.waitForExistence(timeout: Self.editorAppearanceTimeout))
         newDocument.tap()
         let nameField = app.textFields["入力"]
-        XCTAssertTrue(nameField.waitForExistence(timeout: 15))
+        XCTAssertTrue(nameField.waitForExistence(timeout: Self.editorAppearanceTimeout))
         replaceText("再起動復元テスト", in: nameField, app: app)
         app.buttons["決定"].tap()
 
@@ -147,7 +151,7 @@ final class KnittingEditorUITests: XCTestCase {
         app.launch()
 
         let relaunchedWebView = app.webViews.firstMatch
-        XCTAssertTrue(relaunchedWebView.waitForExistence(timeout: 15))
+        XCTAssertTrue(relaunchedWebView.waitForExistence(timeout: Self.editorAppearanceTimeout))
         let restoredCanvas = relaunchedWebView.otherElements
             .matching(NSPredicate(format: "label CONTAINS %@", "記号1個"))
             .firstMatch
@@ -158,16 +162,16 @@ final class KnittingEditorUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 15))
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
         let documents = app.buttons["編み図"]
-        XCTAssertTrue(documents.waitForExistence(timeout: 15))
+        XCTAssertTrue(documents.waitForExistence(timeout: Self.editorAppearanceTimeout))
         documents.tap()
 
         let newDocument = app.buttons["新しい編み図"]
-        XCTAssertTrue(newDocument.waitForExistence(timeout: 15))
+        XCTAssertTrue(newDocument.waitForExistence(timeout: Self.editorAppearanceTimeout))
         newDocument.tap()
         let nameField = app.textFields["入力"]
-        XCTAssertTrue(nameField.waitForExistence(timeout: 15))
+        XCTAssertTrue(nameField.waitForExistence(timeout: Self.editorAppearanceTimeout))
         replaceText("M2切替A", in: nameField, app: app)
         app.buttons["決定"].tap()
 
@@ -185,7 +189,7 @@ final class KnittingEditorUITests: XCTestCase {
 
         documents.tap()
         newDocument.tap()
-        XCTAssertTrue(nameField.waitForExistence(timeout: 15))
+        XCTAssertTrue(nameField.waitForExistence(timeout: Self.editorAppearanceTimeout))
         replaceText("M2切替B", in: nameField, app: app)
         app.buttons["決定"].tap()
 
@@ -205,7 +209,7 @@ final class KnittingEditorUITests: XCTestCase {
         let documentA = app.buttons
             .matching(NSPredicate(format: "label BEGINSWITH %@", "M2切替A"))
             .firstMatch
-        XCTAssertTrue(documentA.waitForExistence(timeout: 15))
+        XCTAssertTrue(documentA.waitForExistence(timeout: Self.editorAppearanceTimeout))
         documentA.tap()
         XCTAssertTrue(
             webView.otherElements
@@ -218,7 +222,7 @@ final class KnittingEditorUITests: XCTestCase {
         let documentB = app.buttons
             .matching(NSPredicate(format: "label BEGINSWITH %@", "M2切替B"))
             .firstMatch
-        XCTAssertTrue(documentB.waitForExistence(timeout: 15))
+        XCTAssertTrue(documentB.waitForExistence(timeout: Self.editorAppearanceTimeout))
         documentB.tap()
         XCTAssertTrue(
             webView.otherElements
@@ -282,7 +286,7 @@ final class KnittingEditorUITests: XCTestCase {
         let canvas = app.webViews.firstMatch.otherElements
             .matching(NSPredicate(format: "label CONTAINS %@", "記号0個"))
             .firstMatch
-        XCTAssertTrue(canvas.waitForExistence(timeout: 15), app.debugDescription)
+        XCTAssertTrue(canvas.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
         assertWithinWindow(canvas, in: app)
         canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
         XCTAssertTrue(
@@ -366,16 +370,16 @@ final class KnittingEditorUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 15))
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
         let save = app.buttons["保存"]
-        XCTAssertTrue(save.waitForExistence(timeout: 15))
+        XCTAssertTrue(save.waitForExistence(timeout: Self.editorAppearanceTimeout))
         save.tap()
 
         let currentDocument = app.buttons["この編み図"]
-        XCTAssertTrue(currentDocument.waitForExistence(timeout: 15))
+        XCTAssertTrue(currentDocument.waitForExistence(timeout: Self.editorAppearanceTimeout))
         currentDocument.tap()
 
-        XCTAssertTrue(app.buttons["ファイルに保存"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.buttons["ファイルに保存"].waitForExistence(timeout: Self.editorAppearanceTimeout))
         XCTAssertTrue(app.buttons["共有"].exists)
         app.buttons["ファイルに保存"].tap()
 
@@ -398,23 +402,23 @@ final class KnittingEditorUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 15))
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
         let save = app.buttons["保存"]
-        XCTAssertTrue(save.waitForExistence(timeout: 15))
+        XCTAssertTrue(save.waitForExistence(timeout: Self.editorAppearanceTimeout))
         save.tap()
 
         let png = app.buttons["PNGを保存"]
-        XCTAssertTrue(png.waitForExistence(timeout: 15))
+        XCTAssertTrue(png.waitForExistence(timeout: Self.editorAppearanceTimeout))
         png.tap()
         let pngFileSave = app.buttons["ファイルに保存"]
-        XCTAssertTrue(pngFileSave.waitForExistence(timeout: 15))
+        XCTAssertTrue(pngFileSave.waitForExistence(timeout: Self.editorAppearanceTimeout))
         cancelExportAlert(in: app)
 
         let pdf = app.buttons["PDFを保存"]
-        XCTAssertTrue(pdf.waitForExistence(timeout: 15))
+        XCTAssertTrue(pdf.waitForExistence(timeout: Self.editorAppearanceTimeout))
         pdf.tap()
         let pdfFileSave = app.buttons["ファイルに保存"]
-        XCTAssertTrue(pdfFileSave.waitForExistence(timeout: 15))
+        XCTAssertTrue(pdfFileSave.waitForExistence(timeout: Self.editorAppearanceTimeout))
         cancelExportAlert(in: app)
     }
 
@@ -422,7 +426,7 @@ final class KnittingEditorUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 15))
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
         assertPrimaryControlsAreUsable(in: app)
 
         XCUIDevice.shared.orientation = .landscapeLeft
@@ -438,9 +442,9 @@ final class KnittingEditorUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 15))
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
         let documents = app.buttons["編み図"]
-        XCTAssertTrue(documents.waitForExistence(timeout: 15), app.debugDescription)
+        XCTAssertTrue(documents.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
         documents.tap()
         let newDocument = app.buttons["新しい編み図"]
         XCTAssertTrue(newDocument.waitForExistence(timeout: 10))
@@ -459,7 +463,7 @@ final class KnittingEditorUITests: XCTestCase {
         app.launch()
 
         let webView = app.webViews.firstMatch
-        XCTAssertTrue(webView.waitForExistence(timeout: 15))
+        XCTAssertTrue(webView.waitForExistence(timeout: Self.editorAppearanceTimeout))
         let stitchPicker = app.descendants(matching: .any)
             .matching(NSPredicate(format: "label == %@", "編み目記号を選ぶ"))
             .firstMatch
@@ -502,7 +506,7 @@ final class KnittingEditorUITests: XCTestCase {
         ]
         app.launch()
 
-        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 15))
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
         assertPrimaryControlsAreUsable(in: app)
 
         app.buttons["編み図"].tap()
@@ -606,13 +610,13 @@ final class KnittingEditorUITests: XCTestCase {
     /// 空の盤面から始めるため、名前を指定して新しい編み図を作る。
     private func createDocument(named name: String, in app: XCUIApplication) {
         let documents = app.buttons["編み図"]
-        XCTAssertTrue(documents.waitForExistence(timeout: 15), app.debugDescription)
+        XCTAssertTrue(documents.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
         documents.tap()
         let newDocument = app.buttons["新しい編み図"]
-        XCTAssertTrue(newDocument.waitForExistence(timeout: 15), app.debugDescription)
+        XCTAssertTrue(newDocument.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
         newDocument.tap()
         let nameField = app.textFields["入力"]
-        XCTAssertTrue(nameField.waitForExistence(timeout: 15), app.debugDescription)
+        XCTAssertTrue(nameField.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
         replaceText(name, in: nameField, app: app)
         app.buttons["決定"].tap()
     }
@@ -674,7 +678,7 @@ final class KnittingEditorUITests: XCTestCase {
     private func cancelExportAlert(in app: XCUIApplication) {
         let cancel = app.buttons["キャンセル"]
         let fileSave = app.buttons["ファイルに保存"]
-        XCTAssertTrue(cancel.waitForExistence(timeout: 15))
+        XCTAssertTrue(cancel.waitForExistence(timeout: Self.editorAppearanceTimeout))
         cancel.tap()
         assertDisappears(cancel, from: app)
         assertDisappears(fileSave, from: app)
@@ -684,7 +688,7 @@ final class KnittingEditorUITests: XCTestCase {
         let saved = webView.descendants(matching: .staticText)
             .matching(NSPredicate(format: "label BEGINSWITH %@", name))
             .firstMatch
-        XCTAssertTrue(saved.waitForExistence(timeout: 15), webView.debugDescription)
+        XCTAssertTrue(saved.waitForExistence(timeout: Self.editorAppearanceTimeout), webView.debugDescription)
 
         let saving = webView.descendants(matching: .staticText)
             .matching(NSPredicate(format: "label CONTAINS %@", "（保存中…）"))
