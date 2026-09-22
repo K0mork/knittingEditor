@@ -2,16 +2,15 @@
 
 ## Project Goal
 
-このリポジトリは、Web版「棒針編み図エディタ」を、完全オフラインで動作するiOS・iPadOSアプリとして配布するためのものです。`DEVELOPMENT.md`と`SPECIFICATION.md`を実装上の基準とし、P0要件を勝手に緩和してはいけません。
+このディレクトリは、ルートのWeb版と共通基盤を共有する、完全オフラインのiOS・iPadOSアプリです。`DEVELOPMENT.md`と`SPECIFICATION.md`を実装上の基準とし、P0要件を勝手に緩和してはいけません。リポジトリ全体の構成・CI・Pages公開方針はルートの`AGENTS.md`と`docs/ARCHITECTURE.md`を正とします。
 
 ## Source Repository Boundary
 
-Web版 `/Users/komorikouki/git/knittingEditor` は参照元です。ユーザーから明示的な変更指示がない限り、必ず読み取り専用で扱ってください。
+Web版は別リポジトリの参照元ではなく、このリポジトリのルートに統合されています。`packages/editor-core`が盤面・記号の正本であり、`Web/src`へコピー同期しません。
 
-- Web版でコマンドを実行する前に、生成物やキャッシュを書き込まないか確認する。
-- Web版の`dist/`、依存関係、ソース、テスト、Git状態を変更しない。
-- アプリ側への同期は、同期元コミットSHAを記録してから行う。
-- 記号定義は`src/stitches/catalog.ts`と`src/stitches/glyphs.ts`を一体として扱う。
+- ルートの`dist/`、`ios/AppResources/Web/`、依存関係キャッシュは生成物であり、直接編集・コミットしない。
+- 共通コードの変更はWebとiOSの両方を検証する。
+- 記号定義は`packages/editor-core/stitches/catalog.ts`と`packages/editor-core/stitches/glyphs.ts`を一体として扱う。
 - 永続記号IDを変更・再利用・配列位置から再採番しない。
 - Web版の変更を機械的に全部コピーせず、SEO、GitHub Pages、分析、旧Safari移行などアプリ不要部分を除外する。
 
@@ -32,13 +31,12 @@ Web版 `/Users/komorikouki/git/knittingEditor` は参照元です。ユーザー
 実装開始後は、概ね次の責務分離を守ります。
 
 ```text
-App/                 SwiftUI entry point and lifecycle
-AppBridge/           WKWebView and typed native bridge
-AppResources/Web/    generated local web bundle; M0の技術検証fixtureのみ直接編集可。M1以降は生成物を直接編集しない
-Web/                 app-specific React/TypeScript source
-Tests/               Swift unit tests
-UITests/             XCUITest
-docs/                additional design and release records
+ios/App/             SwiftUI entry point and lifecycle
+ios/AppResources/Web/ generated local web bundle; source is `ios/Web` and `packages/*`
+ios/Web/             app-specific React/TypeScript entrypoint and native adapter
+ios/Tests/           Swift unit tests
+ios/UITests/         XCUITest
+ios/docs/            additional app design and release records
 ```
 
 実際のXcode生成構成が異なる場合は、コードと同じコミットでこの節を更新します。
@@ -115,7 +113,7 @@ docs/                additional design and release records
 - 1コミット1目的とし、フォーマットだけの変更は分離する。
 - Conventional Commit形式を使う。例: `docs: define offline app architecture`、`feat: add local web container`、`fix: flush saves on background`。
 - コミット前に差分、未追跡ファイル、実行済みテスト、`DEVELOPMENT_LOG.md`を確認する。
-- 正式なリモートは`https://github.com/K0mork/knittingEditor_app.git`とし、`origin`に設定する。
+- 統合先の正式なリモートは`https://github.com/K0mork/knittingEditor.git`とする。
 - 各作業で作成したコミットは、ユーザーから個別の指示がなくても同じ作業内で必ずGitHubへpushする。
 - push後に`git status --short --branch`または同等の方法で、ローカルHEADとリモート追跡ブランチの一致を確認する。
 - pushが失敗した場合は作業完了とせず、原因とリモート未反映であることを報告し、開発ログにも記録する。

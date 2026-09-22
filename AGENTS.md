@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-This repository is a Vite/React knitting-chart editor deployed as a static GitHub Pages site. Application code lives in `src/`: `model/` owns the packed board representation, `canvas/` renders and handles gestures, `storage/` manages IndexedDB and backups, `export/` creates PNG/PDF files, and `stitches/` defines symbols. Browser tests live in `tests/e2e/`; static SEO and domain files are in `public/`.
+This repository is a Vite/React knitting-chart editor deployed as a static GitHub Pages site and the shared source repository for the iOS/iPadOS app under `ios/`. Platform-independent board and stitch code lives in `packages/editor-core`; the root `src/` and `ios/Web/src/` entrypoints re-export it. Browser tests live in `tests/e2e/`; static SEO and domain files are in `public/`.
 
 ## Build, Test, and Development Commands
 
@@ -25,7 +25,7 @@ npm run test:e2e
 
 ## Hosting & Production Constraints
 
-This application is hosted by GitHub Pages and is publicly deployed at `https://knittingeditor.com/`. The `main` branch is the production source. A push to `main` triggers `.github/workflows/pages.yml`; the workflow must pass its test and build job before the generated `dist/` artifact is deployed. `public/CNAME` must remain `knittingeditor.com`, and Vite must continue to build for the site root (`base: '/'`).
+This application is hosted by GitHub Pages and is publicly deployed at `https://knittingeditor.com/`. The `main` branch is the production source. A push to `main` triggers `.github/workflows/ci.yml`; Web or shared-code changes must pass the relevant Web and iOS jobs before the generated `dist/` artifact is deployed. iOS-only changes do not redeploy Pages. `public/CNAME` must remain `knittingeditor.com`, and Vite must continue to build for the site root (`base: '/'`).
 
 Codex must treat the following as production requirements:
 
@@ -55,6 +55,7 @@ Codex must add or update tests with each behavior change. Select checks based on
 - User workflows, persistence, gestures, responsive behavior, PNG/PDF output, or browser-facing regressions: add or update Playwright coverage and run `npm run test:e2e` in both configured Chromium and WebKit projects.
 - UI or visual changes: manually inspect narrow/mobile and desktop viewports and save screenshots for the pull request; do not commit generated screenshots unless requested.
 - Build, public assets, metadata, routes, CNAME, or deployment changes: run `npm run build` and `npm run check:dist`, then inspect `dist/` for the expected production paths and `CNAME`.
+- Changes under `packages/` or `ios/`: run the iOS Web typecheck/tests, XcodeGen, Simulator tests, app-update test, unsigned Release Archive, and offline bundle inspection defined in `.github/workflows/ci.yml`.
 
 The mandatory pre-commit suite is:
 

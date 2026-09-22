@@ -1,69 +1,19 @@
-# Web版同期記録
+# Web資産と共通コード
 
-## 初期同期
+Web版とiOS版は同じリポジトリで管理する。以前の固定コミット参照と`rsync --delete`によるコピー同期は廃止し、共通コードはルートの`packages/editor-core`から両方のビルドへ解決する。
 
-- 参照元: `/Users/komorikouki/git/knittingEditor`
-- 固定コミット: `8d3385799f61526334fd33c0a9e7be115f084afd`
-- 記号カタログ: `STITCH_CATALOG_VERSION = 3`
-- 同期方法: `scripts/sync-web-source.sh`
-- ビルド方法: `scripts/build-web.sh`
-- 出力先: `AppResources/Web/`（生成物のためGit管理しない）
+## iOS用Web bundle
 
-同期スクリプトは、参照元が固定コミットかつcleanな場合だけ実行できます。参照元のWebリポジトリは読み取り専用で扱い、アプリ側の`Web/`へコピーした後にアプリ専用の差分を適用します。
+`ios/scripts/build-web.sh`は、ルートの`package-lock.json`で依存関係を導入し、`ios/Web`をルートworkspaceのVite・TypeScriptでビルドする。生成物は`ios/AppResources/Web/`に置くが、生成物自体はGit管理しない。Xcodeのpre-build scriptも同じスクリプトを呼び出す。
 
-## アプリ専用差分
+## 固有差分
 
-- `src/main.tsx`: Google Analytics初期化を呼び出さない。
-- `src/analytics.ts`: API互換のno-opとし、イベントも外部スクリプトも発生させない。
-- `src/storage/database.ts`: Safariの`localStorage`旧版移行関数を削除する。IndexedDBと`.knit`入出力は維持する。
-- `src/storage/database.test.ts`: Safari旧版移行テストを除外し、`.knit`復元テストを維持する。
-- `index.html`、使い方ページ: SEO、CNAME、サイトマップ、外部プライバシーURLを除外し、アプリ内の同梱ページとして動作させる。
-- 使い方ページと保存パネルの文言: ブラウザ前提の記述をアプリ前提へ置き換える。見出しは「棒針編み図の作り方」、機能一覧は「iPhoneとiPadでのタッチ操作とApple Pencil」、保存パネルの注意書きは「アプリを削除すると端末内のデータも消えます」とする。
+- Web版はSEO、CNAME、サイトマップ、分析、ブラウザのダウンロード、旧Safari `localStorage` 移行を持つ。
+- iOS版は分析をno-opにし、旧Safari移行を含めず、`WKWebView`ブリッジ経由でFiles・共有シートへ渡す。
+- 盤面、Canvas、記号、PNG/PDF、IndexedDBのデータ形式、`.knit`入出力は共通実装・共通fixtureで検証する。
 
-次はWeb版との共通コードに対するアプリ側の不具合修正である。`rsync --delete`を使う同期で失われるため、同期後に再適用すること。Web版へも反映するかは別途判断する。
+## 同期ではなく同時検証
 
-- `src/App.tsx`: 盤面設定の段数変更を増減とも上端側で行い、往復しても編み始め（段1）を失わない。Web版は増加のみ上端、減少は下端だった。
-- `src/App.tsx`: 使い方ページへ遷移する前に保留中の自動保存をflushする（WKWebViewは`beforeunload`の確認を表示しないため）。待ち時間は2秒で区切る。
-- `src/App.tsx`: 自動保存のuseEffect依存に`activeDocument`自体を含め、保存待ち中の名称変更を古い名前で上書きしない。
-- `src/canvas/BoardCanvas.tsx`: 起点セルが表示範囲外にある複数セル記号も描画する。
-- `src/canvas/BoardCanvas.tsx`: wheelを非passiveリスナーで処理し、トラックパッドのピンチでページ全体が拡大しないようにする。
-- `src/model/Board.ts`: `parseColor`が3桁カラー表記を展開する。
-- `src/App.tsx`: プロンプトダイアログの入力欄を選択状態で開き、`window.prompt`と同じく初期値を上書き入力できるようにする。
-- `src/canvas/BoardCanvas.tsx`: 1本指のタップを指を離すまで保留し、2本目が触れた時点で取り消す。Web版は触れた瞬間に記号を確定するため、2本指ジェスチャの開始時に先に触れた指の位置へ記号が入る。
-- `src/export/exporters.ts`、`src/App.tsx`: PNGの既定セル寸法を12pxから24pxへ引き上げ、上限を超える盤面では有効な最大値へ自動的に落とす。スライダー上限を30pxから60pxへ拡張する。Web版は既定12px・上限30pxで、20×20が264×264pxしか出ない。
-- `src/styles.css`: `.app-header`を固定高から`min-height`へ変更し、ヘッダー操作の文字サイズ上限を全幅へ適用する。最大Dynamic Type かつ iPhone 横向きで「編み図」「使い方」が画面上端の外へ押し出される問題の修正。
+`packages/*`または保存形式を変更したPRでは、Webのtypecheck・Vitest・Vite・Playwrightに加え、iOS Web単体テスト、Swift/XCUITest、更新復元、Release Archive、オフラインbundle検査を実行する。Web版で生成した`.knit`をiOS版で読み込み、iOS側のブリッジ出力をWeb版で読み込む双方向試験を維持する。
 
-Web版が更新された場合は、先に新しい同期元コミット、カタログバージョン、既存IDの不変性を確認し、`catalog.ts`と`glyphs.ts`を同じ同期単位で取り込むこと。同期後は上記のアプリ専用差分を再適用し、Web単体テストとオフライン資産検査を実行する。
-
-## 永続記号IDスナップショット
-
-カタログの配列順ではなく、次のIDを`.knit`互換の永続値として扱う。
-
-| ID | key |
-|---:|---|
-| 1 | `knit` |
-| 2 | `purl` |
-| 3 | `yo` |
-| 4 | `right_up_two_one` |
-| 5 | `left_up_two_one` |
-| 6 | `purl_left_up_two_one` |
-| 7 | `right_cross` |
-| 8 | `left_cross` |
-| 9 | `purl_right_cross` |
-| 10 | `purl_left_cross` |
-| 11 | `purl_right_up_two_cross` |
-| 12 | `purl_left_up_two_cross` |
-| 13 | `purl_right_cross_twist_stitch` |
-| 14 | `purl_left_cross_twist_stitch` |
-| 15 | `middle_up_three_one` |
-| 16 | `right_up_three_one` |
-| 17 | `left_up_three_one` |
-| 18 | `right_up_two_cross` |
-| 19 | `left_up_two_cross` |
-| 20 | `right_up_three_cross` |
-| 21 | `left_up_three_cross` |
-| 22 | `slip_stitch` |
-| 23 | `twist_stitch` |
-| 24 | `purl_twist_stitch` |
-| 25 | `erase` |
-| 26 | `purl_right_up_two_one` |
+永続記号ID 1〜26、`STITCH_CATALOG_VERSION`、IndexedDBのDB名、アプリの固定originは、既存fixtureとの互換性を確認せずに変更しない。
