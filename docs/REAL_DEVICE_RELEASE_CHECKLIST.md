@@ -106,10 +106,10 @@ TEST_RUNNER_KNITTING_EDITOR_AIRPLANE_MODE=1 xcodebuild test \
 ## M3: Files・共有・外部バックアップ
 
 - [x] アプリからPNG、PDF、`.knit`をFilesへ保存する。（2026-09-22、iPad Air 第5世代。機内モードで3種すべてを「このiPad内」へ保存）
-- [ ] 共有シートからAirDropまたは別の共有先へ送る。
-- [ ] Files、AirDrop、メール等から`.knit`をアプリで開き、同じ編み図へ復元する。（アプリ内の「復元」からDocument Picker経由で`.knit`を読み込む往復はiPad実機で成立。Filesの「このアプリで開く」やAirDropから`onOpenURL`で受け取る経路は未確認）
+- [x] 共有シートからAirDropまたは別の共有先へ送る。（2026-09-22、iPad Air 第5世代。`.knit`とPNGを共有シートから送り、編集画面へ復帰することを確認）
+- [x] Files、AirDrop、メール等から`.knit`をアプリで開き、同じ編み図へ復元する。（2026-09-22、iPad Air 第5世代。Filesから開く`onOpenURL`経路で復元し、13:09:56と13:10:28に編み図が作成されたことを端末内IndexedDBで実測。アプリ内「復元」のDocument Picker経路も別途成立）
 - [ ] キャンセル、上書き、存在しないファイル、不正形式、巨大解凍データでアプリがクラッシュしない。（保存シートのキャンセルはiPhone・iPad実機とSimulatorで自動検証済み。不正形式と巨大解凍データはWeb単体テストで検証済みだが実機未確認。上書きと存在しないファイルは未確認）
-- [ ] iPhoneとiPadの双方で同じ往復を行う。（iPadは往復成立。iPhoneは`.knit`のFiles保存のみ実施し、PNG／PDFと復元が未実施）
+- [ ] iPhoneとiPadの双方で同じ往復を行う。（iPadは保存・共有・両方の取り込み経路が成立。iPhoneは`.knit`のFiles保存のみ実施し、PNG／PDFと復元が未実施）
 
 証跡: 入力ファイルのSHA-256、出力ファイルのSHA-256、復元後の行数・目数・記号数、Filesの保存場所、共有先、キャンセル後に編集画面へ戻ったこと。
 
