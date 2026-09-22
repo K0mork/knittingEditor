@@ -10,7 +10,7 @@ import {
   exportBackup, importBackup, initializeStorage, listBlocks, listDocuments,
   renameDocument, saveBlock, saveDocument, setSetting, type ChartDocument,
 } from './storage/database';
-import { renderPdf, renderPng, saveBlob, validatePngSize } from './export/exporters';
+import { defaultPngCellSize, PNG_CELL_SIZE_RANGE, renderPdf, renderPng, saveBlob, validatePngSize } from './export/exporters';
 import { listenNativeBackupSelected, listenNativeError, notifyNativeReady, requestNativeBackupOpen } from './nativeBridge';
 import { withTimeout } from './async';
 
@@ -567,7 +567,7 @@ function ExportControls({ board, onPng, onPdf, onBackup, onRestore }: {
   board: Board; onPng: (size: number) => void; onPdf: (layout: 'single' | 'tiled', orientation: 'portrait' | 'landscape', mm: number) => void;
   onBackup: (all: boolean) => void; onRestore: () => void;
 }) {
-  const [pngSize, setPngSize] = useState(12);
+  const [pngSize, setPngSize] = useState(() => defaultPngCellSize(board));
   const [layout, setLayout] = useState<'single' | 'tiled'>('single');
   const [orientation, setOrientation] = useState<'portrait' | 'landscape'>('portrait');
   const [millimeters, setMillimeters] = useState(5);
@@ -577,7 +577,7 @@ function ExportControls({ board, onPng, onPdf, onBackup, onRestore }: {
   const cellPoints = millimeters * 72 / 25.4;
   const pages = layout === 'single' ? 1 : Math.ceil(board.cols / Math.max(1, Math.floor(pageWidth / cellPoints) - 1)) * Math.ceil(board.rows / Math.max(1, Math.floor(pageHeight / cellPoints) - 1));
   return <div className="export-controls">
-    <h3>PNG</h3><label>1セルの画素数<input type="range" min="2" max="30" value={pngSize} onChange={(event) => setPngSize(Number(event.target.value))} /><output>{pngSize}px</output></label><p>{png.width}×{png.height}px {!png.valid && `— ${png.reason}`}</p><button disabled={!png.valid} onClick={() => onPng(pngSize)}>PNGを保存</button>{!png.valid && <p className="recommend">この盤面はPDF保存をおすすめします。</p>}
+    <h3>PNG</h3><label>1セルの画素数<input type="range" min={PNG_CELL_SIZE_RANGE.min} max={PNG_CELL_SIZE_RANGE.max} value={pngSize} onChange={(event) => setPngSize(Number(event.target.value))} /><output>{pngSize}px</output></label><p>{png.width}×{png.height}px {!png.valid && `— ${png.reason}`}</p><button disabled={!png.valid} onClick={() => onPng(pngSize)}>PNGを保存</button>{!png.valid && <p className="recommend">この盤面はPDF保存をおすすめします。</p>}
     <h3>PDF</h3><label>構成<select value={layout} onChange={(event) => setLayout(event.target.value as 'single' | 'tiled')}><option value="single">全体を1ページ</option><option value="tiled">読みやすく分割</option></select></label><label>用紙<select value={orientation} onChange={(event) => setOrientation(event.target.value as 'portrait' | 'landscape')}><option value="portrait">A4縦</option><option value="landscape">A4横</option></select></label>{layout === 'tiled' && <label>セル寸法<input type="range" min="2" max="10" value={millimeters} onChange={(event) => setMillimeters(Number(event.target.value))} /><output>{millimeters}mm</output></label>}<p>推定 {pages}ページ{pages > 100 && ' — ページ数が多いため1ページ版もご検討ください'}</p><button onClick={() => onPdf(layout, orientation, millimeters)}>PDFを保存</button>
     <h3>バックアップ</h3><div className="button-grid"><button onClick={() => onBackup(false)}>この編み図</button><button onClick={() => onBackup(true)}>全データ</button><button onClick={onRestore}>復元</button></div><p>端末内データはブラウザ操作で消える場合があります。定期的に保存してください。</p>
   </div>;

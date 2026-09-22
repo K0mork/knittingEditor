@@ -28,6 +28,7 @@
 - `src/canvas/BoardCanvas.tsx`: wheelを非passiveリスナーで処理し、トラックパッドのピンチでページ全体が拡大しないようにする。
 - `src/model/Board.ts`: `parseColor`が3桁カラー表記を展開する。
 - `src/App.tsx`: プロンプトダイアログの入力欄を選択状態で開き、`window.prompt`と同じく初期値を上書き入力できるようにする。
+- `src/export/exporters.ts`、`src/App.tsx`: PNGの既定セル寸法を12pxから24pxへ引き上げ、上限を超える盤面では有効な最大値へ自動的に落とす。スライダー上限を30pxから60pxへ拡張する。Web版は既定12px・上限30pxで、20×20が264×264pxしか出ない。
 - `src/styles.css`: `.app-header`を固定高から`min-height`へ変更し、ヘッダー操作の文字サイズ上限を全幅へ適用する。最大Dynamic Type かつ iPhone 横向きで「編み図」「使い方」が画面上端の外へ押し出される問題の修正。
 
 Web版が更新された場合は、先に新しい同期元コミット、カタログバージョン、既存IDの不変性を確認し、`catalog.ts`と`glyphs.ts`を同じ同期単位で取り込むこと。同期後は上記のアプリ専用差分を再適用し、Web単体テストとオフライン資産検査を実行する。

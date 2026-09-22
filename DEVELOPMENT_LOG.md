@@ -11,6 +11,17 @@
 - 未実施の検証と理由
 - 配布への影響
 
+## 2026-09-22: 機内モードでオフライン動作を実機確認しPNG既定解像度を引き上げ
+
+- 機内モード実機確認: iPad Air 第5世代（iPadOS 27.0、有線）で、オンライン起動したアプリを前面に保ったまま機内モードへ切り替えて実施した。新規編み図の作成、盤面描画、PNG保存、PDF保存、`.knit`の保存と復元がすべて成立した。「機内モード確認」を11:30:34に、`.knit`復元による「機内モード確認（復元）」を11:35:15に作成したことを、端末内IndexedDBを有線で読み出して実測した。アプリはPID 3127が継続しクラッシュログは無い。機内モードはステータスバーのアイコンを画面取得して確認した。
+- これによりM0の`.knit`往復とWorker・Pointer Events・IndexedDBの2項目を完了にした。26記号の目視は11記号まで、機内モード前後の通信監視と機内モードでの新規起動は未了として記録した。機内モード中は実機へ入力を送れないため自動化できない（入力注入はXCUITestのみで、XCUITestは再インストールを伴い無料Personal Teamでは機内モードで起動できない）。
+- 修正: PNGの既定解像度が低すぎた。既定の1セル寸法を12pxから24pxへ引き上げ、安全上限を超える盤面ではその盤面で有効な最大値へ自動的に落とすようにした。スライダー上限も30pxから60pxへ拡張した。20×20は264×264pxから528×528pxになり、最大1320×1320pxまで選べる。1000×1000は従来12pxで1億4千万画素となり上限超過でPNG出力できなかったが、既定7pxで7014×7014となり出力できるようになった。
+- 追加: `AGENTS.md`へ「CI確認」節を追加した。pushしたらCIの完了を待ち、全ジョブを個別に確認してから報告する。CIが赤のまま3コミット進めてユーザーから指摘を受けたため、手順と過去の失敗例を残した。
+- 主なファイル: `Web/src/export/exporters.ts`、`Web/src/App.tsx`、`Web/src/export/exporters.test.ts`、`AGENTS.md`、`docs/REAL_DEVICE_RELEASE_CHECKLIST.md`、`docs/WEB_SYNC.md`
+- テスト: `defaultPngCellSize`の単体テストを追加し、通常盤面で24pxを返すこと、大きな盤面では上限内の最大値へ落ちること、スライダー範囲を外れないことを検査した。`npx vitest run`成功（8 files、46 tests）、`npm run typecheck`・`npm run build`成功。iPad Air 第5世代 実機で単体23件（機内モード用1件skip）、XCUITest 14件（3件skip）が失敗なしで成功。
+- 未実施: iPhone実機での再確認。26記号の機内モード目視、機内モード前後の通信監視、機内モードでの新規起動。
+- 配布影響: 保存形式、記号ID、`.knit`互換は変更しない。PNG出力の既定サイズが大きくなる。大きな盤面でPNGが出力できるようになる。
+
 ## 2026-09-22: 機内モード試験に有料加入が必要と判明
 
 - 調査結果: 無料のPersonal Teamで署名したアプリは、起動のたびに開発者証明書の検証でインターネット接続を要求する。iPad Air 第5世代（iPadOS 27.0）を有線接続のまま機内モードにしたところ、`xcodebuild test`のインストールが`The application could not be launched because the Developer App Certificate`で失敗し、インストール済みアプリを`devicectl device process launch`で起動しても`profile has not been explicitly trusted by the user`で拒否された。

@@ -6,6 +6,24 @@ import { saveBlobWithNativeBridge } from '../nativeBridge';
 const PNG_MAX_SIDE = 16_384;
 const PNG_MAX_PIXELS = 64_000_000;
 
+export const PNG_CELL_SIZE_RANGE = { min: 2, max: 60 } as const;
+/** 通常の盤面で印刷・共有に足りる既定の1セル画素数。 */
+export const PNG_PREFERRED_CELL_SIZE = 24;
+
+/**
+ * 既定の1セル画素数を返す。
+ *
+ * 盤面が大きいと`PNG_PREFERRED_CELL_SIZE`では安全上限を超えるため、
+ * その盤面で有効な最大値まで落とす。20×20なら24pxで528×528pxになる。
+ */
+export function defaultPngCellSize(board: Board, preferred: number = PNG_PREFERRED_CELL_SIZE): number {
+  const start = Math.min(Math.max(preferred, PNG_CELL_SIZE_RANGE.min), PNG_CELL_SIZE_RANGE.max);
+  for (let size = start; size > PNG_CELL_SIZE_RANGE.min; size -= 1) {
+    if (validatePngSize(board, size).valid) return size;
+  }
+  return PNG_CELL_SIZE_RANGE.min;
+}
+
 export function validatePngSize(board: Board, cellSize: number): { width: number; height: number; valid: boolean; reason?: string } {
   const width = (board.cols + 2) * cellSize;
   const height = (board.rows + 2) * cellSize;

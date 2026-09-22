@@ -119,5 +119,24 @@ docs/                additional design and release records
 - 各作業で作成したコミットは、ユーザーから個別の指示がなくても同じ作業内で必ずGitHubへpushする。
 - push後に`git status --short --branch`または同等の方法で、ローカルHEADとリモート追跡ブランチの一致を確認する。
 - pushが失敗した場合は作業完了とせず、原因とリモート未反映であることを報告し、開発ログにも記録する。
+- **push後はCIの結果を必ず確認する。** 詳細は「CI確認」節に従う。
 - force-push、履歴改変、リモートブランチ削除は、ユーザーが対象と目的を明示した場合だけ行う。
 - TestFlight upload、App Store提出、GitHub Release作成は、ユーザーの明示的な依頼なしに行わない。
+
+## CI確認
+
+pushしたら、そのcommitのCIが完了するまで確認し、結果をユーザーへ報告する。**CIを確認しないまま作業完了と報告しない。**
+
+```sh
+RUN=$(gh run list --limit 1 --json databaseId --jq '.[0].databaseId')
+until [ "$(gh run view "$RUN" --json status --jq .status)" = "completed" ]; do sleep 30; done
+gh run view "$RUN" --json conclusion,jobs --jq '"RUN: \(.conclusion)", (.jobs[] | "  \(.name): \(.conclusion)")'
+```
+
+- 全ジョブ（`web`、`ios`×2、`app-update`×2、`release-archive`）の結果を個別に確認する。`RUN: success`だけを見て済ませない。
+- 失敗したら、そのpushで完了とせずに原因を特定して直す。`gh run view <id> --log-failed`で失敗ジョブのログを読む。ローカルで再現できない場合は、CI環境（macos-14、Xcode 15.4）との差を疑う。
+- ローカルのSimulatorが通ってもCIが落ちることがある。過去の実例は次のとおりで、いずれもローカルでは再現しなかった。
+  - 入力欄の中央タップでキャレットが先頭に入り、削除が効かず初期値が残った（Xcode 15.4 Simulator）。
+  - `-only-testing`の対象テストを誤って削除し、「Executed 0 tests」が成功扱いになった。テスト関数を消していないか、変更前コミットとの関数一覧の差分で確認する。
+- 断続的に失敗するテストは、原因を特定できるまで「直った」と記録しない。失敗時の診断情報と画面添付を仕込み、次の発生を待つ。
+- CIが赤いまま別の作業へ移る場合は、赤であることと原因の切り分け状況をユーザーへ明示する。
