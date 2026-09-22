@@ -31,6 +31,10 @@ fi
 # 可能性があるため、検出済みUDIDへ正規化する。
 destination="platform=iOS Simulator,id=${simulator_udid}"
 
+# 1テストあたりの実行時間上限は、遅いランナーでの実測に合わせる。fixture作成は
+# ダイアログ入力と自動保存待ちを含み、GitHubのmacOSランナーで178秒かかって
+# 既定の2分を超えたことがある（テスト自体は成功していたのに`Failing tests:`へ載る）。
+# 本当のハングはジョブの`timeout-minutes`が捕まえる。
 rm -rf "$work_dir"
 mkdir -p "$work_dir"
 touch "$probe_marker"
@@ -49,8 +53,8 @@ echo "[2/4] version 1でfixtureを保存"
     -retry-tests-on-failure \
     -test-iterations 2 \
     -test-timeouts-enabled YES \
-    -default-test-execution-time-allowance 90 \
-    -maximum-test-execution-time-allowance 120 \
+    -default-test-execution-time-allowance 180 \
+    -maximum-test-execution-time-allowance 240 \
     -only-testing:knittingEditorUITests/KnittingEditorUITests/testSeedDocumentForAppUpdateProbe \
     CODE_SIGNING_ALLOWED=NO
 )
@@ -86,8 +90,8 @@ echo "[4/4] version 2でfixtureが復元されることを確認"
     -retry-tests-on-failure \
     -test-iterations 2 \
     -test-timeouts-enabled YES \
-    -default-test-execution-time-allowance 90 \
-    -maximum-test-execution-time-allowance 120 \
+    -default-test-execution-time-allowance 180 \
+    -maximum-test-execution-time-allowance 240 \
     -only-testing:knittingEditorUITests/KnittingEditorUITests/testUpdatedAppRestoresSeedDocument \
     CODE_SIGNING_ALLOWED=NO
 )

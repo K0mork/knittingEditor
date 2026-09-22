@@ -611,7 +611,10 @@ final class KnittingEditorUITests: XCTestCase {
         let stitchPicker = app.descendants(matching: .any)
             .matching(NSPredicate(format: "label == %@", "編み目記号を選ぶ"))
             .firstMatch
-        XCTAssertTrue(stitchPicker.waitForExistence(timeout: 10))
+        // `webViews.firstMatch`はWKWebViewの器が出た時点で成立し、Reactの描画完了を
+        // 意味しない。起動直後に最初のページ内要素を待つ箇所は、他のテストと同じく
+        // 起動用の待機上限を使う。ストレージ初期化だけでも最大10秒かかり得る。
+        XCTAssertTrue(stitchPicker.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
         XCTAssertEqual(app.switches["描く"].value as? String, "1")
         XCTAssertEqual(app.switches["消す"].value as? String, "0")
         XCTAssertEqual(app.switches["範囲"].value as? String, "0")
@@ -773,14 +776,20 @@ final class KnittingEditorUITests: XCTestCase {
         // キーボードが出る前に入力すると先頭文字を取りこぼす。出ない環境でも
         // 入力自体は可能なので、待つだけで失敗にはしない。
         _ = app.keyboards.firstMatch.waitForExistence(timeout: 10)
-
-        // 末尾へキャレットを置いてから消す。全選択に頼るとキャレットが文字の途中に入った
-        // ときに削除が途中で止まる（段数欄の`20`が`0`だけ残り、`1000`を入れて`01000`になった）。
-        field.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
-        if let current = field.value as? String, !current.isEmpty {
-            field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count + 2))
-        }
+        // ダイアログの入力欄は開いた時点で全選択されているので、そのまま上書きできる。
+        // 遅いランナーでは操作1つが数秒かかるため、ここは最短手順にする。
         field.typeText(text)
+
+        if (field.value as? String) != text {
+            // 全選択されていない入力欄（段数・列数）はキャレットが文字の途中に入り、
+            // 削除が途中で止まる（`20`が`0`だけ残り、`1000`を入れて`01000`になった）。
+            // 末尾へ置き直してから消して入れ直す。
+            field.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+            if let current = field.value as? String, !current.isEmpty {
+                field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count + 2))
+            }
+            field.typeText(text)
+        }
         XCTAssertEqual(field.value as? String, text, app.debugDescription)
     }
 
