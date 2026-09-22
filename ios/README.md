@@ -2,9 +2,11 @@
 
 Web版「棒針編み図エディタ」を、インターネット接続なしで利用できるiOS・iPadOSアプリとして配布するためのプロジェクトです。
 
-公開リポジトリ: <https://github.com/K0mork/knittingEditor_app>
+正式な統合先: <https://github.com/K0mork/knittingEditor>
 
-実装を開始しました。初期スケルトンはiOS 17.0以上のSwiftUIユニバーサルアプリで、固定originのローカル`WKWebView`へ同梱Web資産を読み込みます。実装の基準はWeb版リポジトリ `/Users/komorikouki/git/knittingEditor` のコミット `8d33857`、記号カタログ `STITCH_CATALOG_VERSION = 3` とします。
+旧アプリリポジトリ <https://github.com/K0mork/knittingEditor_app> は削除せず、履歴参照用の読み取り専用リポジトリとして保持します。アプリ履歴は統合先の [`23d0f98`](https://github.com/K0mork/knittingEditor/commit/23d0f98) で `ios/` 以下へ取り込み、統合コミット [`53de110`](https://github.com/K0mork/knittingEditor/commit/53de110) で `main` に反映しました。
+
+初期スケルトンはiOS 17.0以上のSwiftUIユニバーサルアプリで、固定originのローカル`WKWebView`へ同梱Web資産を読み込みます。実装の基準は統合先の`packages/editor-core`、記号カタログ `STITCH_CATALOG_VERSION = 3`、およびルートのCI／ビルド設定です。
 
 ## 基本方針
 
