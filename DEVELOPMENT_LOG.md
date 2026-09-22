@@ -2,7 +2,7 @@
 
 ## 2026-09-22 — ドキュメント変更でiOSの重い検証を回さない
 
-- 影響: 変更範囲判定でMarkdownを先に除外し、`ios/**/*.md`だけの変更ではSimulatorを使うジョブを回さないようにした。代わりにApp Store提出文書の検査を、変更範囲によらず常に実行する`app_store_docs`ジョブへ切り出し、`ci-gate`がその成功を無条件に要求する。条件を持たないジョブなので、判定を誤ってもskipで素通りしない。`app_update`の`timeout-minutes`を20から30へ上げ、`ios`ジョブと揃えた。
+- 影響: 変更範囲判定でMarkdownを先に除外し、`ios/**/*.md`だけの変更ではSimulatorを使うジョブを回さないようにした。代わりにApp Store提出文書の検査を、変更範囲によらずUbuntuで常に実行する`app_store_docs`ジョブへ切り出し、`ci-gate`がその成功を無条件に要求する。条件を持たないジョブなので、判定を誤ってもskipで素通りしない。`app_update`の`timeout-minutes`を20から30へ上げ、`ios`ジョブと揃えた。
 - 経緯: 直近50コミットのうち32件が`.md`のみの変更で、`ios/`配下を含むとそのたびにmacOSの6ジョブが約22分走っていた。run [`35720826016`](https://github.com/K0mork/knittingEditor/actions/runs/35720826016)では、`app_update (iPad)`の実作業が9分45秒で成功したあとランナーの後片付けに5分40秒かかり、20分の上限を超えてcancelled扱いになった。同ジョブの所要は直近3runでいずれも7〜8分で、遅いのはランナー側である。
 - 主なファイル: `.github/workflows/ci.yml`、`docs/ARCHITECTURE.md`
 - テスト: 判定の`case`文をローカルのbashで再現し、`ios/docs/*.md`→どちらも立てない、`ios/docs/screenshots/*.png`→ios、`ios/Web/src/**`→ios、`packages/**`→web+ios、`src/**`→web、`.github/workflows/*`→web+ios、`public/CNAME`→web になることを確認した。スクリーンショットは`check-app-store-docs.sh`と`check-release-assets.sh`の検査対象なので、Markdownと同じ扱いにはしない。

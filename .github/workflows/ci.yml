@@ -103,7 +103,7 @@ jobs:
   # App Store提出用の文書はMarkdownのテキスト検査だけで、ビルドもSimulatorも要らない。
   # 変更範囲の判定に関係なく常に実行し、skipで素通りする経路を作らない。
   app_store_docs:
-    runs-on: macos-14
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
