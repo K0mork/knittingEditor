@@ -5,7 +5,7 @@ type AnalyticsParameters = Record<string, AnalyticsValue>;
 
 declare global {
   interface Window {
-    dataLayer?: unknown[][];
+    dataLayer?: IArguments[];
   }
 }
 
@@ -13,9 +13,9 @@ let enabled = false;
 let initialized = false;
 let firstEditTracked = false;
 
-function gtag(...args: unknown[]): void {
+function gtag(..._args: unknown[]): void {
   if (!enabled) return;
-  (window.dataLayer ??= []).push(args);
+  (window.dataLayer ??= []).push(arguments);
 }
 
 export function initializeAnalytics(analyticsEnabled = import.meta.env.PROD && !navigator.webdriver): void {
@@ -23,13 +23,13 @@ export function initializeAnalytics(analyticsEnabled = import.meta.env.PROD && !
   enabled = true;
   initialized = true;
 
-  gtag('js', new Date());
-  gtag('config', MEASUREMENT_ID);
-
   const script = document.createElement('script');
   script.async = true;
   script.src = `https://www.googletagmanager.com/gtag/js?id=${MEASUREMENT_ID}`;
   document.head.appendChild(script);
+
+  gtag('js', new Date());
+  gtag('config', MEASUREMENT_ID);
 }
 
 export function trackAnalyticsEvent(name: string, parameters: AnalyticsParameters = {}): void {

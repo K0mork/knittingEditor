@@ -4,6 +4,10 @@ async function loadAnalytics() {
   return import('./analytics');
 }
 
+function queuedCommand(index: number): unknown[] {
+  return Array.from(window.dataLayer?.[index] ?? []);
+}
+
 beforeEach(() => {
   vi.resetModules();
   document.head.innerHTML = '';
@@ -28,7 +32,10 @@ describe('analytics', () => {
     expect(document.scripts).toHaveLength(1);
     expect(document.scripts[0].src).toBe('https://www.googletagmanager.com/gtag/js?id=G-VVE0G4ZFL4');
     expect(window.dataLayer).toHaveLength(2);
-    expect(window.dataLayer?.[1]).toEqual(['config', 'G-VVE0G4ZFL4']);
+    expect(Array.isArray(window.dataLayer?.[0])).toBe(false);
+    expect(queuedCommand(0)[0]).toBe('js');
+    expect(queuedCommand(0)[1]).toBeInstanceOf(Date);
+    expect(queuedCommand(1)).toEqual(['config', 'G-VVE0G4ZFL4']);
   });
 
   it('queues product events and records the first edit once', async () => {
@@ -38,7 +45,7 @@ describe('analytics', () => {
     trackFirstEdit();
     trackFirstEdit();
 
-    expect(window.dataLayer?.slice(2)).toEqual([
+    expect(window.dataLayer?.slice(2).map((command) => Array.from(command))).toEqual([
       ['event', 'chart_exported', { export_format: 'png', board_size_bucket: 'small' }],
       ['event', 'first_edit', {}],
     ]);
