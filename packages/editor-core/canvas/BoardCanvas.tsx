@@ -1,9 +1,14 @@
 import { useEffect, useRef } from 'react';
-import { Board, cellColor, cellStitchId, colorHex, type PatternBlock, type Point, type Rect } from '../model/Board';
-import { STITCH_BY_ID, STITCH_BY_KEY, STITCHES } from '../stitches/catalog';
-import { drawGlyph } from '../stitches/glyphs';
+import type { Board, PatternBlock, Point, Rect } from '../model/Board';
+import { STITCH_BY_KEY, STITCHES } from '../stitches/catalog';
+import { drawCell } from '../stitches/drawCell';
 
 export type CanvasMode = 'draw' | 'erase' | 'select' | 'paste';
+
+/** 画面の案内と読み上げで使うモード名。 */
+export const CANVAS_MODE_LABELS: Record<CanvasMode, string> = {
+  draw: '描画', erase: '消去', select: '範囲選択', paste: '貼り付け',
+};
 
 interface Props {
   board: Board;
@@ -22,6 +27,9 @@ interface Viewport { x: number; y: number; cell: number }
 interface PointerPosition { x: number; y: number }
 
 const LABEL_SIZE = 28;
+const MIN_CELL_SIZE = 4;
+const MAX_CELL_SIZE = 72;
+const clampCellSize = (cell: number) => Math.min(MAX_CELL_SIZE, Math.max(MIN_CELL_SIZE, cell));
 // 複数セルを占める記号は、起点セルが表示範囲の外にあっても一部が画面へかかる。
 // 起点の探索範囲を最大記号の寸法だけ広げ、端で記号が丸ごと消えないようにする。
 const MAX_STITCH_WIDTH = Math.max(...STITCHES.map((stitch) => stitch.width));
@@ -120,17 +128,7 @@ export function BoardCanvas(props: Props) {
     for (let row = firstGlyphRow; row <= lastRow; row++) {
       for (let col = firstGlyphCol; col <= lastCol; col++) {
         const value = board.valueAt(row, col);
-        if (!value) continue;
-        const stitch = STITCH_BY_ID.get(cellStitchId(value));
-        if (!stitch) continue;
-        const x = view.x + col * view.cell;
-        const y = view.y + row * view.cell;
-        if (stitch.key === 'erase') {
-          context.fillStyle = '#fff';
-          context.fillRect(x, y, view.cell, view.cell);
-          continue;
-        }
-        drawGlyph(context, stitch.key, x, y, view.cell, colorHex(cellColor(value)));
+        if (value) drawCell(context, value, view.x + col * view.cell, view.y + row * view.cell, view.cell);
       }
     }
 
@@ -189,7 +187,7 @@ export function BoardCanvas(props: Props) {
       if (event.ctrlKey || event.metaKey) {
         const worldX = (position.x - view.x) / view.cell;
         const worldY = (position.y - view.y) / view.cell;
-        const cell = Math.min(72, Math.max(4, view.cell * Math.exp(-event.deltaY * 0.002)));
+        const cell = clampCellSize(view.cell * Math.exp(-event.deltaY * 0.002));
         viewportRef.current = { x: position.x - worldX * cell, y: position.y - worldY * cell, cell };
       } else {
         viewportRef.current = { ...view, x: view.x - event.deltaX, y: view.y - event.deltaY };
@@ -289,7 +287,7 @@ export function BoardCanvas(props: Props) {
       const distance = Math.max(1, Math.hypot(a.x - b.x, a.y - b.y));
       const center = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
       const initial = gestureRef.current;
-      const nextCell = Math.min(72, Math.max(4, initial.viewport.cell * distance / initial.distance));
+      const nextCell = clampCellSize(initial.viewport.cell * distance / initial.distance);
       const worldX = (initial.center.x - initial.viewport.x) / initial.viewport.cell;
       const worldY = (initial.center.y - initial.viewport.y) / initial.viewport.cell;
       viewportRef.current = { x: center.x - worldX * nextCell, y: center.y - worldY * nextCell, cell: nextCell };
@@ -341,7 +339,7 @@ export function BoardCanvas(props: Props) {
     requestDraw();
   };
 
-  const modeLabel = props.mode === 'draw' ? '描画' : props.mode === 'erase' ? '消去' : props.mode === 'select' ? '範囲選択' : '貼り付け';
+  const modeLabel = CANVAS_MODE_LABELS[props.mode];
   const selectionLabel = props.selection
     ? `選択範囲は${props.selection.bottom - props.selection.top + 1}段、${props.selection.right - props.selection.left + 1}目`
     : '選択範囲なし';

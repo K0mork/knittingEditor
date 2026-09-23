@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { Board } from '../model/Board';
+import { errorMessage } from '../util/errors';
 
 export interface GridControlsProps {
   board: Board;
@@ -19,7 +20,7 @@ export function GridControls({ board, changed, askText, askConfirm, notify }: Gr
 
   const mutateStructure = (operation: () => void) => {
     try { operation(); changed(); }
-    catch (error) { notify(error instanceof Error ? error.message : String(error)); }
+    catch (error) { notify(errorMessage(error)); }
   };
 
   const promptIndex = async (kind: 'row' | 'col', action: 'insert' | 'remove') => {

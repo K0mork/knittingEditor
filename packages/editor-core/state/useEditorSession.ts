@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Board, type PatternBlock } from '../model/Board';
+import { errorMessage } from '../util/errors';
 import { boardFromDocument, listBlocks, listDocuments, saveDocument, setSetting, type ChartDocument } from '../storage/database';
 
 export const AUTOSAVE_DELAY_MS = 400;
@@ -121,7 +122,7 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
       setBlocks(initialized.blocks);
       optionsRef.current.onInitialized?.(initialized);
     })().catch((error) => {
-      optionsRef.current.onInitializationError(error instanceof Error ? error.message : String(error));
+      optionsRef.current.onInitializationError(errorMessage(error));
     });
   }, []);
 

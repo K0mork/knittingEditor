@@ -11,6 +11,7 @@
     "./model/*": "./model/*.ts",
     "./stitches/*": "./stitches/*.ts",
     "./state/*": "./state/*.ts",
+    "./util/*": "./util/*.ts",
     "./ui/StitchPicker": "./ui/StitchPicker.tsx",
     "./ui/GridControls": "./ui/GridControls.tsx",
     "./ui/ExportControls": "./ui/ExportControls.tsx",

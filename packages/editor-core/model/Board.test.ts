@@ -30,6 +30,36 @@ describe('Board', () => {
     expect(board.occupiedStitchCount).toBe(2);
   });
 
+  it('shifts stitches when rows and columns are inserted or removed at an index', () => {
+    const board = new Board(4, 4);
+    const knit = STITCH_BY_KEY.get('knit')!.id;
+    const cross = STITCH_BY_KEY.get('right_cross')!.id;
+    board.place(0, 0, 'knit', '#111111');
+    board.place(2, 1, 'right_cross', '#222222');
+
+    board.insertRow(1);
+    expect([board.rows, board.cols]).toEqual([5, 4]);
+    expect(cellStitchId(board.valueAt(0, 0))).toBe(knit);
+    expect(cellStitchId(board.valueAt(3, 1))).toBe(cross);
+
+    board.insertColumn(0);
+    expect(cellStitchId(board.valueAt(0, 1))).toBe(knit);
+    expect(board.anchorAt(3, 3)).toEqual({ row: 3, col: 2 });
+
+    // 削除した段にある記号は消え、それより下の記号は1段上へ詰める。
+    board.removeRow(0);
+    expect(board.rows).toBe(4);
+    expect(cellStitchId(board.valueAt(2, 2))).toBe(cross);
+    expect(board.occupiedStitchCount).toBe(1);
+
+    // 右端の列を削除すると、はみ出す2目の記号は残らない。
+    board.removeColumn(4);
+    expect(board.cols).toBe(4);
+    expect(cellStitchId(board.valueAt(2, 2))).toBe(cross);
+    board.removeColumn(3);
+    expect(board.occupiedStitchCount).toBe(0);
+  });
+
   it('places and clears a multi-cell stitch as one unit', () => {
     const board = new Board(10, 10);
     expect(board.place(2, 3, 'right_up_two_cross', '#ff0000')).toBe(true);

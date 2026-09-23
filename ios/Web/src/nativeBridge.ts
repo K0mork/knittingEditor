@@ -1,3 +1,5 @@
+import { bytesToBase64 } from '@knitting-editor/editor-core/util/base64';
+
 export interface NativeBackupDetail {
   filename: string;
   dataBase64: string;
@@ -29,52 +31,40 @@ function nativeHandler(): NativeMessageHandler | undefined {
   return window.webkit?.messageHandlers?.knittingEditor;
 }
 
-function bytesToBase64(bytes: Uint8Array): string {
-  let binary = '';
-  const chunkSize = 0x8000;
-  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
-    binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
-  }
-  return btoa(binary);
-}
-
-export async function saveBlobWithNativeBridge(blob: Blob, filename: string): Promise<boolean> {
+/** ネイティブ側へ送る。受け口が無い、または送れなかったときは`false`を返す。 */
+function post(message: NativeBridgeMessage): boolean {
   const handler = nativeHandler();
   if (!handler) return false;
   try {
-    handler.postMessage({
+    handler.postMessage(message);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function saveBlobWithNativeBridge(blob: Blob, filename: string): Promise<boolean> {
+  // 受け口が無いときはBlobを読み出さずに返し、呼び出し側のダウンロードへ任せる。
+  if (!nativeHandler()) return false;
+  try {
+    return post({
       version: 1,
       type: 'exportFile',
       filename,
       mimeType: blob.type || 'application/octet-stream',
       dataBase64: bytesToBase64(new Uint8Array(await blob.arrayBuffer())),
     });
-    return true;
   } catch {
     return false;
   }
 }
 
 export function requestNativeBackupOpen(): boolean {
-  const handler = nativeHandler();
-  if (!handler) return false;
-  try {
-    handler.postMessage({ version: 1, type: 'openBackup' });
-    return true;
-  } catch {
-    return false;
-  }
+  return post({ version: 1, type: 'openBackup' });
 }
 
 export function notifyNativeReady(): boolean {
-  const handler = nativeHandler();
-  if (!handler) return false;
-  try {
-    handler.postMessage({ version: 1, type: 'webReady' });
-    return true;
-  } catch {
-    return false;
-  }
+  return post({ version: 1, type: 'webReady' });
 }
 
 export function listenNativeBackupSelected(listener: (detail: NativeBackupDetail) => void): () => void {
