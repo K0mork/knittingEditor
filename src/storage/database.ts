@@ -1,14 +1,13 @@
-export * from '@knitting-editor/editor-core/storage/database';
-
+import { Board } from '@knitting-editor/editor-core/model/Board';
+import { STITCH_BY_KEY } from '@knitting-editor/editor-core/stitches/catalog';
 import {
   createDocument,
   getSetting,
   initializeStorage as initializePackedStorage,
   saveDocument,
   setSetting,
+  type ChartDocument,
 } from '@knitting-editor/editor-core/storage/database';
-import { Board } from '../model/Board';
-import { STITCH_BY_KEY } from '../stitches/catalog';
 
 const LEGACY_KEY = 'knittingChartData';
 
@@ -51,7 +50,8 @@ export async function migrateLegacyData(): Promise<boolean> {
   }
 }
 
-export async function initializeStorage(): Promise<{ documents: import('@knitting-editor/editor-core/storage/database').ChartDocument[]; activeId: string }> {
+/** 旧データを移行してから共通の初期化を行う。Web版の起動はこちらを使う。 */
+export async function initializeStorage(): Promise<{ documents: ChartDocument[]; activeId: string }> {
   await migrateLegacyData();
   return initializePackedStorage();
 }

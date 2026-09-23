@@ -1,7 +1,7 @@
 # Editor core
 
 Web版（ルートの`src/`）とiOS版（`ios/Web/src/`）が共有する実装を置く。両方のビルドは
-ここから再エクスポートし、実装を複製しない。
+ここを直接importし、実装を複製しない。
 
 ## 収録範囲
 
@@ -13,7 +13,9 @@ Web版（ルートの`src/`）とiOS版（`ios/Web/src/`）が共有する実装
 | `export/` | PNG描画、PDF Worker、PDFの用紙分割計算。Canvas APIを使う。 |
 | `canvas/` | 盤面のCanvasコンポーネント。Reactを使う。 |
 | `state/` | 編集セッション。読み込み・自動保存・即時保存・編み図切り替えを1本にまとめる。 |
-| `ui/` | 記号ピッカー、盤面設定、出力設定と、それらが使う共通フック。 |
+| `ui/` | 編集画面（`useEditorController.ts`が状態と操作、`EditorView.tsx`が画面）、記号ピッカー、盤面設定、出力設定と、それらが使う共通フック。 |
+| `util/` | エラー文言への変換、base64変換などの小さな共通処理。 |
+| `analytics.ts` | 分析イベントの受け口の型と、盤面寸法・件数のバケット。送信の実装は置かない。 |
 | `styles/` | 共通CSS。環境で変える寸法はカスタムプロパティで受け取る。 |
 | `platform.ts` | WebとiOSで実装が分かれるhost機能の型。 |
 
@@ -22,11 +24,12 @@ Web固有・iOS固有の分岐は持たない。分岐が要るものは`platfor
 まず各ビルド側に置けないかを検討する。`platform.ts`には、両方で実際に呼ばれる操作だけを置く。
 
 `ui/`の部品は環境固有の処理をpropsで受け取る。`window.prompt`とアプリ内ダイアログの違いは
-`askText`・`askConfirm`、案内文の違いは`backupNote`で渡し、部品の中で分岐させない。
+`askText`・`askConfirm`、ファイルの受け渡しは`platform`、分析は`analytics`、見出し・フッター・
+案内文の違いは`EditorView`の`renderTitle`・`footer`・`backupNote`で渡し、部品の中で分岐させない。
 PDFの推定ページ数は`export/pdfLayout.ts`をPDF Workerと共有し、用紙寸法をUI側へ書き写さない。
 
 ここへ置かないもの: SEO、分析、旧Safari移行、`WKWebView`ブリッジ、Files・共有シート、
-そして`App.tsx`と`styles.css`（両ビルドで内容が異なる）。差分の一覧は
+そして`App.tsx`と`styles.css`（両ビルドで内容が異なる。`App.tsx`は共通の編集画面へ差分を渡すだけにする）。差分の一覧は
 `ios/docs/WEB_SYNC.md`にある。
 
 ## 永続記号IDスナップショット

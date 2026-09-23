@@ -10,13 +10,15 @@ Web版とiOS版は同じリポジトリで管理する。以前の固定コミ�
 
 ## 共通コードと複製の境界
 
-`packages/editor-core`が正本で、Web版とiOS版の同名ファイルは再エクスポートだけを持つ。対象は盤面モデル、記号カタログ・ベクター記号、IndexedDBと`.knit`入出力、PNG/PDF出力とそのレイアウト計算、盤面Canvasコンポーネント、編集セッション（`state/useEditorSession.ts`）、共通UI部品（`ui/`）、共通CSS（`styles/base.css`）。永続記号IDの一覧は`packages/editor-core/README.md`にある。
+`packages/editor-core`が正本で、Web版とiOS版は共通コードを直接importする。再エクスポートだけのファイルは置かない。対象は盤面モデル、記号カタログ・ベクター記号、IndexedDBと`.knit`入出力、PNG/PDF出力とそのレイアウト計算、盤面Canvasコンポーネント、編集セッション（`state/useEditorSession.ts`）、編集画面（`ui/useEditorController.ts`・`ui/EditorView.tsx`）、共通UI部品（`ui/`）、共通CSS（`styles/base.css`）。永続記号IDの一覧は`packages/editor-core/README.md`にある。
 
 共通化した主なものは次のとおり。
 
 | 共通ファイル | 内容 |
 |---|---|
 | `state/useEditorSession.ts` | 編み図の読み込み、自動保存、即時保存、編み図切り替え、`beforeunload`確認。保存経路はここ1本にまとめ、自動保存も即時保存も同じ世代番号の確認を通す。保存後は結果の1件だけを一覧へ反映し、全件を読み直さない。書き切れていないときは盤面を差し替えず、`switchDocument`が中止理由（`switched`／`pending`／`failed`）を返す。`failed`は`onSaveError`が通知するので、呼び出し側は`pending`のときだけ自前で通知する。 |
+| `ui/useEditorController.ts` | 編集画面の状態と操作。記号・色・モード・選択範囲・貼り付け・パネル、編み図とブロックの操作、PNG/PDF出力、バックアップと復元。入力ダイアログ（`askText`・`askConfirm`）、ファイルの受け渡し（`platform`）、分析（`analytics`、省略時は送らない）を引数で受け取る。保存失敗の文言は`saveErrorMessage`にまとめる。 |
+| `ui/EditorView.tsx` | 編集画面の組み立て。見出し（`renderTitle`）、使い方リンクの処理（`onGuideClick`）、復元要求の横取り（`requestRestore`）、案内文（`backupNote`）、フッター、重ねる要素（`children`）だけを各ビルドから受け取る。 |
 | `ui/StitchPicker.tsx` | 記号ピッカー。フォーカストラップとEscapeでの閉じ方を含む。 |
 | `ui/GridControls.tsx` | 盤面設定。位置入力と確認は`askText`・`askConfirm`で受け取る。 |
 | `ui/ExportControls.tsx` | 保存・出力。PDFの推定ページ数は`export/pdfLayout.ts`をPDF Workerと共有する。 |
@@ -29,13 +31,12 @@ Web版とiOS版は同じリポジトリで管理する。以前の固定コミ�
 
 | ファイル | 差分の理由 |
 |---|---|
-| `App.tsx` | iOS版はネイティブブリッジ、アプリ内ダイアログ（`window.prompt`/`confirm`の代替）、ストレージ初期化タイムアウト、使い方ページ遷移前の保存flushを持つ。Web版は`window.prompt`とSEO向けの説明表示を持つ。状態管理・記号ピッカー・盤面設定・出力設定は共通部品を呼ぶだけにする。 |
-| `analytics.ts` | Web版はGA4を初期化する。iOS版はAPI互換のno-opで、イベントも外部スクリプトも発生させない。 |
+| `App.tsx` | `useEditorController`と`EditorView`へ差分を渡すだけにする。iOS版はネイティブブリッジ、アプリ内ダイアログ（`AppDialog.tsx`、`window.prompt`/`confirm`の代替）、ストレージ初期化タイムアウト、使い方ページ遷移前・バックグラウンド移行前の保存flushを持つ。Web版は`window.prompt`、旧データ移行つきの初期化、GA4、SEO向けの説明表示を持つ。 |
+| `analytics.ts` | Web版だけが持ち、GA4を初期化して`EditorAnalytics`を実装する。iOS版にはファイル自体が無く、分析を渡さないのでイベントも外部スクリプトも発生させない。 |
 | `main.tsx` | iOS版は`initializeAnalytics()`を呼ばない。 |
 | `styles.css` | 共通CSSへの差分だけ。iOS版はタップ領域44px、Dynamic Type、テキスト自動拡大の抑止、アプリ内ダイアログの様式。Web版はSEO向けの説明文と編み図名の表示。 |
 | `platform.ts` | `EditorPlatform`の実装。Web版はダウンロード、iOS版は`WKWebView`ブリッジ経由でFiles・共有シートへ渡す。 |
-| `storage/database.ts` | Web版だけが旧Safari `localStorage`からの移行を持ち、`initializeStorage`で実行する。iOS版は再エクスポートのみで、移行を含めない。 |
-| `export/exporters.ts` | 共通実装への再エクスポートと、各プラットフォームの`saveBlob`だけ。 |
+| `storage/database.ts` | Web版だけが持ち、旧Safari `localStorage`からの移行と、それを先に行う`initializeStorage`を置く。iOS版にはファイル自体が無く、共通の`initializeStorage`を直接使うので移行を含めない。 |
 | `index.html`、`public/guide/` | Web版はSEO、canonical、CNAME、サイトマップを持つ。iOS版は同梱ページとして動作し、文言をアプリ前提にする。 |
 
 ## テストの置き場所
@@ -44,9 +45,9 @@ Web版とiOS版は同じリポジトリで管理する。以前の固定コミ�
 
 現在の内訳は次のとおりで、共通テストの二重管理は解消済みである。
 
-- `packages/editor-core`：盤面モデル、記号カタログ、ベクター記号、Canvas、PNG/PDF出力、PDFレイアウト計算、IndexedDBと`.knit`入出力（大盤面の保存・復元を含む）、編集セッション。
+- `packages/editor-core`：盤面モデル、記号カタログ、ベクター記号、Canvas、PNG/PDF出力、PDFレイアウト計算、IndexedDBと`.knit`入出力（大盤面の保存・復元を含む）、編集セッション、編集画面、base64変換、分析バケット。
 - `src/`（Web固有）：旧Safari `localStorage`からの移行、GA4アナリティクス。
-- `ios/Web/src/`（iOS固有）：ネイティブブリッジ、`async`のタイムアウト、ブリッジ経由の`.knit`入出力、`.knit`相互運用fixture（`ios/test-fixtures/`）。
+- `ios/Web/src/`（iOS固有）：ネイティブブリッジ、`async`のタイムアウト、ブリッジ経由の`.knit`入出力と`.knit`相互運用fixture（`backupInterchange.test.ts`、`ios/test-fixtures/`）。
 
 共通コードのテストを`.tsx`で書く場合も、両ビルドのVitest設定が`*.test.tsx`を拾う。
 

@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./analytics": "./analytics.ts",
     "./platform": "./platform.ts",
     "./canvas/BoardCanvas": "./canvas/BoardCanvas.tsx",
     "./export/*": "./export/*.ts",
@@ -15,6 +16,8 @@
     "./ui/StitchPicker": "./ui/StitchPicker.tsx",
     "./ui/GridControls": "./ui/GridControls.tsx",
     "./ui/ExportControls": "./ui/ExportControls.tsx",
+    "./ui/EditorView": "./ui/EditorView.tsx",
+    "./ui/useEditorController": "./ui/useEditorController.ts",
     "./ui/hooks": "./ui/hooks.ts",
     "./styles/base.css": "./styles/base.css"
   }
