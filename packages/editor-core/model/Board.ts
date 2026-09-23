@@ -114,6 +114,20 @@ export class Board {
     this.relayout(newRows, newCols, (row, col) => ({ row: row + rowOffset, col: col + colOffset }));
   }
 
+  /**
+   * 寸法とセル配列をまとめて差し替える。元に戻す・やり直すで使う。
+   * `cells`は複製して持つので、呼び出し元は渡した配列を使い回してよい。
+   */
+  restore(rows: number, cols: number, cells: Uint32Array): void {
+    Board.validateSize(rows, cols);
+    if (cells.length !== rows * cols) throw new Error('盤面データのサイズが一致しません');
+    this.rows = rows;
+    this.cols = cols;
+    this.cells = cells.slice();
+    this.owners = new Int32Array(this.cells.length);
+    this.rebuildOwners();
+  }
+
   insertRow(index: number): void { this.transformStructure('row', index, true); }
   removeRow(index: number): void { this.transformStructure('row', index, false); }
   insertColumn(index: number): void { this.transformStructure('col', index, true); }

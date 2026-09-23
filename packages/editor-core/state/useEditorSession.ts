@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Board, type PatternBlock } from '../model/Board';
+import { BoardHistory } from '../model/BoardHistory';
 import { errorMessage } from '../util/errors';
 import { boardFromDocument, listBlocks, listDocuments, saveDocument, setSetting, type ChartDocument } from '../storage/database';
 
@@ -45,8 +46,15 @@ export interface EditorSession {
   blocks: PatternBlock[];
   revision: number;
   dirty: boolean;
-  /** 盤面を編集したときに呼ぶ。自動保存の待ち時間を測り直す。 */
+  /** 盤面を編集したときに呼ぶ。自動保存の待ち時間を測り直す。履歴には積まない。 */
   changed: () => void;
+  /** ここまでの編集を元に戻す単位として1件にまとめる。なぞり描きは指を離したときに呼ぶ。 */
+  commitEdit: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
+  /** 盤面を書き換えたときだけ`true`を返す。自動保存の対象になる。 */
+  undo: () => boolean;
+  redo: () => boolean;
   /** 保留中の変更をすぐ書き込む。バックアップ前やバックグラウンド移行前に使う。 */
   saveNow: (trigger?: SaveTrigger) => Promise<SaveOutcome>;
   /** 切り替え前に保留中の変更を書き込む。書き切れないときは盤面を差し替えず理由を返す。 */
@@ -86,6 +94,20 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
   const boardRef = useRef<Board | undefined>(undefined);
   const dirtyRef = useRef(false);
   const editGenerationRef = useRef(0);
+  // 履歴は開いている編み図ごとに持ち、端末へは保存しない。切り替えると捨てる。
+  const historyRef = useRef<BoardHistory | undefined>(undefined);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+
+  const syncHistory = useCallback(() => {
+    setCanUndo(historyRef.current?.canUndo ?? false);
+    setCanRedo(historyRef.current?.canRedo ?? false);
+  }, []);
+
+  const resetHistory = useCallback((target: Board) => {
+    historyRef.current = new BoardHistory(target);
+    syncHistory();
+  }, [syncHistory]);
 
   const persist = useCallback(async (document: ChartDocument, target: Board, trigger: SaveTrigger): Promise<SaveOutcome> => {
     const documentId = document.id;
@@ -116,6 +138,7 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
       const document = initialized.documents.find((item) => item.id === initialized.activeId) ?? initialized.documents[0];
       activeDocumentRef.current = document;
       boardRef.current = boardFromDocument(document);
+      resetHistory(boardRef.current);
       setDocuments(initialized.documents);
       setActiveDocument(document);
       setBoard(boardRef.current);
@@ -124,7 +147,7 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
     })().catch((error) => {
       optionsRef.current.onInitializationError(errorMessage(error));
     });
-  }, []);
+  }, [resetHistory]);
 
   useEffect(() => {
     if (!dirty || !activeDocument || !board) return;
@@ -148,6 +171,23 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
     setDirty(true);
   }, []);
 
+  const commitEdit = useCallback(() => {
+    const target = boardRef.current;
+    if (target && historyRef.current?.record(target)) syncHistory();
+  }, [syncHistory]);
+
+  const stepHistory = useCallback((direction: 'undo' | 'redo') => {
+    const target = boardRef.current;
+    const history = historyRef.current;
+    if (!target || !history) return false;
+    const moved = direction === 'undo' ? history.undo(target) : history.redo(target);
+    syncHistory();
+    if (moved) changed();
+    return moved;
+  }, [changed, syncHistory]);
+  const undo = useCallback(() => stepHistory('undo'), [stepHistory]);
+  const redo = useCallback(() => stepHistory('redo'), [stepHistory]);
+
   const saveNow = useCallback(async (trigger: SaveTrigger = 'manual'): Promise<SaveOutcome> => {
     const document = activeDocumentRef.current;
     const target = boardRef.current;
@@ -164,6 +204,7 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
     const nextBoard = boardFromDocument(document);
     activeDocumentRef.current = document;
     boardRef.current = nextBoard;
+    resetHistory(nextBoard);
     dirtyRef.current = false;
     setActiveDocument(document);
     setBoard(nextBoard);
@@ -171,7 +212,7 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
     setDirty(false);
     await setSetting('activeDocumentId', document.id);
     return 'switched';
-  }, [saveNow]);
+  }, [saveNow, resetHistory]);
 
   const refreshDocuments = useCallback(async () => setDocuments(await listDocuments()), []);
   const refreshBlocks = useCallback(async () => setBlocks(await listBlocks()), []);
@@ -187,6 +228,6 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
 
   return {
     documents, activeDocument, board, blocks, revision, dirty,
-    changed, saveNow, switchDocument, refreshDocuments, refreshBlocks, applyActiveDocumentName,
+    changed, commitEdit, canUndo, canRedo, undo, redo, saveNow, switchDocument, refreshDocuments, refreshBlocks, applyActiveDocumentName,
   };
 }

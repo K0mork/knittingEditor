@@ -18,7 +18,10 @@ interface Props {
   mode: CanvasMode;
   selection?: Rect;
   pasteBlock?: PatternBlock;
+  /** 盤面を書き換えるたびに呼ぶ。なぞり描きでは1筆の間に何度も呼ばれる。 */
   onChange: () => void;
+  /** すべての指を離したときに呼ぶ。直前の`onChange`までを元に戻す単位にまとめる。 */
+  onEditEnd?: () => void;
   onSelectionChange: (rect?: Rect) => void;
   onPasteComplete: (ok: boolean) => void;
 }
@@ -331,6 +334,7 @@ export function BoardCanvas(props: Props) {
       props.onSelectionChange(props.board.normalizeSelection(props.selection));
     }
     if (pointersRef.current.size === 0) {
+      props.onEditEnd?.();
       gestureBlockedRef.current = false;
       lastCellRef.current = undefined;
       selectionStartRef.current = undefined;
