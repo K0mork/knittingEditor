@@ -1,7 +1,6 @@
-const MEASUREMENT_ID = 'G-VVE0G4ZFL4';
+import type { AnalyticsParameters, EditorAnalytics } from '@knitting-editor/editor-core/analytics';
 
-type AnalyticsValue = string | number | boolean;
-type AnalyticsParameters = Record<string, AnalyticsValue>;
+const MEASUREMENT_ID = 'G-VVE0G4ZFL4';
 
 declare global {
   interface Window {
@@ -42,17 +41,8 @@ export function trackFirstEdit(): void {
   trackAnalyticsEvent('first_edit');
 }
 
-export function boardSizeBucket(rows: number, cols: number): string {
-  const cells = rows * cols;
-  if (cells <= 400) return 'small';
-  if (cells <= 2_500) return 'medium';
-  if (cells <= 10_000) return 'large';
-  return 'xlarge';
-}
-
-export function countBucket(count: number): string {
-  if (count <= 1) return '1';
-  if (count <= 3) return '2-3';
-  if (count <= 9) return '4-9';
-  return '10+';
-}
+/** 共通の編集画面へ渡すGA4送信。 */
+export const webAnalytics: EditorAnalytics = {
+  track: trackAnalyticsEvent,
+  trackFirstEdit,
+};

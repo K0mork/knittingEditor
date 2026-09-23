@@ -79,7 +79,7 @@ SIMULATOR_UDID=<booted-simulator-udid> ios/scripts/simulate-app-update.sh "iPhon
 - `packages/editor-core/stitches/glyphs.ts`: Canvas、SVG、PDFに共通するベクター記号
 - `packages/editor-core/export/`: PNG、1ページPDF、A4分割PDF
 - `packages/editor-core/storage/database.ts`: IndexedDB、`.knit` v2のエンコード・検証
-- React UIの編み図管理、盤面編集、ブロック、出力画面
+- `packages/editor-core/ui/`: 編集画面（`useEditorController.ts`・`EditorView.tsx`）、編み図管理、盤面編集、ブロック、出力画面。環境差分はダイアログ・ファイル受け渡し・分析・見出しとフッターを引数で受け取る
 
 次はアプリ用に差し替えます。
 

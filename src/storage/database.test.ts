@@ -1,8 +1,9 @@
 import 'fake-indexeddb/auto';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { cellStitchId } from '../model/Board';
-import { STITCH_BY_KEY } from '../stitches/catalog';
-import { boardFromDocument, initializeStorage } from './database';
+import { cellStitchId } from '@knitting-editor/editor-core/model/Board';
+import { STITCH_BY_KEY } from '@knitting-editor/editor-core/stitches/catalog';
+import { boardFromDocument } from '@knitting-editor/editor-core/storage/database';
+import { initializeStorage } from './database';
 
 // 共通の保存・バックアップ検証は packages/editor-core/storage/database.test.ts にある。
 // ここは旧Safari版からの移行というWeb限定の経路だけを対象にする。

@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-This repository is a Vite/React knitting-chart editor deployed as a static GitHub Pages site and the shared source repository for the iOS/iPadOS app under `ios/`. Code shared by both builds lives in `packages/editor-core` (`model/`, `stitches/`, `storage/`, `export/`, `canvas/`, `platform.ts`) together with its tests; the root `src/` and `ios/Web/src/` entrypoints re-export it and keep only the differences listed in `ios/docs/WEB_SYNC.md`. Browser tests live in `tests/e2e/`; static SEO and domain files are in `public/`.
+This repository is a Vite/React knitting-chart editor deployed as a static GitHub Pages site and the shared source repository for the iOS/iPadOS app under `ios/`. Code shared by both builds lives in `packages/editor-core` (`model/`, `stitches/`, `storage/`, `export/`, `canvas/`, `state/`, `ui/`, `util/`, `analytics.ts`, `platform.ts`) together with its tests, including the editor screen itself (`ui/useEditorController.ts` and `ui/EditorView.tsx`). The root `src/` and `ios/Web/src/` entrypoints import it directly and keep only the host-specific differences listed in `ios/docs/WEB_SYNC.md`. Browser tests live in `tests/e2e/`; static SEO and domain files are in `public/`.
 
 ## Build, Test, and Development Commands
 

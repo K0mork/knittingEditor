@@ -4,7 +4,7 @@
 
 ## 共通コード
 
-`packages/editor-core`は、Web版とiOS版が共有する盤面モデル、記号カタログとベクター記号、IndexedDBと`.knit`入出力、PNG/PDF出力、盤面Canvasコンポーネントを提供する。Web版の`src/`とアプリ版の`ios/Web/src/`にある同名ファイルは薄い再エクスポートだけを持ち、実装を複製しない。共通コードのテストもこのパッケージに置き、ルートの`npm test`が実行する。
+`packages/editor-core`は、Web版とiOS版が共有する盤面モデル、記号カタログとベクター記号、IndexedDBと`.knit`入出力、PNG/PDF出力、盤面Canvasコンポーネント、そして編集画面そのもの（状態と操作の`ui/useEditorController.ts`、画面の`ui/EditorView.tsx`）を提供する。Web版の`src/`とアプリ版の`ios/Web/src/`は共通コードを直接importし、環境固有の差分だけを持つ。再エクスポートだけのファイルは置かない。共通コードのテストもこのパッケージに置き、ルートの`npm test`が実行する。
 
 `model/`はReactにもDOMにも依存させない。`export/`と`canvas/`はブラウザAPIを使うが、Web固有・iOS固有の分岐を持たない。共通化しないファイルとその理由は`ios/docs/WEB_SYNC.md`の表を正とする。
 
@@ -18,7 +18,7 @@
 
 共通コードから環境固有の機能を呼ぶ必要がある場合は、`packages/editor-core/platform.ts`の`EditorPlatform`へ足して各ビルドのアダプタで実装する。現在の項目は生成ファイルの受け渡し（`saveFile`）だけで、Web版はダウンロード、iOS版は`WKWebView`ブリッジ経由でFiles・共有シートへ渡す。呼び出し元のない項目を先に置かない。
 
-分析、バックアップ読込み、保留保存のflushは共通コードからは呼ばれず、Web版とiOS版がそれぞれの`App.tsx`と`analytics.ts`で扱う。iOS版は分析をno-opにし、外部URL・通信APIをアプリbundleへ含めない。
+入力ダイアログ（`askText`・`askConfirm`）と分析（`EditorAnalytics`）も`useEditorController`の引数として各ビルドが渡す。分析の送信実装はWeb版の`src/analytics.ts`だけが持ち、iOS版は何も渡さないので共通の`NO_ANALYTICS`のまま一切送らない。ネイティブのバックアップ読込み、保留保存のflush、使い方ページ遷移前の保存はiOS版の`App.tsx`が扱い、外部URL・通信APIをアプリbundleへ含めない。
 
 ## ビルドと公開
 

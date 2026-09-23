@@ -4,6 +4,7 @@ import { STITCH_BY_ID, STITCHES } from '../stitches/catalog';
 import { GLYPH_CELL, glyphPdfCommands } from '../stitches/glyphs';
 import { cellColor, cellStitchId } from '../model/Board';
 import { pdfPageLayout, type PdfLayoutOptions } from './pdfLayout';
+import { errorMessage } from '../util/errors';
 
 export interface PdfRequest extends PdfLayoutOptions {
   rows: number;
@@ -87,7 +88,7 @@ export function buildPdf(request: PdfRequest): Uint8Array {
           const stitchId = cellStitchId(value);
           const stitch = STITCH_BY_ID.get(stitchId);
           if (!stitch) continue;
-          if (stitch.key === 'erase') {
+          if (stitch.renderKind === 'whiteout') {
             const x = originX + localCol * cellSize;
             const y = originY + (tile.rows - localRow - 1) * cellSize;
             rowCommands += `1 1 1 rg ${x.toFixed(3)} ${y.toFixed(3)} ${cellSize.toFixed(3)} ${cellSize.toFixed(3)} re f\n`;
@@ -141,7 +142,7 @@ if (typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScop
       const pdf = buildPdf(event.data);
       self.postMessage({ ok: true, pdf: pdf.buffer }, { transfer: [pdf.buffer] });
     } catch (error) {
-      self.postMessage({ ok: false, error: error instanceof Error ? error.message : String(error) });
+      self.postMessage({ ok: false, error: errorMessage(error) });
     }
   };
 }

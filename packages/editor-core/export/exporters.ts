@@ -1,6 +1,6 @@
-import { Board, cellColor, cellStitchId, colorHex } from '../model/Board';
-import { STITCH_BY_ID } from '../stitches/catalog';
-import { drawGlyph } from '../stitches/glyphs';
+import type { Board } from '../model/Board';
+import { drawCell } from '../stitches/drawCell';
+import type { PdfLayoutOptions } from './pdfLayout';
 
 const PNG_MAX_SIDE = 16_384;
 const PNG_MAX_PIXELS = 64_000_000;
@@ -72,19 +72,13 @@ export async function renderPng(board: Board, cellSize: number): Promise<Blob> {
   for (let row = 0; row < board.rows; row++) {
     for (let col = 0; col < board.cols; col++) {
       const value = board.valueAt(row, col);
-      if (!value) continue;
-      const stitch = STITCH_BY_ID.get(cellStitchId(value));
-      if (!stitch) continue;
-      const x = (col + 1) * cellSize;
-      const y = (row + 1) * cellSize;
-      if (stitch.key === 'erase') { context.fillStyle = '#fff'; context.fillRect(x, y, cellSize, cellSize); continue; }
-      drawGlyph(context, stitch.key, x, y, cellSize, colorHex(cellColor(value)));
+      if (value) drawCell(context, value, (col + 1) * cellSize, (row + 1) * cellSize, cellSize);
     }
   }
   return new Promise((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('PNG生成に失敗しました')), 'image/png'));
 }
 
-export async function renderPdf(board: Board, options: { layout: 'single' | 'tiled'; orientation: 'portrait' | 'landscape'; cellMillimeters: number }): Promise<Blob> {
+export async function renderPdf(board: Board, options: PdfLayoutOptions): Promise<Blob> {
   const worker = new Worker(new URL('./pdf.worker.ts', import.meta.url), { type: 'module' });
   const cells = board.cells.buffer.slice(0);
   return new Promise((resolve, reject) => {

@@ -1,7 +1,8 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 import { Gunzip, gzipSync, strFromU8, strToU8 } from 'fflate';
-import { Board, cellStitchId, MAX_BOARD_SIZE, packCell, type BlockAnchor, type PatternBlock } from '@knitting-editor/editor-core/model/Board';
-import { STITCH_BY_ID, STITCH_CATALOG_VERSION } from '@knitting-editor/editor-core/stitches/catalog';
+import { Board, cellStitchId, MAX_BOARD_SIZE, packCell, type BlockAnchor, type PatternBlock } from '../model/Board';
+import { STITCH_BY_ID, STITCH_CATALOG_VERSION, type StitchDefinition } from '../stitches/catalog';
+import { base64ToBytes, bytesToBase64 } from '../util/base64';
 
 export interface ChartDocument {
   id: string;
@@ -146,20 +147,18 @@ export async function initializeStorage(): Promise<{ documents: ChartDocument[];
   return { documents, activeId };
 }
 
-function bytesToBase64(bytes: Uint8Array): string {
-  let binary = '';
-  const chunkSize = 0x8000;
-  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
-    binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
+/**
+ * 記号が占めるセルを`occupied`へ登録する。すでに別の記号が占めていれば`message`で失敗させる。
+ * 盤面とブロックの復元で、壊れたデータの重なりを同じ規則で弾く。
+ */
+function claimFootprint(occupied: Set<number>, cols: number, row: number, col: number, definition: StitchDefinition, message: string): void {
+  for (let y = 0; y < definition.height; y++) {
+    for (let x = 0; x < definition.width; x++) {
+      const footprintIndex = (row + y) * cols + col + x;
+      if (occupied.has(footprintIndex)) throw new Error(message);
+      occupied.add(footprintIndex);
+    }
   }
-  return btoa(binary);
-}
-
-function base64ToBytes(encoded: string): Uint8Array {
-  const binary = atob(encoded);
-  const bytes = new Uint8Array(binary.length);
-  for (let index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index);
-  return bytes;
 }
 
 function validatePackedCells(rows: number, cols: number, bytes: Uint8Array): void {
@@ -178,17 +177,11 @@ function validatePackedCells(rows: number, cols: number, bytes: Uint8Array): voi
     if (row + definition.height > rows || col + definition.width > cols) {
       throw new Error('盤面データが破損しています');
     }
-    for (let y = 0; y < definition.height; y++) {
-      for (let x = 0; x < definition.width; x++) {
-        const footprintIndex = (row + y) * cols + col + x;
-        if (occupied.has(footprintIndex)) throw new Error('盤面データが重複しています');
-        occupied.add(footprintIndex);
-      }
-    }
+    claimFootprint(occupied, cols, row, col, definition, '盤面データが重複しています');
   }
 }
 
-function cellDefinition(value: number) {
+function cellDefinition(value: number): StitchDefinition | undefined {
   return STITCH_BY_ID.get(cellStitchId(value)) ?? (cellStitchId(value) === 0 ? STITCH_BY_ID.get(value) : undefined);
 }
 
@@ -224,13 +217,7 @@ function restoreBlock(value: unknown, now: number): PatternBlock {
     if (!definition || row + definition.height > rows || col + definition.width > cols) {
       throw new Error('ブロックに未対応または不正な記号が含まれています');
     }
-    for (let y = 0; y < definition.height; y++) {
-      for (let x = 0; x < definition.width; x++) {
-        const footprintIndex = (row + y) * cols + col + x;
-        if (occupied.has(footprintIndex)) throw new Error('ブロックの記号が重複しています');
-        occupied.add(footprintIndex);
-      }
-    }
+    claimFootprint(occupied, cols, row, col, definition, 'ブロックの記号が重複しています');
     anchors.push({ row, col, value: cellStitchId(packedValue) === 0 ? packCell(packedValue, 0) : packedValue });
   }
   return {
