@@ -98,7 +98,7 @@ final class KnittingEditorUITests: XCTestCase {
             webView.otherElements
                 .matching(NSPredicate(format: "label CONTAINS %@", "記号1個"))
                 .firstMatch
-                .waitForExistence(timeout: 10),
+                .waitForExistence(timeout: Self.editorAppearanceTimeout),
             app.debugDescription
         )
     }
@@ -196,30 +196,32 @@ final class KnittingEditorUITests: XCTestCase {
         let nameField = app.textFields["入力"]
         XCTAssertTrue(nameField.waitForExistence(timeout: Self.editorAppearanceTimeout))
         replaceText("再起動復元テスト", in: nameField, app: app)
-        app.buttons["決定"].tap()
+        confirmDialog(closing: nameField, in: app)
 
         let webView = app.webViews.firstMatch
         let canvas = webView.otherElements
             .matching(NSPredicate(format: "label CONTAINS %@", "記号0個"))
             .firstMatch
-        XCTAssertTrue(canvas.waitForExistence(timeout: 10))
+        XCTAssertTrue(canvas.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
         canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
 
         let editedCanvas = webView.otherElements
             .matching(NSPredicate(format: "label CONTAINS %@", "記号1個"))
             .firstMatch
-        XCTAssertTrue(editedCanvas.waitForExistence(timeout: 10))
+        XCTAssertTrue(editedCanvas.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
         waitForDocumentSave(named: "再起動復元テスト", in: webView)
 
         app.terminate()
         app.launch()
 
+        // `webViews.firstMatch`はWKWebViewの器が出た時点で成立する。盤面は端末内データの
+        // 読み出し（最大10秒）と描画のあとに出るので、起動用の上限で待つ。
         let relaunchedWebView = app.webViews.firstMatch
         XCTAssertTrue(relaunchedWebView.waitForExistence(timeout: Self.editorAppearanceTimeout))
         let restoredCanvas = relaunchedWebView.otherElements
             .matching(NSPredicate(format: "label CONTAINS %@", "記号1個"))
             .firstMatch
-        XCTAssertTrue(restoredCanvas.waitForExistence(timeout: 10))
+        XCTAssertTrue(restoredCanvas.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
     }
 
     func testDocumentSwitchAutosavesEachDocument() {
@@ -237,36 +239,37 @@ final class KnittingEditorUITests: XCTestCase {
         let nameField = app.textFields["入力"]
         XCTAssertTrue(nameField.waitForExistence(timeout: Self.editorAppearanceTimeout))
         replaceText("M2切替A", in: nameField, app: app)
-        app.buttons["決定"].tap()
+        confirmDialog(closing: nameField, in: app)
 
         let webView = app.webViews.firstMatch
         let emptyCanvas = webView.otherElements
             .matching(NSPredicate(format: "label CONTAINS %@", "記号0個"))
             .firstMatch
-        XCTAssertTrue(emptyCanvas.waitForExistence(timeout: 10))
+        XCTAssertTrue(emptyCanvas.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
         emptyCanvas.coordinate(withNormalizedOffset: CGVector(dx: 0.35, dy: 0.5)).tap()
         let editedCanvas = webView.otherElements
             .matching(NSPredicate(format: "label CONTAINS %@", "記号1個"))
             .firstMatch
-        XCTAssertTrue(editedCanvas.waitForExistence(timeout: 10))
+        XCTAssertTrue(editedCanvas.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
         waitForDocumentSave(named: "M2切替A", in: webView)
 
         documents.tap()
         newDocument.tap()
         XCTAssertTrue(nameField.waitForExistence(timeout: Self.editorAppearanceTimeout))
         replaceText("M2切替B", in: nameField, app: app)
-        app.buttons["決定"].tap()
+        confirmDialog(closing: nameField, in: app)
 
         let secondEmptyCanvas = webView.otherElements
             .matching(NSPredicate(format: "label CONTAINS %@", "記号0個"))
             .firstMatch
-        XCTAssertTrue(secondEmptyCanvas.waitForExistence(timeout: 10))
+        XCTAssertTrue(secondEmptyCanvas.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
         secondEmptyCanvas.coordinate(withNormalizedOffset: CGVector(dx: 0.65, dy: 0.5)).tap()
         XCTAssertTrue(
             webView.otherElements
                 .matching(NSPredicate(format: "label CONTAINS %@", "記号1個"))
                 .firstMatch
-                .waitForExistence(timeout: 10)
+                .waitForExistence(timeout: Self.editorAppearanceTimeout),
+            app.debugDescription
         )
         waitForDocumentSave(named: "M2切替B", in: webView)
         documents.tap()
@@ -279,7 +282,8 @@ final class KnittingEditorUITests: XCTestCase {
             webView.otherElements
                 .matching(NSPredicate(format: "label CONTAINS %@", "記号1個"))
                 .firstMatch
-                .waitForExistence(timeout: 10)
+                .waitForExistence(timeout: Self.editorAppearanceTimeout),
+            app.debugDescription
         )
 
         documents.tap()
@@ -292,7 +296,8 @@ final class KnittingEditorUITests: XCTestCase {
             webView.otherElements
                 .matching(NSPredicate(format: "label CONTAINS %@", "記号1個"))
                 .firstMatch
-                .waitForExistence(timeout: 10)
+                .waitForExistence(timeout: Self.editorAppearanceTimeout),
+            app.debugDescription
         )
     }
 
@@ -345,7 +350,7 @@ final class KnittingEditorUITests: XCTestCase {
         let nameField = app.textFields["入力"]
         XCTAssertTrue(nameField.waitForExistence(timeout: 10), app.debugDescription)
         replaceText("可変ウィンドウ確認", in: nameField, app: app)
-        app.buttons["決定"].tap()
+        confirmDialog(closing: nameField, in: app)
 
         let canvas = app.webViews.firstMatch.otherElements
             .matching(NSPredicate(format: "label CONTAINS %@", "記号0個"))
@@ -489,19 +494,20 @@ final class KnittingEditorUITests: XCTestCase {
         let nameField = app.textFields["入力"]
         XCTAssertTrue(nameField.waitForExistence(timeout: appUpdateElementTimeout))
         replaceText("アプリ更新復元fixture", in: nameField, app: app)
-        app.buttons["決定"].tap()
+        confirmDialog(closing: nameField, in: app)
 
         let webView = app.webViews.firstMatch
         let canvas = webView.otherElements
             .matching(NSPredicate(format: "label CONTAINS %@", "記号0個"))
             .firstMatch
-        XCTAssertTrue(canvas.waitForExistence(timeout: 10))
+        XCTAssertTrue(canvas.waitForExistence(timeout: appUpdateElementTimeout), app.debugDescription)
         canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
         XCTAssertTrue(
             webView.otherElements
                 .matching(NSPredicate(format: "label CONTAINS %@", "記号1個"))
                 .firstMatch
-                .waitForExistence(timeout: 10)
+                .waitForExistence(timeout: appUpdateElementTimeout),
+            app.debugDescription
         )
         waitForDocumentSave(named: "アプリ更新復元fixture", in: webView)
     }
@@ -526,7 +532,7 @@ final class KnittingEditorUITests: XCTestCase {
             app.webViews.firstMatch.otherElements
                 .matching(NSPredicate(format: "label CONTAINS %@", "記号1個"))
                 .firstMatch
-                .waitForExistence(timeout: 10),
+                .waitForExistence(timeout: appUpdateElementTimeout),
             app.debugDescription
         )
     }
@@ -775,6 +781,14 @@ final class KnittingEditorUITests: XCTestCase {
         return attachment
     }
 
+    private func waitForValue(_ value: String, of element: XCUIElement, timeout: TimeInterval) -> Bool {
+        let reached = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "value == %@", value),
+            object: element
+        )
+        return XCTWaiter.wait(for: [reached], timeout: timeout) == .completed
+    }
+
     private func waitForDisappearance(of element: XCUIElement, timeout: TimeInterval) -> Bool {
         let gone = XCTNSPredicateExpectation(
             predicate: NSPredicate(format: "exists == false"),
@@ -799,40 +813,69 @@ final class KnittingEditorUITests: XCTestCase {
         let nameField = app.textFields["入力"]
         XCTAssertTrue(nameField.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
         replaceText(name, in: nameField, app: app)
-        app.buttons["決定"].tap()
+        confirmDialog(closing: nameField, in: app)
     }
 
     private func replaceText(_ text: String, in field: XCUIElement, app: XCUIApplication) {
         // タップは1回だけにする。連続タップだと、1回目でキーボードが出て入力欄が上へ
         // スクロールしたあと、2回目以降が元の座標に残った別の要素へ当たる
         // （ダイアログが背景へずれ、入力した名前ごと取り消された）。
-        field.tap()
+        // ダイアログは開いた時点で初期値を全選択するが、入力欄をタップすると選択が外れて
+        // タップ位置にキャレットが入るため、上書きは当てにできない（CIでは毎回一致せず、
+        // 消して入れ直す手順まで進んでいた）。末尾側を叩いてキャレットを値の後ろへ置く。
+        field.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
         // キーボードが出る前に入力すると先頭文字を取りこぼす。出ない環境でも
         // 入力自体は可能なので、待つだけで失敗にはしない。
         _ = app.keyboards.firstMatch.waitForExistence(timeout: 10)
-        // ダイアログの入力欄は開いた時点で全選択されているので、そのまま上書きできる。
-        // 遅いランナーでは操作1つが数秒かかるため、ここは最短手順にする。
-        field.typeText(text)
-
-        if (field.value as? String) != text {
-            // 全選択されていない入力欄（段数・列数）はキャレットが文字の途中に入り、
-            // 削除が途中で止まる（`20`が`0`だけ残り、`1000`を入れて`01000`になった）。
-            // 末尾へ置き直してから消して入れ直す。
-            field.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
-            if let current = field.value as? String, !current.isEmpty {
-                field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count + 2))
-            }
-            field.typeText(text)
+        // 遅いランナーでは操作1つが数秒から数十秒かかるため、削除と入力を1回の操作にまとめる。
+        // 取りこぼしたときだけ、末尾のキャレットから同じ手順でもう一度入れ直す。
+        for _ in 0..<2 {
+            // 読んだ値が古いと削除が足りず、正しく入った名前の末尾だけを消して二重に入力する
+            // （iPadで`M2切M2切替A`になった）。余分な削除は先頭で止まるだけなので多めに送る。
+            let current = (field.value as? String) ?? ""
+            let deletes = String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count + text.count + 2)
+            field.typeText(deletes + text)
+            // 入力欄の値は入力より遅れて反映されることがある。すぐ読んで不一致と判断すると、
+            // 正しく入っていても入れ直してしまうため、反映を待ってから判断する。
+            if waitForValue(text, of: field, timeout: 10) { break }
         }
         XCTAssertEqual(field.value as? String, text, app.debugDescription)
     }
 
+    /// 入力ダイアログの「決定」を押し、ダイアログが閉じたことを確かめる。
+    ///
+    /// キーボード（iPadのハードウェアキーボード接続時は入力補助バー）が遅れて出ると
+    /// WebViewが縮み、中央に置いたダイアログが上へ動く。XCUITestは要素を探してから
+    /// 合成タップを送るまでに時間がかかるため、その間に動くと元の座標を叩いて外れる
+    /// （入力欄に正しい名前が入ったまま、ダイアログが開きっぱなしになった）。
+    /// 閉じなかったときは、ボタンの位置が変わっていた場合に限って押し直す。位置が
+    /// 変わっていないのに閉じなければ「決定」が効いていないので、そのまま失敗にする。
+    private func confirmDialog(closing field: XCUIElement, in app: XCUIApplication) {
+        let confirm = app.buttons["決定"]
+        let frameBeforeTap = confirm.frame
+        confirm.tap()
+        if waitForDisappearance(of: field, timeout: 10) { return }
+        if confirm.exists, confirm.frame != frameBeforeTap {
+            confirm.tap()
+        }
+        XCTAssertTrue(
+            waitForDisappearance(of: field, timeout: Self.editorAppearanceTimeout),
+            "「決定」でダイアログが閉じない: \(app.debugDescription)"
+        )
+    }
+
+    /// 盤面の編集が記号数へ反映されるまで待つ。CIの遅い区間ではXCUITestの操作1回に
+    /// 数十秒かかったため、起動用の上限で待つ（反映されれば直ちに終わる）。
     private func waitForStitchCount(_ count: Int, on canvas: XCUIElement, in app: XCUIApplication) {
         let reached = XCTNSPredicateExpectation(
             predicate: NSPredicate(format: "label CONTAINS %@", "記号\(count)個"),
             object: canvas
         )
-        XCTAssertEqual(XCTWaiter.wait(for: [reached], timeout: 10), .completed, "記号が\(count)個にならない: \(canvas.label)")
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [reached], timeout: Self.editorAppearanceTimeout),
+            .completed,
+            "記号が\(count)個にならない: \(canvas.label) \(app.debugDescription)"
+        )
     }
 
     /// 盤面のアクセシブルな名前から現在の記号数を読む。
@@ -889,23 +932,32 @@ final class KnittingEditorUITests: XCTestCase {
         assertDisappears(fileSave, from: app)
     }
 
+    /// 編集後の自動保存が端末へ書き終わるまで待つ。盤面の記号数が変わったのを確かめてから呼ぶ。
+    ///
+    /// 見出しの「（保存中…）」は`aria-hidden`で、XCUITestからは常に見えない。以前はこれが
+    /// 消えるのを待っていたため待機が即座に成立し、自動保存（編集の400ms後）より先に
+    /// `terminate()`して、再起動後に編集前の盤面が出ることがあった。読み上げ用の
+    /// 「保存中」「保存済み」は独立した静的テキストとして公開されるので、そちらを見る。
+    /// 記号数の表示と「保存中」は同じ描画で出るため、その後に「保存済み」が見えれば
+    /// 書き込みは完了している。
     private func waitForDocumentSave(named name: String, in webView: XCUIElement) {
-        let saved = webView.descendants(matching: .staticText)
+        let title = webView.descendants(matching: .staticText)
             .matching(NSPredicate(format: "label BEGINSWITH %@", name))
             .firstMatch
-        XCTAssertTrue(saved.waitForExistence(timeout: Self.editorAppearanceTimeout), webView.debugDescription)
+        XCTAssertTrue(title.waitForExistence(timeout: Self.editorAppearanceTimeout), webView.debugDescription)
 
-        let saving = webView.descendants(matching: .staticText)
-            .matching(NSPredicate(format: "label CONTAINS %@", "（保存中…）"))
+        let savedStatus = webView.descendants(matching: .staticText)
+            .matching(NSPredicate(format: "label CONTAINS %@", "保存済み"))
             .firstMatch
-        let savedExpectation = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "exists == false"),
-            object: saving
-        )
+        let savingStatus = webView.descendants(matching: .staticText)
+            .matching(NSPredicate(format: "label CONTAINS %@", "保存中"))
+            .firstMatch
+        let saved = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == true"), object: savedStatus)
+        let notSaving = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: savingStatus)
         XCTAssertEqual(
-            XCTWaiter.wait(for: [savedExpectation], timeout: 15),
+            XCTWaiter.wait(for: [saved, notSaving], timeout: Self.editorAppearanceTimeout),
             .completed,
-            webView.debugDescription
+            "自動保存が完了しない: \(webView.debugDescription)"
         )
     }
 
