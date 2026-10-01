@@ -1,6 +1,6 @@
 # 依存の更新PRを週1回、まとめて作る。
 # package-lock.jsonの変更はWebとiOSの両方のCIを起動するため、PRの数を絞る。
-# 作られたPRには開発ログが無い。マージ前にDEVELOPMENT_LOG.mdへ記録を追加するコミットをpushする（AGENTS.mdのGitHub Workflow）。
+# 依存の更新だけのPRにはDEVELOPMENT_LOG.mdの記録は不要。ブランチへコミットを足すとDependabotがrebaseしなくなるため、足さない（AGENTS.mdのGitHub Workflow）。
 version: 2
 updates:
   - package-ecosystem: npm
