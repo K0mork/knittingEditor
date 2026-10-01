@@ -70,4 +70,29 @@ describe('PDF worker', () => {
     for (const stitch of glyphs) expect(streams).toContain(`/S${stitch.id} Do`);
     expect(streams).toMatch(/1 1 1 rg [\d.]+ [\d.]+ [\d.]+ [\d.]+ re f/);
   });
+
+  it('numbers rows and columns on all four sides like the PNG output', () => {
+    const commands = decodedStreams(buildPdf(request(20, 20, false))).join('\n');
+    // 1〜20の番号が、目は上下、段は左右に1つずつで計4回ずつ現れる。
+    for (const number of [1, 10, 20]) expect(commands.match(new RegExp(`\\(${number}\\) Tj`, 'g'))).toHaveLength(4);
+    expect(commands).not.toContain('(21) Tj');
+  });
+
+  it('numbers each tiled page with the rows and columns on that page', () => {
+    const pages = decodedStreams(buildPdf({ ...request(60, 40, false), layout: 'tiled' }))
+      .filter((stream) => stream.includes(' Tj ET'));
+    expect(pages.length).toBeGreaterThan(1);
+    // 1ページ目は左上（最上段・左端の目）から始まる。
+    expect(pages[0]).toContain('(60) Tj');
+    expect(pages[0]).toContain('(40) Tj');
+    expect(pages.at(-1)).toContain('(1) Tj');
+  });
+
+  it('thins the numbers on a large single-page chart instead of overlapping them', () => {
+    const commands = decodedStreams(buildPdf(request(1000, 1000, false))).join('\n');
+    expect(commands).toContain('(1000) Tj');
+    expect(commands).toContain('(50) Tj');
+    expect(commands).not.toContain('(49) Tj');
+  });
 });
+

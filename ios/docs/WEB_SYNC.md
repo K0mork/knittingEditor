@@ -35,7 +35,7 @@ Web版とiOS版は同じリポジトリで管理する。以前の固定コミ�
 | `analytics.ts` | Web版だけが持ち、GA4を初期化して`EditorAnalytics`を実装する。iOS版にはファイル自体が無く、分析を渡さないのでイベントも外部スクリプトも発生させない。 |
 | `main.tsx` | iOS版は`initializeAnalytics()`を呼ばない。 |
 | `styles.css` | 共通CSSへの差分だけ。iOS版はタップ領域44px、Dynamic Type、テキスト自動拡大の抑止、アプリ内ダイアログの様式。Web版はSEO向けの説明文と編み図名の表示。 |
-| `platform.ts` | `EditorPlatform`の実装。Web版はダウンロード、iOS版は`WKWebView`ブリッジ経由でFiles・共有シートへ渡す。 |
+| `platform.ts` | `EditorPlatform`の実装。Web版はダウンロード、iOS版は`WKWebView`ブリッジ経由でFiles・共有シートへ渡す。Web版でもiPhone・iPadのSafariだけは、`<a download>`のPDFが編集中のタブを置き換えるため、`ShareFileDialog.tsx`の「共有・保存」ボタンから共有シート（Web Share API）で渡す。共有シートは利用者のタップの中でしか開けないので、生成後にもう一度押してもらう。 |
 | `storage/database.ts` | Web版だけが持ち、旧Safari `localStorage`からの移行と、それを先に行う`initializeStorage`を置く。iOS版にはファイル自体が無く、共通の`initializeStorage`を直接使うので移行を含めない。 |
 | `index.html`、`public/guide/` | Web版はSEO、canonical、CNAME、サイトマップを持つ。iOS版は同梱ページとして動作し、文言をアプリ前提にする。 |
 
@@ -46,7 +46,7 @@ Web版とiOS版は同じリポジトリで管理する。以前の固定コミ�
 現在の内訳は次のとおりで、共通テストの二重管理は解消済みである。
 
 - `packages/editor-core`：盤面モデル、記号カタログ、ベクター記号、Canvas、PNG/PDF出力、PDFレイアウト計算、IndexedDBと`.knit`入出力（大盤面の保存・復元を含む）、編集セッション、編集画面、base64変換、分析バケット。
-- `src/`（Web固有）：旧Safari `localStorage`からの移行、GA4アナリティクス。
+- `src/`（Web固有）：旧Safari `localStorage`からの移行、GA4アナリティクス、iPhone・iPad Safariの共有シート判定と確認ダイアログ。
 - `ios/Web/src/`（iOS固有）：ネイティブブリッジ、`async`のタイムアウト、ブリッジ経由の`.knit`入出力と`.knit`相互運用fixture（`backupInterchange.test.ts`、`ios/test-fixtures/`）。
 
 共通コードのテストを`.tsx`で書く場合も、両ビルドのVitest設定が`*.test.tsx`を拾う。
