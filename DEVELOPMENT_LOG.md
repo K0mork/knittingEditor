@@ -1,12 +1,5 @@
 # Development Log
 
-## 2026-10-01 — PR #11のレビュー・マージと公開確認
-
-- 影響: PR #11（Undo/Redo）をレビューし、`aa35c8c`でmainへマージ。コードの追加修正はなし。主な対象は`packages/editor-core/model/BoardHistory.ts`、`state/useEditorSession.ts`、`ui/`、`canvas/BoardCanvas.tsx`とWeb/iOSの使い方ページ。
-- 検証: Node.js 24.21.0で`npm run typecheck`、`npm test`（84件）、`npm run build`、`npm run check:dist`、`npm run test:e2e`（Chromium mobile/desktop・WebKit mobile、72件）が成功。`ios/Web`で`../../node_modules/.bin/tsc -p tsconfig.app.json --noEmit`と`../../node_modules/.bin/vitest run --config vite.config.ts`（8件）、`ios/scripts/check-app-store-docs.sh`も成功。375px・1280px幅の表示を目視確認し、画像を`/tmp/knitting-pr11-review/`へ保存（コミット対象外）。既存テストを再検証し、テストの変更はなし。
-- CI: https://github.com/K0mork/knittingEditor/actions/runs/36818335069 の初回はiPhoneの既存`testDocumentSwitchAutosavesEachDocument`が名前入力等のUI操作遅延で3分の制限を超え、ci-gateが配信を停止。`gh run rerun 36818335069 --failed`後に成功。Web、iOS Web、XcodeGen、iPhone/iPad Simulator、両端末のアプリ更新、unsigned Release Archive、オフラインバンドル検査、App Store文書、ci-gate、deployの成功を確認。今回のローカルではXcodeの一式を再実行せず、同じマージコミットのCIで検証した。実機は未確認。
-- デプロイ影響: Pagesへ配信済み。HTTPSの`/`、`/guide/`、`/CNAME`を取得し、ドメイン`knittingeditor.com`、使い方の説明、新しいJS/CSSがローカルビルドと同じパスであることを確認。公開UIで入力（記号1→2個）、Undo（1個）、Redo（2個）、再Undo（1個）と保存完了を確認し、再読み込み後も1個の状態が残り、履歴が破棄されることを確認。この記録のみの追加コミットは実行時動作・配信内容への影響none。
-
 ## 2026-10-01 — SNS共有用のOGP画像を追加
 
 - 影響: トップページと`/guide/`のURLをX・LINE・Facebook・Slack・iMessageなどで共有したとき、文字だけの小さなカードではなく1200×630の画像付きカードが出るようにした。画像は縮小表示でも読めるよう「棒針の／編み図」を大きく置き、下の帯に「無料・登録不要」、右にエディタと同じ表目・かけ目・ねじり目の記号を並べた。両ページに`og:image`（型・幅・高さ・alt）と`og:site_name`を加え、`twitter:card`を`summary_large_image`にした。`/guide/`にはOGPが無かったため、`og:title`・`og:description`・`og:type`（`article`）・`og:url`・`og:locale`も追加した。検索順位への直接の影響はない。
@@ -15,6 +8,13 @@
 - テスト: `seo.spec.ts`で両ページの画像メタデータと`summary_large_image`、`/guide/`のOGP、`/og-image.png`が`image/png`で返りPNGのIHDRが1200×630であることを検査する。`check-dist`は`dist/og-image.png`の存在・PNGシグネチャ・寸法と、配信HTML 2ページの`og:image`を検査する。
 - 検証: `npm run typecheck`、`npm test`（15ファイル・84件）、`npm run build`、`npm run check:dist`（`dist/CNAME`は`knittingeditor.com`、`dist/og-image.png`と両ページの`og:image`を確認）、`npm run test:e2e`（Chromium mobile・WebKit mobile・Chromium desktop、75件）が成功。画面の表示は変えていないため、ビューポート別の目視確認は画像そのもの（幅400・200・120pxへの縮小を含む）に限った。
 - デプロイ影響: `main`へのマージ後にPagesへ配信される。配信後に`https://knittingeditor.com/og-image.png`がHTTPS 200で返ること、トップと`/guide/`の配信HTMLに`og:image`があることを確認する。SNS側はカードをキャッシュするため、既に共有済みのURLは各サービスの再取得（FacebookのシェアデバッガーやXの再投稿など）まで古い表示が残りうる。
+
+## 2026-10-01 — PR #11のレビュー・マージと公開確認
+
+- 影響: PR #11（Undo/Redo）をレビューし、`aa35c8c`でmainへマージ。コードの追加修正はなし。主な対象は`packages/editor-core/model/BoardHistory.ts`、`state/useEditorSession.ts`、`ui/`、`canvas/BoardCanvas.tsx`とWeb/iOSの使い方ページ。
+- 検証: Node.js 24.21.0で`npm run typecheck`、`npm test`（84件）、`npm run build`、`npm run check:dist`、`npm run test:e2e`（Chromium mobile/desktop・WebKit mobile、72件）が成功。`ios/Web`で`../../node_modules/.bin/tsc -p tsconfig.app.json --noEmit`と`../../node_modules/.bin/vitest run --config vite.config.ts`（8件）、`ios/scripts/check-app-store-docs.sh`も成功。375px・1280px幅の表示を目視確認し、画像を`/tmp/knitting-pr11-review/`へ保存（コミット対象外）。既存テストを再検証し、テストの変更はなし。
+- CI: https://github.com/K0mork/knittingEditor/actions/runs/36818335069 の初回はiPhoneの既存`testDocumentSwitchAutosavesEachDocument`が名前入力等のUI操作遅延で3分の制限を超え、ci-gateが配信を停止。`gh run rerun 36818335069 --failed`後に成功。Web、iOS Web、XcodeGen、iPhone/iPad Simulator、両端末のアプリ更新、unsigned Release Archive、オフラインバンドル検査、App Store文書、ci-gate、deployの成功を確認。今回のローカルではXcodeの一式を再実行せず、同じマージコミットのCIで検証した。実機は未確認。
+- デプロイ影響: Pagesへ配信済み。HTTPSの`/`、`/guide/`、`/CNAME`を取得し、ドメイン`knittingeditor.com`、使い方の説明、新しいJS/CSSがローカルビルドと同じパスであることを確認。公開UIで入力（記号1→2個）、Undo（1個）、Redo（2個）、再Undo（1個）と保存完了を確認し、再読み込み後も1個の状態が残り、履歴が破棄されることを確認。この記録のみの追加コミットは実行時動作・配信内容への影響none。
 
 ## 2026-09-23 — 盤面の編集を元に戻す・やり直す
 
