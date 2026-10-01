@@ -92,11 +92,19 @@ Codex must use the following production deployment procedure:
 1. Confirm the worktree contains only intended changes, update `DEVELOPMENT_LOG.md` when required, and review the diff.
 2. Run the complete pre-commit suite above and resolve every failure.
 3. Commit focused changes according to the commit rules below. Do not deploy uncommitted work.
-4. Push the reviewed commit to `main` only when the user has requested or approved deployment. Opening a pull request or pushing another branch runs validation but must not be described as a production deployment.
+4. Merge the reviewed pull request into `main` only when the user has requested or approved deployment, after its `ci-gate` check has passed. Do not push directly to `main`. Opening a pull request or pushing another branch runs validation but must not be described as a production deployment.
 5. Confirm the `CI and deploy Pages` GitHub Actions workflow succeeded, including every job required by `ci-gate` and the `deploy` job. A successful local build or push alone is not proof of deployment.
 6. Verify `https://knittingeditor.com/` over HTTPS after deployment. Exercise the changed user flow and confirm the expected assets, metadata, and custom domain. Record the result in `DEVELOPMENT_LOG.md`.
 
 If GitHub Actions fails or the live site does not match the deployed commit, stop, report the exact failure, and fix or revert through a new focused commit. Never bypass the test job, deploy a locally modified `dist/`, force-push production history, or claim deployment success without checking both the workflow and live site.
+
+## GitHub Workflow
+
+- All open work, for both Web and iOS, is tracked only in GitHub Issues. Label each issue `priority:P0` (required for the next release), `priority:P1` (quality improvement), or `priority:P2` (future candidate); add `platform:ios` for iOS work and `needs-device` when completion requires a real device, Apple signing, or TestFlight. P0 iOS issues belong to the `iOS 1.0` milestone.
+- Before starting an issue, read its body for the current state and completion conditions. When newly required work is discovered, open an issue for it. A `needs-device` issue is not complete on Simulator results alone; follow `ios/docs/REAL_DEVICE_RELEASE_CHECKLIST.md`.
+- Close issues from the pull request that completes them by writing `Closes #<number>` in its body, and record the verification in `DEVELOPMENT_LOG.md`. Do not close a partially completed issue; state what remains in an issue comment instead.
+- Dependabot (`.github/dependabot.yml`) opens grouped npm and GitHub Actions update PRs weekly. Treat them like any other dependency change: review the changelog and require the full CI to pass before merging.
+- Label pull requests `enhancement`, `bug`, `documentation`, or `dependencies` so that generated release notes (`.github/release.yml`) are categorized.
 
 ## Coding Style & Naming Conventions
 

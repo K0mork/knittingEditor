@@ -162,7 +162,7 @@ SwiftDataへの移行は初回リリース後の選択肢とします。初回�
 
 ## 10. 現在の実装状況
 
-ローカルWebView、共通編集基盤、永続保存、scene phase、Files、UTType、共有、PNG/PDF、`.knit`、iPhone／iPad UI、自動テスト、unsigned Release Archive、プライバシー文書は実装済みです。未完了の実機検証、署名、TestFlight、App Store提出準備は`TODO.md`と`docs/REAL_DEVICE_RELEASE_CHECKLIST.md`で管理します。
+ローカルWebView、共通編集基盤、永続保存、scene phase、Files、UTType、共有、PNG/PDF、`.knit`、iPhone／iPad UI、自動テスト、unsigned Release Archive、プライバシー文書は実装済みです。未完了の実機検証、署名、TestFlight、App Store提出準備はマイルストーン[iOS 1.0](https://github.com/K0mork/knittingEditor/milestone/1)のIssueで管理し、実機での手順と証跡は`docs/REAL_DEVICE_RELEASE_CHECKLIST.md`に従います。
 
 ## 11. リリース判定
 
