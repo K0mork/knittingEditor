@@ -1,5 +1,13 @@
 # Development Log
 
+## 2026-10-01 — Web専用の変更でもPagesへ配信されるようにする
+
+- 影響: `main`へのpushでWebだけが変わり、iOS系ジョブ（`ios_web`・`ios`・`app_update`・`release_archive`）がskipされると、`deploy`も実行されずPagesへ配信されていなかった。`deploy`はこれらのジョブを`ci-gate`経由で間接的に待っており、`if`に状態関数が無いと暗黙の`success()`が付くため、skipされた依存元があると`deploy`もskipされる。PR #12（OGP画像）とPR #39（アイコン）のマージ時のrunで`deploy`がskipされていたことを確認した（#12は後続の#14の配信で反映された）。`deploy`の`if`に`!cancelled()`を加え、`needs.web.result == 'success'`も条件にした。`ci-gate`の成功を必須とする条件と、PRでは配信しない条件は変えていない。
+- 主なファイル: `.github/workflows/ci.yml`
+- テスト: ワークフロー定義の変更のため、アプリのテストは追加していない。
+- 検証: `ruby -ryaml`で`.github/workflows/ci.yml`を読み込めることを確認した。`.github/workflows/`の変更はWeb・iOSの全ジョブを起動するので、このPRのCIで全ジョブを検証する（PRでは`deploy`は実行されない）。
+- デプロイ影響: マージ時のrunは全ジョブを実行して配信する。マージ後、次のWeb専用の変更で`deploy`が実行され、本番に反映されることを確認する。
+
 ## 2026-10-01 — Web版のアイコンをiOS版のアプリアイコンに揃える
 
 - 影響: Web版のfavicon（緑の角丸に方眼と×のSVG）がiOS版のアプリアイコン（深緑の地に交差した棒針、白い編み目、橙の毛糸）と違っていたため、Web版をアプリアイコンに揃えた。ブラウザのタブ・ブックマーク用に`favicon.ico`（16・32・48px）と`icon-192.png`、iPhone・iPadのホーム画面に追加したとき用に`apple-touch-icon.png`（180px）を置き、トップと`/guide/`の両ページで参照する。`favicon.svg`は削除した。iOS版のアプリアイコンとアプリ内ページは変えていない。

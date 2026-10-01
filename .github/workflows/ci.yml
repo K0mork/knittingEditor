@@ -257,7 +257,9 @@ jobs:
           fi
 
   deploy:
-    if: github.event_name != 'pull_request' && needs.changes.outputs.web == 'true' && needs.ci-gate.result == 'success'
+    # `!cancelled()`が無いと、Web専用の変更でiOS系ジョブがskipされたとき、それらを経由して
+    # ci-gateに依存するこのジョブも暗黙の`success()`でskipされ、Pagesへ配信されない。
+    if: ${{ !cancelled() && github.event_name != 'pull_request' && needs.changes.outputs.web == 'true' && needs.ci-gate.result == 'success' && needs.web.result == 'success' }}
     needs: [changes, ci-gate, web]
     runs-on: ubuntu-latest
     permissions:
