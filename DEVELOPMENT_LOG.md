@@ -1,5 +1,13 @@
 # Development Log
 
+## 2026-10-01 — PR #42のマージと公開確認
+
+- 影響: PR #42（iOS UIテストの自動保存待ちとCIのSimulator事前起動）をレビューしてmainへマージした（マージコミット`1497867`）。マージ前に、#42の開発ログで「変更:」の後半（CIのSimulator事前起動とスクリプトの端末選択の説明）が「レビュー対応の検証で見つかった問題:」の末尾へ入り込んでいたのを戻し、`4ca92e5`のCI結果を追記した（`0e4dff9`）。
+- PRのCI: `0e4dff9`の run [`36854593545`](https://github.com/K0mork/knittingEditor/actions/runs/36854593545)（attempt 1）で全ジョブと`ci-gate`が成功した。`ios (iPad (10th generation))`では`testTwoFingerGestureDoesNotDrawOnBoard`が1回目に失敗し、再試行（`Iteration 2 of 2`）で成功した。起動直後に「編み図」をタップしても文書パネルが開かず、`createDocument`が「新しい編み図」を45秒待って見つからなかった。各操作は0.1秒前後で終わっており遅延ではない。`createDocument`は#42で変えていないため、マージを止める理由にはしなかった。この件と、`4ca92e5`の run [`36852519498`](https://github.com/K0mork/knittingEditor/actions/runs/36852519498)で出た`testAccessibilityExtraExtraExtraLargeKeepsPrimaryFlowsUsable`の再試行は、[#44](https://github.com/K0mork/knittingEditor/issues/44)へ記録した。
+- マージ時のCI: run [`36856199816`](https://github.com/K0mork/knittingEditor/actions/runs/36856199816)でWeb・iOSの全ジョブ、`ci-gate`、`deploy`が成功した。`ios`（iPhone 16・iPad (10th generation)）と`app_update`（両端末）のログに、テストの再試行・実行時間上限の超過・テストランナーの再起動・失敗はいずれも無かった。#44の観察（マージ後の10回）の1回目にあたる。
+- 公開確認: 配信後、`curl`で`https://knittingeditor.com/`の`/`・`/guide/`（`text/html`）、`/favicon.ico`、`/icon-192.png`・`/apple-touch-icon.png`（`image/png`）、`/CNAME`（`knittingeditor.com`）がHTTPS 200で返ることを確認した。#42はアプリとWeb資産の内容を変えていないため、画面操作の確認は行っていない。
+- デプロイ影響: この記録自体はなし（Markdownのみの変更のため、CIはWeb・iOSのジョブと`deploy`をskipする）。
+
 ## 2026-10-01 — iOS UIテストの自動保存待ちを直し、CIのSimulatorを先に起動する
 
 - 症状: iOSコードを変えていないPR #40（run [36835157063](https://github.com/K0mork/knittingEditor/actions/runs/36835157063)）と#41（run [36837580472](https://github.com/K0mork/knittingEditor/actions/runs/36837580472)）の`ios (iPhone 16)`が1回目に失敗し、失敗ジョブの再実行では成功した。どちらも最初に`testDocumentSwitchAutosavesEachDocument`が1テストの実行時間上限（150秒→3分に切り上げ）を超え、テストランナーが再起動された。タイムアウトは`-retry-tests-on-failure`の再試行対象にならない。#41では続く`testEditAndRelaunchRestoresLocalDocument`も、再起動後の盤面（`記号1個`）を10秒待って1回目に失敗した。#40の`app_update (iPad)`は`testSeedDocumentForAppUpdateProbe`が起動に34秒かかり、要素検索1回に最大30秒かかって上限を超えた。
