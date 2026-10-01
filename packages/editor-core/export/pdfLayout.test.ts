@@ -38,4 +38,15 @@ describe('PDF page layout', () => {
     expect(layout.tiles).toEqual([{ row: 0, col: 0, rows: 40, cols: 30 }]);
     expect(layout.cellSize).toBeCloseTo(Math.min(layout.availableWidth / 30, layout.availableHeight / 40), 6);
   });
+
+  it.each(cases)('keeps the grid and its row and column numbers inside the page margins ($rows×$cols $options.layout $options.orientation $options.cellMillimeters mm)', ({ rows, cols, options }) => {
+    const layout = pdfPageLayout(rows, cols, options);
+    expect(layout.rowLabelWidth).toBeGreaterThan(0);
+    expect(layout.colLabelHeight).toBeGreaterThan(0);
+    for (const tile of layout.tiles) {
+      expect(tile.cols * layout.cellSize + layout.rowLabelWidth * 2).toBeLessThanOrEqual(layout.pageWidth - layout.margin * 2 + 1e-6);
+      expect(tile.rows * layout.cellSize + layout.colLabelHeight * 2 + layout.footer).toBeLessThanOrEqual(layout.pageHeight - layout.margin * 2 + 1e-6);
+    }
+  });
 });
+

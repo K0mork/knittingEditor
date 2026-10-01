@@ -1,6 +1,7 @@
 import type { Board } from '../model/Board';
 import { drawCell } from '../stitches/drawCell';
 import type { PdfLayoutOptions } from './pdfLayout';
+import { labelStride, showsLabel } from './labels';
 
 const PNG_MAX_SIDE = 16_384;
 const PNG_MAX_PIXELS = 64_000_000;
@@ -23,9 +24,39 @@ export function defaultPngCellSize(board: Board, preferred: number = PNG_PREFERR
   return PNG_CELL_SIZE_RANGE.min;
 }
 
+/** 数字1文字の幅の見積もり（em）。描く前に帯の幅を決めるため、system-uiの数字より少し広めに取る。 */
+const PNG_DIGIT_WIDTH = 0.62;
+const PNG_LABEL_GAP = 3;
+
+export interface PngLabelLayout {
+  fontSize: number;
+  /** 左右の段番号の帯の幅と、上下の目番号の帯の高さ（px）。 */
+  rowLabelWidth: number;
+  colLabelHeight: number;
+  rowStride: number;
+  colStride: number;
+}
+
+/**
+ * 段・目番号の帯と間引き。帯は1セル分を基本にし、セルが小さくて番号が入らないときは番号の大きさまで広げる。
+ * 隣の番号と重なるときは5・10などの倍数だけを書く。
+ */
+export function pngLabelLayout(board: Board, cellSize: number): PngLabelLayout {
+  const fontSize = Math.max(8, cellSize * 0.34);
+  const digitWidth = PNG_DIGIT_WIDTH * fontSize;
+  return {
+    fontSize,
+    rowLabelWidth: Math.max(cellSize, Math.ceil(String(board.rows).length * digitWidth + PNG_LABEL_GAP * 2)),
+    colLabelHeight: Math.max(cellSize, Math.ceil(fontSize + PNG_LABEL_GAP * 2)),
+    rowStride: labelStride(cellSize, fontSize, PNG_LABEL_GAP),
+    colStride: labelStride(cellSize, String(board.cols).length * digitWidth, PNG_LABEL_GAP),
+  };
+}
+
 export function validatePngSize(board: Board, cellSize: number): { width: number; height: number; valid: boolean; reason?: string } {
-  const width = (board.cols + 2) * cellSize;
-  const height = (board.rows + 2) * cellSize;
+  const { rowLabelWidth, colLabelHeight } = pngLabelLayout(board, cellSize);
+  const width = board.cols * cellSize + rowLabelWidth * 2;
+  const height = board.rows * cellSize + colLabelHeight * 2;
   if (width > PNG_MAX_SIDE || height > PNG_MAX_SIDE) return { width, height, valid: false, reason: `一辺が安全上限${PNG_MAX_SIDE}pxを超えます` };
   if (width * height > PNG_MAX_PIXELS) return { width, height, valid: false, reason: '画像のメモリ使用量が安全上限を超えます' };
   return { width, height, valid: true };
@@ -41,38 +72,48 @@ export async function renderPng(board: Board, cellSize: number): Promise<Blob> {
   if (!context) throw new Error('Canvasを利用できません');
   context.fillStyle = '#fff';
   context.fillRect(0, 0, canvas.width, canvas.height);
-  context.font = `${Math.max(8, cellSize * 0.34)}px system-ui`;
+  const labels = pngLabelLayout(board, cellSize);
+  // 盤面の左上。四辺の番号の帯の内側に盤面を置く。
+  const left = labels.rowLabelWidth;
+  const top = labels.colLabelHeight;
+  const right = left + board.cols * cellSize;
+  const bottom = top + board.rows * cellSize;
+  context.font = `${labels.fontSize}px system-ui`;
   context.textAlign = 'center';
   context.textBaseline = 'middle';
   context.fillStyle = '#555';
   for (let col = 0; col < board.cols; col++) {
-    const label = String(board.cols - col);
-    context.fillText(label, (col + 1.5) * cellSize, cellSize / 2);
-    context.fillText(label, (col + 1.5) * cellSize, (board.rows + 1.5) * cellSize);
+    const number = board.cols - col;
+    if (!showsLabel(number, labels.colStride)) continue;
+    const x = left + (col + 0.5) * cellSize;
+    context.fillText(String(number), x, top / 2);
+    context.fillText(String(number), x, bottom + top / 2);
   }
   for (let row = 0; row < board.rows; row++) {
-    const label = String(board.rows - row);
-    context.fillText(label, cellSize / 2, (row + 1.5) * cellSize);
-    context.fillText(label, (board.cols + 1.5) * cellSize, (row + 1.5) * cellSize);
+    const number = board.rows - row;
+    if (!showsLabel(number, labels.rowStride)) continue;
+    const y = top + (row + 0.5) * cellSize;
+    context.fillText(String(number), left / 2, y);
+    context.fillText(String(number), right + left / 2, y);
   }
   for (let row = 0; row < board.rows; row++) {
     context.fillStyle = row % 2 === 0 ? '#f3f4f0' : '#fff';
-    context.fillRect(cellSize, (row + 1) * cellSize, board.cols * cellSize, cellSize);
+    context.fillRect(left, top + row * cellSize, board.cols * cellSize, cellSize);
   }
   context.beginPath();
   for (let row = 0; row <= board.rows; row++) {
-    const y = (row + 1) * cellSize + 0.5;
-    context.moveTo(cellSize, y); context.lineTo((board.cols + 1) * cellSize, y);
+    const y = top + row * cellSize + 0.5;
+    context.moveTo(left, y); context.lineTo(right, y);
   }
   for (let col = 0; col <= board.cols; col++) {
-    const x = (col + 1) * cellSize + 0.5;
-    context.moveTo(x, cellSize); context.lineTo(x, (board.rows + 1) * cellSize);
+    const x = left + col * cellSize + 0.5;
+    context.moveTo(x, top); context.lineTo(x, bottom);
   }
   context.strokeStyle = '#bbb'; context.stroke();
   for (let row = 0; row < board.rows; row++) {
     for (let col = 0; col < board.cols; col++) {
       const value = board.valueAt(row, col);
-      if (value) drawCell(context, value, (col + 1) * cellSize, (row + 1) * cellSize, cellSize);
+      if (value) drawCell(context, value, left + col * cellSize, top + row * cellSize, cellSize);
     }
   }
   return new Promise((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('PNG生成に失敗しました')), 'image/png'));

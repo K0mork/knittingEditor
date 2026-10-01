@@ -1,8 +1,10 @@
+import { useMemo } from 'react';
 import { listBlocks } from '@knitting-editor/editor-core/storage/database';
 import { EditorView } from '@knitting-editor/editor-core/ui/EditorView';
 import { useEditorController } from '@knitting-editor/editor-core/ui/useEditorController';
 import { webAnalytics } from './analytics';
-import { webPlatform } from './platform';
+import { createWebPlatform } from './platform';
+import { useShareOffer } from './ShareFileDialog';
 import { initializeStorage } from './storage/database';
 
 // Web版はブラウザ標準のダイアログをそのまま使う。iOS版はWKWebViewでの見た目と
@@ -16,7 +18,9 @@ async function initialize() {
 }
 
 export default function App() {
-  const editor = useEditorController({ initialize, platform: webPlatform, analytics: webAnalytics, askText, askConfirm });
+  const { offerShare, dialog: shareDialog } = useShareOffer();
+  const platform = useMemo(() => createWebPlatform(offerShare), [offerShare]);
+  const editor = useEditorController({ initialize, platform, analytics: webAnalytics, askText, askConfirm });
 
   return <EditorView
     editor={editor}
@@ -29,5 +33,5 @@ export default function App() {
     </div>}
     backupNote="端末内データはブラウザ操作で消える場合があります。定期的に保存してください。"
     footer={<footer><span>© 2026 棒針編み図エディタ</span><a href="https://policies.google.com/privacy?hl=ja" target="_blank" rel="noreferrer">プライバシー</a></footer>}
-  />;
+  >{shareDialog}</EditorView>;
 }

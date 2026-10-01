@@ -159,6 +159,10 @@ test('selects and stores the purl right-leaning two-stitch decrease', async ({ p
 });
 
 test('creates a block and exports backup and PDF', async ({ page }) => {
+  // iPhone相当の設定では共有シートへ渡す（別のテストで確かめる）。ここではダウンロードした`.knit`で往復を確かめる。
+  await page.addInitScript(() => Object.defineProperty(Navigator.prototype, 'canShare', { value: undefined, configurable: true }));
+  await page.reload();
+  await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
   await page.getByRole('button', { name: '範囲' }).click();
   const canvas = page.getByLabel('編み図編集盤面');
   const box = await canvas.boundingBox();
@@ -189,6 +193,45 @@ test('creates a block and exports backup and PDF', async ({ page }) => {
   const pdfDownload = page.waitForEvent('download');
   await page.getByRole('button', { name: 'PDFを保存' }).click();
   expect((await pdfDownload).suggestedFilename()).toMatch(/\.pdf$/);
+});
+
+test('hands PNG and PDF to the share sheet on iPhone Safari without leaving the editor', async ({ page }, testInfo) => {
+  // iOSのSafariは<a download>のPDFで編集中のタブを置き換えるため、共有シートで渡す。
+  // Playwrightのブラウザには共有APIが無いので、iPhone相当の設定で差し替えて確かめる。
+  test.skip(testInfo.project.name !== 'webkit-mobile', 'iPhone Safariだけの保存導線');
+  await page.addInitScript(() => {
+    const shared: Array<Array<[string, string]>> = [];
+    Object.assign(window, { sharedFiles: shared });
+    Object.assign(navigator, {
+      canShare: (data: ShareData) => (data.files?.length ?? 0) > 0,
+      share: async (data: ShareData) => { shared.push((data.files ?? []).map((file) => [file.name, file.type])); },
+    });
+  });
+  await page.reload();
+  await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
+  const editorUrl = page.url();
+  const sharedFiles = () => page.evaluate(() => (window as unknown as { sharedFiles: Array<Array<[string, string]>> }).sharedFiles);
+
+  await page.getByRole('button', { name: '保存' }).click();
+  await page.getByRole('button', { name: 'PNGを保存' }).click();
+  const dialog = page.getByRole('dialog', { name: '「新しい編み図.png」の準備ができました' });
+  await expect(dialog).toBeVisible();
+  expect(await sharedFiles()).toEqual([]);
+  await dialog.getByRole('button', { name: '共有・保存' }).click();
+  await expect(dialog).toBeHidden();
+  expect(await sharedFiles()).toEqual([[['新しい編み図.png', 'image/png']]]);
+
+  await page.getByRole('button', { name: 'PDFを保存' }).click();
+  await page.getByRole('dialog', { name: '「新しい編み図.pdf」の準備ができました' }).getByRole('button', { name: '共有・保存' }).click();
+  await expect.poll(sharedFiles).toEqual([[['新しい編み図.png', 'image/png']], [['新しい編み図.pdf', 'application/pdf']]]);
+
+  // 閉じるだけなら共有しない。どの操作でも編集画面のまま残る。
+  await page.getByRole('button', { name: 'PDFを保存' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: '閉じる' }).click();
+  await expect(page.getByRole('dialog')).toBeHidden();
+  expect(await sharedFiles()).toHaveLength(2);
+  expect(page.url()).toBe(editorUrl);
+  await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
 });
 
 test('copies and repeatedly pastes a selection without saving a block', async ({ page }) => {

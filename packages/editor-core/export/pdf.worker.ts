@@ -3,8 +3,9 @@ import { Zlib, strToU8, zlibSync } from 'fflate';
 import { STITCH_BY_ID, STITCHES } from '../stitches/catalog';
 import { GLYPH_CELL, glyphPdfCommands } from '../stitches/glyphs';
 import { cellColor, cellStitchId } from '../model/Board';
-import { pdfPageLayout, type PdfLayoutOptions } from './pdfLayout';
+import { PDF_LABEL_FONT_SIZE, PDF_LABEL_GAP, pdfLabelWidth, pdfPageLayout, type PdfLayoutOptions, type PdfTile } from './pdfLayout';
 import { errorMessage } from '../util/errors';
+import { labelStride, showsLabel } from './labels';
 
 export interface PdfRequest extends PdfLayoutOptions {
   rows: number;
@@ -43,9 +44,42 @@ function compressChunks(chunks: Iterable<string>): Uint8Array {
 
 function escapePdfText(value: string): string { return value.replaceAll('\\', '\\\\').replaceAll('(', '\\(').replaceAll(')', '\\)'); }
 
+/** 数字の高さの目安（em）。番号を帯の中で上下中央へ置くのに使う。 */
+const DIGIT_HEIGHT = 0.72;
+
+const labelText = (value: number, x: number, y: number) => `BT /F1 ${PDF_LABEL_FONT_SIZE} Tf ${x.toFixed(3)} ${y.toFixed(3)} Td (${value}) Tj ET\n`;
+
+/**
+ * PNGと同じく、盤面の上下に目番号、左右に段番号を書く。どちらも右下が1。
+ * 分割したページでは、そのページに入る段・目の番号を書く。
+ */
+function tileLabels(tile: PdfTile, request: PdfRequest, originX: number, originY: number, cellSize: number): string {
+  const fontSize = PDF_LABEL_FONT_SIZE;
+  const colStride = labelStride(cellSize, pdfLabelWidth(String(request.cols).length), PDF_LABEL_GAP);
+  const rowStride = labelStride(cellSize, fontSize, PDF_LABEL_GAP);
+  const top = originY + tile.rows * cellSize + PDF_LABEL_GAP;
+  const bottom = originY - PDF_LABEL_GAP - fontSize * DIGIT_HEIGHT;
+  const right = originX + tile.cols * cellSize + PDF_LABEL_GAP;
+  let commands = '0.33 g ';
+  for (let localCol = 0; localCol < tile.cols; localCol++) {
+    const number = request.cols - (tile.col + localCol);
+    if (!showsLabel(number, colStride)) continue;
+    const x = originX + (localCol + 0.5) * cellSize - pdfLabelWidth(String(number).length) / 2;
+    commands += labelText(number, x, top) + labelText(number, x, bottom);
+  }
+  for (let localRow = 0; localRow < tile.rows; localRow++) {
+    const number = request.rows - (tile.row + localRow);
+    if (!showsLabel(number, rowStride)) continue;
+    const y = originY + (tile.rows - localRow - 0.5) * cellSize - fontSize * DIGIT_HEIGHT / 2;
+    const left = originX - PDF_LABEL_GAP - pdfLabelWidth(String(number).length);
+    commands += labelText(number, left, y) + labelText(number, right, y);
+  }
+  return commands;
+}
+
 export function buildPdf(request: PdfRequest): Uint8Array {
   const cells = new Uint32Array(request.cells);
-  const { pageWidth, pageHeight, margin, cellSize, tiles } = pdfPageLayout(request.rows, request.cols, request);
+  const { pageWidth, pageHeight, margin, rowLabelWidth, colLabelHeight, cellSize, tiles } = pdfPageLayout(request.rows, request.cols, request);
 
   const objects: PdfObject[] = [];
   objects.push(ascii('<< /Type /Catalog /Pages 2 0 R >>'));
@@ -65,8 +99,8 @@ export function buildPdf(request: PdfRequest): Uint8Array {
   const xObjectResources = [...formRefs].map(([id, ref]) => `/S${id} ${ref} 0 R`).join(' ');
   const pageRefs: number[] = [];
   tiles.forEach((tile, pageIndex) => {
-    const originX = margin;
-    const originY = pageHeight - margin - tile.rows * cellSize;
+    const originX = margin + rowLabelWidth;
+    const originY = pageHeight - margin - colLabelHeight - tile.rows * cellSize;
     function* pageCommands(): Generator<string> {
       let grid = '0.35 w 0.78 G ';
       for (let row = 0; row <= tile.rows; row++) {
@@ -78,6 +112,7 @@ export function buildPdf(request: PdfRequest): Uint8Array {
         grid += `${x} ${originY.toFixed(3)} m ${x} ${(originY + tile.rows * cellSize).toFixed(3)} l `;
       }
       yield `${grid}S\n`;
+      yield tileLabels(tile, request, originX, originY, cellSize);
       for (let localRow = 0; localRow < tile.rows; localRow++) {
         let rowCommands = '';
         const boardRow = tile.row + localRow;
