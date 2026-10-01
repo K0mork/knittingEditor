@@ -1,5 +1,14 @@
 # Development Log
 
+## 2026-10-01 — Web版のアイコンをiOS版のアプリアイコンに揃える
+
+- 影響: Web版のfavicon（緑の角丸に方眼と×のSVG）がiOS版のアプリアイコン（深緑の地に交差した棒針、白い編み目、橙の毛糸）と違っていたため、Web版をアプリアイコンに揃えた。ブラウザのタブ・ブックマーク用に`favicon.ico`（16・32・48px）と`icon-192.png`、iPhone・iPadのホーム画面に追加したとき用に`apple-touch-icon.png`（180px）を置き、トップと`/guide/`の両ページで参照する。`favicon.svg`は削除した。iOS版のアプリアイコンとアプリ内ページは変えていない。
+- 画像の生成: `scripts/generate-web-icons.mjs`が`ios/App/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png`を`sips`で縮小し、ICOはPNGを格納する形式で組み立てる。macOS専用のためCIでは生成せず、出力をコミットする。同じ入力から2回生成し、SHA-1が一致することを確認した。アプリアイコンを差し替えたときは`node scripts/generate-web-icons.mjs`を再実行する。16pxでは細部が潰れるが、図柄は判別できることを拡大して目視確認した。
+- 主なファイル: `public/favicon.ico`、`public/icon-192.png`、`public/apple-touch-icon.png`、`scripts/generate-web-icons.mjs`、`index.html`、`public/guide/index.html`、`scripts/check-dist.mjs`、`tests/e2e/seo.spec.ts`
+- テスト: `seo.spec.ts`で両ページのアイコンリンク（`favicon.ico`、`icon-192.png`、`apple-touch-icon.png`）と、各ファイルがICO（3画像）・192×192／180×180のPNGで返ることを検査する。`check-dist`は3ファイルの存在・形式・寸法と、配信HTML 2ページのアイコンリンクを検査する。
+- 検証: Node.js 24.21.0で`npm run typecheck`、`npm test`（18ファイル・107件）、`npm run build`、`npm run check:dist`（`dist/CNAME`は`knittingeditor.com`、`dist/`に3ファイルがあり`favicon.svg`が無いことを確認）、`npm run test:e2e`（Chromium mobile・WebKit mobile・Chromium desktop、79件成功・iPhone専用テストの2件skip）が成功。`packages/`とiOSのソースは変えていないため、iOSのSimulator・Archive検証は実行していない。
+- デプロイ影響: `main`へのマージ後にPagesへ配信される。配信後に`https://knittingeditor.com/favicon.ico`・`/icon-192.png`・`/apple-touch-icon.png`がHTTPS 200で返り、ブラウザのタブに新しいアイコンが出ることを確認する。ブラウザと検索結果はfaviconを長くキャッシュするため、古いアイコンがしばらく残りうる。
+
 ## 2026-10-01 — GitHubの依存更新・コードスキャン・ブランチ保護を有効化し、作業管理をIssueへ移行
 
 - 影響: アプリの動作は変えていない。GitHub側で、Dependabotアラートとセキュリティ更新、CodeQLのdefault setup（Actions・JavaScript/TypeScript）を有効にし、説明・ホームページ（`https://knittingeditor.com`）・Topicsの設定、マージ後のブランチ自動削除、未使用Wikiの無効化を行った。未完了の作業をIssueだけで管理するため、`ios/TODO.md`の未完了19項目をIssue #17〜#35へ、PR #13で追加したPro実装の項目をIssue #38へ移し、各Issueの本文に現状とマイルストーンの完了条件を書いた。Issueにはラベル`priority:P0`／`P1`／`P2`・`platform:ios`・`needs-device`とマイルストーン`iOS 1.0`（P0のみ）を付け、Projects「knittingEditor ロードマップ」（Kanban、公開範囲は非公開）へ入れた。Projectsでは、新しく開かれたIssueを自動で追加する設定も有効にした。`main`にルールセット「Protect main (production)」（id 24295437）を作成した。内容は、PR経由のマージ必須（承認数0）、`ci-gate`の成功必須（ブランチ最新化は求めない）、force push・削除の禁止、Copilotの自動レビュー。バイパスできるアクターはいないため、管理者を含めて`main`へ直接pushできない。`gh api repos/K0mork/knittingEditor/rules/branches/main`で5つのルールが適用されていることを確認した。
