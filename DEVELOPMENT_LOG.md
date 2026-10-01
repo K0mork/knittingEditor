@@ -1,5 +1,14 @@
 # Development Log
 
+## 2026-10-01 — SNS共有用のOGP画像を追加
+
+- 影響: トップページと`/guide/`のURLをX・LINE・Facebook・Slack・iMessageなどで共有したとき、文字だけの小さなカードではなく1200×630の画像付きカードが出るようにした。画像は縮小表示でも読めるよう「棒針の／編み図」を大きく置き、下の帯に「無料・登録不要」、右にエディタと同じ表目・かけ目・ねじり目の記号を並べた。両ページに`og:image`（型・幅・高さ・alt）と`og:site_name`を加え、`twitter:card`を`summary_large_image`にした。`/guide/`にはOGPが無かったため、`og:title`・`og:description`・`og:type`（`article`）・`og:url`・`og:locale`も追加した。検索順位への直接の影響はない。
+- 画像の生成: `scripts/generate-og-image.mjs`が`packages/editor-core`の記号SVGを読み、PlaywrightのChromiumで描いて`public/og-image.png`（67,369バイト）へ書き出す。和文はヒラギノ角ゴシックに依存し、Linux CIでは同じ画像にならないため、CIでは生成せずPNGをコミットする。macOS以外では実行を止める。同じ入力から2回生成し、SHA-1が一致することを確認した。npmスクリプトにすると`package.json`の変更でiOSのジョブまで起動するため、`node scripts/generate-og-image.mjs`で直接実行する。
+- 主なファイル: `public/og-image.png`、`scripts/generate-og-image.mjs`、`index.html`、`public/guide/index.html`、`scripts/check-dist.mjs`、`tests/e2e/seo.spec.ts`。iOS版の同梱ページは共有されないため変更していない。
+- テスト: `seo.spec.ts`で両ページの画像メタデータと`summary_large_image`、`/guide/`のOGP、`/og-image.png`が`image/png`で返りPNGのIHDRが1200×630であることを検査する。`check-dist`は`dist/og-image.png`の存在・PNGシグネチャ・寸法と、配信HTML 2ページの`og:image`を検査する。
+- 検証: `npm run typecheck`、`npm test`（15ファイル・84件）、`npm run build`、`npm run check:dist`（`dist/CNAME`は`knittingeditor.com`、`dist/og-image.png`と両ページの`og:image`を確認）、`npm run test:e2e`（Chromium mobile・WebKit mobile・Chromium desktop、75件）が成功。画面の表示は変えていないため、ビューポート別の目視確認は画像そのもの（幅400・200・120pxへの縮小を含む）に限った。
+- デプロイ影響: `main`へのマージ後にPagesへ配信される。配信後に`https://knittingeditor.com/og-image.png`がHTTPS 200で返ること、トップと`/guide/`の配信HTMLに`og:image`があることを確認する。SNS側はカードをキャッシュするため、既に共有済みのURLは各サービスの再取得（FacebookのシェアデバッガーやXの再投稿など）まで古い表示が残りうる。
+
 ## 2026-09-23 — 盤面の編集を元に戻す・やり直す
 
 - 影響: Web版とiOS版の編集画面に「元に戻す」「やり直す」を追加した。対象は記号の入力・消去、貼り付け、段・列の追加・削除・挿入・寸法変更、全消去。1回のなぞり入力は指を離した時点で1回分にまとめる。操作メニュー（狭い画面では下端、760px以上では右列）のボタンと、Ctrl/Cmd+Z（元に戻す）、Ctrl/Cmd+Shift+Z・Ctrl+Y（やり直す）で操作でき、入力欄の中のショートカットは入力欄自身に任せる。戻した結果は通常の編集と同じく自動保存される。履歴は開いている編み図ごとにメモリ上だけで持ち、編み図の切り替え・新規作成・削除・復元・再読み込みで捨てる。
