@@ -1,5 +1,13 @@
 # Development Log
 
+## 2026-10-01 — 配信後に本番サイトを自動で確認する`smoke`ジョブを追加
+
+- 影響: アプリとWeb資産の内容は変えていない。これまで手で`curl`していた配信後の確認を、`CI and deploy Pages`の`deploy`の後に走る`smoke`ジョブへ移した。`smoke`は配信したPages成果物を取り出し、`https://knittingeditor.com/`の`/`と`/guide/`がそのHTMLと一致するまで最大10回（30秒間隔）待つ。CDNのキャッシュを避けるため毎回異なるクエリを付ける。一致したら、`/`が参照する`/assets/`の全ファイル、アイコン3種、OGP画像、`robots.txt`、`sitemap.xml`が期待するcontent-typeで200を返すこと、`/CNAME`が`knittingeditor.com`であること、`http://`が`https://knittingeditor.com/`へ転送されることを確認する。どれかが失敗するとワークフローが失敗する。
+- 主なファイル: `scripts/check-live-site.mjs`（新規）、`.github/workflows/ci.yml`（`smoke`ジョブ）、`package.json`（`check:live`）、`AGENTS.md`（Deployment Procedureの手順5・6）、`README.md`（配布）
+- テスト: スクリプトを本番に対して手元で実行した。引数なしと、今の`main`から作った`dist`を`--dist`で渡した場合はどちらも成功した。`guide/index.html`だけを書き換えた`dist`では、2回とも不一致を報告して終了コード1になった。`--origin http://…`はHTTPSでないため即座にエラーになった。`smoke`ジョブ自体は`main`へのpushでしか動かないため、PRのCIでは実行されない。
+- 検証: `npm run typecheck`、`npm test`（107件）、`npm run build`、`npm run check:dist`（`dist/CNAME`は`knittingeditor.com`）、`npm run test:e2e`（79件成功・2件skip）が成功した。ローカルにNode.js 24が無く、Node.js 26.8.1で実行した。`ruby -ryaml`で`ci.yml`を読み込めることを確認した。`actionlint`は手元に無く、実行していない。
+- デプロイ影響: `.github/workflows/*`の変更でWeb・iOSの全ジョブが走り、同じ内容のPagesが再配信される。マージ時のrunが`smoke`の初回実行になるので、`smoke`が成功したことを確認する。
+
 ## 2026-10-01 — マージ後の結果を記録するためだけのPRをやめ、DependabotのPRへの記録を不要にする
 
 - 影響: アプリの動作は変えていない。PR #43で決めた「マージ後にしか得られない結果は続きのPRで記録する」規則は、マージのたびに記録用のPRが増え、GitHub Actionsと`github-pages`環境が既に持つ実行結果を手で写すだけになっていたため廃止した。開発ログには変えた内容とマージ前の検証だけを書き、人が行ったマージ後の確認はマージしたPRへのコメントで残す。依存の更新だけのDependabotのPRは記録不要とし（`dependencies`ラベルでリリースノートに載る）、Dependabotのrebaseが止まるためそのブランチへコミットを足さない。
