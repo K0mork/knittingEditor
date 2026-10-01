@@ -21,7 +21,7 @@ Web版「棒針編み図エディタ」を、インターネット接続なし�
 
 - [DEVELOPMENT.md](DEVELOPMENT.md): 開発方針、構成、工程、検証方法
 - [SPECIFICATION.md](SPECIFICATION.md): 機能仕様、データ互換、非機能要件
-- [TODO.md](TODO.md): 実装順序と完了条件
+- [GitHub Issues](https://github.com/K0mork/knittingEditor/issues): 未完了の作業と完了条件（初回リリース分はマイルストーン[iOS 1.0](https://github.com/K0mork/knittingEditor/milestone/1)）
 - [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md): 統合前の変更と検証記録（凍結アーカイブ）
 - [AGENTS.md](AGENTS.md): このリポジトリで作業する開発者・エージェント向けの必須規則
 
@@ -35,4 +35,4 @@ Web版「棒針編み図エディタ」を、インターネット接続なし�
 - 対象OSの下限: iOS 17.0以上
 - App Store Connect設定: 未作成
 
-Web編集画面、Files・共有シート、`.knit`入出力のネイティブ連携は実装済みです。実機で確認済みの範囲と残作業は[`TODO.md`](TODO.md)および[`docs/REAL_DEVICE_RELEASE_CHECKLIST.md`](docs/REAL_DEVICE_RELEASE_CHECKLIST.md)を正とします。
+Web編集画面、Files・共有シート、`.knit`入出力のネイティブ連携は実装済みです。残作業はマイルストーン[iOS 1.0](https://github.com/K0mork/knittingEditor/milestone/1)のIssue、実機で確認済みの範囲は[`docs/REAL_DEVICE_RELEASE_CHECKLIST.md`](docs/REAL_DEVICE_RELEASE_CHECKLIST.md)を正とします。

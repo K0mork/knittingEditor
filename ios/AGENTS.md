@@ -74,12 +74,13 @@ ios/docs/            additional app design and release records
 
 実際に実行していないテストを成功と記録してはいけません。
 
-## TODO Maintenance
+## Issue Management
 
-- 作業開始時に`TODO.md`の対象項目と完了条件を確認する。
-- 完了した項目だけをチェックし、部分完了を完了扱いにしない。
-- 新しい必須作業が判明した場合は、実装と同じコミットでTODOへ追加する。
-- 仕様変更時は`DEVELOPMENT.md`、`SPECIFICATION.md`、`TODO.md`の不整合を残さない。
+- 未完了の作業はすべて[GitHub Issues](https://github.com/K0mork/knittingEditor/issues)で管理する。初回リリースに必要な項目はマイルストーン`iOS 1.0`に入れ、優先度を`priority:P0`／`P1`／`P2`、iOS版の作業を`platform:ios`、実機・Apple署名・TestFlightが必要な作業を`needs-device`のラベルで示す。
+- 作業開始時に対象Issueの本文で現状と完了条件を確認する。
+- 新しい必須作業が判明した場合は、Issueを作成する。
+- 完了したPRの本文に`Closes #番号`を書いてIssueを閉じる。部分完了では閉じず、残りをIssueのコメントに書く。`needs-device`のIssueはSimulatorの結果だけで閉じない。
+- 仕様変更時は`DEVELOPMENT.md`、`SPECIFICATION.md`、関係するIssueの不整合を残さない。
 
 ## Testing Requirements
 

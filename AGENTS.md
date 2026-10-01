@@ -85,7 +85,9 @@ If GitHub Actions fails or the live site does not match the deployed commit, sto
 
 ## GitHub Workflow
 
-- Open work items are tracked as GitHub Issues with `priority:P0`/`P1`/`P2` labels; P0 iOS items belong to the `iOS 1.0` milestone. `ios/TODO.md` keeps the evidence and links each open item to its issue. When completing one, check it in `ios/TODO.md`, update `DEVELOPMENT_LOG.md`, and write `Closes #<number>` in the pull request body.
+- All open work, for both Web and iOS, is tracked only in GitHub Issues. Label each issue `priority:P0` (required for the next release), `priority:P1` (quality improvement), or `priority:P2` (future candidate); add `platform:ios` for iOS work and `needs-device` when completion requires a real device, Apple signing, or TestFlight. P0 iOS issues belong to the `iOS 1.0` milestone.
+- Before starting an issue, read its body for the current state and completion conditions. When newly required work is discovered, open an issue for it. A `needs-device` issue is not complete on Simulator results alone; follow `ios/docs/REAL_DEVICE_RELEASE_CHECKLIST.md`.
+- Close issues from the pull request that completes them by writing `Closes #<number>` in its body, and record the verification in `DEVELOPMENT_LOG.md`. Do not close a partially completed issue; state what remains in an issue comment instead.
 - Dependabot (`.github/dependabot.yml`) opens grouped npm and GitHub Actions update PRs weekly. Treat them like any other dependency change: review the changelog and require the full CI to pass before merging.
 - Label pull requests `enhancement`, `bug`, `documentation`, or `dependencies` so that generated release notes (`.github/release.yml`) are categorized.
 
