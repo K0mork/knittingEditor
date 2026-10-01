@@ -1,5 +1,21 @@
 # Development Log
 
+## 2026-10-01 — 開発ログをマージ前に揃える規則を文書化
+
+- 影響: アプリの動作は変えていない。DependabotのPR #40を開発ログの記録なしでマージしたことを受け、記録はその変更のPRに含めてマージ前に揃っていることを確認する、という規則を明文化した。自分で書いていないPR（DependabotなどのbotのPR）も対象とし、DependabotのPRはマージ前にそのブランチへ記録のコミットをpushする。デプロイ後の本番確認のようにマージ後にしか得られない結果は、`main`がPR経由でしか変更できないため、確認後すぐに続きのPRで記録する。
+- 主なファイル: `AGENTS.md`（Development Log、Deployment Procedureの手順4・6、GitHub WorkflowのDependabot）、`ios/AGENTS.md`（Development Log）、`ios/DEVELOPMENT.md`（§12 GitHub運用）、`.github/dependabot.yml`（コメントのみ）
+- テスト: 動作の変更がないため、テストは追加していない。
+- 検証: `ruby -ryaml`で`.github/dependabot.yml`を読み込めることを確認し、`ios/scripts/check-app-store-docs.sh`が成功した。Web一式のチェックはビルド入力を変えていないためローカルでは実行せず、PRのCIで確認する。
+- デプロイ影響: `.github/dependabot.yml`の変更はCIの変更範囲判定でWebのみ（`web=true`・`ios=false`）になるため、マージ時のrunがPR #41で直した`deploy`の条件の初めての確認になる。マージ後に、iOS系ジョブがskipされたまま`deploy`が実行され成功したことを確認し、続きのPRで記録する。`dist/`の内容は変わらない。
+
+## 2026-10-01 — PR #13・#16・#36・#39・#40・#41のマージと公開確認
+
+- 影響: 6件をレビューしてmainへマージした。マージコミットは#16 `a6d405e`、#13 `5eddc84`、#36 `2259c02`、#39 `d2091d8`、#40 `c13a810`、#41 `b8dea09`。#36は`ios/TODO.md`を削除する一方で#13が同ファイルへPro実装の項目を追加していたため、項目をIssue #38へ移し、`ios/docs/PRO_PLAN.md`の`TODO.md`への参照をIssue #38とマイルストーン`iOS 1.0`に置き換えて競合を解消した。#39は開発ログの競合だけを解消した。
+- 判明した問題: #39のマージ時のrun（36837111581）で`deploy`がskipされ、本番に反映されていなかった。#12のrun（36829850669）も同じだった。原因はPR #41の記録のとおりで、#41で修正した。また、#36の記録は「マージ後にPagesが再配信される」としていたが、実際にはrun 36835035558で`deploy`はskipされていた（`dist/`は不変のため実害なし）。#40は開発ログの記録なしでマージした（次の項目で補記）。
+- CI: #16のrun（36834534404）と#40のrun（36838404934）は、直後のマージのrunに置き換えられてcancelledになった（同一ブランチのrunを打ち切る設定）。#13（36834598299）、#36（36835035558）、#39（36837111581）、#41（36840347755）は成功し、#41のrunはWeb・iOSの全ジョブと`deploy`が成功した。#40・#41のPRでは`ios (iPhone 16)`などのUIテストがタイムアウトで失敗し、失敗したジョブの再実行で成功した。このUIテストの不安定さはPR #42で対応している。
+- 公開確認: run 36840347755の配信後、`curl`で`https://knittingeditor.com/`の`/`、`/guide/`、`/favicon.ico`（`image/vnd.microsoft.icon`）、`/icon-192.png`・`/apple-touch-icon.png`（`image/png`）、`/og-image.png`、`/CNAME`（`knittingeditor.com`）がHTTPS 200で返り、`/`と`/guide/`の両方が新しいアイコン3種を参照していることを確認した。ブラウザのタブでのアイコン表示の目視は行っていない。Dependabotは設定を読み込み、PR #40の作成とnpm・GitHub Actionsの更新runが成功した。
+- デプロイ影響: この記録自体はなし。
+
 ## 2026-10-01 — Web専用の変更でもPagesへ配信されるようにする
 
 - 影響: `main`へのpushでWebだけが変わり、iOS系ジョブ（`ios_web`・`ios`・`app_update`・`release_archive`）がskipされると、`deploy`も実行されずPagesへ配信されていなかった。`deploy`はこれらのジョブを`ci-gate`経由で間接的に待っており、`if`に状態関数が無いと暗黙の`success()`が付くため、skipされた依存元があると`deploy`もskipされる。PR #12（OGP画像）とPR #39（アイコン）のマージ時のrunで`deploy`がskipされていたことを確認した（#12は後続の#14の配信で反映された）。`deploy`の`if`に`!cancelled()`を加え、`needs.web.result == 'success'`も条件にした。`ci-gate`の成功を必須とする条件と、PRでは配信しない条件は変えていない。
@@ -7,6 +23,14 @@
 - テスト: ワークフロー定義の変更のため、アプリのテストは追加していない。
 - 検証: `ruby -ryaml`で`.github/workflows/ci.yml`を読み込めることを確認した。`.github/workflows/`の変更はWeb・iOSの全ジョブを起動するので、このPRのCIで全ジョブを検証する（PRでは`deploy`は実行されない）。
 - デプロイ影響: マージ時のrunは全ジョブを実行して配信する。マージ後、次のWeb専用の変更で`deploy`が実行され、本番に反映されることを確認する。
+
+## 2026-10-01 — テスト用のjsdomを30.1.1へ更新（Dependabot PR #40）
+
+- 影響: Vitestのテスト環境で使う開発依存`jsdom`を30.1.0から30.1.1へ更新した。推移的に`@asamuzakjp/dom-selector` 9.1.4→9.2.1、`html-encoding-sniffer` 6.0.0→7.0.0、`lru-cache` 11.5.2→11.5.3、`w3c-xmlserializer` 5.0.0→6.0.0も更新された（取得元はすべてnpm公式レジストリ）。30.1.1の主な変更はフォーカス・blurの挙動、CSSの`!important`、文字コード判定の修正。配信するWeb版とiOSアプリには含まれない。
+- 主なファイル: `package.json`、`package-lock.json`
+- テスト: 依存の更新のため、テストは追加していない。
+- 検証: ローカルでは実行していない。PRのrun 36835157063で`web`、`ios_web`、`release_archive`、`ios (iPad (10th generation))`、`app_update (iPhone 16)`は初回で成功した。`ios (iPhone 16)`（`testEditAndRelaunchRestoresLocalDocument`がタイムアウトして再起動）と`app_update (iPad (10th generation))`（`testSeedDocumentForAppUpdateProbe`がタイムアウト）が失敗し、失敗したジョブの再実行で成功して`ci-gate`が通った。jsdomはアプリに同梱されないため、更新とは無関係のSimulatorの不安定さと判断した（PR #42で対応中）。
+- デプロイ影響: マージ時のrun 36838404934は直後のPR #41のマージで打ち切られ、run 36840347755で配信された。この記録はマージ前に追加すべきだったが漏れたため、マージ後に追加した。
 
 ## 2026-10-01 — Web版のアイコンをiOS版のアプリアイコンに揃える
 

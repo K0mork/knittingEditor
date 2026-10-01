@@ -76,6 +76,8 @@ ios/docs/            additional app design and release records
 - 実行できなかった検証と理由
 - TestFlight／App Storeへの影響と必要な事後確認
 
+記録は、その変更を入れるPRに含め、マージ前に揃っていることを確認します。自分で書いていないPR（DependabotなどのbotのPRを含む）も同じです。DependabotのPRには記録が無いため、マージ前にそのブランチへ記録を追加するコミットをpushします（更新したパッケージと版、関係する変更点、再実行を含むCIの結果）。デプロイ後の本番確認のようにマージ後にしか得られない結果は、確認後すぐに続きのPRで記録し、記録しないまま終えません。
+
 実際に実行していないテストを成功と記録してはいけません。
 
 ## Issue Management
