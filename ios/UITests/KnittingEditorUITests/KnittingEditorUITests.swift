@@ -98,7 +98,7 @@ final class KnittingEditorUITests: XCTestCase {
             webView.otherElements
                 .matching(NSPredicate(format: "label CONTAINS %@", "記号1個"))
                 .firstMatch
-                .waitForExistence(timeout: 10),
+                .waitForExistence(timeout: Self.editorAppearanceTimeout),
             app.debugDescription
         )
     }
@@ -208,7 +208,7 @@ final class KnittingEditorUITests: XCTestCase {
         let editedCanvas = webView.otherElements
             .matching(NSPredicate(format: "label CONTAINS %@", "記号1個"))
             .firstMatch
-        XCTAssertTrue(editedCanvas.waitForExistence(timeout: 10))
+        XCTAssertTrue(editedCanvas.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
         waitForDocumentSave(named: "再起動復元テスト", in: webView)
 
         app.terminate()
@@ -250,7 +250,7 @@ final class KnittingEditorUITests: XCTestCase {
         let editedCanvas = webView.otherElements
             .matching(NSPredicate(format: "label CONTAINS %@", "記号1個"))
             .firstMatch
-        XCTAssertTrue(editedCanvas.waitForExistence(timeout: 10))
+        XCTAssertTrue(editedCanvas.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
         waitForDocumentSave(named: "M2切替A", in: webView)
 
         documents.tap()
@@ -268,7 +268,8 @@ final class KnittingEditorUITests: XCTestCase {
             webView.otherElements
                 .matching(NSPredicate(format: "label CONTAINS %@", "記号1個"))
                 .firstMatch
-                .waitForExistence(timeout: 10)
+                .waitForExistence(timeout: Self.editorAppearanceTimeout),
+            app.debugDescription
         )
         waitForDocumentSave(named: "M2切替B", in: webView)
         documents.tap()
@@ -505,7 +506,8 @@ final class KnittingEditorUITests: XCTestCase {
             webView.otherElements
                 .matching(NSPredicate(format: "label CONTAINS %@", "記号1個"))
                 .firstMatch
-                .waitForExistence(timeout: 10)
+                .waitForExistence(timeout: appUpdateElementTimeout),
+            app.debugDescription
         )
         waitForDocumentSave(named: "アプリ更新復元fixture", in: webView)
     }
@@ -827,12 +829,18 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertEqual(field.value as? String, text, app.debugDescription)
     }
 
+    /// 盤面の編集が記号数へ反映されるまで待つ。CIの遅い区間ではXCUITestの操作1回に
+    /// 数十秒かかったため、起動用の上限で待つ（反映されれば直ちに終わる）。
     private func waitForStitchCount(_ count: Int, on canvas: XCUIElement, in app: XCUIApplication) {
         let reached = XCTNSPredicateExpectation(
             predicate: NSPredicate(format: "label CONTAINS %@", "記号\(count)個"),
             object: canvas
         )
-        XCTAssertEqual(XCTWaiter.wait(for: [reached], timeout: 10), .completed, "記号が\(count)個にならない: \(canvas.label)")
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [reached], timeout: Self.editorAppearanceTimeout),
+            .completed,
+            "記号が\(count)個にならない: \(canvas.label) \(app.debugDescription)"
+        )
     }
 
     /// 盤面のアクセシブルな名前から現在の記号数を読む。
