@@ -1,5 +1,12 @@
 # Development Log
 
+## 2026-10-01 — PR #11のレビュー・マージと公開確認
+
+- 影響: PR #11（Undo/Redo）をレビューし、`aa35c8c`でmainへマージ。コードの追加修正はなし。主な対象は`packages/editor-core/model/BoardHistory.ts`、`state/useEditorSession.ts`、`ui/`、`canvas/BoardCanvas.tsx`とWeb/iOSの使い方ページ。
+- 検証: Node.js 24.21.0で`npm run typecheck`、`npm test`（84件）、`npm run build`、`npm run check:dist`、`npm run test:e2e`（Chromium mobile/desktop・WebKit mobile、72件）が成功。`ios/Web`で`../../node_modules/.bin/tsc -p tsconfig.app.json --noEmit`と`../../node_modules/.bin/vitest run --config vite.config.ts`（8件）、`ios/scripts/check-app-store-docs.sh`も成功。375px・1280px幅の表示を目視確認し、画像を`/tmp/knitting-pr11-review/`へ保存（コミット対象外）。既存テストを再検証し、テストの変更はなし。
+- CI: https://github.com/K0mork/knittingEditor/actions/runs/36818335069 の初回はiPhoneの既存`testDocumentSwitchAutosavesEachDocument`が名前入力等のUI操作遅延で3分の制限を超え、ci-gateが配信を停止。`gh run rerun 36818335069 --failed`後に成功。Web、iOS Web、XcodeGen、iPhone/iPad Simulator、両端末のアプリ更新、unsigned Release Archive、オフラインバンドル検査、App Store文書、ci-gate、deployの成功を確認。今回のローカルではXcodeの一式を再実行せず、同じマージコミットのCIで検証した。実機は未確認。
+- デプロイ影響: Pagesへ配信済み。HTTPSの`/`、`/guide/`、`/CNAME`を取得し、ドメイン`knittingeditor.com`、使い方の説明、新しいJS/CSSがローカルビルドと同じパスであることを確認。公開UIで入力（記号1→2個）、Undo（1個）、Redo（2個）、再Undo（1個）と保存完了を確認し、再読み込み後も1個の状態が残り、履歴が破棄されることを確認。この記録のみの追加コミットは実行時動作・配信内容への影響none。
+
 ## 2026-09-23 — 盤面の編集を元に戻す・やり直す
 
 - 影響: Web版とiOS版の編集画面に「元に戻す」「やり直す」を追加した。対象は記号の入力・消去、貼り付け、段・列の追加・削除・挿入・寸法変更、全消去。1回のなぞり入力は指を離した時点で1回分にまとめる。操作メニュー（狭い画面では下端、760px以上では右列）のボタンと、Ctrl/Cmd+Z（元に戻す）、Ctrl/Cmd+Shift+Z・Ctrl+Y（やり直す）で操作でき、入力欄の中のショートカットは入力欄自身に任せる。戻した結果は通常の編集と同じく自動保存される。履歴は開いている編み図ごとにメモリ上だけで持ち、編み図の切り替え・新規作成・削除・復元・再読み込みで捨てる。
