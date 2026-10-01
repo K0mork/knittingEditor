@@ -2,6 +2,12 @@ import { expect, test, type Page } from '@playwright/test';
 
 const OG_IMAGE_URL = 'https://knittingeditor.com/og-image.png';
 
+async function expectAppIconLinks(page: Page) {
+  await expect(page.locator('link[rel="icon"]').first()).toHaveAttribute('href', '/favicon.ico');
+  await expect(page.locator('link[rel="icon"][type="image/png"]')).toHaveAttribute('href', '/icon-192.png');
+  await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute('href', '/apple-touch-icon.png');
+}
+
 async function expectLargeImageCard(page: Page) {
   await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', OG_IMAGE_URL);
   await expect(page.locator('meta[property="og:image:type"]')).toHaveAttribute('content', 'image/png');
@@ -26,7 +32,7 @@ test('exposes search and sharing metadata on the editor page', async ({ page }) 
   await page.goto('/');
   await expect(page).toHaveTitle('棒針編み図エディタ｜無料の編み図作成サイト');
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://knittingeditor.com/');
-  await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', '/favicon.svg');
+  await expectAppIconLinks(page);
   await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', /登録不要で使える無料の棒針編み図作成サイト/);
   await expect(page.locator('meta[property="og:title"]')).toHaveAttribute('content', '棒針編み図エディタ｜無料の編み図作成サイト');
   await expect(page.locator('meta[property="og:description"]')).toHaveAttribute('content', /登録不要.*PNG・PDF保存/);
@@ -80,19 +86,34 @@ test('serves the guide page directly with its own metadata', async ({ page }) =>
   await expect(page.locator('meta[property="og:type"]')).toHaveAttribute('content', 'article');
   await expect(page.locator('meta[property="og:url"]')).toHaveAttribute('content', 'https://knittingeditor.com/guide/');
   await expectLargeImageCard(page);
+  await expectAppIconLinks(page);
   await page.getByRole('link', { name: '編み図を作成する' }).click();
   await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
 });
 
-test('publishes the guide in the sitemap and serves the favicon', async ({ page }) => {
+test('publishes the guide in the sitemap', async ({ page }) => {
   const sitemap = await page.request.get('/sitemap.xml');
   expect(sitemap.status()).toBe(200);
   const xml = await sitemap.text();
   expect(xml).toContain('<loc>https://knittingeditor.com/</loc>');
   expect(xml).toContain('<loc>https://knittingeditor.com/guide/</loc>');
-  const favicon = await page.request.get('/favicon.svg');
+});
+
+test('serves the app icon as the favicon and touch icons', async ({ page }) => {
+  const favicon = await page.request.get('/favicon.ico');
   expect(favicon.status()).toBe(200);
-  expect(await favicon.text()).toContain('<svg');
+  const ico = await favicon.body();
+  expect(ico.readUInt16LE(2)).toBe(1);
+  expect(ico.readUInt16LE(4)).toBe(3);
+  for (const [path, size] of [['/icon-192.png', 192], ['/apple-touch-icon.png', 180]] as const) {
+    const response = await page.request.get(path);
+    expect(response.status()).toBe(200);
+    expect(response.headers()['content-type']).toBe('image/png');
+    const png = await response.body();
+    expect(png.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a');
+    expect(png.readUInt32BE(16)).toBe(size);
+    expect(png.readUInt32BE(20)).toBe(size);
+  }
 });
 
 test('serves the sharing image as a 1200x630 PNG', async ({ page }) => {

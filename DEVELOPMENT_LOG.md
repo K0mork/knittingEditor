@@ -1,5 +1,14 @@
 # Development Log
 
+## 2026-10-01 — Web版のアイコンをiOS版のアプリアイコンに揃える
+
+- 影響: Web版のfavicon（緑の角丸に方眼と×のSVG）がiOS版のアプリアイコン（深緑の地に交差した棒針、白い編み目、橙の毛糸）と違っていたため、Web版をアプリアイコンに揃えた。ブラウザのタブ・ブックマーク用に`favicon.ico`（16・32・48px）と`icon-192.png`、iPhone・iPadのホーム画面に追加したとき用に`apple-touch-icon.png`（180px）を置き、トップと`/guide/`の両ページで参照する。`favicon.svg`は削除した。iOS版のアプリアイコンとアプリ内ページは変えていない。
+- 画像の生成: `scripts/generate-web-icons.mjs`が`ios/App/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png`を`sips`で縮小し、ICOはPNGを格納する形式で組み立てる。macOS専用のためCIでは生成せず、出力をコミットする。同じ入力から2回生成し、SHA-1が一致することを確認した。アプリアイコンを差し替えたときは`node scripts/generate-web-icons.mjs`を再実行する。16pxでは細部が潰れるが、図柄は判別できることを拡大して目視確認した。
+- 主なファイル: `public/favicon.ico`、`public/icon-192.png`、`public/apple-touch-icon.png`、`scripts/generate-web-icons.mjs`、`index.html`、`public/guide/index.html`、`scripts/check-dist.mjs`、`tests/e2e/seo.spec.ts`
+- テスト: `seo.spec.ts`で両ページのアイコンリンク（`favicon.ico`、`icon-192.png`、`apple-touch-icon.png`）と、各ファイルがICO（3画像）・192×192／180×180のPNGで返ることを検査する。`check-dist`は3ファイルの存在・形式・寸法と、配信HTML 2ページのアイコンリンクを検査する。
+- 検証: Node.js 24.21.0で`npm run typecheck`、`npm test`（18ファイル・107件）、`npm run build`、`npm run check:dist`（`dist/CNAME`は`knittingeditor.com`、`dist/`に3ファイルがあり`favicon.svg`が無いことを確認）、`npm run test:e2e`（Chromium mobile・WebKit mobile・Chromium desktop、79件成功・iPhone専用テストの2件skip）が成功。`packages/`とiOSのソースは変えていないため、iOSのSimulator・Archive検証は実行していない。
+- デプロイ影響: `main`へのマージ後にPagesへ配信される。配信後に`https://knittingeditor.com/favicon.ico`・`/icon-192.png`・`/apple-touch-icon.png`がHTTPS 200で返り、ブラウザのタブに新しいアイコンが出ることを確認する。ブラウザと検索結果はfaviconを長くキャッシュするため、古いアイコンがしばらく残りうる。
+
 ## 2026-10-01 — PR #12・#14・#15のレビュー・マージと公開確認
 
 - 影響: PR #12（OGP画像）、#14（iOS Safariの共有・PNG/PDFの番号）、#15（source-availableライセンス）をレビューし、問題を認めずmainへマージした。マージコミットは順に`9f6c8a7`、`98d6ba9`、`ffaf065`。機能の追加修正はなし。主な対象は`index.html`、`public/`、`src/platform.ts`・`ShareFileDialog.tsx`、`packages/editor-core/export/`、`LICENSE`・`README.md`。#14にはmainを取り込み、`DEVELOPMENT_LOG.md`の競合を両方の記録を保持して解消した（`476b390`）。その後のログのみの追加修正`b6ebc8b`も確認した。対象外の#13と、レビュー開始後に作成された#16はマージしていない。

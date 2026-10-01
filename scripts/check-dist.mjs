@@ -1,7 +1,7 @@
 import { readFile, readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 
-const required = ['index.html', 'robots.txt', 'sitemap.xml', 'favicon.svg', 'og-image.png', 'guide/index.html'];
+const required = ['index.html', 'robots.txt', 'sitemap.xml', 'favicon.ico', 'icon-192.png', 'apple-touch-icon.png', 'og-image.png', 'guide/index.html'];
 for (const file of required) await stat(join('dist', file));
 const assets = await readdir(join('dist', 'assets'));
 
@@ -11,6 +11,21 @@ if (ogImage.readUInt32BE(16) !== 1200 || ogImage.readUInt32BE(20) !== 630) throw
 for (const page of ['index.html', 'guide/index.html']) {
   const html = await readFile(join('dist', page), 'utf8');
   if (!html.includes('<meta property="og:image" content="https://knittingeditor.com/og-image.png" />')) throw new Error(`${page} にog:imageがありません`);
+}
+async function checkPng(file, width, height) {
+  const png = await readFile(join('dist', file));
+  if (png.subarray(0, 8).toString('hex') !== '89504e470d0a1a0a') throw new Error(`${file} がPNGではありません`);
+  if (png.readUInt32BE(16) !== width || png.readUInt32BE(20) !== height) throw new Error(`${file} が${width}×${height}ではありません`);
+}
+await checkPng('icon-192.png', 192, 192);
+await checkPng('apple-touch-icon.png', 180, 180);
+const favicon = await readFile(join('dist', 'favicon.ico'));
+if (favicon.readUInt16LE(0) !== 0 || favicon.readUInt16LE(2) !== 1 || favicon.readUInt16LE(4) < 1) throw new Error('favicon.ico がICOではありません');
+for (const page of ['index.html', 'guide/index.html']) {
+  const html = await readFile(join('dist', page), 'utf8');
+  for (const link of ['<link rel="icon" href="/favicon.ico"', '<link rel="icon" href="/icon-192.png"', '<link rel="apple-touch-icon" href="/apple-touch-icon.png"']) {
+    if (!html.includes(link)) throw new Error(`${page} に ${link} がありません`);
+  }
 }
 if (!assets.some((file) => file.startsWith('pdf.worker-') && file.endsWith('.js'))) throw new Error('PDF Workerが出力されていません');
 
