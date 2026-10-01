@@ -1,5 +1,13 @@
 # Development Log
 
+## 2026-10-01 — PR #42・#43のマージ後のCIと公開確認
+
+- 影響: アプリの動作は変えていない。#42（マージコミット`1497867`）と#43（`0fbe32a`）のマージ後の結果を記録する。#43はマージ前に`DEVELOPMENT_LOG.md`だけが#42の記録と競合したため、`origin/main`を取り込み、3件の記録をすべて残して新しい順に並べた（`4f4a0db`）。
+- CI: #42のrun [`36856199816`](https://github.com/K0mork/knittingEditor/actions/runs/36856199816)（attempt 1）は、`ios`（iPhone 16・iPad (10th generation)）、`app_update`（両端末）、`release_archive`、`ios_web`、`web`、`ci-gate`、`deploy`のすべてが成功し、ログに再試行（`Iteration 2 of 2`）、実行時間上限の超過、テストランナーの再起動は無かった。#43のrun [`36857819287`](https://github.com/K0mork/knittingEditor/actions/runs/36857819287)は、変更範囲判定がWebのみでiOS系の4ジョブがskipされたまま`web`・`ci-gate`・`deploy`が成功した。PR #41で直した「Webのみの変更でも`deploy`する」条件が、マージ時のrunで初めて働いたことを確認した。
+- 公開確認: run 36857819287の配信後、`curl`で`https://knittingeditor.com/`の`/`・`/guide/`（`text/html`）、`/favicon.ico`（`image/vnd.microsoft.icon`）、`/CNAME`（`knittingeditor.com`）がHTTPS 200で返ることを確認した。どちらのPRも`dist/`の内容は変えていない。
+- 検証: `ios/scripts/check-app-store-docs.sh`が成功した。
+- デプロイ影響: この記録自体はなし。
+
 ## 2026-10-01 — 開発ログをマージ前に揃える規則と、PRのマージを利用者が行う規則を文書化
 
 - 影響: アプリの動作は変えていない。DependabotのPR #40を開発ログの記録なしでマージしたことを受け、記録はその変更のPRに含めてマージ前に揃っていることを確認する、という規則を明文化した。自分で書いていないPR（DependabotなどのbotのPR）も対象とし、DependabotのPRはマージ前にそのブランチへ記録のコミットをpushする。デプロイ後の本番確認のようにマージ後にしか得られない結果は、`main`がPR経由でしか変更できないため、確認後すぐに続きのPRで記録する。あわせて、PRのレビューとマージは利用者が行い、エージェントは利用者がそのPRのマージを明示的に指示した場合に限りマージする、という規則も明記した。
