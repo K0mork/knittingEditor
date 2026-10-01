@@ -1,5 +1,13 @@
 # Development Log
 
+## 2026-10-01 — GitHubの依存更新・コードスキャン・Issue管理を有効化
+
+- 影響: アプリの動作は変えていない。GitHub側で、Dependabotアラートとセキュリティ更新、CodeQLのdefault setup（Actions・JavaScript/TypeScript）を有効にし、説明・ホームページ（`https://knittingeditor.com`）・Topicsの設定、マージ後のブランチ自動削除、未使用Wikiの無効化を行った。`ios/TODO.md`の未完了19項目をIssue #17〜#35にし、ラベル`priority:P0`／`P1`／`P2`・`platform:ios`・`needs-device`とマイルストーン`iOS 1.0`（P0のみ）を付け、Projects「knittingEditor ロードマップ」（Kanban、公開範囲は非公開）へ入れた。Projectsでは、新しく開かれたIssueを自動で追加する設定も有効にした。`main`のルールセット（PR必須・`ci-gate`必須・force push／削除禁止・Copilotの自動レビュー）は、作成がエージェントの権限判定で拒否されたため未設定。リポジトリ管理者が作成する。
+- 主なファイル: `.github/dependabot.yml`（npmとGitHub Actionsを毎週月曜9時（JST）にまとめて更新。公開から7日待ってから取り込む）、`.github/release.yml`（Releaseノートの自動生成をラベル別に分類）、`AGENTS.md`（`main`へ直接pushせず、`ci-gate`が通ったPRをマージする手順に変更。Issue・Dependabot・ラベルの運用を追記）、`ios/TODO.md`（各未完了項目にIssue番号を付記）。
+- テスト: 動作の変更がないため、テストは追加していない。
+- 検証: `ruby -ryaml`で`.github/dependabot.yml`と`.github/release.yml`を読み込めることを確認し、`ios/scripts/check-app-store-docs.sh`が成功した。CodeQL Setupの初回実行（run 36831724297）は成功し、コードスキャンとDependabotのアラートはどちらも0件だった。`npm run typecheck`・`npm test`・`npm run build`・`npm run check:dist`・`npm run test:e2e`は、ビルド入力を変えていないためローカルでは実行せず、PRのCIで確認する。
+- デプロイ影響: `.github/`の変更はCIの変更範囲判定でWeb扱いになるため、マージ後にPagesが再配信されるが、`dist/`の内容は変わらない。マージ後にDependabotがエラーなく設定を読み込んだことを、Insights → Dependency graph → Dependabotで確認する。
+
 ## 2026-10-01 — SNS共有用のOGP画像を追加
 
 - 影響: トップページと`/guide/`のURLをX・LINE・Facebook・Slack・iMessageなどで共有したとき、文字だけの小さなカードではなく1200×630の画像付きカードが出るようにした。画像は縮小表示でも読めるよう「棒針の／編み図」を大きく置き、下の帯に「無料・登録不要」、右にエディタと同じ表目・かけ目・ねじり目の記号を並べた。両ページに`og:image`（型・幅・高さ・alt）と`og:site_name`を加え、`twitter:card`を`summary_large_image`にした。`/guide/`にはOGPが無かったため、`og:title`・`og:description`・`og:type`（`article`）・`og:url`・`og:locale`も追加した。検索順位への直接の影響はない。

@@ -77,11 +77,17 @@ Codex must use the following production deployment procedure:
 1. Confirm the worktree contains only intended changes, update `DEVELOPMENT_LOG.md` when required, and review the diff.
 2. Run the complete pre-commit suite above and resolve every failure.
 3. Commit focused changes according to the commit rules below. Do not deploy uncommitted work.
-4. Push the reviewed commit to `main` only when the user has requested or approved deployment. Opening a pull request or pushing another branch runs validation but must not be described as a production deployment.
+4. Merge the reviewed pull request into `main` only when the user has requested or approved deployment, after its `ci-gate` check has passed. Do not push directly to `main`. Opening a pull request or pushing another branch runs validation but must not be described as a production deployment.
 5. Confirm the `CI and deploy Pages` GitHub Actions workflow succeeded, including every job required by `ci-gate` and the `deploy` job. A successful local build or push alone is not proof of deployment.
 6. Verify `https://knittingeditor.com/` over HTTPS after deployment. Exercise the changed user flow and confirm the expected assets, metadata, and custom domain. Record the result in `DEVELOPMENT_LOG.md`.
 
 If GitHub Actions fails or the live site does not match the deployed commit, stop, report the exact failure, and fix or revert through a new focused commit. Never bypass the test job, deploy a locally modified `dist/`, force-push production history, or claim deployment success without checking both the workflow and live site.
+
+## GitHub Workflow
+
+- Open work items are tracked as GitHub Issues with `priority:P0`/`P1`/`P2` labels; P0 iOS items belong to the `iOS 1.0` milestone. `ios/TODO.md` keeps the evidence and links each open item to its issue. When completing one, check it in `ios/TODO.md`, update `DEVELOPMENT_LOG.md`, and write `Closes #<number>` in the pull request body.
+- Dependabot (`.github/dependabot.yml`) opens grouped npm and GitHub Actions update PRs weekly. Treat them like any other dependency change: review the changelog and require the full CI to pass before merging.
+- Label pull requests `enhancement`, `bug`, `documentation`, or `dependencies` so that generated release notes (`.github/release.yml`) are categorized.
 
 ## Coding Style & Naming Conventions
 
