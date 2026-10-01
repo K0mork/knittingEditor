@@ -21,6 +21,9 @@ export interface PdfPageLayout {
   pageHeight: number;
   margin: number;
   footer: number;
+  /** 左右の段番号の帯の幅と、上下の目番号の帯の高さ。PNGと同じく四辺に番号を置く。 */
+  rowLabelWidth: number;
+  colLabelHeight: number;
   availableWidth: number;
   availableHeight: number;
   cellSize: number;
@@ -40,11 +43,24 @@ const A4_SHORT_SIDE = 595.28;
 const PAGE_MARGIN = 24;
 const TILED_FOOTER = 18;
 const POINTS_PER_MILLIMETER = 72 / 25.4;
+/** 段・目番号の文字の大きさ（pt）。印刷して読める大きさで固定し、混み合うときは間引く。 */
+export const PDF_LABEL_FONT_SIZE = 6;
+/** Helveticaの数字の幅（em）。0〜9はすべて同じ幅。 */
+const HELVETICA_DIGIT_WIDTH = 0.556;
+/** 番号と盤面・帯の端との間隔（pt）。 */
+export const PDF_LABEL_GAP = 2;
+
+/** 番号の文字列の幅（pt）。 */
+export function pdfLabelWidth(digits: number): number {
+  return digits * HELVETICA_DIGIT_WIDTH * PDF_LABEL_FONT_SIZE;
+}
 
 interface PdfGrid {
   pageWidth: number;
   pageHeight: number;
   footer: number;
+  rowLabelWidth: number;
+  colLabelHeight: number;
   availableWidth: number;
   availableHeight: number;
   cellSize: number;
@@ -60,15 +76,18 @@ function pdfGrid(rows: number, cols: number, options: PdfLayoutOptions): PdfGrid
   const pageWidth = portrait ? A4_SHORT_SIDE : A4_LONG_SIDE;
   const pageHeight = portrait ? A4_LONG_SIDE : A4_SHORT_SIDE;
   const footer = tiled ? TILED_FOOTER : 0;
-  const availableWidth = pageWidth - PAGE_MARGIN * 2;
-  const availableHeight = pageHeight - PAGE_MARGIN * 2 - footer;
+  // 段番号は最大の桁数ぶん、目番号は1行ぶんの帯を盤面の外側に取る。
+  const rowLabelWidth = pdfLabelWidth(String(rows).length) + PDF_LABEL_GAP * 2;
+  const colLabelHeight = PDF_LABEL_FONT_SIZE + PDF_LABEL_GAP * 2;
+  const availableWidth = pageWidth - PAGE_MARGIN * 2 - rowLabelWidth * 2;
+  const availableHeight = pageHeight - PAGE_MARGIN * 2 - footer - colLabelHeight * 2;
   const cellSize = tiled
     ? options.cellMillimeters * POINTS_PER_MILLIMETER
     : Math.min(availableWidth / cols, availableHeight / rows);
   const tileCols = tiled ? Math.max(1, Math.floor(availableWidth / cellSize)) : cols;
   const tileRows = tiled ? Math.max(1, Math.floor(availableHeight / cellSize)) : rows;
   return {
-    pageWidth, pageHeight, footer, availableWidth, availableHeight, cellSize, tileRows, tileCols,
+    pageWidth, pageHeight, footer, rowLabelWidth, colLabelHeight, availableWidth, availableHeight, cellSize, tileRows, tileCols,
     // 分割時は隣のページと1列・1段だけ重ねて読み継ぎやすくする。
     stepCols: Math.max(1, tileCols - (tiled ? 1 : 0)),
     stepRows: Math.max(1, tileRows - (tiled ? 1 : 0)),
