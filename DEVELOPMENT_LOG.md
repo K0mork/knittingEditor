@@ -106,10 +106,10 @@
 
 - 影響: GA4の初期化・カスタムイベントを、Google公式スニペットと同じ `dataLayer.push(arguments)` 形式でキューへ登録するようにした。タグの非同期読み込み、自動テスト時の計測除外、画面表示と操作手順は変更しない。
 - 主なファイル: `src/analytics.ts`、`src/analytics.test.ts`
-- 根拠: 2026-09-20〜21にSearch Consoleでは検索クリック3件を記録した一方、GA4は同期間0件で、データストリームにも過去48時間の受信なしと表示された。測定ID `G-VVE0G4ZFL4` はストリーム設定と一致している。
+- 根拠: 2026-09-20〜21にSearch Consoleでは検索からの流入を記録していた一方、GA4は同期間の受信がなく、データストリームにも過去48時間の受信なしと表示された。測定ID `G-VVE0G4ZFL4` はストリーム設定と一致している。
 - テスト: キュー内容が通常の配列ではなく `arguments` オブジェクトであり、初期化とカスタムイベントの各コマンドを正しく保持することを検証するよう更新した。
 - 検証: コミット単体のクリーンな作業ツリーで `npm ci`、`npm run typecheck`、`npm test`（5ファイル・27件）、`npm run build`、`npm run check:dist`、`npm run test:e2e`（Chromium mobile・WebKit mobile・Chromium desktop、42件）を順に実行し、すべて成功。
-- デプロイ影響: 2026-09-22にコミット `fc83db1` を `main` へデプロイした。GitHub Actions「Test and deploy Pages」run `35686163773` のテスト・ビルド・デプロイはすべて成功。本番でJS `index-Uchg1IUt.js` とGoogleタグ `G-VVE0G4ZFL4` の読込み、画面上のエラーがないことを確認し、GA4リアルタイムでアクティブユーザー1、`page_view`、`session_start`、`first_visit`、`editor_ready` を各1件受信した。`first_edit` と `chart_exported` は実利用時の受信後に確認する。
+- デプロイ影響: 2026-09-22にコミット `fc83db1` を `main` へデプロイした。GitHub Actions「Test and deploy Pages」run `35686163773` のテスト・ビルド・デプロイはすべて成功。本番でJS `index-Uchg1IUt.js` とGoogleタグ `G-VVE0G4ZFL4` の読込み、画面上のエラーがないことを確認し、GA4リアルタイムで`page_view`、`session_start`、`first_visit`、`editor_ready`の受信を確認した。`first_edit` と `chart_exported` は実利用時の受信後に確認する。
 
 ## 2026-09-20 — 編み目記号の再構築と修正を本番へデプロイ
 
