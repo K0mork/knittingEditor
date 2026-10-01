@@ -34,6 +34,19 @@ Codex must treat the following as production requirements:
 - Do not change the custom domain, Pages workflow, deployment permissions, or production branch unless the user explicitly requests it.
 - For routing, asset-path, service-worker, SEO, or domain changes, verify that direct access and reloads work under `https://knittingeditor.com/` and that all production URLs use HTTPS.
 
+## Confidential Information
+
+This repository, its history, and everything posted on GitHub (issues, pull request titles and descriptions, comments, review notes, commit messages, CI logs, and attached screenshots) are public. Codex must not publish the following in any of them:
+
+- Figures from Google Analytics, Search Console, App Store Connect, or any other analytics or sales source: counts or rates of users, sessions, events, downloads, purchases, or conversions; revenue; search queries and rankings; and screenshots of these dashboards.
+- Links to or identifiers of private dashboards and accounts, such as GA4 account or property IDs in report URLs and App Store Connect app or team IDs. Identifiers that the shipped site or app must contain, such as the GA4 measurement ID in `src/analytics.ts`, the Bundle ID, and in-app purchase product IDs, are allowed.
+- Unannounced prices, revenue or fee calculations, sales forecasts, break-even estimates, and other business plans that are not yet public.
+- Personal data: names other than the published copyright holder, email addresses, postal addresses, tax, bank, or contract details, and data about individual users.
+
+Write qualitative statements instead, for example "PDF exports are recorded" or "the event arrived in GA4 Realtime". Keep figures, prices, and calculations in the root `private/` directory, which Git ignores, or outside the repository, and refer to them only by that location. Before committing, pushing, or posting to GitHub, check the diff and the text for these items.
+
+If confidential information has already been pushed, stop and tell the user, then remove it from the current files with a new commit. Rewriting the history of a non-`main` branch or deleting pull request description revisions requires the user's approval, and `main` history must never be force-pushed.
+
 ## Development Log
 
 Codex must maintain the root `DEVELOPMENT_LOG.md` for every user-visible feature, bug fix, behavior change, migration, build/test configuration change, and deployment change, in both the Web and the iOS parts of this repository. It is the only active log; `ios/DEVELOPMENT_LOG.md` is a frozen archive of the app history from before the repositories were merged and must not receive new entries. Documentation-only edits with no runtime, test, or deployment impact may be omitted.
@@ -44,6 +57,8 @@ Add one concise entry per completed change, newest first, containing:
 - the affected behavior and main files;
 - tests added or updated and the exact verification commands run;
 - deployment impact, including `none` when there is none, and any post-deployment check required.
+
+Follow Confidential Information in log entries: record that analytics events were received or that a metric was checked, never the counts themselves.
 
 Never claim a check passed unless it was actually run. If a required check cannot be run, record the reason in both the development log and the final response.
 
@@ -101,4 +116,4 @@ Vitest covers board and export logic; Playwright covers Chromium/WebKit at mobil
 
 ## Commit & Pull Request Guidelines
 
-Keep each commit focused on one purpose; separate formatting-only changes. Recent history uses short imperative summaries. Prefer Conventional Commit prefixes such as `feat: add cable stitch` or `fix: preserve grid after resize`. Pull requests should explain the user-visible change, list manual checks, link related issues, and include screenshots for UI or stitch-symbol changes. Avoid committing generated PNG/PDF files or local `.DS_Store` files.
+Keep each commit focused on one purpose; separate formatting-only changes. Recent history uses short imperative summaries. Prefer Conventional Commit prefixes such as `feat: add cable stitch` or `fix: preserve grid after resize`. Pull requests should explain the user-visible change, list manual checks, link related issues, and include screenshots for UI or stitch-symbol changes. Pull request text and screenshots must follow Confidential Information. Avoid committing generated PNG/PDF files or local `.DS_Store` files.

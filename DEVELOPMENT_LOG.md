@@ -2,11 +2,19 @@
 
 ## 2026-10-01 — GitHubの依存更新・コードスキャン・ブランチ保護を有効化し、作業管理をIssueへ移行
 
-- 影響: アプリの動作は変えていない。GitHub側で、Dependabotアラートとセキュリティ更新、CodeQLのdefault setup（Actions・JavaScript/TypeScript）を有効にし、説明・ホームページ（`https://knittingeditor.com`）・Topicsの設定、マージ後のブランチ自動削除、未使用Wikiの無効化を行った。未完了の作業をIssueだけで管理するため、`ios/TODO.md`の未完了19項目をIssue #17〜#35へ移し、各Issueの本文に現状とマイルストーンの完了条件を書いた。Issueにはラベル`priority:P0`／`P1`／`P2`・`platform:ios`・`needs-device`とマイルストーン`iOS 1.0`（P0のみ）を付け、Projects「knittingEditor ロードマップ」（Kanban、公開範囲は非公開）へ入れた。Projectsでは、新しく開かれたIssueを自動で追加する設定も有効にした。`main`にルールセット「Protect main (production)」（id 24295437）を作成した。内容は、PR経由のマージ必須（承認数0）、`ci-gate`の成功必須（ブランチ最新化は求めない）、force push・削除の禁止、Copilotの自動レビュー。バイパスできるアクターはいないため、管理者を含めて`main`へ直接pushできない。`gh api repos/K0mork/knittingEditor/rules/branches/main`で5つのルールが適用されていることを確認した。
-- 主なファイル: `.github/dependabot.yml`（npmとGitHub Actionsを毎週月曜9時（JST）にまとめて更新。公開から7日待ってから取り込む）、`.github/release.yml`（Releaseノートの自動生成をラベル別に分類）、`AGENTS.md`（`main`へ直接pushせず、`ci-gate`が通ったPRをマージする手順に変更。Issue・Dependabot・ラベルの運用を追記）、`ios/AGENTS.md`（作業管理の規則をIssue運用に変更）、`README.md`・`ios/README.md`・`ios/DEVELOPMENT.md`（残作業の参照先をIssueとマイルストーンに変更）。`TODO.md`と`ios/TODO.md`は削除した（完了済み項目の確認結果は`DEVELOPMENT_LOG.md`と`ios/DEVELOPMENT_LOG.md`に残っている）。
+- 影響: アプリの動作は変えていない。GitHub側で、Dependabotアラートとセキュリティ更新、CodeQLのdefault setup（Actions・JavaScript/TypeScript）を有効にし、説明・ホームページ（`https://knittingeditor.com`）・Topicsの設定、マージ後のブランチ自動削除、未使用Wikiの無効化を行った。未完了の作業をIssueだけで管理するため、`ios/TODO.md`の未完了19項目をIssue #17〜#35へ、PR #13で追加したPro実装の項目をIssue #38へ移し、各Issueの本文に現状とマイルストーンの完了条件を書いた。Issueにはラベル`priority:P0`／`P1`／`P2`・`platform:ios`・`needs-device`とマイルストーン`iOS 1.0`（P0のみ）を付け、Projects「knittingEditor ロードマップ」（Kanban、公開範囲は非公開）へ入れた。Projectsでは、新しく開かれたIssueを自動で追加する設定も有効にした。`main`にルールセット「Protect main (production)」（id 24295437）を作成した。内容は、PR経由のマージ必須（承認数0）、`ci-gate`の成功必須（ブランチ最新化は求めない）、force push・削除の禁止、Copilotの自動レビュー。バイパスできるアクターはいないため、管理者を含めて`main`へ直接pushできない。`gh api repos/K0mork/knittingEditor/rules/branches/main`で5つのルールが適用されていることを確認した。
+- 主なファイル: `.github/dependabot.yml`（npmとGitHub Actionsを毎週月曜9時（JST）にまとめて更新。公開から7日待ってから取り込む）、`.github/release.yml`（Releaseノートの自動生成をラベル別に分類）、`AGENTS.md`（`main`へ直接pushせず、`ci-gate`が通ったPRをマージする手順に変更。Issue・Dependabot・ラベルの運用を追記）、`ios/AGENTS.md`（作業管理の規則をIssue運用に変更）、`README.md`・`ios/README.md`・`ios/DEVELOPMENT.md`・`ios/docs/PRO_PLAN.md`（残作業の参照先をIssueとマイルストーンに変更）。`TODO.md`と`ios/TODO.md`は削除した（完了済み項目の確認結果は`DEVELOPMENT_LOG.md`と`ios/DEVELOPMENT_LOG.md`に残っている）。
 - テスト: 動作の変更がないため、テストは追加していない。
 - 検証: `ruby -ryaml`で`.github/dependabot.yml`と`.github/release.yml`を読み込めることを確認し、`ios/scripts/check-app-store-docs.sh`が成功した。CodeQL Setupの初回実行（run 36831724297）は成功し、コードスキャンとDependabotのアラートはどちらも0件だった。`npm run typecheck`・`npm test`・`npm run build`・`npm run check:dist`・`npm run test:e2e`は、ビルド入力を変えていないためローカルでは実行せず、PRのCIで確認する。
 - デプロイ影響: `.github/`の変更はCIの変更範囲判定でWeb扱いになるため、マージ後にPagesが再配信されるが、`dist/`の内容は変わらない。マージ後にDependabotがエラーなく設定を読み込んだことを、Insights → Dependency graph → Dependabotで確認する。
+
+## 2026-10-01 — PR #12・#14・#15のレビュー・マージと公開確認
+
+- 影響: PR #12（OGP画像）、#14（iOS Safariの共有・PNG/PDFの番号）、#15（source-availableライセンス）をレビューし、問題を認めずmainへマージした。マージコミットは順に`9f6c8a7`、`98d6ba9`、`ffaf065`。機能の追加修正はなし。主な対象は`index.html`、`public/`、`src/platform.ts`・`ShareFileDialog.tsx`、`packages/editor-core/export/`、`LICENSE`・`README.md`。#14にはmainを取り込み、`DEVELOPMENT_LOG.md`の競合を両方の記録を保持して解消した（`476b390`）。その後のログのみの追加修正`b6ebc8b`も確認した。対象外の#13と、レビュー開始後に作成された#16はマージしていない。
+- 検証: Node.js 24.19.0で、#12、#14単独、両者の統合後について`npm run typecheck`、`npm test`、`npm run build`、`npm run check:dist`、`npm run test:e2e`が成功。統合後は単体107件、E2E 76件成功・iPhone専用ケースの対象外2件skip（Chromium mobile・WebKit mobile・Chromium desktop）。iOS Webで`../../node_modules/.bin/tsc -p tsconfig.app.json --noEmit`、`../../node_modules/.bin/vitest run --config vite.config.ts`（8件）が成功。`ios/scripts/check-app-store-docs.sh`も成功した。ローカルの狭幅・デスクトップ・横向き表示、通常・1000×1000盤面・分割PDFの番号を目視確認し、スクリーンショットと出力例を`/tmp/knitting-pr-review-20261001/`へ保存した（コミットしない）。
+- CI: 最新PR #14の[run 36830775610](https://github.com/K0mork/knittingEditor/actions/runs/36830775610)と、main `98d6ba9`の[run 36832154376](https://github.com/K0mork/knittingEditor/actions/runs/36832154376)で、changes、app_store_docs、Web、iOS Web、iPhone/iPad Simulator、両端末のアプリ更新、unsigned Release Archive、同梱アセット検査、ci-gateが成功。mainではdeployも成功した。ネイティブ検証はこれらのCI実行結果で確認し、本レビュー中のローカル再実行はしていない。途中の旧コミットのCIは後続pushでキャンセルされており、マージ判定には最新コミットの成功結果を用いた。
+- 公開確認: `node /tmp/knitting-pr-review-20261001/live-assets-check.mjs`で、HTTPSの`/`、`/guide/`、`/CNAME`、`/og-image.png`、JS/CSS/PDF Workerの200応答を確認した。CNAMEは`knittingeditor.com`、両HTMLにOG画像と`summary_large_image`があり、画像と配信アセットはローカルビルドとSHA-256が一致した。`node /tmp/knitting-pr-review-20261001/browser-check.mjs https://knittingeditor.com/`で、ChromiumのPNG/PDF保存、四辺の番号と描いた記号、トップと使い方ページの直接アクセス・再読み込み、WebKit mobileの共有ダイアログ・編集画面維持を確認した。解析スクリプトには空応答を返した。WebKitの共有APIは差し替えており、実機および実際のiOS共有シートは本レビューでは未確認（SimulatorがUI操作ツールの対象に含まれなかったため）。
+- デプロイ影響: 上記3件はPagesへ反映済み。iOSアプリの番号変更は次回ビルドから反映され、TestFlight/App Storeへの提出は行っていない。本記録のみのコミットのデプロイ影響はnone。記録のmainへの直接pushはGitHubの保護ルール（GH013、PR経由・ci-gate必須）で拒否されたため、記録用PRを経由して反映する。
 
 ## 2026-10-01 — iPhone・iPad Safariの保存を共有シートへ渡し、PNG・PDFへ段・目番号を入れる
 
@@ -123,10 +131,10 @@
 
 - 影響: GA4の初期化・カスタムイベントを、Google公式スニペットと同じ `dataLayer.push(arguments)` 形式でキューへ登録するようにした。タグの非同期読み込み、自動テスト時の計測除外、画面表示と操作手順は変更しない。
 - 主なファイル: `src/analytics.ts`、`src/analytics.test.ts`
-- 根拠: 2026-09-20〜21にSearch Consoleでは検索クリック3件を記録した一方、GA4は同期間0件で、データストリームにも過去48時間の受信なしと表示された。測定ID `G-VVE0G4ZFL4` はストリーム設定と一致している。
+- 根拠: 2026-09-20〜21にSearch Consoleでは検索からの流入を記録していた一方、GA4は同期間の受信がなく、データストリームにも過去48時間の受信なしと表示された。測定ID `G-VVE0G4ZFL4` はストリーム設定と一致している。
 - テスト: キュー内容が通常の配列ではなく `arguments` オブジェクトであり、初期化とカスタムイベントの各コマンドを正しく保持することを検証するよう更新した。
 - 検証: コミット単体のクリーンな作業ツリーで `npm ci`、`npm run typecheck`、`npm test`（5ファイル・27件）、`npm run build`、`npm run check:dist`、`npm run test:e2e`（Chromium mobile・WebKit mobile・Chromium desktop、42件）を順に実行し、すべて成功。
-- デプロイ影響: 2026-09-22にコミット `fc83db1` を `main` へデプロイした。GitHub Actions「Test and deploy Pages」run `35686163773` のテスト・ビルド・デプロイはすべて成功。本番でJS `index-Uchg1IUt.js` とGoogleタグ `G-VVE0G4ZFL4` の読込み、画面上のエラーがないことを確認し、GA4リアルタイムでアクティブユーザー1、`page_view`、`session_start`、`first_visit`、`editor_ready` を各1件受信した。`first_edit` と `chart_exported` は実利用時の受信後に確認する。
+- デプロイ影響: 2026-09-22にコミット `fc83db1` を `main` へデプロイした。GitHub Actions「Test and deploy Pages」run `35686163773` のテスト・ビルド・デプロイはすべて成功。本番でJS `index-Uchg1IUt.js` とGoogleタグ `G-VVE0G4ZFL4` の読込み、画面上のエラーがないことを確認し、GA4リアルタイムで`page_view`、`session_start`、`first_visit`、`editor_ready`の受信を確認した。`first_edit` と `chart_exported` は実利用時の受信後に確認する。
 
 ## 2026-09-20 — 編み目記号の再構築と修正を本番へデプロイ
 
