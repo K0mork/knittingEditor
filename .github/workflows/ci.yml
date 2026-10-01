@@ -142,16 +142,26 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      # xcodebuildに任せると、ビルド後に初回起動してすぐテストを始めるため、起動直後の
+      # 初期化処理とUIテストが重なってXCUITestの操作1つが数十秒かかることがある。
+      # 先に起動を始め、完了を待ってからビルドに入り、ビルドの間に落ち着かせる。
+      - name: Boot simulator
+        id: simulator
+        run: |
+          udid="$(ios/scripts/boot-simulator.sh '${{ matrix.device }}')"
+          echo "udid=$udid" >> "$GITHUB_OUTPUT"
       - name: Install XcodeGen
         run: brew install xcodegen
       - name: Generate Xcode project
         run: xcodegen generate --spec ios/project.yml
+      - name: Wait for simulator boot
+        run: xcrun simctl bootstatus '${{ steps.simulator.outputs.udid }}' -b
       - name: Run iOS tests
         run: >-
           xcodebuild test
           -project ios/knittingEditor.xcodeproj
           -scheme knittingEditor
-          -destination 'platform=iOS Simulator,name=${{ matrix.device }},OS=latest'
+          -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.udid }}'
           -retry-tests-on-failure
           -test-iterations 2
           -test-timeouts-enabled YES
@@ -181,11 +191,19 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      # `ios`ジョブと同じ理由で先に起動を始める。完了はスクリプトがビルド前に待つ。
+      - name: Boot simulator
+        id: simulator
+        run: |
+          udid="$(ios/scripts/boot-simulator.sh '${{ matrix.device }}')"
+          echo "udid=$udid" >> "$GITHUB_OUTPUT"
       - name: Install XcodeGen
         run: brew install xcodegen
       - name: Generate Xcode project
         run: xcodegen generate --spec ios/project.yml
       - name: Simulate app update and restore IndexedDB
+        env:
+          SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}
         run: |
           ios/scripts/simulate-app-update.sh \
             '${{ matrix.device }}' \

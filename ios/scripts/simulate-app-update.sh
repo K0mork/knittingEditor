@@ -9,22 +9,10 @@ work_dir="${TMPDIR:-/tmp}/knitting-editor-app-update-${simulator_name//[^[:alnum
 updated_derived_data="$work_dir/updated-derived-data"
 probe_marker="/tmp/knitting-editor-app-update-probe"
 
-find_simulator_udid() {
-  local device_list="$1"
-  while IFS= read -r line; do
-    [[ "$line" == *"$simulator_name"* ]] || continue
-    printf '%s\n' "$line" | grep -Eo '[[:xdigit:]]{8}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{12}' | head -n 1
-    return 0
-  done <<< "$device_list"
-}
-
 simulator_udid="${SIMULATOR_UDID:-}"
 if [[ -z "$simulator_udid" ]]; then
-  simulator_udid="$(find_simulator_udid "$(xcrun simctl list devices available)")"
-fi
-if [[ -z "$simulator_udid" ]]; then
-  echo "Simulatorが見つかりません: $simulator_name" >&2
-  exit 1
+  # `ios`ジョブの`OS=latest`と同じく、最新のiOSランタイムの個体を選んで起動する。
+  simulator_udid="$("$project_root/scripts/boot-simulator.sh" "$simulator_name")"
 fi
 # 同名Simulatorが複数ある環境でも、データ消去・初回保存・更新後確認を
 # 同じ個体に固定する。名前指定のdestinationはxcodebuildが別UDIDを選ぶ
@@ -39,6 +27,12 @@ rm -rf "$work_dir"
 mkdir -p "$work_dir"
 touch "$probe_marker"
 trap 'rm -f "$probe_marker"' EXIT
+
+# 起動直後のSimulatorは裏で初期化処理を続け、fixture作成の操作1つが数十秒かかって
+# 実行時間上限を超えたことがある。起動の完了を待ってからテストへ進む。
+# 停止中の端末では`simctl uninstall`が失敗して、消去が黙って飛ばされる点も防ぐ。
+xcrun simctl boot "$simulator_udid" >/dev/null 2>&1 || true
+xcrun simctl bootstatus "$simulator_udid" -b
 
 echo "[1/4] 専用Simulatorの既存アプリデータを消去: $simulator_udid"
 xcrun simctl uninstall "$simulator_udid" "$bundle_id" >/dev/null 2>&1 || true
