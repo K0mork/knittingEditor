@@ -103,6 +103,40 @@ final class KnittingEditorUITests: XCTestCase {
         )
     }
 
+    /// 盤面のタップで置いた記号を、操作メニューの「元に戻す」「やり直す」で取り消し・再実行できる。
+    /// WKWebView上のタッチ入力と、指を離した時点で履歴を1件にまとめる処理をまとめて確かめる。
+    func testUndoAndRedoRestoreBoardEdits() {
+        let app = XCUIApplication()
+        app.launch()
+
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
+        createDocument(named: "元に戻す確認", in: app)
+
+        let webView = app.webViews.firstMatch
+        let canvas = webView.otherElements
+            .matching(NSPredicate(format: "label CONTAINS %@", "編み図編集盤面"))
+            .firstMatch
+        XCTAssertTrue(canvas.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+        XCTAssertTrue(canvas.label.contains("記号0個"), canvas.debugDescription)
+        let undo = app.buttons["元に戻す"]
+        let redo = app.buttons["やり直す"]
+        XCTAssertTrue(undo.waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertFalse(undo.isEnabled, app.debugDescription)
+        XCTAssertFalse(redo.isEnabled, app.debugDescription)
+
+        canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        waitForStitchCount(1, on: canvas, in: app)
+        XCTAssertTrue(undo.isHittable, app.debugDescription)
+
+        undo.tap()
+        waitForStitchCount(0, on: canvas, in: app)
+        XCTAssertTrue(redo.isEnabled, app.debugDescription)
+
+        redo.tap()
+        waitForStitchCount(1, on: canvas, in: app)
+        XCTAssertFalse(redo.isEnabled, app.debugDescription)
+    }
+
     /// 入力を伴うダイアログは背景タップで閉じない。入力欄をタップするとキーボードが出て
     /// ダイアログが上へずれるため、続けて置いた指が背景へ当たり、入力した名前ごと
     /// 取り消されていた。
@@ -791,6 +825,14 @@ final class KnittingEditorUITests: XCTestCase {
             field.typeText(text)
         }
         XCTAssertEqual(field.value as? String, text, app.debugDescription)
+    }
+
+    private func waitForStitchCount(_ count: Int, on canvas: XCUIElement, in app: XCUIApplication) {
+        let reached = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "label CONTAINS %@", "記号\(count)個"),
+            object: canvas
+        )
+        XCTAssertEqual(XCTWaiter.wait(for: [reached], timeout: 10), .completed, "記号が\(count)個にならない: \(canvas.label)")
     }
 
     /// 盤面のアクセシブルな名前から現在の記号数を読む。

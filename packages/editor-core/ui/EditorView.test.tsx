@@ -125,6 +125,39 @@ describe('EditorView', () => {
     await click('復元');
     expect(pick).toHaveBeenCalledOnce();
   });
+
+  // 新しい編み図が開いたままになるので、盤面の初期状態に頼るテストより後に置く。
+  it('undoes grid changes and forgets the history when another chart opens', async () => {
+    const { container, button, click } = await renderEditor({ askText: async () => '別の編み図' });
+    const boardLabel = () => container.querySelector('canvas')?.getAttribute('aria-label') ?? '';
+    const undo = container.querySelector<HTMLButtonElement>('button[aria-label="元に戻す"]')!;
+    const redo = container.querySelector<HTMLButtonElement>('button[aria-label="やり直す"]')!;
+    expect(undo.disabled).toBe(true);
+    expect(redo.disabled).toBe(true);
+
+    await click('盤面');
+    await click('上に段');
+    expect(boardLabel()).toContain('21段');
+    expect(undo.disabled).toBe(false);
+
+    await act(async () => { undo.click(); });
+    expect(boardLabel()).toContain('20段');
+    expect(undo.disabled).toBe(true);
+    expect(redo.disabled).toBe(false);
+    expect(container.querySelector('.toast')?.textContent).toBe('元に戻しました');
+
+    await act(async () => { redo.click(); });
+    expect(boardLabel()).toContain('21段');
+    expect(undo.disabled).toBe(false);
+
+    await click('閉じる');
+    await click('編み図');
+    await click('新しい編み図');
+    await waitUntil(() => container.querySelector('[data-testid="status"]')?.textContent?.startsWith('別の編み図') ?? false);
+    expect(undo.disabled).toBe(true);
+    expect(redo.disabled).toBe(true);
+    expect(button('描く')).toBeDefined();
+  });
 });
 
 describe('saveErrorMessage', () => {

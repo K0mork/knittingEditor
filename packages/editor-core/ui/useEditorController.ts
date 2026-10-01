@@ -12,7 +12,7 @@ import {
   listDocuments, renameDocument, saveBlock, type ChartDocument,
 } from '../storage/database';
 import { errorMessage } from '../util/errors';
-import { useClipboardShortcuts, useNotifier, usePanelFocus } from './hooks';
+import { useClipboardShortcuts, useHistoryShortcuts, useNotifier, usePanelFocus } from './hooks';
 
 export type BusyTask = 'PNGを生成中' | 'PDFを生成中' | 'バックアップを処理中';
 export type EditorPanel = 'documents' | 'grid' | 'blocks' | 'export';
@@ -79,11 +79,41 @@ export function useEditorController(options: EditorControllerOptions) {
     onSaveError: (_error, trigger) => notify(saveErrorMessage(trigger)),
   });
   const {
-    board, activeDocument, changed: markChanged, saveNow, switchDocument: switchSessionDocument,
+    board, activeDocument, changed: markChanged, commitEdit, saveNow, switchDocument: switchSessionDocument,
     refreshDocuments, refreshBlocks, applyActiveDocumentName,
   } = session;
 
-  const changed = useCallback(() => { analytics.trackFirstEdit(); markChanged(); }, [analytics, markChanged]);
+  // 指を離すたびに盤面全体を比べないよう、書き換えがあったときだけ履歴へ積む。
+  const strokePendingRef = useRef(false);
+  /** なぞり描きの途中の書き換え。指を離したときの`commitStroke`で1件の履歴になる。 */
+  const strokeChanged = useCallback(() => {
+    strokePendingRef.current = true;
+    analytics.trackFirstEdit();
+    markChanged();
+  }, [analytics, markChanged]);
+  const commitStroke = useCallback(() => {
+    if (!strokePendingRef.current) return;
+    strokePendingRef.current = false;
+    commitEdit();
+  }, [commitEdit]);
+  /** 1回で終わる書き換え（貼り付け、盤面設定）。すぐ1件の履歴にする。 */
+  const changed = useCallback(() => {
+    strokePendingRef.current = false;
+    analytics.trackFirstEdit();
+    markChanged();
+    commitEdit();
+  }, [analytics, markChanged, commitEdit]);
+
+  const stepHistory = useCallback((direction: 'undo' | 'redo') => {
+    const moved = direction === 'undo' ? session.undo() : session.redo();
+    if (!moved) return;
+    // 寸法が戻ると選択範囲が盤面の外を指しうるので、選択は解除する。
+    setSelection(undefined);
+    notify(direction === 'undo' ? '元に戻しました' : 'やり直しました');
+  }, [session.undo, session.redo, notify]);
+  const undo = useCallback(() => stepHistory('undo'), [stepHistory]);
+  const redo = useCallback(() => stepHistory('redo'), [stepHistory]);
+  useHistoryShortcuts({ onUndo: undo, onRedo: redo });
 
   /** 失敗を記録して利用者へ伝える。出力やバックアップの`catch`で使う。 */
   const reportFailure = (operation: string, error: unknown) => {
@@ -261,7 +291,8 @@ export function useEditorController(options: EditorControllerOptions) {
 
   return {
     session,
-    changed,
+    changed, strokeChanged, commitStroke,
+    undo, redo,
     notify, message,
     initializationError, busy,
     selectedStitch, currentStitch, selectStitch, stitchPickerOpen, setStitchPickerOpen,

@@ -113,12 +113,16 @@ export interface ClipboardShortcutOptions {
   onPaste: () => void;
 }
 
+/** 入力欄の中のショートカットは、文字入力の取り消しなど入力欄自身の操作に任せる。 */
+function isEditableTarget(target: EventTarget | null): boolean {
+  return target instanceof HTMLElement && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName));
+}
+
 /** Ctrl/Cmd+CとCtrl/Cmd+Vで選択範囲のコピーと貼り付けを始める。 */
 export function useClipboardShortcuts({ canCopy, canPaste, onCopy, onPaste }: ClipboardShortcutOptions) {
   useEffect(() => {
     const handleShortcut = (event: KeyboardEvent) => {
-      const target = event.target;
-      if (target instanceof HTMLElement && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))) return;
+      if (isEditableTarget(event.target)) return;
       if (!(event.ctrlKey || event.metaKey)) return;
       if (event.key.toLowerCase() === 'c' && canCopy) {
         event.preventDefault();
@@ -131,4 +135,29 @@ export function useClipboardShortcuts({ canCopy, canPaste, onCopy, onPaste }: Cl
     window.addEventListener('keydown', handleShortcut);
     return () => window.removeEventListener('keydown', handleShortcut);
   }, [canCopy, canPaste, onCopy, onPaste]);
+}
+
+export interface HistoryShortcutOptions {
+  onUndo: () => void;
+  onRedo: () => void;
+}
+
+/** Ctrl/Cmd+Zで元に戻し、Ctrl/Cmd+Shift+ZとCtrl+Yでやり直す。 */
+export function useHistoryShortcuts({ onUndo, onRedo }: HistoryShortcutOptions) {
+  useEffect(() => {
+    const handleShortcut = (event: KeyboardEvent) => {
+      if (isEditableTarget(event.target) || event.altKey) return;
+      if (!(event.ctrlKey || event.metaKey)) return;
+      const key = event.key.toLowerCase();
+      if (key === 'z') {
+        event.preventDefault();
+        if (event.shiftKey) onRedo(); else onUndo();
+      } else if (key === 'y' && event.ctrlKey && !event.metaKey) {
+        event.preventDefault();
+        onRedo();
+      }
+    };
+    window.addEventListener('keydown', handleShortcut);
+    return () => window.removeEventListener('keydown', handleShortcut);
+  }, [onUndo, onRedo]);
 }

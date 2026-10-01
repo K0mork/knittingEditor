@@ -35,6 +35,13 @@ const ACTION_BAR_PANELS: Array<{ panel: EditorPanel; label: string }> = [
   { panel: 'export', label: '保存' },
 ];
 
+/** 元に戻す・やり直すの矢印。文字の↶↷は書体によって細く小さく見えるので描く。 */
+function HistoryIcon({ direction }: { direction: 'undo' | 'redo' }) {
+  return <svg className="history-icon" viewBox="0 0 24 24" aria-hidden="true" style={direction === 'redo' ? { transform: 'scaleX(-1)' } : undefined}>
+    <path d="M9 14 4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
+  </svg>;
+}
+
 /** 編集画面の組み立て。Web版とiOS版で共通。 */
 export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, backupNote, footer, children }: EditorViewProps) {
   const { session, mode, panel, selection, copiedBlock } = editor;
@@ -79,7 +86,7 @@ export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, 
 
       <section className="canvas-wrap">
         <BoardCanvas board={board} revision={session.revision} stitchKey={editor.selectedStitch} color={editor.selectedColor} mode={mode}
-          selection={selection} pasteBlock={editor.pasteBlock} onChange={editor.changed} onSelectionChange={editor.setSelection} onPasteComplete={editor.handlePasteComplete} />
+          selection={selection} pasteBlock={editor.pasteBlock} onChange={editor.strokeChanged} onEditEnd={editor.commitStroke} onSelectionChange={editor.setSelection} onPasteComplete={editor.handlePasteComplete} />
         <div className="gesture-hint">1本指：{editor.modeLabel}　2本指：移動・拡大</div>
       </section>
 
@@ -87,6 +94,11 @@ export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, 
 
       <nav className="action-bar" aria-label="操作メニュー">
         {ACTION_BAR_PANELS.map((item) => <button key={item.panel} aria-controls="app-drawer" aria-expanded={panel === item.panel} onClick={() => editor.togglePanel(item.panel)}>{item.label}</button>)}
+        {/* 上の道具列は狭い画面で余白が無いので、親指の届く操作メニューに置く。盤面には重ねない。 */}
+        <div className="history-tools" role="group" aria-label="編集履歴">
+          <button aria-label="元に戻す" title="元に戻す（⌘Z / Ctrl+Z）" disabled={!session.canUndo} onClick={editor.undo}><HistoryIcon direction="undo" /><span className="history-label" aria-hidden="true">戻す</span></button>
+          <button aria-label="やり直す" title="やり直す（⇧⌘Z / Ctrl+Y）" disabled={!session.canRedo} onClick={editor.redo}><HistoryIcon direction="redo" /><span className="history-label" aria-hidden="true">やり直す</span></button>
+        </div>
       </nav>
     </main>
 

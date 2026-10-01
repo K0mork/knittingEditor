@@ -210,6 +210,58 @@ test('copies and repeatedly pastes a selection without saving a block', async ({
   await expect(page.getByText('保存済みブロックはありません。')).toBeVisible();
 });
 
+test('undoes and redoes a stroke and a grid change, then saves the result', async ({ page }) => {
+  const readStored = () => page.evaluate(async () => {
+    const request = indexedDB.open('knitting-editor-v2');
+    const db = await new Promise<IDBDatabase>((resolve) => { request.onsuccess = () => resolve(request.result); });
+    const get = db.transaction('documents').objectStore('documents').getAll();
+    const documents = await new Promise<Array<{ cells: ArrayBuffer; rows: number }>>((resolve) => { get.onsuccess = () => resolve(get.result); });
+    return { filled: new Uint32Array(documents[0].cells).filter(Boolean).length, rows: documents[0].rows };
+  });
+  const undo = page.getByRole('button', { name: '元に戻す' });
+  const redo = page.getByRole('button', { name: 'やり直す' });
+  await expect(undo).toBeDisabled();
+  await expect(redo).toBeDisabled();
+
+  const canvas = page.getByLabel('編み図編集盤面');
+  const box = await canvas.boundingBox();
+  await page.mouse.click(box!.x + 75, box!.y + 75);
+  await page.mouse.move(box!.x + 75, box!.y + 135);
+  await page.mouse.down();
+  await page.mouse.move(box!.x + 180, box!.y + 135, { steps: 8 });
+  await page.mouse.up();
+  await page.waitForTimeout(700);
+  const drawn = await readStored();
+  expect(drawn.filled).toBeGreaterThan(2);
+
+  // なぞり描き1回分がまとめて取り消され、その前のタップは残る。
+  await undo.click();
+  await expect(page.getByRole('status').filter({ hasText: '元に戻しました' })).toBeVisible();
+  await page.waitForTimeout(700);
+  expect((await readStored()).filled).toBe(1);
+  await expect(redo).toBeEnabled();
+
+  await page.keyboard.press('ControlOrMeta+Shift+z');
+  await page.waitForTimeout(700);
+  expect((await readStored()).filled).toBe(drawn.filled);
+
+  await page.getByRole('button', { name: '盤面' }).click();
+  await page.getByRole('button', { name: '上に段' }).click();
+  await page.getByRole('button', { name: '閉じる' }).click();
+  await page.waitForTimeout(700);
+  expect((await readStored()).rows).toBe(21);
+
+  await page.keyboard.press('ControlOrMeta+z');
+  await page.waitForTimeout(700);
+  expect(await readStored()).toEqual({ filled: drawn.filled, rows: 20 });
+
+  await page.keyboard.press('ControlOrMeta+z');
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect(undo).toBeDisabled();
+  await page.waitForTimeout(700);
+  expect(await readStored()).toEqual({ filled: 0, rows: 20 });
+});
+
 test('keeps the cast-on row when the row count grows and shrinks again', async ({ page }) => {
   const readFilled = () => page.evaluate(async () => {
     const request = indexedDB.open('knitting-editor-v2');
