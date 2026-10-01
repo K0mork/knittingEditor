@@ -57,6 +57,10 @@ ios/docs/            additional app design and release records
 - データ形式、記号ID、保存origin、IndexedDB schemaの変更には移行テストを追加する。
 - Safari保存領域との互換処理を追加しない。旧データ移行コードがWeb版から混入した場合はアプリビルドから除外する。
 
+## 非公開情報
+
+リポジトリ、その履歴、GitHub上のIssue・PR・コメント・コミットメッセージ・CIログ・添付画像はすべて公開される。ルートの`AGENTS.md`の「Confidential Information」に従い、利用分析・Search Console・App Store Connect・売上の数値、非公開のダッシュボードへのリンクやアカウントID、公開前の価格・収益試算・事業計画、個人情報を載せない。必要な数値や価格はGit管理外のルート`private/`に置き、文書には定性的な結論とその置き場所だけを書く。App Storeの審査メモや提出資料の下書き（`docs/`）も同じ扱いとする。
+
 ## Development Log
 
 記録先はリポジトリルートの`DEVELOPMENT_LOG.md`だけです。iOS側の変更もここへ書き、`ios/DEVELOPMENT_LOG.md`へは追記しません（統合前のアプリ履歴の凍結アーカイブです）。

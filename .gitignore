@@ -12,3 +12,5 @@ dist/
 playwright-report/
 test-results/
 *.tsbuildinfo
+# 利用分析の数値・価格・収益試算などの非公開メモ。AGENTS.mdの「Confidential Information」を参照。
+/private/
