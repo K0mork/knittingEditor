@@ -9,6 +9,15 @@
 - 検証: Node.js 24.21.0で`npm run typecheck`、`npm test`（18ファイル・107件）、`npm run build`、`npm run check:dist`（`dist/CNAME`は`knittingeditor.com`、`dist/guide/index.html`に追記を確認）、`npm run test:e2e`（Chromium mobile・WebKit mobile・Chromium desktop、73件成功・iPhone専用テストの2件skip）が成功。iOS Web `tsc -p tsconfig.app.json --noEmit`と`vitest run --config vite.config.ts`（3ファイル・8件）が成功。`xcodegen generate --spec ios/project.yml`、`xcodebuild test`（KnittingEditor iPhone 16 Simulator、Xcode 27.0）でSwift単体テスト24件（1件skip）とXCUITest 18件（iPad専用5件skip、`testBackupExportSheetDismissesBackToEditor`はCIと同じく除外）、Simulator向けDebug buildと`check-app-bundle.sh`、unsigned Release Archiveと`check-release-assets.sh`（同梱の使い方ページに追記を確認）、`simulate-app-update.sh`（KnittingEditor iPhone 16）が成功。iPadでの実行はCIに任せる。iPhone 18 Pro SimulatorのSafariでローカル開発版を開き、PDF保存でダイアログ→共有シート（「プリント」「"ファイル"に保存」）が開き、閉じると編集画面へ戻ることを確認した（ファイルは保存していない）。20×20・1000×1000のPNGと、20×20・1000×1000の1ページPDF、60×40の分割PDFを画像にして番号を目視確認した。スクリーンショットはコミットしない。実機は未確認。
 - デプロイ影響: `main`へのマージ後にPagesへ配信される。配信後に`https://knittingeditor.com/`をiPhoneのSafariで開き、PDF保存で「共有・保存」ダイアログと共有シートが出て編集画面が残ること、デスクトップではPNG・PDFがダウンロードされ四辺に番号が入ることを確認する。iOS版は次回ビルドから番号入りのPNG・PDFになる。
 
+## 2026-10-01 — SNS共有用のOGP画像を追加
+
+- 影響: トップページと`/guide/`のURLをX・LINE・Facebook・Slack・iMessageなどで共有したとき、文字だけの小さなカードではなく1200×630の画像付きカードが出るようにした。画像は縮小表示でも読めるよう「棒針の／編み図」を大きく置き、下の帯に「無料・登録不要」、右にエディタと同じ表目・かけ目・ねじり目の記号を並べた。両ページに`og:image`（型・幅・高さ・alt）と`og:site_name`を加え、`twitter:card`を`summary_large_image`にした。`/guide/`にはOGPが無かったため、`og:title`・`og:description`・`og:type`（`article`）・`og:url`・`og:locale`も追加した。検索順位への直接の影響はない。
+- 画像の生成: `scripts/generate-og-image.mjs`が`packages/editor-core`の記号SVGを読み、PlaywrightのChromiumで描いて`public/og-image.png`（67,369バイト）へ書き出す。和文はヒラギノ角ゴシックに依存し、Linux CIでは同じ画像にならないため、CIでは生成せずPNGをコミットする。macOS以外では実行を止める。同じ入力から2回生成し、SHA-1が一致することを確認した。npmスクリプトにすると`package.json`の変更でiOSのジョブまで起動するため、`node scripts/generate-og-image.mjs`で直接実行する。
+- 主なファイル: `public/og-image.png`、`scripts/generate-og-image.mjs`、`index.html`、`public/guide/index.html`、`scripts/check-dist.mjs`、`tests/e2e/seo.spec.ts`。iOS版の同梱ページは共有されないため変更していない。
+- テスト: `seo.spec.ts`で両ページの画像メタデータと`summary_large_image`、`/guide/`のOGP、`/og-image.png`が`image/png`で返りPNGのIHDRが1200×630であることを検査する。`check-dist`は`dist/og-image.png`の存在・PNGシグネチャ・寸法と、配信HTML 2ページの`og:image`を検査する。
+- 検証: `npm run typecheck`、`npm test`（15ファイル・84件）、`npm run build`、`npm run check:dist`（`dist/CNAME`は`knittingeditor.com`、`dist/og-image.png`と両ページの`og:image`を確認）、`npm run test:e2e`（Chromium mobile・WebKit mobile・Chromium desktop、75件）が成功。画面の表示は変えていないため、ビューポート別の目視確認は画像そのもの（幅400・200・120pxへの縮小を含む）に限った。
+- デプロイ影響: `main`へのマージ後にPagesへ配信される。配信後に`https://knittingeditor.com/og-image.png`がHTTPS 200で返ること、トップと`/guide/`の配信HTMLに`og:image`があることを確認する。SNS側はカードをキャッシュするため、既に共有済みのURLは各サービスの再取得（FacebookのシェアデバッガーやXの再投稿など）まで古い表示が残りうる。
+
 ## 2026-10-01 — PR #11のレビュー・マージと公開確認
 
 - 影響: PR #11（Undo/Redo）をレビューし、`aa35c8c`でmainへマージ。コードの追加修正はなし。主な対象は`packages/editor-core/model/BoardHistory.ts`、`state/useEditorSession.ts`、`ui/`、`canvas/BoardCanvas.tsx`とWeb/iOSの使い方ページ。

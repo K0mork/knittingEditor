@@ -1,9 +1,17 @@
-import { readdir, stat } from 'node:fs/promises';
+import { readFile, readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 
-const required = ['index.html', 'robots.txt', 'sitemap.xml', 'favicon.svg', 'guide/index.html'];
+const required = ['index.html', 'robots.txt', 'sitemap.xml', 'favicon.svg', 'og-image.png', 'guide/index.html'];
 for (const file of required) await stat(join('dist', file));
 const assets = await readdir(join('dist', 'assets'));
+
+const ogImage = await readFile(join('dist', 'og-image.png'));
+if (ogImage.subarray(0, 8).toString('hex') !== '89504e470d0a1a0a') throw new Error('og-image.png がPNGではありません');
+if (ogImage.readUInt32BE(16) !== 1200 || ogImage.readUInt32BE(20) !== 630) throw new Error('og-image.png が1200×630ではありません');
+for (const page of ['index.html', 'guide/index.html']) {
+  const html = await readFile(join('dist', page), 'utf8');
+  if (!html.includes('<meta property="og:image" content="https://knittingeditor.com/og-image.png" />')) throw new Error(`${page} にog:imageがありません`);
+}
 if (!assets.some((file) => file.startsWith('pdf.worker-') && file.endsWith('.js'))) throw new Error('PDF Workerが出力されていません');
 
 async function totalSize(directory) {
