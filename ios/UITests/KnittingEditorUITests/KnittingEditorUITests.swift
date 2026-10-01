@@ -196,7 +196,7 @@ final class KnittingEditorUITests: XCTestCase {
         let nameField = app.textFields["入力"]
         XCTAssertTrue(nameField.waitForExistence(timeout: Self.editorAppearanceTimeout))
         replaceText("再起動復元テスト", in: nameField, app: app)
-        app.buttons["決定"].tap()
+        confirmDialog(closing: nameField, in: app)
 
         let webView = app.webViews.firstMatch
         let canvas = webView.otherElements
@@ -239,7 +239,7 @@ final class KnittingEditorUITests: XCTestCase {
         let nameField = app.textFields["入力"]
         XCTAssertTrue(nameField.waitForExistence(timeout: Self.editorAppearanceTimeout))
         replaceText("M2切替A", in: nameField, app: app)
-        app.buttons["決定"].tap()
+        confirmDialog(closing: nameField, in: app)
 
         let webView = app.webViews.firstMatch
         let emptyCanvas = webView.otherElements
@@ -257,7 +257,7 @@ final class KnittingEditorUITests: XCTestCase {
         newDocument.tap()
         XCTAssertTrue(nameField.waitForExistence(timeout: Self.editorAppearanceTimeout))
         replaceText("M2切替B", in: nameField, app: app)
-        app.buttons["決定"].tap()
+        confirmDialog(closing: nameField, in: app)
 
         let secondEmptyCanvas = webView.otherElements
             .matching(NSPredicate(format: "label CONTAINS %@", "記号0個"))
@@ -350,7 +350,7 @@ final class KnittingEditorUITests: XCTestCase {
         let nameField = app.textFields["入力"]
         XCTAssertTrue(nameField.waitForExistence(timeout: 10), app.debugDescription)
         replaceText("可変ウィンドウ確認", in: nameField, app: app)
-        app.buttons["決定"].tap()
+        confirmDialog(closing: nameField, in: app)
 
         let canvas = app.webViews.firstMatch.otherElements
             .matching(NSPredicate(format: "label CONTAINS %@", "記号0個"))
@@ -494,7 +494,7 @@ final class KnittingEditorUITests: XCTestCase {
         let nameField = app.textFields["入力"]
         XCTAssertTrue(nameField.waitForExistence(timeout: appUpdateElementTimeout))
         replaceText("アプリ更新復元fixture", in: nameField, app: app)
-        app.buttons["決定"].tap()
+        confirmDialog(closing: nameField, in: app)
 
         let webView = app.webViews.firstMatch
         let canvas = webView.otherElements
@@ -781,6 +781,14 @@ final class KnittingEditorUITests: XCTestCase {
         return attachment
     }
 
+    private func waitForValue(_ value: String, of element: XCUIElement, timeout: TimeInterval) -> Bool {
+        let reached = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "value == %@", value),
+            object: element
+        )
+        return XCTWaiter.wait(for: [reached], timeout: timeout) == .completed
+    }
+
     private func waitForDisappearance(of element: XCUIElement, timeout: TimeInterval) -> Bool {
         let gone = XCTNSPredicateExpectation(
             predicate: NSPredicate(format: "exists == false"),
@@ -805,7 +813,7 @@ final class KnittingEditorUITests: XCTestCase {
         let nameField = app.textFields["入力"]
         XCTAssertTrue(nameField.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
         replaceText(name, in: nameField, app: app)
-        app.buttons["決定"].tap()
+        confirmDialog(closing: nameField, in: app)
     }
 
     private func replaceText(_ text: String, in field: XCUIElement, app: XCUIApplication) {
@@ -822,11 +830,38 @@ final class KnittingEditorUITests: XCTestCase {
         // 遅いランナーでは操作1つが数秒から数十秒かかるため、削除と入力を1回の操作にまとめる。
         // 取りこぼしたときだけ、末尾のキャレットから同じ手順でもう一度入れ直す。
         for _ in 0..<2 {
+            // 読んだ値が古いと削除が足りず、正しく入った名前の末尾だけを消して二重に入力する
+            // （iPadで`M2切M2切替A`になった）。余分な削除は先頭で止まるだけなので多めに送る。
             let current = (field.value as? String) ?? ""
-            field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count + 2) + text)
-            if (field.value as? String) == text { break }
+            let deletes = String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count + text.count + 2)
+            field.typeText(deletes + text)
+            // 入力欄の値は入力より遅れて反映されることがある。すぐ読んで不一致と判断すると、
+            // 正しく入っていても入れ直してしまうため、反映を待ってから判断する。
+            if waitForValue(text, of: field, timeout: 10) { break }
         }
         XCTAssertEqual(field.value as? String, text, app.debugDescription)
+    }
+
+    /// 入力ダイアログの「決定」を押し、ダイアログが閉じたことを確かめる。
+    ///
+    /// キーボード（iPadのハードウェアキーボード接続時は入力補助バー）が遅れて出ると
+    /// WebViewが縮み、中央に置いたダイアログが上へ動く。XCUITestは要素を探してから
+    /// 合成タップを送るまでに時間がかかるため、その間に動くと元の座標を叩いて外れる
+    /// （入力欄に正しい名前が入ったまま、ダイアログが開きっぱなしになった）。
+    /// 閉じなかったときは、ボタンの位置が変わっていた場合に限って押し直す。位置が
+    /// 変わっていないのに閉じなければ「決定」が効いていないので、そのまま失敗にする。
+    private func confirmDialog(closing field: XCUIElement, in app: XCUIApplication) {
+        let confirm = app.buttons["決定"]
+        let frameBeforeTap = confirm.frame
+        confirm.tap()
+        if waitForDisappearance(of: field, timeout: 10) { return }
+        if confirm.exists, confirm.frame != frameBeforeTap {
+            confirm.tap()
+        }
+        XCTAssertTrue(
+            waitForDisappearance(of: field, timeout: Self.editorAppearanceTimeout),
+            "「決定」でダイアログが閉じない: \(app.debugDescription)"
+        )
     }
 
     /// 盤面の編集が記号数へ反映されるまで待つ。CIの遅い区間ではXCUITestの操作1回に
