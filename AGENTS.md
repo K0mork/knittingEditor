@@ -58,6 +58,8 @@ Add one concise entry per completed change, newest first, containing:
 - tests added or updated and the exact verification commands run;
 - deployment impact, including `none` when there is none, and any post-deployment check required.
 
+The entry belongs in the pull request that makes the change and must be present before that pull request is merged. This applies equally to pull requests Codex did not write, including Dependabot and other bot pull requests (see GitHub Workflow). Results that can only be observed after merging, such as the post-deployment check in Deployment Procedure step 6, are recorded in a follow-up pull request opened right after the check; never leave them unrecorded.
+
 Follow Confidential Information in log entries: record that analytics events were received or that a metric was checked, never the counts themselves.
 
 Never claim a check passed unless it was actually run. If a required check cannot be run, record the reason in both the development log and the final response.
@@ -92,9 +94,9 @@ Codex must use the following production deployment procedure:
 1. Confirm the worktree contains only intended changes, update `DEVELOPMENT_LOG.md` when required, and review the diff.
 2. Run the complete pre-commit suite above and resolve every failure.
 3. Commit focused changes according to the commit rules below. Do not deploy uncommitted work.
-4. Merge the reviewed pull request into `main` only when the user has requested or approved deployment, after its `ci-gate` check has passed. Do not push directly to `main`. Opening a pull request or pushing another branch runs validation but must not be described as a production deployment.
+4. Before merging, confirm that the pull request contains the required `DEVELOPMENT_LOG.md` entry, whoever opened it. The user reviews pull requests and merges them. Codex opens the pull request, reports that it is ready for review, and leaves it unmerged; it merges a pull request only when the user explicitly asks it to merge that specific pull request, and only after its `ci-gate` check has passed. Approval to merge one pull request does not extend to others, including follow-up or newly opened ones. Do not push directly to `main`. Opening a pull request or pushing another branch runs validation but must not be described as a production deployment.
 5. Confirm the `CI and deploy Pages` GitHub Actions workflow succeeded, including every job required by `ci-gate` and the `deploy` job. A successful local build or push alone is not proof of deployment.
-6. Verify `https://knittingeditor.com/` over HTTPS after deployment. Exercise the changed user flow and confirm the expected assets, metadata, and custom domain. Record the result in `DEVELOPMENT_LOG.md`.
+6. Verify `https://knittingeditor.com/` over HTTPS after deployment. Exercise the changed user flow and confirm the expected assets, metadata, and custom domain. Record the result in `DEVELOPMENT_LOG.md` through a follow-up pull request, because `main` accepts changes only through pull requests.
 
 If GitHub Actions fails or the live site does not match the deployed commit, stop, report the exact failure, and fix or revert through a new focused commit. Never bypass the test job, deploy a locally modified `dist/`, force-push production history, or claim deployment success without checking both the workflow and live site.
 
@@ -103,7 +105,7 @@ If GitHub Actions fails or the live site does not match the deployed commit, sto
 - All open work, for both Web and iOS, is tracked only in GitHub Issues. Label each issue `priority:P0` (required for the next release), `priority:P1` (quality improvement), or `priority:P2` (future candidate); add `platform:ios` for iOS work and `needs-device` when completion requires a real device, Apple signing, or TestFlight. P0 iOS issues belong to the `iOS 1.0` milestone.
 - Before starting an issue, read its body for the current state and completion conditions. When newly required work is discovered, open an issue for it. A `needs-device` issue is not complete on Simulator results alone; follow `ios/docs/REAL_DEVICE_RELEASE_CHECKLIST.md`.
 - Close issues from the pull request that completes them by writing `Closes #<number>` in its body, and record the verification in `DEVELOPMENT_LOG.md`. Do not close a partially completed issue; state what remains in an issue comment instead.
-- Dependabot (`.github/dependabot.yml`) opens grouped npm and GitHub Actions update PRs weekly. Treat them like any other dependency change: review the changelog and require the full CI to pass before merging.
+- Dependabot (`.github/dependabot.yml`) opens grouped npm and GitHub Actions update PRs weekly. Treat them like any other dependency change: review the changelog and require the full CI to pass before merging. Dependabot pull requests contain no `DEVELOPMENT_LOG.md` entry, so before merging, push a commit to the Dependabot branch that adds one (updated packages and versions, relevant changelog items, CI result including any reruns). Dependabot stops rebasing a pull request after someone else commits to it; if it must be rebased or recreated later, add the entry again.
 - Label pull requests `enhancement`, `bug`, `documentation`, or `dependencies` so that generated release notes (`.github/release.yml`) are categorized.
 
 ## Coding Style & Naming Conventions
