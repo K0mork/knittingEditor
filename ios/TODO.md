@@ -118,6 +118,7 @@
 - [ ] iCloud同期をオプトイン機能として評価する
 - [ ] Apple Pencil向け操作を評価する
 - [ ] App Store Connectのプライバシー保護された分析だけで十分か評価する
+- [ ] 有料機能（Pro：買い切り。第1弾は編み進めモード）を実装する（検討内容は[`docs/PRO_PLAN.md`](docs/PRO_PLAN.md)。未実装）
 
 ## P2: 将来候補
 
