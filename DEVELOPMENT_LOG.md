@@ -9,6 +9,14 @@
 - 検証: Node.js 24.21.0で`npm run typecheck`、`npm test`（18ファイル・107件）、`npm run build`、`npm run check:dist`（`dist/CNAME`は`knittingeditor.com`、`dist/`に3ファイルがあり`favicon.svg`が無いことを確認）、`npm run test:e2e`（Chromium mobile・WebKit mobile・Chromium desktop、79件成功・iPhone専用テストの2件skip）が成功。`packages/`とiOSのソースは変えていないため、iOSのSimulator・Archive検証は実行していない。
 - デプロイ影響: `main`へのマージ後にPagesへ配信される。配信後に`https://knittingeditor.com/favicon.ico`・`/icon-192.png`・`/apple-touch-icon.png`がHTTPS 200で返り、ブラウザのタブに新しいアイコンが出ることを確認する。ブラウザと検索結果はfaviconを長くキャッシュするため、古いアイコンがしばらく残りうる。
 
+## 2026-10-01 — GitHubの依存更新・コードスキャン・ブランチ保護を有効化し、作業管理をIssueへ移行
+
+- 影響: アプリの動作は変えていない。GitHub側で、Dependabotアラートとセキュリティ更新、CodeQLのdefault setup（Actions・JavaScript/TypeScript）を有効にし、説明・ホームページ（`https://knittingeditor.com`）・Topicsの設定、マージ後のブランチ自動削除、未使用Wikiの無効化を行った。未完了の作業をIssueだけで管理するため、`ios/TODO.md`の未完了19項目をIssue #17〜#35へ、PR #13で追加したPro実装の項目をIssue #38へ移し、各Issueの本文に現状とマイルストーンの完了条件を書いた。Issueにはラベル`priority:P0`／`P1`／`P2`・`platform:ios`・`needs-device`とマイルストーン`iOS 1.0`（P0のみ）を付け、Projects「knittingEditor ロードマップ」（Kanban、公開範囲は非公開）へ入れた。Projectsでは、新しく開かれたIssueを自動で追加する設定も有効にした。`main`にルールセット「Protect main (production)」（id 24295437）を作成した。内容は、PR経由のマージ必須（承認数0）、`ci-gate`の成功必須（ブランチ最新化は求めない）、force push・削除の禁止、Copilotの自動レビュー。バイパスできるアクターはいないため、管理者を含めて`main`へ直接pushできない。`gh api repos/K0mork/knittingEditor/rules/branches/main`で5つのルールが適用されていることを確認した。
+- 主なファイル: `.github/dependabot.yml`（npmとGitHub Actionsを毎週月曜9時（JST）にまとめて更新。公開から7日待ってから取り込む）、`.github/release.yml`（Releaseノートの自動生成をラベル別に分類）、`AGENTS.md`（`main`へ直接pushせず、`ci-gate`が通ったPRをマージする手順に変更。Issue・Dependabot・ラベルの運用を追記）、`ios/AGENTS.md`（作業管理の規則をIssue運用に変更）、`README.md`・`ios/README.md`・`ios/DEVELOPMENT.md`・`ios/docs/PRO_PLAN.md`（残作業の参照先をIssueとマイルストーンに変更）。`TODO.md`と`ios/TODO.md`は削除した（完了済み項目の確認結果は`DEVELOPMENT_LOG.md`と`ios/DEVELOPMENT_LOG.md`に残っている）。
+- テスト: 動作の変更がないため、テストは追加していない。
+- 検証: `ruby -ryaml`で`.github/dependabot.yml`と`.github/release.yml`を読み込めることを確認し、`ios/scripts/check-app-store-docs.sh`が成功した。CodeQL Setupの初回実行（run 36831724297）は成功し、コードスキャンとDependabotのアラートはどちらも0件だった。`npm run typecheck`・`npm test`・`npm run build`・`npm run check:dist`・`npm run test:e2e`は、ビルド入力を変えていないためローカルでは実行せず、PRのCIで確認する。
+- デプロイ影響: `.github/`の変更はCIの変更範囲判定でWeb扱いになるため、マージ後にPagesが再配信されるが、`dist/`の内容は変わらない。マージ後にDependabotがエラーなく設定を読み込んだことを、Insights → Dependency graph → Dependabotで確認する。
+
 ## 2026-10-01 — PR #12・#14・#15のレビュー・マージと公開確認
 
 - 影響: PR #12（OGP画像）、#14（iOS Safariの共有・PNG/PDFの番号）、#15（source-availableライセンス）をレビューし、問題を認めずmainへマージした。マージコミットは順に`9f6c8a7`、`98d6ba9`、`ffaf065`。機能の追加修正はなし。主な対象は`index.html`、`public/`、`src/platform.ts`・`ShareFileDialog.tsx`、`packages/editor-core/export/`、`LICENSE`・`README.md`。#14にはmainを取り込み、`DEVELOPMENT_LOG.md`の競合を両方の記録を保持して解消した（`476b390`）。その後のログのみの追加修正`b6ebc8b`も確認した。対象外の#13と、レビュー開始後に作成された#16はマージしていない。

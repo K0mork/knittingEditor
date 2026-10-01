@@ -237,7 +237,7 @@ Swift → Web（`CustomEvent`の`detail`）:
 | `docs/WEB_SYNC.md` | `EditorView`の`knitting`プロパティと、iOS版だけが渡すことを追記する |
 | `App/PrivacyInfo.xcprivacy` | 収集データが増えないことを確認する（StoreKitだけなら変更なしの見込み） |
 | App Store Connect | 有料アプリ契約・税務・口座の登録、スモールビジネスプログラムの申請、アプリ内課金の作成。課金のある最初のバージョンでは、アプリ内課金を一緒に審査へ出す |
-| `TODO.md`・`DEVELOPMENT_LOG.md` | 実装の進捗と検証結果を記録する |
+| Issue [#38](https://github.com/K0mork/knittingEditor/issues/38)・`DEVELOPMENT_LOG.md` | 実装の進捗と検証結果を記録する |
 
 オフラインの約束について:
 
@@ -290,7 +290,7 @@ Swift → Web（`CustomEvent`の`detail`）:
 
 ## 8. 段階
 
-1. **v1.0（確定）：** 今の仕様のまま、無料版のみを公開する（`TODO.md`のM6）。Proの実装を待たない。
+1. **v1.0（確定）：** 今の仕様のまま、無料版のみを公開する（マイルストーン[iOS 1.0](https://github.com/K0mork/knittingEditor/milestone/1)）。Proの実装を待たない。
 2. **v1.1の公開前：** 少人数の実際に編む利用者へ、TestFlight等で編み進めモードを試してもらう。自作図案での再開、10段制限の開始前の理解、指定段への移動、価格に見合う価値があるかを確認する。購入意向だけを売上の証明にはしない。
 3. **v1.1以降：** 編み進めモード、指定段への移動、StoreKit 2による購入・復元、開始前の説明付きの1〜10段の無料体験を追加する。発売時に使える機能に対して買い切りの価格を設定する。
 4. **第2弾（v1.2以降の候補）：** 需要・実装負担と失敗時の安全性を確認して自動バックアップを追加する。提供時期を第1弾の購入者へ約束しない。
