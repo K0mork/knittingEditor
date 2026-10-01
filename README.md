@@ -50,7 +50,7 @@ cd Web
 
 ## 配布
 
-`main`への変更はPRのマージだけで行います（直接pushとforce pushはルールセットで禁止し、マージには`ci-gate`の成功が必要です）。マージ後、`.github/workflows/ci.yml`が変更範囲に応じたWeb・iOS検証を実行します。Webまたは共通コードに影響する変更では、Web検証とiOS検証の成功後に、生成した`dist/`だけをGitHub Pagesへ公開します。iOS専用変更ではPagesを再公開しません。公開先は[knittingeditor.com](https://knittingeditor.com/)です。
+`main`への変更は、利用者がレビューしたPRのマージだけで行います（直接pushとforce pushはルールセットで禁止し、マージには`ci-gate`の成功が必要です）。マージ後、`.github/workflows/ci.yml`が変更範囲に応じたWeb・iOS検証を実行します。Webまたは共通コードに影響する変更では、Web検証とiOS検証の成功後に、生成した`dist/`だけをGitHub Pagesへ公開します。iOS専用変更ではPagesを再公開しません。公開先は[knittingeditor.com](https://knittingeditor.com/)です。
 
 編み図はブラウザ内に保存されるため、重要なデータは「保存」メニューから定期的に`.knit`バックアップを取得してください。
 

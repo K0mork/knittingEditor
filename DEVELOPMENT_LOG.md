@@ -1,9 +1,9 @@
 # Development Log
 
-## 2026-10-01 — 開発ログをマージ前に揃える規則を文書化
+## 2026-10-01 — 開発ログをマージ前に揃える規則と、PRのマージを利用者が行う規則を文書化
 
-- 影響: アプリの動作は変えていない。DependabotのPR #40を開発ログの記録なしでマージしたことを受け、記録はその変更のPRに含めてマージ前に揃っていることを確認する、という規則を明文化した。自分で書いていないPR（DependabotなどのbotのPR）も対象とし、DependabotのPRはマージ前にそのブランチへ記録のコミットをpushする。デプロイ後の本番確認のようにマージ後にしか得られない結果は、`main`がPR経由でしか変更できないため、確認後すぐに続きのPRで記録する。
-- 主なファイル: `AGENTS.md`（Development Log、Deployment Procedureの手順4・6、GitHub WorkflowのDependabot）、`ios/AGENTS.md`（Development Log）、`ios/DEVELOPMENT.md`（§12 GitHub運用）、`.github/dependabot.yml`（コメントのみ）
+- 影響: アプリの動作は変えていない。DependabotのPR #40を開発ログの記録なしでマージしたことを受け、記録はその変更のPRに含めてマージ前に揃っていることを確認する、という規則を明文化した。自分で書いていないPR（DependabotなどのbotのPR）も対象とし、DependabotのPRはマージ前にそのブランチへ記録のコミットをpushする。デプロイ後の本番確認のようにマージ後にしか得られない結果は、`main`がPR経由でしか変更できないため、確認後すぐに続きのPRで記録する。あわせて、PRのレビューとマージは利用者が行い、エージェントは利用者がそのPRのマージを明示的に指示した場合に限りマージする、という規則も明記した。
+- 主なファイル: `AGENTS.md`（Development Log、Deployment Procedureの手順4・6、GitHub WorkflowのDependabot）、`ios/AGENTS.md`（Development Log）、`ios/DEVELOPMENT.md`（§12 GitHub運用）、`README.md`（配布）、`.github/dependabot.yml`（コメントのみ）
 - テスト: 動作の変更がないため、テストは追加していない。
 - 検証: `ruby -ryaml`で`.github/dependabot.yml`を読み込めることを確認し、`ios/scripts/check-app-store-docs.sh`が成功した。Web一式のチェックはビルド入力を変えていないためローカルでは実行せず、PRのCIで確認する。
 - デプロイ影響: `.github/dependabot.yml`の変更はCIの変更範囲判定でWebのみ（`web=true`・`ios=false`）になるため、マージ時のrunがPR #41で直した`deploy`の条件の初めての確認になる。マージ後に、iOS系ジョブがskipされたまま`deploy`が実行され成功したことを確認し、続きのPRで記録する。`dist/`の内容は変わらない。
