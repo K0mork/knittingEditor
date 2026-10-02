@@ -73,6 +73,30 @@ metadata_value_within_limit "App名" 30
 metadata_value_within_limit "サブタイトル" 30
 metadata_value_within_limit "キーワード" 100
 
+# ホーム画面の表示名は、全角7文字以上だと文字サイズを大きくしたiPhoneで切れる（APP_STORE_METADATA.mdの実測）。
+# 文書の値とInfo.plistの値がずれないよう、両方を照合する。plutilの無いLinuxでも動くようawkで読む。
+metadata_value_is_nonempty "ホーム画面の表示名" "$METADATA"
+metadata_value_within_limit "ホーム画面の表示名" 6
+home_name=$(awk -F '|' '
+  function trim(value) {
+    gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+    return value
+  }
+  trim($2) == "ホーム画面の表示名" {
+    print trim($3)
+    exit
+  }
+' "$METADATA")
+for key in CFBundleDisplayName CFBundleName; do
+  plist_name=$(awk -v key="<key>$key</key>" '
+    index($0, key) { getline; sub(/^[[:space:]]*<string>/, ""); sub(/<\/string>.*/, ""); print; exit }
+  ' "$REPO_ROOT/App/Info.plist")
+  [ "$plist_name" = "$home_name" ] || {
+    echo "App/Info.plist $key does not match the home screen name: ${plist_name:-<missing>} != $home_name" >&2
+    exit 1
+  }
+done
+
 grep -qE -- 'サポートURL: `https://github\.com/K0mork/knittingEditor/issues`' "$METADATA" || {
   echo "support URL is missing or does not target the public repository" >&2
   exit 1

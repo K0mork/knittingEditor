@@ -2,7 +2,7 @@
 
 ## 実装・資産
 
-- [ ] Apple Developer Team、Bundle ID、署名証明書、Provisioning Profileを確定する。
+- [ ] Apple Developer Team、Bundle ID、署名証明書、Provisioning Profileを確定する。Teamは個人でApple Developer Programに加入する予定（2026-10-02に決定、#17）。署名はAutomaticを続ける。
 - [ ] AppIconの最終デザインと全サイズを登録する。
 - [ ] 起動画面を確認する。
 - [x] App Store Connectの提出サイズ（iPhone 6.9インチ 1320×2868、iPad 13インチ 2064×2752）のスクリーンショットを`docs/screenshots/app-store-*.png`へ保存する。

@@ -1,5 +1,14 @@
 # Development Log
 
+## 2026-10-02 — iOSアプリのホーム画面の表示名を「棒針編み図」にし、App名と加入方針を記録する
+
+- 影響: iOSアプリのホーム画面の表示名（`CFBundleDisplayName`）と`CFBundleName`を「Knitting Editor」から「棒針編み図」に変えた。App Store用のApp名は「棒針編み図エディタ」に決めた（Web版のタイトルと同じ）。App名はApp Store全体で重複できないため、使えるかはApp Store ConnectでAppを登録するときに確かめる。Apple Developer Programへは個人で加入する予定で、署名はAutomaticを続ける。Web版の表示とBundle IDは変えていない。
+- 表示名の長さ: Appleの文書には`CFBundleDisplayName`の上限も推奨値も無い（`CFBundleName`は15文字まで）。Simulatorのホーム画面で実測すると、iPhone SE（第3世代、iOS 18.2）とiPhone 17（iOS 27.0）で、全角9文字の「棒針編み図エディタ」は標準の文字サイズで切れた。全角7文字は文字サイズを大きくすると切れ、全角6文字はどの文字サイズでも切れなかった。このため表示名は6文字以内とし、5文字の「棒針編み図」を選んだ。「拡大表示」と太字テキストは確かめておらず、実機確認（#23）で扱う。
+- 主なファイル: `ios/App/Info.plist`、`ios/docs/APP_STORE_METADATA.md`（ホーム画面の表示名と根拠）、`ios/docs/APP_STORE_CHECKLIST.md`、`ios/docs/REAL_DEVICE_RELEASE_CHECKLIST.md`、`ios/scripts/check-app-store-docs.sh`、`ios/scripts/check-release-assets.sh`
+- テスト: `check-app-store-docs.sh`に、メタデータの「ホーム画面の表示名」が6文字以内で、`Info.plist`の`CFBundleDisplayName`・`CFBundleName`と一致する検査を加えた（CIの`app_store_docs`はLinuxで動くため、`plutil`ではなく`awk`で読む）。`check-release-assets.sh`はArchiveしたアプリの表示名が「棒針編み図」であることを確かめる。
+- 検証: `ios/scripts/check-app-store-docs.sh`と`plutil -lint ios/App/Info.plist`が成功した。文書の検査を一時コピーで動かし、`Info.plist`の表示名を変えた場合、表示名を7文字（「編み図エディタ」）にした場合、表示名の行を消した場合に、それぞれ終了コード1で失敗することを確かめた。`xcodegen generate --spec ios/project.yml`は成功した。Simulatorテスト、アプリ更新テスト、Debugビルドと`check-app-bundle.sh`、unsigned Release Archiveと`check-release-assets.sh`、iOS Webの検査は、利用者の判断でローカルでは実行せず、PRのCI（`ios`・`app_update`・`release_archive`・`ios_web`）で確かめる。手元のXcode 27はCIのXcodeと異なり、同じ検査をCIが同じ引数で実行するため。
+- デプロイ影響: なし。iOSのみの変更で、Pagesは再配信されない。iOSアプリは次のビルドからホーム画面の表示名が変わる。
+
 ## 2026-10-02 — iOS UIテストで主要ボタンの出現を起動用の上限で待ち、効かなかった「編み図」のタップだけ押し直す
 
 - 症状（[#44](https://github.com/K0mork/knittingEditor/issues/44)）: run [36852519498](https://github.com/K0mork/knittingEditor/actions/runs/36852519498)の`ios (iPhone 16)`で、`testAccessibilityExtraExtraExtraLargeKeepsPrimaryFlowsUsable`が1回目に失敗した。WebViewの器は出ていたが、`assertPrimaryControlsAreUsable`が「編み図」ボタンを10秒しか待たずに見つからなかった。run [36854593545](https://github.com/K0mork/knittingEditor/actions/runs/36854593545)の`ios (iPad (10th generation))`では、`testTwoFingerGestureDoesNotDrawOnBoard`の`createDocument`で起動直後の「編み図」のタップが効かず、「新しい編み図」が45秒現れなかった。どちらも再試行で成功し、実行時間上限の超過は無かった。

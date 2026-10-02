@@ -11,9 +11,9 @@
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Knitting Editor</string>
+	<string>棒針編み図</string>
 	<key>CFBundleName</key>
-	<string>Knitting Editor</string>
+	<string>棒針編み図</string>
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<false/>
 	<key>UTExportedTypeDeclarations</key>
