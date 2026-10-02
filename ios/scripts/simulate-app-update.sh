@@ -2,7 +2,7 @@
 set -euo pipefail
 
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-simulator_name="${1:-iPhone 16}"
+simulator_name="${1:-iPhone 17}"
 destination="${2:-platform=iOS Simulator,name=${simulator_name},OS=latest}"
 bundle_id="com.k0mork.knittingEditor"
 work_dir="${TMPDIR:-/tmp}/knitting-editor-app-update-${simulator_name//[^[:alnum:]]/-}"

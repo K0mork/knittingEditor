@@ -144,7 +144,7 @@ gh run view "$RUN" --json conclusion,jobs --jq '"RUN: \(.conclusion)", (.jobs[] 
 ```
 
 - `changes`、`app_store_docs`、変更範囲に応じた`web`、`ios_web`、`ios`×2、`app_update`×2、`release_archive`、`ci-gate`を個別に確認する。Web影響のある`main`更新では`deploy`も確認する。`RUN: success`だけを見て済ませない。
-- 失敗したら、そのpushで完了とせずに原因を特定して直す。`gh run view <id> --log-failed`で失敗ジョブのログを読む。ローカルで再現できない場合は、CI環境（macos-14、Xcode 15.4）との差を疑う。
+- 失敗したら、そのpushで完了とせずに原因を特定して直す。`gh run view <id> --log-failed`で失敗ジョブのログを読む。ローカルで再現できない場合は、CI環境（macos-26、Xcode 26.6、iOS 26.5 Simulator）との差を疑う。
 - ローカルのSimulatorが通ってもCIが落ちることがある。過去の実例は次のとおりで、いずれもローカルでは再現しなかった。
   - 入力欄の中央タップでキャレットが先頭に入り、削除が効かず初期値が残った（Xcode 15.4 Simulator）。
   - `-only-testing`の対象テストを誤って削除し、「Executed 0 tests」が成功扱いになった。テスト関数を消していないか、変更前コミットとの関数一覧の差分で確認する。

@@ -149,7 +149,10 @@ jobs:
   ios_web:
     needs: changes
     if: needs.changes.outputs.ios == 'true'
-    runs-on: macos-14
+    runs-on: macos-26
+    # `ios`ジョブと同じXcodeに固定する。
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
@@ -172,12 +175,20 @@ jobs:
       fail-fast: false
       matrix:
         device:
-          - 'iPhone 16'
-          - 'iPad (10th generation)'
-    runs-on: macos-14
+          - 'iPhone 17'
+          - 'iPad (A16)'
+    runs-on: macos-26
+    # App Store提出に要るiOS 26 SDKを持ち、イメージにあるSimulatorのランタイムと版が揃うXcodeに固定する。
+    # イメージの既定Xcodeが替わってもビルドとテストのXcodeが変わらないよう、明示的に選ぶ。
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Show Xcode and Simulator runtimes
+        run: |
+          xcodebuild -version
+          xcrun simctl list runtimes
       # xcodebuildに任せると、ビルド後に初回起動してすぐテストを始めるため、起動直後の
       # 初期化処理とUIテストが重なってXCUITestの操作1つが数十秒かかることがある。
       # 先に起動を始め、完了を待ってからビルドに入り、ビルドの間に落ち着かせる。
@@ -219,14 +230,21 @@ jobs:
       fail-fast: false
       matrix:
         device:
-          - 'iPhone 16'
-          - 'iPad (10th generation)'
-    runs-on: macos-14
+          - 'iPhone 17'
+          - 'iPad (A16)'
+    runs-on: macos-26
+    # `ios`ジョブと同じXcodeに固定する。
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
     # 実作業は8〜10分。ランナーの後片付けが5分以上かかって20分を超え、
     # 検証が全部成功しているのにcancelled扱いになったことがある。
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Show Xcode and Simulator runtimes
+        run: |
+          xcodebuild -version
+          xcrun simctl list runtimes
       # `ios`ジョブと同じ理由で先に起動を始める。完了はスクリプトがビルド前に待つ。
       - name: Boot simulator
         id: simulator
@@ -248,9 +266,16 @@ jobs:
   release_archive:
     needs: changes
     if: needs.changes.outputs.ios == 'true'
-    runs-on: macos-14
+    runs-on: macos-26
+    # `ios`ジョブと同じXcodeに固定する。
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Show Xcode and Simulator runtimes
+        run: |
+          xcodebuild -version
+          xcrun simctl list runtimes
       - name: Install XcodeGen
         run: brew install xcodegen
       - name: Generate Xcode project
