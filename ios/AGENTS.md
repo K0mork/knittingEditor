@@ -138,10 +138,13 @@ Simulatorテスト（iPhone・iPad）、アプリ更新テスト、unsigned Rele
 pushしたら、そのcommitのCIが完了するまで確認し、結果をユーザーへ報告する。**CIを確認しないまま作業完了と報告しない。**
 
 ```sh
-RUN=$(gh run list --limit 1 --json databaseId --jq '.[0].databaseId')
-until [ "$(gh run view "$RUN" --json status --jq .status)" = "completed" ]; do sleep 30; done
-gh run view "$RUN" --json conclusion,jobs --jq '"RUN: \(.conclusion)", (.jobs[] | "  \(.name): \(.conclusion)")'
+SHA=$(git rev-parse HEAD)
+until RUN=$(gh run list --workflow ci.yml --commit "$SHA" --limit 1 --json databaseId --jq '.[0].databaseId // empty') && [ -n "$RUN" ]; do sleep 10; done
+gh run watch "$RUN" --compact --interval 30 > /dev/null
+gh run view "$RUN" --json headSha,conclusion,jobs --jq '"RUN: \(.conclusion) (\(.headSha))", (.jobs[] | "  \(.name): \(.conclusion)")'
 ```
+
+runは、pushしたコミットのSHA（完全な40桁）と`ci.yml`で絞って選ぶ。`gh run list --limit 1`だけでは、CodeQLのrunや、別のブランチ・別のセッションのrunを拾い、他人の結果を見て完了と報告してしまう。
 
 - `changes`、`app_store_docs`、変更範囲に応じた`web`、`ios_web`、`ios`×2、`app_update`×2、`release_archive`、`ci-gate`を個別に確認する。Web影響のある`main`更新では`deploy`も確認する。`RUN: success`だけを見て済ませない。
 - 失敗したら、そのpushで完了とせずに原因を特定して直す。`gh run view <id> --log-failed`で失敗ジョブのログを読む。ローカルで再現できない場合は、CI環境（macos-26、Xcode 26.6、iOS 26.5 Simulator）との差を疑う。
