@@ -107,6 +107,8 @@ ios/docs/            additional app design and release records
 - 検証終了後は全Simulatorをshutdownする。最新OS用に新規作成したデバイスはテストデータを`erase`して保持し、既存のCI基準デバイスはユーザーの明示なしに消去しない。
 - ランタイム自体、既存のユーザーデータ、実機データを容量都合で削除しない。XcodeBuildMCPの古い生成ログ・テスト成果物を整理する場合は、対象と保持する最新証跡を先に列挙し、復元可能なゴミ箱移動を優先する。
 
+Simulatorテスト（iPhone・iPad）、アプリ更新テスト、unsigned Release Archive、同梱物検査の一式はPRのCIで実行し、`ci-gate`がマージ前に必須とします。手元のXcodeはCIと異なることが多く、ローカルで通ってもCIで通る証拠にならないため、この一式をローカルで既定として繰り返しません。ローカルでは、push前に問題を見つけるための検査（`packages/`や`ios/Web/`を変えたらiOS Webの型検査とテスト、SwiftやXcodeGen・ビルド設定を変えたら`xcodegen generate`とアプリのビルド、変えたスクリプトやApp Store文書の静的検査、変更箇所を対象にしたテストの繰り返し）だけを行います。Simulatorの一式をローカルで回すのは、繰り返し実行や診断情報が必要な失敗の調査と、CIでは確かめられない変更に限ります。開発ログには、ローカルで行った検査とPRのCIに任せた検査を分けて書き、CIのiOS系ジョブをすべて確認してから完了と報告します（ルートの`AGENTS.md`のChange-specific Test Requirements）。
+
 具体的なCIコマンドと対象端末はルートの`.github/workflows/ci.yml`を正とします。Markdownだけの変更は`app_store_docs`による静的検査を行い、Web・Simulator・Archiveジョブは実行しません。
 
 ## Generated Files and Secrets
