@@ -1,5 +1,18 @@
 # Development Log
 
+## 2026-10-02 — Pagesへの配信を`main`のrunに限り、並行セッションで他人のビルドやrunを確かめないようにする
+
+- 影響: アプリとWeb資産の内容は変えていない。
+  - 配信: `deploy`ジョブと、`web`ジョブのPages準備（`Configure Pages`・`Upload Pages artifact`）の条件を「PRでない」から`github.ref == 'refs/heads/main'`に変えた。`workflow_dispatch`は任意のブランチから実行でき、そのとき`changes`は`web=true`を返す。`github-pages`環境の配信許可には`main`のほかに`develop`があり、`develop`から手動実行すると本番へ配信されうる状態だった（今は`develop`ブランチは無い）。
+  - E2E: `playwright.config.ts`の`reuseExistingServer`をローカルでも無効にした。これまでは固定のポート4173に別のworktreeのpreviewサーバーや古いビルドが残っていると、それを再利用して、変更を含まないビルドに対してテストが通りえた。ポートは設定ファイルの場所（worktree）から4173〜5172の範囲で決め、`PLAYWRIGHT_PORT`で上書きできる。ポートが使われていれば、テストを始めずに失敗する。
+  - CI確認: `ios/AGENTS.md`の「CI確認」の手順は`gh run list --limit 1`で最新のrunを取っており、CodeQLや別のブランチ・別のセッションのrunを拾いえた。pushしたコミットのSHAと`ci.yml`で絞り、`gh run watch`で完了を待つ手順に変えた。
+- 主なファイル: `.github/workflows/ci.yml`、`playwright.config.ts`、`ios/AGENTS.md`
+- テスト: 設定と手順の変更のため、テストは追加していない。手元で次を確かめた。
+  - このworktreeの計算上のポート（4262）を別のHTTPサーバーで使った状態では、`npx playwright test`が「is already used」で終了コード1になった。`PLAYWRIGHT_PORT=4999`では`seo.spec.ts`の9件が成功した。
+  - 新しいCI確認の手順で、`main`の先端コミットから`ci.yml`のrunを1件だけ選べた。`--commit`は短縮SHAでは一致しないため、`git rev-parse HEAD`の40桁を使う。
+- 検証: `npm run typecheck`、`npm test`（107件）、`npm run build`、`npm run check:dist`、`npm run test:e2e`（79件成功・2件skip）が成功した。ローカルにNode.js 24が無く、Node.js 26.8.1で実行した。`actionlint`は手元に無く、実行していない。`main`のrefでの配信の条件はPRのCIでは動かないため、マージ後の`main`のrunで確かめる。`ci.yml`の変更でPRのCIではWeb・iOSの全ジョブが走る。
+- デプロイ影響: `.github/workflows/*`の変更で、マージ後に同じ内容のPagesが再配信される。マージ後は`deploy`と`smoke`が成功したことを確認する。`github-pages`環境の配信許可から`develop`を外すのはGitHubの設定変更で、このPRには含まれない。
+
 ## 2026-10-02 — iOSアプリのホーム画面の表示名を「棒針編み図」にし、App名と加入方針を記録する
 
 - 影響: iOSアプリのホーム画面の表示名（`CFBundleDisplayName`）と`CFBundleName`を「Knitting Editor」から「棒針編み図」に変えた。App Store用のApp名は「棒針編み図エディタ」に決めた（Web版のタイトルと同じ）。App名はApp Store全体で重複できないため、使えるかはApp Store ConnectでAppを登録するときに確かめる。Apple Developer Programへは個人で加入する予定で、署名はAutomaticを続ける。Web版の表示とBundle IDは変えていない。
