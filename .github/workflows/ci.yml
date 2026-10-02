@@ -290,3 +290,28 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5
+
+  smoke:
+    # 配信した成果物が本番で返ることを確かめる。CDNの反映待ちはスクリプト側で再試行する。
+    if: ${{ !cancelled() && needs.deploy.result == 'success' }}
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          sparse-checkout: scripts
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+      - name: Download the deployed Pages artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: github-pages
+          path: ${{ runner.temp }}/pages
+      - name: Extract the deployed files
+        run: |
+          mkdir "$RUNNER_TEMP/deployed"
+          tar -xf "$RUNNER_TEMP/pages/artifact.tar" -C "$RUNNER_TEMP/deployed"
+      - name: Check https://knittingeditor.com/
+        run: node scripts/check-live-site.mjs --dist "$RUNNER_TEMP/deployed"
