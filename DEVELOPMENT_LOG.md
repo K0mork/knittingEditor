@@ -1,5 +1,13 @@
 # Development Log
 
+## 2026-10-02 — iOSの検査一式はPRのCIで行い、ローカルでは変更に関係する検査だけにする
+
+- 影響: アプリとWeb資産の内容は変えていない。これまで`packages/`やiOSのコード・ビルド設定・テストを変えたときは、CIと同じiOSの検査一式（Simulatorテスト2端末、アプリ更新テスト2端末、unsigned Release Archive、同梱物検査など）をローカルでも実行していた。手元のXcodeはCIと異なることが多く（現在は手元がXcode 27、CIはXcode 15.4、移行先はXcode 26.6）、ローカルで通ってもCIで通る証拠にならない。一式は1回30〜40分かかり、同じ内容をPRのCIが同じ引数で実行して`ci-gate`がマージ前に必須とするため、ローカルで既定として繰り返すのをやめた。ローカルでは、iOS Webの型検査とテスト、`xcodegen generate`とアプリのビルド、変えたスクリプトや文書の静的検査、変更箇所を対象にしたテストの繰り返しなど、push前に問題を見つけるための検査だけを行う。Simulatorの一式をローカルで回すのは、繰り返し実行や診断情報が必要な失敗の調査と、CIでは確かめられない変更に限る。開発ログには、ローカルで行った検査とCIに任せた検査を分けて書き、CIのiOS系ジョブをすべて確認してから完了と報告する。Webの検査一式（`npm run typecheck`など）は短時間で終わるため、これまでどおりローカルでも実行する。
+- 主なファイル: `AGENTS.md`（Change-specific Test Requirements）、`ios/AGENTS.md`（Simulator運用と容量管理）
+- テスト: 動作の変更がないため、テストは追加していない。
+- 検証: `ios/scripts/check-app-store-docs.sh`が成功した。Markdownだけの変更のため、PRのCIでは`app_store_docs`だけが走り、Web・Simulator・Archiveのジョブはskipされる。
+- デプロイ影響: なし。
+
 ## 2026-10-02 — iOS UIテストで主要ボタンの出現を起動用の上限で待ち、効かなかった「編み図」のタップだけ押し直す
 
 - 症状（[#44](https://github.com/K0mork/knittingEditor/issues/44)）: run [36852519498](https://github.com/K0mork/knittingEditor/actions/runs/36852519498)の`ios (iPhone 16)`で、`testAccessibilityExtraExtraExtraLargeKeepsPrimaryFlowsUsable`が1回目に失敗した。WebViewの器は出ていたが、`assertPrimaryControlsAreUsable`が「編み図」ボタンを10秒しか待たずに見つからなかった。run [36854593545](https://github.com/K0mork/knittingEditor/actions/runs/36854593545)の`ios (iPad (10th generation))`では、`testTwoFingerGestureDoesNotDrawOnBoard`の`createDocument`で起動直後の「編み図」のタップが効かず、「新しい編み図」が45秒現れなかった。どちらも再試行で成功し、実行時間上限の超過は無かった。
