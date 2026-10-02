@@ -1,5 +1,16 @@
 # Development Log
 
+## 2026-10-02 — 共有チェックアウトでブランチを変える操作をフックで止め、片付けをスクリプトにする
+
+- 影響: アプリとWeb資産の内容は変えていない。複数のセッションが同じリポジトリで作業すると、リポジトリ直下のチェックアウトで別のセッションがブランチを切り替え、片付けも手作業で漏れていた（AGENTS.mdの「Branches, Worktrees & Cleanup」は規則を書くだけだった）。
+  - Claude Codeのプロジェクト設定`.claude/settings.json`にPreToolUseフックを置き、シェルコマンドの前に`scripts/guard-shared-checkout.mjs`を実行する。リポジトリ直下のチェックアウト（worktreeでない方）でだけ、`main`以外への`git switch`/`checkout`、`gh pr checkout`、`git stash`、`--ff-only`の無い`git pull`、`commit`・`merge`・`rebase`・`reset`・`restore`・`clean`・`cherry-pick`・`revert`・`am`を止め、worktreeを使うよう理由を返す。`git -C`の指定先も判定する。worktreeの中では何も止めない。Codexにはこのフックが効かない。
+  - `npm run clean:worktrees`（`scripts/clean-worktrees.mjs`）は、`git fetch --prune`のあと、worktreeとローカルブランチごとに残すか消すかと理由を表示する。`-- --apply`で消す。消すのは、先端が`origin/main`に含まれるか、マージ・クローズ済みのPRのheadと一致する（またはその祖先である）ものだけで、未コミットの変更、PRに無い未pushのコミット、オープンなPR、作業場所にしているプロセス（実行中のセッション）があるものは残す。直下のチェックアウトは切り替えず、`main`以外なら知らせるだけにする。
+  - `AGENTS.md`の片付けの手順をこのスクリプトを使う形に改め、フックの存在とCodexには効かないことを書いた。
+- 主なファイル: `.claude/settings.json`、`scripts/guard-shared-checkout.mjs`、`scripts/clean-worktrees.mjs`、`package.json`（`clean:worktrees`）、`vite.config.ts`（テスト対象に`scripts/**/*.test.mjs`を追加）、`AGENTS.md`
+- テスト: `scripts/guard-shared-checkout.test.mjs`（コマンドの分割、`git -C`と環境変数の前置き、許可・禁止するgitの操作、直下のチェックアウトとworktreeでの違い）と`scripts/clean-worktrees.test.mjs`（`git worktree list --porcelain`と`lsof`の出力の読み取り、消す・残すの判定）を追加した。
+- 検証: フックのコマンドに入力JSONを渡し、直下のチェックアウトで`git switch feature`・`gh pr checkout 54`・`git stash`・`git rebase main`が終了コード2で止まり、`git switch main && git pull --ff-only`と`git status`は通ること、worktreeでは`git switch feature`が通り、worktreeからの`git -C <直下> reset --hard`は止まること、壊れた入力では何も止めないことを確かめた。片付けスクリプトは、使い捨てのworktreeを3つ作って試した。`origin/main`と同じものは消す候補になり、`--apply`で消えた。未pushのコミットがあるものと、プロセスが作業場所にしているものは残った。試した後、使い捨てのworktreeとブランチは消した。`npm run typecheck`、`npm test`（123件）、`npm run build`、`npm run check:dist`、`npm run test:e2e`（79件成功・2件skip）が成功した。ローカルにNode.js 24が無く、Node.js 26.8.1で実行した。`jq`で`.claude/settings.json`のフックの設定を読めることを確かめた。iOSのコードは変えていないため、iOSの検査はPRのCIに任せた。
+- デプロイ影響: `package.json`と`vite.config.ts`の変更でWeb・iOSのジョブが走り、同じ内容のPagesが再配信される。マージ後は`deploy`と`smoke`の成功を確認する。
+
 ## 2026-10-02 — iOSアプリのホーム画面の表示名を「棒針編み図」にし、App名と加入方針を記録する
 
 - 影響: iOSアプリのホーム画面の表示名（`CFBundleDisplayName`）と`CFBundleName`を「Knitting Editor」から「棒針編み図」に変えた。App Store用のApp名は「棒針編み図エディタ」に決めた（Web版のタイトルと同じ）。App名はApp Store全体で重複できないため、使えるかはApp Store ConnectでAppを登録するときに確かめる。Apple Developer Programへは個人で加入する予定で、署名はAutomaticを続ける。Web版の表示とBundle IDは変えていない。
