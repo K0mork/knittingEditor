@@ -2,7 +2,9 @@ import Foundation
 import WebKit
 
 final class LocalWebSchemeHandler: NSObject, WKURLSchemeHandler {
-    static let scheme = "knitting-local"
+    // WKURLSchemeHandlerへの準拠でクラスはMainActorに隔離される。不変の文字列定数なので、
+    // `WebViewModel.isEditorPage`などの非隔離の判定からも参照できるようにする。
+    nonisolated static let scheme = "knitting-local"
     static let indexURL = URL(string: "\(scheme)://bundle/index.html")!
 
     private let bundle: Bundle
