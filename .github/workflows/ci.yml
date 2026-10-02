@@ -9,13 +9,19 @@ on:
 permissions:
   contents: read
 
+# PRでは新しいpushで古いrunを打ち切る。`main`では打ち切らずに順番に実行する。打ち切ると、
+# Webの変更を含むrunが`deploy`の前に止まり、続くMarkdownやiOSだけの変更のrunは配信しない。
+# 待機中のrunは次のrunに置き換えられることがあるため、`changes`はWebの判定を前回の配信からの差分で行う。
 concurrency:
   group: knitting-editor-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   changes:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: read
     outputs:
       web: ${{ steps.detect.outputs.web }}
       ios: ${{ steps.detect.outputs.ios }}
@@ -25,6 +31,8 @@ jobs:
           fetch-depth: 0
       - id: detect
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             echo "web=true" >> "$GITHUB_OUTPUT"
@@ -47,27 +55,55 @@ jobs:
             echo "ios=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          web=false
-          ios=false
-          while IFS= read -r path; do
-            [[ -n "$path" ]] || continue
-            case "$path" in
-              # Markdownはどちらのビルド入力でもない。App Store文書の検査は
-              # 常に走る`app_store_docs`が受け持つので、ここでは何も立てない。
-              *.md|docs/*)
-                ;;
-              ios/*)
-                ios=true
-                ;;
-              packages/*|package.json|package-lock.json|vite.config.ts|vite.shared.ts|tsconfig*.json|playwright.config.ts|.github/workflows/*)
-                web=true
-                ios=true
-                ;;
-              *)
-                web=true
-                ;;
-            esac
-          done <<< "$changed"
+          classify() {
+            web=false
+            ios=false
+            while IFS= read -r path; do
+              [[ -n "$path" ]] || continue
+              case "$path" in
+                # Markdownはどちらのビルド入力でもない。App Store文書の検査は
+                # 常に走る`app_store_docs`が受け持つので、ここでは何も立てない。
+                *.md|docs/*)
+                  ;;
+                ios/*)
+                  ios=true
+                  ;;
+                packages/*|package.json|package-lock.json|vite.config.ts|vite.shared.ts|tsconfig*.json|playwright.config.ts|.github/workflows/*)
+                  web=true
+                  ios=true
+                  ;;
+                *)
+                  web=true
+                  ;;
+              esac
+            done <<< "$1"
+          }
+          classify "$changed"
+          # `main`への配信は、直前のコミットではなく最後にPagesへ配信できたコミットとの差分で決める。
+          # 打ち切られたり置き換えられたりしたrunのWebの変更も、次のrunで配信されるようにするため。
+          # 配信元を確かめられなければ、配信を取りこぼさないよう`web=true`にする。
+          if [[ "$GITHUB_EVENT_NAME" == push && "$GITHUB_REF" == refs/heads/main ]]; then
+            ios_from_before="$ios"
+            deployed=''
+            ids="$(gh api "repos/$GITHUB_REPOSITORY/deployments?environment=github-pages&per_page=30" --jq '.[].id')" || ids=''
+            for id in $ids; do
+              state="$(gh api "repos/$GITHUB_REPOSITORY/deployments/$id/statuses?per_page=1" --jq '.[0].state')" || state=''
+              if [[ "$state" == success ]]; then
+                deployed="$(gh api "repos/$GITHUB_REPOSITORY/deployments/$id" --jq '.sha')" || deployed=''
+                break
+              fi
+            done
+            if [[ -n "$deployed" ]] && git cat-file -e "$deployed^{commit}" 2>/dev/null \
+              && git merge-base --is-ancestor "$deployed" "$GITHUB_SHA" \
+              && since_deploy="$(git diff --name-only "$deployed" "$GITHUB_SHA")"; then
+              classify "$since_deploy"
+              echo "last Pages deployment: $deployed"
+            else
+              echo "last Pages deployment is unavailable; deploying web" >&2
+              web=true
+            fi
+            ios="$ios_from_before"
+          fi
           echo "web=$web" >> "$GITHUB_OUTPUT"
           echo "ios=$ios" >> "$GITHUB_OUTPUT"
           echo "web=$web ios=$ios"

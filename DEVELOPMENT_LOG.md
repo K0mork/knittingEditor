@@ -1,5 +1,13 @@
 # Development Log
 
+## 2026-10-02 — `main`へ続けてマージしてもWebの変更が配信されるようにする
+
+- 影響: アプリとWeb資産の内容は変えていない。`CI and deploy Pages`は同じrefのrunを常に打ち切っていたため、Webの変更をマージした直後にMarkdownやiOSだけの変更をマージすると、先のrunが`deploy`の前に止まり、後のrunは直前のコミットとの差分だけを見て`web=false`となり、どちらのrunも配信しなかった（#46）。`concurrency`の`cancel-in-progress`をPRのときだけ有効にし、`main`へのpushは打ち切らずに順番に実行する。GitHub Actionsでは待機中のrunが次のrunに置き換えられることがあるため、`changes`ジョブは`main`へのpushに限り、Webの判定を`github-pages`環境で最後に配信できたコミットからの差分で行う。そのコミットを取得できない場合や`HEAD`の祖先でない場合は、配信を取りこぼさないよう`web=true`とする。iOSの判定とPRでの判定は、これまでどおり直前のコミットとの差分で行う。`changes`ジョブには配信履歴を読むため`deployments: read`を与えた。
+- 主なファイル: `.github/workflows/ci.yml`
+- テスト: ワークフロー定義の変更のため、アプリのテストは追加していない。`changes`の判定スクリプトを`ci.yml`から取り出し、実際のリポジトリと配信履歴を相手に手元で実行した。一時的なworktreeで最後の配信（`6a6f18a`）の上にWebの変更A・Markdownの変更Bを積むと、Bのrun（`before`=A）は`web=true ios=false`になった（変更前の判定は`web=false`）。続けてiOSの変更Cを積むと`web=true ios=true`。配信履歴を取得できないリポジトリ名では`web=true`。配信済みのコミット自体のrunを再実行する想定では`web=false`。`main`以外へのpushは従来どおり直前のコミットとの差分になった。
+- 検証: `ruby -ryaml`で`ci.yml`を読み込めることを確認した。`npm run typecheck`、`npm test`（107件）、`npm run build`、`npm run check:dist`（`dist/CNAME`は`knittingeditor.com`）、`npm run test:e2e`（79件成功・2件skip）が成功した。ローカルにNode.js 24が無く、Node.js 26.8.1で実行した。`actionlint`と`shellcheck`は手元に無く、実行していない。`main`への順番実行と配信履歴の読み取りは`main`へのpushでしか動かないため、PRのCIでは確かめられない。
+- デプロイ影響: `.github/workflows/*`の変更でWeb・iOSの全ジョブが走り、同じ内容のPagesが再配信される。マージ後は`changes`のログに`last Pages deployment:`が出て`deploy`と`smoke`が成功したこと、`https://knittingeditor.com/`が応答することを確認する。
+
 ## 2026-10-01 — 配信後に本番サイトを自動で確認する`smoke`ジョブを追加
 
 - 影響: アプリとWeb資産の内容は変えていない。これまで手で`curl`していた配信後の確認を、`CI and deploy Pages`の`deploy`の後に走る`smoke`ジョブへ移した。`smoke`は配信したPages成果物を取り出し、`https://knittingeditor.com/`の`/`と`/guide/`がそのHTMLと一致するまで最大10回（30秒間隔）待つ。CDNのキャッシュを避けるため毎回異なるクエリを付ける。一致したら、`/`が参照する`/assets/`の全ファイル、アイコン3種、OGP画像、`robots.txt`、`sitemap.xml`が期待するcontent-typeで200を返すこと、`/CNAME`が`knittingeditor.com`であること、`http://`が`https://knittingeditor.com/`へ転送されることを確認する。どれかが失敗するとワークフローが失敗する。
