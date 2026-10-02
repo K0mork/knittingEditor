@@ -12,7 +12,8 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "check:dist": "node scripts/check-dist.mjs",
-    "check:live": "node scripts/check-live-site.mjs"
+    "check:live": "node scripts/check-live-site.mjs",
+    "clean:worktrees": "node scripts/clean-worktrees.mjs"
   },
   "dependencies": {
     "fflate": "0.8.3",
