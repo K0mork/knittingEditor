@@ -7,6 +7,6 @@ export default defineConfig({
   ...shared,
   test: {
     ...shared.test,
-    include: ['src/**/*.test.{ts,tsx}', 'packages/**/*.test.{ts,tsx}'],
+    include: ['src/**/*.test.{ts,tsx}', 'packages/**/*.test.{ts,tsx}', 'scripts/**/*.test.mjs'],
   },
 });
