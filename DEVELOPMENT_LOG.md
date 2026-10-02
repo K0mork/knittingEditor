@@ -11,6 +11,13 @@
 - 検証: 手元はXcode 27.0で、Xcode 26.6もiOS 26.5のSimulatorも無い。`xcodegen generate --spec ios/project.yml`、Debugビルドと`ios/scripts/check-app-bundle.sh`、unsigned Release Archiveと`ios/scripts/check-release-assets.sh`、アプリとテストターゲットの`build-for-testing`、iOS Webの`tsc -p tsconfig.app.json --noEmit`と`vitest run --config vite.config.ts`（8件）が成功した。Simulatorテストとアプリ更新テストは、手元のXcode 27とCIの移行先のXcode 26.6とで環境が違うため、利用者の判断で手元では最後まで実行せず、PRのCIで確かめる。参考までに書くと、途中で止める前に、iOS 27.0のSimulatorで新しく作ったiPhone 17では`ios/scripts/simulate-app-update.sh`が成功した。CIと同じ引数の`xcodebuild test`では、`testAccessibilityExtraExtraExtraLargeKeepsPrimaryFlowsUsable`が失敗した。1回目は、起動から45秒経っても編集画面が「編み図を準備しています」のまま進まなかった。2回目は実行時間上限を超えた。ほかのテストは成功した。iPad (A16)の`xcodebuild test`は途中で止めた。Web側は`npm run typecheck`、`npm test`（107件）、`npm run build`、`npm run check:dist`（`dist/CNAME`は`knittingeditor.com`）、`npm run test:e2e`（79件成功・2件skip）が成功した。ローカルにNode.js 24が無く、Node.js 26.8.1で実行した。`ruby -ryaml`で`ci.yml`を読み込めること、`ios/scripts/check-app-store-docs.sh`の成功も確認した。`actionlint`は手元に無く、実行していない。
 - #44: CIの環境（ランナー、Xcode、Simulatorのランタイムと端末）が変わるため、#44の「10回連続観察」はこのPRのマージ後から数え直す。
 - デプロイ影響: `.github/workflows/*`の変更でWeb・iOSの全ジョブが走り、同じ内容のPagesが再配信される。マージ後は`deploy`と`smoke`の成功を確認する。
+## 2026-10-02 — iOSの検査一式はPRのCIで行い、ローカルでは変更に関係する検査だけにする
+
+- 影響: アプリとWeb資産の内容は変えていない。これまで`packages/`やiOSのコード・ビルド設定・テストを変えたときは、CIと同じiOSの検査一式（Simulatorテスト2端末、アプリ更新テスト2端末、unsigned Release Archive、同梱物検査など）をローカルでも実行していた。手元のXcodeはCIと異なることが多く（現在は手元がXcode 27、CIはXcode 15.4、移行先はXcode 26.6）、ローカルで通ってもCIで通る証拠にならない。一式は1回30〜40分かかり、同じ内容をPRのCIが同じ引数で実行して`ci-gate`がマージ前に必須とするため、ローカルで既定として繰り返すのをやめた。ローカルでは、iOS Webの型検査とテスト、`xcodegen generate`とアプリのビルド、変えたスクリプトや文書の静的検査、変更箇所を対象にしたテストの繰り返しなど、push前に問題を見つけるための検査だけを行う。Simulatorの一式をローカルで回すのは、繰り返し実行や診断情報が必要な失敗の調査と、CIでは確かめられない変更に限る。開発ログには、ローカルで行った検査とCIに任せた検査を分けて書き、CIのiOS系ジョブをすべて確認してから完了と報告する。Webの検査一式（`npm run typecheck`など）は短時間で終わるため、これまでどおりローカルでも実行する。
+- 主なファイル: `AGENTS.md`（Change-specific Test Requirements）、`ios/AGENTS.md`（Simulator運用と容量管理）
+- テスト: 動作の変更がないため、テストは追加していない。
+- 検証: `ios/scripts/check-app-store-docs.sh`が成功した。Markdownだけの変更のため、PRのCIでは`app_store_docs`だけが走り、Web・Simulator・Archiveのジョブはskipされる。
+- デプロイ影響: なし。
 
 ## 2026-10-02 — iOS UIテストで主要ボタンの出現を起動用の上限で待ち、効かなかった「編み図」のタップだけ押し直す
 
