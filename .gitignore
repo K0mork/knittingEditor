@@ -15,5 +15,8 @@ test-results/
 # 利用分析の数値・価格・収益試算などの非公開メモ。AGENTS.mdの「Confidential Information」を参照。
 /private/
 
-# Claude desktop app session worktrees. See AGENTS.md "Branches, Worktrees & Cleanup".
+# Claude Code: session worktrees (see AGENTS.md "Branches, Worktrees & Cleanup"), the lock a running
+# session writes, and personal settings. `.claude/launch.json` and `.claude/settings.json` are shared.
 /.claude/worktrees/
+/.claude/scheduled_tasks.lock
+/.claude/settings.local.json
