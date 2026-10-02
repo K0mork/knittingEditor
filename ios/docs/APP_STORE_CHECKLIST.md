@@ -26,4 +26,5 @@
 - [ ] App Store ConnectのApp Privacy回答をPrivacy Manifestと照合する。
 - [ ] Privacy Policy URLをApp Store Connectへ登録し、公開状態を確認する。
 - [ ] 審査メモへ`docs/APP_REVIEW_NOTES.md`の要点を転記する。
+- [ ] App Store Connectの配信地域からEU加盟国を外す（`docs/APP_STORE_METADATA.md`の「配信地域」）。
 - [ ] 提出後の承認を確認するまで、App Store配布完了とは報告しない。
