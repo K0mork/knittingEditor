@@ -108,6 +108,25 @@ If GitHub Actions fails or the live site does not match the deployed commit, sto
 - Dependabot (`.github/dependabot.yml`) opens grouped npm and GitHub Actions update PRs weekly. Treat them like any other dependency change: review the changelog and require the full CI to pass before merging. Do not push commits to a Dependabot branch: Dependabot stops rebasing a pull request after someone else commits to it. Dependency-only updates need no `DEVELOPMENT_LOG.md` entry because the `dependencies` label lists them in the generated release notes. If an update needs source, test, or configuration changes, make them in a separate pull request with its own entry.
 - Label pull requests `enhancement`, `bug`, `documentation`, or `dependencies` so that generated release notes (`.github/release.yml`) are categorized.
 
+## Branches, Worktrees & Cleanup
+
+Several agent sessions may work in this repository at the same time. Each branch exists for one pull request and is deleted once that pull request is merged or closed. Codex must follow these rules without being asked:
+
+- Run `git config fetch.prune true` once per clone, so that every fetch drops remote-tracking refs of branches deleted on GitHub. GitHub deletes the head branch of a merged pull request automatically.
+- Keep the main checkout at the repository root on `main`, and do not switch branches, reset, or rebase in a checkout that another session uses. Start each change in its own worktree from the latest `origin/main`, with a branch named after the commit type, such as `fix/preserve-grid-after-resize`:
+
+  ```sh
+  git fetch origin
+  git worktree add -b <branch> .claude/worktrees/<name> origin/main
+  ```
+
+  `.claude/worktrees/` is ignored by Git. The Claude desktop app creates its session worktrees there too.
+- The stash is shared by all worktrees. Do not use `git stash` to set work aside; make a temporary commit on your own branch instead.
+- After a pull request you worked on is merged or closed, clean up in the same session: remove its worktree with `git worktree remove <path>` (not `rm`), delete the local branch, and run `git fetch --prune`. Delete the branch with `git branch -d`. Because squash merges leave the branch unmerged in Git's view, `git branch -D` is allowed only after confirming that the local branch tip equals the pull request's head commit (`gh pr view <number> --json headRefOid`) or is already in `origin/main`, so that no unpushed commit is lost. Update the main checkout with `git switch main && git pull --ff-only` when nothing else uses it.
+- When starting work, also remove leftovers from earlier sessions: worktrees and local branches whose pull request is merged or closed, local branches whose upstream is `[gone]` in `git branch -vv`, and local branches without an upstream whose tip is already in `origin/main`. Run `git worktree prune` if a worktree directory was deleted by other means.
+- Never remove a worktree or delete a branch that has uncommitted changes, unpushed commits that are not in any pull request, an open pull request, or a running session. Ask the user when unsure.
+- Do not delete the remote branch of an open pull request. A remote branch of a merged or closed pull request that remains on GitHub may be deleted.
+
 ## Coding Style & Naming Conventions
 
 Use two-space indentation and strict TypeScript. Use `camelCase` for functions and variables, `PascalCase` for React components and classes, and kebab-case for CSS classes. Keep the board model independent from React and DOM APIs. Do not replace the packed typed-array model with per-cell objects or render individual cells as DOM nodes. Prefer explicit types, immutable React state, and small single-purpose functions.
