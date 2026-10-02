@@ -62,7 +62,7 @@ ios/scripts/build-web.sh
 ios/scripts/check-app-bundle.sh /path/to/knittingEditor.app
 
 # 同一Bundle IDの更新ビルドでIndexedDBが復元されることを確認する
-SIMULATOR_UDID=<booted-simulator-udid> ios/scripts/simulate-app-update.sh "iPhone 16"
+SIMULATOR_UDID=<booted-simulator-udid> ios/scripts/simulate-app-update.sh "iPhone 17"
 ```
 
 公開中の`https://knittingeditor.com/`は読み込みません。Viteのアプリ用ビルドをXcodeバンドルへ格納し、HTML、JavaScript、記号、WorkerをローカルURLから読み込みます。
