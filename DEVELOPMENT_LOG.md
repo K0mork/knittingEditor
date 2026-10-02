@@ -1,5 +1,14 @@
 # Development Log
 
+## 2026-10-02 — iOS UIテストで主要ボタンの出現を起動用の上限で待ち、効かなかった「編み図」のタップだけ押し直す
+
+- 症状（[#44](https://github.com/K0mork/knittingEditor/issues/44)）: run [36852519498](https://github.com/K0mork/knittingEditor/actions/runs/36852519498)の`ios (iPhone 16)`で、`testAccessibilityExtraExtraExtraLargeKeepsPrimaryFlowsUsable`が1回目に失敗した。WebViewの器は出ていたが、`assertPrimaryControlsAreUsable`が「編み図」ボタンを10秒しか待たずに見つからなかった。run [36854593545](https://github.com/K0mork/knittingEditor/actions/runs/36854593545)の`ios (iPad (10th generation))`では、`testTwoFingerGestureDoesNotDrawOnBoard`の`createDocument`で起動直後の「編み図」のタップが効かず、「新しい編み図」が45秒現れなかった。どちらも再試行で成功し、実行時間上限の超過は無かった。
+- 変更: `assertPrimaryControlsAreUsable`は「編み図」「盤面」「ブロック」「保存」の出現を`editorAppearanceTimeout`（45秒）で待つ（出れば直ちに終わる）。このヘルパーを使う全テストに効く。`createDocument`は「編み図」をタップしたあと「新しい編み図」を10秒待ち、出ず、かつパネルの「閉じる」も無い（パネルが開いていない）場合に限って「編み図」を押し直す。パネルが開いているのに出ない場合は押し直さない（押すとパネルが閉じるため）。最後は「新しい編み図」を45秒待ち、出なければ「「編み図」でパネルが開かない」として失敗させるので、ボタンが効かない不具合は隠さない。検証内容と1テストの実行時間上限は変えていない。
+- 主なファイル: `ios/UITests/KnittingEditorUITests/KnittingEditorUITests.swift`
+- テスト: 上記のUIテストのヘルパーを更新した。
+- 検証: Xcode 27.0、`xcodegen generate --spec ios/project.yml`のあと、iOS 18.2のSimulator（iPhone 16・iPad (10th generation)）で、CIと同じ引数の`xcodebuild test`（`-retry-tests-on-failure -test-iterations 2 -test-timeouts-enabled YES -default-test-execution-time-allowance 150 -maximum-test-execution-time-allowance 240 -skip-testing:knittingEditorUITests/KnittingEditorUITests/testBackupExportSheetDismissesBackToEditor CODE_SIGNING_ALLOWED=NO`）が両端末で成功し、UIテスト13件（5件は条件付きskip）はすべて再試行なしで成功した。変更したヘルパーを使う`testAccessibilityExtraExtraExtraLargeKeepsPrimaryFlowsUsable`、`testPrimaryControlsRemainUsableInPortraitAndLandscape`、`testTwoFingerGestureDoesNotDrawOnBoard`、`testUndoAndRedoRestoreBoardEdits`を再試行なし・`-test-iterations 5`で実行し、両端末で20回すべて成功した（`testManualWindowKeepsPrimaryFlowsUsable`は条件付きskip）。手元では起動直後のタップが効かない状況は再現せず、押し直しの分岐は通っていない。`ios/scripts/simulate-app-update.sh`（両端末、`SIMULATOR_UDID`指定）、unsigned Release Archiveと`ios/scripts/check-release-assets.sh`、Debugビルドと`ios/scripts/check-app-bundle.sh`、iOS Webの`tsc -p tsconfig.app.json --noEmit`と`vitest run --config vite.config.ts`（8件）が成功した。Web側は変えていないため、Webの一式は実行していない。CIの不安定さは確率的なため、ローカルの成功だけでは再発しないことを証明できない。#44の完了条件（CIの10回連続）は引き続き観察する。
+- デプロイ影響: なし。iOSのUIテストだけの変更で、Pagesは再配信されない。
+
 ## 2026-10-02 — `main`へ続けてマージしてもWebの変更が配信されるようにする
 
 - 影響: アプリとWeb資産の内容は変えていない。`CI and deploy Pages`は同じrefのrunを常に打ち切っていたため、Webの変更をマージした直後にMarkdownやiOSだけの変更をマージすると、先のrunが`deploy`の前に止まり、後のrunは直前のコミットとの差分だけを見て`web=false`となり、どちらのrunも配信しなかった（#46）。`concurrency`の`cancel-in-progress`をPRのときだけ有効にし、`main`へのpushは打ち切らずに順番に実行する。GitHub Actionsでは待機中のrunが次のrunに置き換えられることがあるため、`changes`ジョブは`main`へのpushに限り、Webの判定を`github-pages`環境で最後に配信できたコミットからの差分で行う。そのコミットを取得できない場合や`HEAD`の祖先でない場合は、配信を取りこぼさないよう`web=true`とする。iOSの判定とPRでの判定は、これまでどおり直前のコミットとの差分で行う。`changes`ジョブには配信履歴を読むため`deployments: read`を与えた。

@@ -808,7 +808,17 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertTrue(documents.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
         documents.tap()
         let newDocument = app.buttons["新しい編み図"]
-        XCTAssertTrue(newDocument.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+        // 起動直後は「編み図」のタップが効かず、パネルが開かないことがある（iPadのCIで
+        // 「新しい編み図」が45秒現れなかった）。しばらく待っても出ないときは、パネルが
+        // 開いていない（「閉じる」もない）場合に限って押し直す。開いているのに出なければ
+        // 押し直すとパネルを閉じてしまうので、そのまま待って失敗にする。
+        if !newDocument.waitForExistence(timeout: 10), !app.buttons["閉じる"].exists {
+            documents.tap()
+        }
+        XCTAssertTrue(
+            newDocument.waitForExistence(timeout: Self.editorAppearanceTimeout),
+            "「編み図」でパネルが開かない: \(app.debugDescription)"
+        )
         newDocument.tap()
         let nameField = app.textFields["入力"]
         XCTAssertTrue(nameField.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
@@ -900,7 +910,11 @@ final class KnittingEditorUITests: XCTestCase {
     private func assertPrimaryControlsAreUsable(in app: XCUIApplication) {
         for name in ["編み図", "盤面", "ブロック", "保存"] {
             let button = app.buttons[name]
-            XCTAssertTrue(button.waitForExistence(timeout: 10), "\(name) が見つかりません: \(app.debugDescription)")
+            // WebViewの器は中身より先に現れるため、起動用の上限で待つ（出れば直ちに終わる）。
+            XCTAssertTrue(
+                button.waitForExistence(timeout: Self.editorAppearanceTimeout),
+                "\(name) が見つかりません: \(app.debugDescription)"
+            )
             XCTAssertTrue(button.isHittable, "\(name) を操作できません: \(app.debugDescription)")
         }
 
