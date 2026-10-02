@@ -1,5 +1,14 @@
 # Development Log
 
+## 2026-10-02 — iOSアプリのホーム画面の表示名を「棒針編み図」にし、App名と加入方針を記録する
+
+- 影響: iOSアプリのホーム画面の表示名（`CFBundleDisplayName`）と`CFBundleName`を「Knitting Editor」から「棒針編み図」に変えた。App Store用のApp名は「棒針編み図エディタ」に決めた（Web版のタイトルと同じ）。App名はApp Store全体で重複できないため、使えるかはApp Store ConnectでAppを登録するときに確かめる。Apple Developer Programへは個人で加入する予定で、署名はAutomaticを続ける。Web版の表示とBundle IDは変えていない。
+- 表示名の長さ: Appleの文書には`CFBundleDisplayName`の上限も推奨値も無い（`CFBundleName`は15文字まで）。Simulatorのホーム画面で実測すると、iPhone SE（第3世代、iOS 18.2）とiPhone 17（iOS 27.0）で、全角9文字の「棒針編み図エディタ」は標準の文字サイズで切れた。全角7文字は文字サイズを大きくすると切れ、全角6文字はどの文字サイズでも切れなかった。このため表示名は6文字以内とし、5文字の「棒針編み図」を選んだ。「拡大表示」と太字テキストは確かめておらず、実機確認（#23）で扱う。
+- 主なファイル: `ios/App/Info.plist`、`ios/docs/APP_STORE_METADATA.md`（ホーム画面の表示名と根拠）、`ios/docs/APP_STORE_CHECKLIST.md`、`ios/docs/REAL_DEVICE_RELEASE_CHECKLIST.md`、`ios/scripts/check-app-store-docs.sh`、`ios/scripts/check-release-assets.sh`
+- テスト: `check-app-store-docs.sh`に、メタデータの「ホーム画面の表示名」が6文字以内で、`Info.plist`の`CFBundleDisplayName`・`CFBundleName`と一致する検査を加えた（CIの`app_store_docs`はLinuxで動くため、`plutil`ではなく`awk`で読む）。`check-release-assets.sh`はArchiveしたアプリの表示名が「棒針編み図」であることを確かめる。
+- 修正（PRのCIで判明）: 最初の版はメタデータの表を`awk`で読んでいた。macOSの`awk`はUTF-8ロケールで文字列の比較に照合順序を使い、`en_US.UTF-8`（CIのmacOSランナー）では「項目」と「ホーム画面の表示名」を等しいと判定した。そのため`release_archive`の中の文書の検査が表の見出しの値「下書き」を読み、`Info.plist`と不一致として失敗した。既存の`App名`・`サブタイトル`などの読み取りも同じ処理で、macOSの`en_US.UTF-8`では見出し行を読んで文字数の検査が素通りしうる状態だった。表とplistの読み取りをロケールに依らない`perl`の完全一致に置き換えた。
+- 検証: `ios/scripts/check-app-store-docs.sh`と`plutil -lint ios/App/Info.plist`が成功した。修正後の検査は、ロケール未指定・`C`・`C.UTF-8`・`en_US.UTF-8`・`ja_JP.UTF-8`のどれでも成功し、修正前は`en_US.UTF-8`だけで失敗することを手元で再現した。文書の検査を一時コピーで動かし、`C`・`en_US.UTF-8`・`ja_JP.UTF-8`のそれぞれで、サブタイトルを33文字にした場合と、`Info.plist`の表示名を変えた場合、表示名を7文字（「編み図エディタ」）にした場合、表示名の行を消した場合に、それぞれ終了コード1で失敗することを確かめた。`xcodegen generate --spec ios/project.yml`は成功した。Simulatorテスト、アプリ更新テスト、Debugビルドと`check-app-bundle.sh`、unsigned Release Archiveと`check-release-assets.sh`、iOS Webの検査は、利用者の判断でローカルでは実行せず、PRのCI（`ios`・`app_update`・`release_archive`・`ios_web`）で確かめる。手元のXcode 27はCIのXcodeと異なり、同じ検査をCIが同じ引数で実行するため。
+- デプロイ影響: なし。iOSのみの変更で、Pagesは再配信されない。iOSアプリは次のビルドからホーム画面の表示名が変わる。
 ## 2026-10-02 — iOSのCIをmacos-26のXcode 26.6とiOS 26.5 Simulatorへ移す
 
 - 影響: アプリとWeb資産の内容は変えていない。`.github/workflows/ci.yml`のiOS系ジョブ（`ios_web`、`ios`両端末、`app_update`両端末、`release_archive`）を`runs-on: macos-14`から`macos-26`へ移し、`DEVELOPER_DIR`で`/Applications/Xcode_26.6.app`を明示的に使う。これまでは`macos-14`の既定のXcode 15.4（iOS 17.5 SDK）でビルドし、`OS=latest`で選ばれたiOS 18.2のSimulatorでテストしており、テストに使うXcodeよりSimulatorのiOSが新しかった（#45）。`ios`・`app_update`・`release_archive`の最初に`xcodebuild -version`と`xcrun simctl list runtimes`を出し、`ios/scripts/boot-simulator.sh`は選んだ端末のiOSランタイムの版とUDIDを標準エラーへ出すので、使ったXcodeとSimulatorのランタイムがジョブログで分かる。

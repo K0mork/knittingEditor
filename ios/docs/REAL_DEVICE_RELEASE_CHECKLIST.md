@@ -12,7 +12,7 @@ M0、M2、M3、M4、M6で残っている実機・署名・TestFlight確認を、
 | Xcode / macOS | Xcode 27.0 (27A266a) / macOS 27.0 |
 | iPhone機種・iOS | iPhone 17 (iPhone18,3) / iOS 27.0 |
 | iPad機種・iPadOS | iPad Air (5th generation) (iPad13,16) / iPadOS 27.0 |
-| Apple Developer Team / Bundle ID | 無料Personal Team / `com.k0mork.knittingEditor` |
+| Apple Developer Team / Bundle ID | 無料Personal Team（今後、個人でApple Developer Programに加入する予定） / `com.k0mork.knittingEditor` |
 | 署名方式・証明書 | Automatic、Apple Development（`iOS Team Provisioning Profile`、7日で失効） |
 
 実機へインストールする前に、XcodeのSigning & CapabilitiesでTeam、Bundle ID、証明書、Provisioning Profileを確定し、`xcodebuild -showBuildSettings`の`DEVELOPMENT_TEAM`と`PRODUCT_BUNDLE_IDENTIFIER`を記録する。Teamや証明書をリポジトリへ保存しない。
@@ -108,7 +108,7 @@ TEST_RUNNER_KNITTING_EDITOR_AIRPLANE_MODE=1 xcodebuild test \
 コンテンツプロセスのピークメモリは、Instruments.appを手で使って測る。
 
 1. Instruments.appを開き、テンプレートに「Activity Monitor」を選ぶ。
-2. 対象デバイスと`Knitting Editor`を選んで記録を開始する。
+2. 対象デバイスと`棒針編み図`（ホーム画面の表示名。実行ファイル名は`knittingEditor`）を選んで記録を開始する。
 3. 1000×1000盤面を開いた状態にし、プロセス一覧の`com.apple.WebKit.WebContent`の`Memory`列と`Resident Size`列を記録する。
 4. PNG／PDF出力の直後も同様に記録し、メモリ警告と強制終了が起きないことを確認する。
 

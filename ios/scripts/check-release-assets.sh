@@ -43,6 +43,10 @@ display_name=$(plutil -extract CFBundleDisplayName raw -o - "$INFO_PLIST")
   echo "bundle version or display name is missing" >&2
   exit 1
 }
+[ "$display_name" = "棒針編み図" ] || {
+  echo "unexpected display name: $display_name" >&2
+  exit 1
+}
 
 launch_color_name=$(plutil -extract UILaunchScreen.UIColorName raw -o - "$INFO_PLIST" 2>/dev/null || true)
 [ "$launch_color_name" = "LaunchBackground" ] || {
