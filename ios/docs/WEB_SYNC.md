@@ -6,7 +6,7 @@ Web版とiOS版は同じリポジトリで管理する。以前の固定コミ�
 
 `ios/scripts/build-web.sh`は、ルートの`package-lock.json`で依存関係を導入し、`ios/Web`をルートworkspaceのVite・TypeScriptでビルドする。生成物は`ios/AppResources/Web/`に置くが、生成物自体はGit管理しない。Xcodeのpre-build scriptも同じスクリプトを呼び出す。
 
-ビルドをスキップするかどうかの入力ハッシュは、`ios/Web`、`packages`、ルートの`package.json`・`package-lock.json`・`tsconfig.base.json`・`vite.shared.ts`、このスクリプト自身だけを対象にする。リポジトリ全体を走査すると`.git`やテスト成果物の更新でスタンプが毎回変わり、さらに走査中に消えたファイルで`shasum`が失敗してビルドフェーズごと落ちる。テスト（`*.test.ts`・`*.test.tsx`）とMarkdownはbundleに入らないので、ハッシュ対象から外す。共通のビルド設定を新しいファイルへ切り出すときは、このハッシュ対象とCIの変更判定（`.github/workflows/ci.yml`の`changes`ジョブ）の両方へ必ず追加する。
+ビルドをスキップするかどうかの入力ハッシュは、`ios/Web`、`packages`、ルートの`package.json`・`package-lock.json`・`tsconfig.base.json`・`vite.shared.ts`・`scripts/third-party-notices.mjs`、このスクリプト自身だけを対象にする。リポジトリ全体を走査すると`.git`やテスト成果物の更新でスタンプが毎回変わり、さらに走査中に消えたファイルで`shasum`が失敗してビルドフェーズごと落ちる。テスト（`*.test.ts`・`*.test.tsx`）とMarkdownはbundleに入らないので、ハッシュ対象から外す。共通のビルド設定を新しいファイルへ切り出すときは、このハッシュ対象とCIの変更判定（`.github/workflows/ci.yml`の`changes`ジョブ）の両方へ必ず追加する。
 
 ## 共通コードと複製の境界
 
@@ -37,7 +37,7 @@ Web版とiOS版は同じリポジトリで管理する。以前の固定コミ�
 | `styles.css` | 共通CSSへの差分だけ。iOS版はタップ領域44px、Dynamic Type、テキスト自動拡大の抑止、アプリ内ダイアログの様式。Web版はSEO向けの説明文と編み図名の表示。 |
 | `platform.ts` | `EditorPlatform`の実装。Web版はダウンロード、iOS版は`WKWebView`ブリッジ経由でFiles・共有シートへ渡す。Web版でもiPhone・iPadのSafariだけは、`<a download>`のPDFが編集中のタブを置き換えるため、`ShareFileDialog.tsx`の「共有・保存」ボタンから共有シート（Web Share API）で渡す。共有シートは利用者のタップの中でしか開けないので、生成後にもう一度押してもらう。 |
 | `storage/database.ts` | Web版だけが持ち、旧Safari `localStorage`からの移行と、それを先に行う`initializeStorage`を置く。iOS版にはファイル自体が無く、共通の`initializeStorage`を直接使うので移行を含めない。 |
-| `index.html`、`public/guide/` | Web版はSEO、canonical、CNAME、サイトマップを持つ。iOS版は同梱ページとして動作し、文言をアプリ前提にする。 |
+| `index.html`、`public/guide/` | Web版はSEO、canonical、CNAME、サイトマップを持つ。iOS版は同梱ページとして動作し、文言をアプリ前提にする。どちらの使い方ページも、ビルド時に生成する`/third-party-notices/`（`scripts/third-party-notices.mjs`）へリンクする。 |
 
 ## テストの置き場所
 

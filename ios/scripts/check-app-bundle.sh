@@ -8,9 +8,16 @@ if [ -z "$APP_PATH" ] || [ ! -d "$APP_PATH" ]; then
 fi
 
 WEB_ROOT="$APP_PATH/Web"
-for required in index.html assets guide/index.html; do
+for required in index.html assets guide/index.html third-party-notices/index.html; do
   if [ ! -e "$WEB_ROOT/$required" ]; then
     echo "missing bundled asset: $required" >&2
+    exit 1
+  fi
+done
+
+for package in fflate idb react react-dom scheduler; do
+  if ! grep -q "<h2>$package " "$WEB_ROOT/third-party-notices/index.html"; then
+    echo "missing third-party license notice: $package" >&2
     exit 1
   fi
 done

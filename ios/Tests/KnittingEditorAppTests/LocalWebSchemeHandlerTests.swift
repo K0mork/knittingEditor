@@ -170,6 +170,24 @@ final class LocalWebSchemeHandlerTests: XCTestCase {
         XCTAssertEqual(title as? String, "棒針編み図エディタの使い方")
     }
 
+    /// 同梱するオープンソースのライセンス表記を、使い方ページのリンク先として読み込めることを確認する。
+    @MainActor
+    func testThirdPartyNoticesLoadBundledLicenses() async throws {
+        let webView = try makeWebView()
+        defer { dispose(webView) }
+        let delegate = NavigationDelegate()
+        webView.navigationDelegate = delegate
+        webView.load(URLRequest(url: URL(string: "knitting-local://bundle/third-party-notices/")!))
+        try await delegate.waitForLoad()
+
+        let title = try await webView.evaluateJavaScript("document.title")
+        XCTAssertEqual(title as? String, "第三者ソフトウェアのライセンス｜棒針編み図エディタ")
+        let packages = try await webView.evaluateJavaScript(
+            "[...document.querySelectorAll('h2')].map((heading) => heading.textContent.split(' ')[0]).join(',')"
+        )
+        XCTAssertEqual(packages as? String, "fflate,idb,react,react-dom,scheduler")
+    }
+
     @MainActor
     func testLocalEditorDoesNotInvokeRuntimeNetworkAPIs() async throws {
         let webView = try makeWebView(networkProbe: true)
