@@ -56,8 +56,20 @@ final class KnittingEditorUITests: XCTestCase {
             "使い方ページで編集画面の読み込み表示を残さない: \(app.debugDescription)"
         )
 
-        app.links["棒針編み図エディタへ戻る"].tap()
-        XCTAssertTrue(app.buttons["保存"].waitForExistence(timeout: 20), app.debugDescription)
+        // 戻るリンクはページの一番下にある。XCUITestの自動スクロールに任せると、
+        // タップ位置が画面の外（y=3275）で計算されて外れ、使い方ページのまま残った（#95）。
+        // 自分でページを送り、押せる位置に来てから叩く。使い方ページのまま（リンクが残って
+        // いる）ときに限って押し直し、最後まで戻らなければ失敗にする。
+        let back = app.links["棒針編み図エディタへ戻る"]
+        XCTAssertTrue(back.waitForExistence(timeout: 10), app.debugDescription)
+        scrollWebViewUntilHittable(back, in: app)
+        back.tap()
+        let save = app.buttons["保存"]
+        if !save.waitForExistence(timeout: 10), back.exists {
+            scrollWebViewUntilHittable(back, in: app)
+            back.tap()
+        }
+        XCTAssertTrue(save.waitForExistence(timeout: 20), "使い方ページから編集画面へ戻れない: \(app.debugDescription)")
         XCTAssertFalse(app.otherElements["editorLoadingOverlay"].exists, app.debugDescription)
     }
 
@@ -1021,6 +1033,25 @@ final class KnittingEditorUITests: XCTestCase {
             rangeSwitch.isHittable,
             "「範囲」をツールバーのスクロールで押せる位置へ出せない（スワイプ\(swipes)回） " +
                 "範囲=\(rangeSwitch.frame) ツールバー=\(toolbar.frame): \(app.debugDescription)"
+        )
+    }
+
+    /// WebViewのページを上へ送り、要素が押せる位置に来るまで待つ。
+    private func scrollWebViewUntilHittable(
+        _ element: XCUIElement,
+        in app: XCUIApplication,
+        maximumSwipes: Int = 12
+    ) {
+        let webView = app.webViews.firstMatch
+        var swipes = 0
+        while !element.isHittable, swipes < maximumSwipes {
+            webView.swipeUp()
+            swipes += 1
+            _ = waitForHittable(element, timeout: 2)
+        }
+        XCTAssertTrue(
+            element.isHittable,
+            "スワイプ\(swipes)回で押せる位置に来ない frame=\(element.frame): \(app.debugDescription)"
         )
     }
 
