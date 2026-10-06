@@ -10,7 +10,8 @@ declare global {
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
 let root: Root | undefined;
-let offer: ((file: File) => void) | undefined;
+let offer: ((file: File) => Promise<boolean | undefined>) | undefined;
+let result: Promise<boolean | undefined> | undefined;
 
 function Host() {
   const { offerShare, dialog } = useShareOffer();
@@ -23,7 +24,7 @@ async function renderWithOffer(file: File) {
   document.body.append(container);
   root = createRoot(container);
   await act(async () => { root!.render(<Host />); });
-  await act(async () => { offer!(file); });
+  await act(async () => { result = offer!(file); });
 }
 
 const button = (name: string) => [...document.querySelectorAll('button')].find((element) => element.textContent === name)!;
@@ -31,6 +32,7 @@ const button = (name: string) => [...document.querySelectorAll('button')].find((
 afterEach(async () => {
   await act(async () => { root?.unmount(); });
   root = undefined;
+  result = undefined;
   document.body.innerHTML = '';
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
@@ -50,6 +52,7 @@ describe('ShareFileDialog', () => {
     await act(async () => { button('共有・保存').click(); });
     expect(share).toHaveBeenCalledWith({ files: [file] });
     expect(document.querySelector('[role="dialog"]')).toBeNull();
+    await expect(result).resolves.toBe(true);
   });
 
   it('closes without downloading when the share sheet is dismissed', async () => {
@@ -60,6 +63,7 @@ describe('ShareFileDialog', () => {
     await act(async () => { button('共有・保存').click(); });
     expect(click).not.toHaveBeenCalled();
     expect(document.querySelector('[role="dialog"]')).toBeNull();
+    await expect(result).resolves.toBe(false);
   });
 
   it('falls back to a download when sharing fails', async () => {
@@ -70,6 +74,8 @@ describe('ShareFileDialog', () => {
 
     await act(async () => { button('共有・保存').click(); });
     expect(click).toHaveBeenCalledOnce();
+    // ダウンロードは保存を終えたかが分からない。
+    await expect(result).resolves.toBeUndefined();
   });
 
   it('closes without sharing', async () => {
@@ -80,5 +86,16 @@ describe('ShareFileDialog', () => {
     await act(async () => { button('閉じる').click(); });
     expect(share).not.toHaveBeenCalled();
     expect(document.querySelector('[role="dialog"]')).toBeNull();
+    await expect(result).resolves.toBe(false);
+  });
+
+  it('treats a file replaced before sharing as not shared', async () => {
+    vi.stubGlobal('navigator', { ...navigator, share: vi.fn(async () => {}) });
+    await renderWithOffer(file);
+    const first = result;
+    await act(async () => { result = offer!(new File(['%PDF'], '次の編み図.pdf', { type: 'application/pdf' })); });
+
+    await expect(first).resolves.toBe(false);
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain('「次の編み図.pdf」の準備ができました');
   });
 });

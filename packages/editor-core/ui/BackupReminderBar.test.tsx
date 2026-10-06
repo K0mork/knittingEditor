@@ -3,7 +3,7 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { Board } from '../model/Board';
-import type { EditorPlatform } from '../platform';
+import { SAVE_RESULT_UNKNOWN, type EditorPlatform } from '../platform';
 import { BACKUP_REMINDER_EDIT_THRESHOLD, BACKUP_REMINDER_SNOOZE_KEY, BACKUP_REMINDER_SNOOZE_MS } from '../state/backupReminder';
 import {
   createDocument, getLastBackupAt, getSetting, initializeStorage, listBlocks, saveDocument, setSetting,
@@ -46,8 +46,15 @@ async function openEditedChart(name: string, ageDays: number) {
   return document;
 }
 
-async function renderEditor() {
-  const platform: EditorPlatform = { saveFile: vi.fn(async () => undefined) };
+/** 画面に指・ポインタを置く、または離す。盤面はポインタを捕まえるので、通知は画面全体へ届く。 */
+async function pointer(type: 'pointerdown' | 'pointerup' | 'pointercancel', pointerId: number) {
+  await act(async () => { window.dispatchEvent(Object.assign(new Event(type), { pointerId })); });
+}
+
+async function renderEditor(saved: boolean | undefined = undefined) {
+  const platform: EditorPlatform = {
+    saveFile: vi.fn(async () => saved === undefined ? SAVE_RESULT_UNKNOWN : { saved: Promise.resolve(saved) }),
+  };
   function Host() {
     const editor = useEditorController({
       initialize: async () => ({ ...await initializeStorage(), blocks: await listBlocks() }),
@@ -105,6 +112,22 @@ describe('backup reminder', () => {
     expect(container.querySelector('.backup-reminder')).toBeNull();
   });
 
+  it('does not record a backup when the user cancels saving', async () => {
+    const document = await openEditedChart('取りやめる編み図', 8);
+    const { container, platform, click, reminder, panelText } = await renderEditor(false);
+    await waitUntil(() => reminder() !== null);
+
+    await click('書き出す', reminder()!);
+    await waitUntil(() => vi.mocked(platform.saveFile).mock.calls.length > 0);
+    // 処理を終え、記録を書き込むなら書き込み終える時間を置いてから、帯が残り、日時が記録されていないことを確かめる。
+    await waitUntil(() => container.querySelector('.busy') === null);
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 50)); });
+    expect(reminder()).not.toBeNull();
+    expect(await getLastBackupAt(document.id)).toBeUndefined();
+    await click('保存');
+    expect(panelText()).toContain('この編み図はまだバックアップしていません。');
+  });
+
   it('waits after "later" and keeps waiting after a reload', async () => {
     await openEditedChart('あとで書き出す編み図', 30);
     const first = await renderEditor();
@@ -144,6 +167,37 @@ describe('backup reminder', () => {
       // ドロワーを開いている間は出さない。
       await click('盤面');
       expect(reminder()).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('keeps the reminder back while a finger or pointer stays on the screen', async () => {
+    await createDocument('なぞり描きを続ける編み図');
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const { click, reminder } = await renderEditor();
+      await click('盤面');
+      for (let count = 0; count < BACKUP_REMINDER_EDIT_THRESHOLD; count++) await click('上に段');
+      await click('閉じる');
+
+      // 編集の直後に次のなぞり描きを始め、指を置いたままにしても出さない。
+      await pointer('pointerdown', 1);
+      await act(async () => { vi.advanceTimersByTime(BACKUP_REMINDER_IDLE_MS * 3); });
+      expect(reminder()).toBeNull();
+
+      // 2本指で触れている間も出さない。1本離しただけでは数え始めない。
+      await pointer('pointerdown', 2);
+      await pointer('pointerup', 1);
+      await act(async () => { vi.advanceTimersByTime(BACKUP_REMINDER_IDLE_MS * 3); });
+      expect(reminder()).toBeNull();
+
+      // すべて離してから数え直す。
+      await pointer('pointercancel', 2);
+      await act(async () => { vi.advanceTimersByTime(BACKUP_REMINDER_IDLE_MS - 100); });
+      expect(reminder()).toBeNull();
+      await act(async () => { vi.advanceTimersByTime(100); });
+      expect(reminder()?.textContent).toContain('この編み図はまだバックアップしていません。');
     } finally {
       vi.useRealTimers();
     }

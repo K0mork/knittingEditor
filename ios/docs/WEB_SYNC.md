@@ -22,7 +22,7 @@ Web版とiOS版は同じリポジトリで管理する。以前の固定コミ�
 | `ui/StitchPicker.tsx` | 記号ピッカー。フォーカストラップとEscapeでの閉じ方を含む。 |
 | `ui/GridControls.tsx` | 盤面設定。位置入力と確認は`askText`・`askConfirm`で受け取る。 |
 | `ui/ExportControls.tsx` | 保存・出力。PDFの推定ページ数は`export/pdfLayout.ts`をPDF Workerと共有する。 |
-| `state/backupReminder.ts`・`state/useBackupReminder.ts`・`ui/BackupReminder.tsx` | 最後の`.knit`書き出し日時の記録と、書き出しを勧める帯。日時は編み図ごとに設定（`lastBackupAt:<編み図ID>`）へ置き、編み図の記録と`.knit`には入れない。勧めは、最後の書き出し（無ければ作成）から7日以上たって変更があるとき、または開いてから50回編集したときに、道具列と盤面の間へ1段だけ出す。「あとで」で3日間（全編み図）出さない。Web版もブラウザのデータ消去やSafariの保存期限で端末内データが消えうるので、iOS版と同じ表示を出し、差分は設けない。 |
+| `state/backupReminder.ts`・`state/useBackupReminder.ts`・`ui/BackupReminderBar.tsx` | 最後の`.knit`書き出し日時の記録と、書き出しを勧める帯。日時は編み図ごとに設定（`lastBackupAt:<編み図ID>`）へ置き、編み図の記録と`.knit`には入れない。勧めは、最後の書き出し（無ければ作成）から7日以上たって変更があるとき、または開いてから50回編集したときに、道具列と盤面の間へ1段だけ出す。「あとで」で3日間（全編み図）出さない。Web版もブラウザのデータ消去やSafariの保存期限で端末内データが消えうるので、iOS版と同じ表示を出し、差分は設けない。帯は指・ポインタを画面に置いている間は出さない。日時は`EditorPlatform.saveFile`の`saved`が`false`（取りやめた）なら記録しない。Web版はiPhone・iPadのSafariの確認ダイアログと共有シートの結果を返し、ダウンロードは`undefined`（不明）を返す。iOS版はネイティブの保存画面・共有シートが結果をWebへ返さないので常に`undefined`を返し、書き出しを始めた日時を記録する（結果を返すのは#122）。 |
 | `ui/hooks.ts` | モーダルのフォーカス管理、ドロワーのフォーカス復帰、トースト、コピー／貼り付けのショートカット。 |
 | `styles/base.css` | 共通の見た目。環境で変える寸法はカスタムプロパティ（`--tap-size`など）で受け取る。 |
 

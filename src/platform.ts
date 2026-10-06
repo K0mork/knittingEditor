@@ -1,4 +1,4 @@
-import type { EditorPlatform } from '@knitting-editor/editor-core/platform';
+import { SAVE_RESULT_UNKNOWN, type EditorPlatform } from '@knitting-editor/editor-core/platform';
 import { downloadBlob } from '@knitting-editor/editor-core/export/exporters';
 
 /**
@@ -18,13 +18,16 @@ export function prefersShareSheet(file: File, nav: Navigator = navigator): boole
  *
  * 共有シートは利用者のタップの中でしか開けず、PNG・PDFの生成を待つ間にその権利が切れる。
  * そのため共有シートを使う端末では`offerShare`で「共有・保存」ボタンを出し、もう一度押してもらう。
+ * `offerShare`は、共有したら`true`、閉じる・共有シートの取り消しなら`false`、
+ * 共有できずダウンロードへ切り替えたら`undefined`を返す。ダウンロードは保存を終えたかが分からない。
  */
-export function createWebPlatform(offerShare: (file: File) => void): EditorPlatform {
+export function createWebPlatform(offerShare: (file: File) => Promise<boolean | undefined>): EditorPlatform {
   return {
     saveFile: async (blob, filename) => {
       const file = new File([blob], filename, { type: blob.type });
-      if (prefersShareSheet(file)) offerShare(file);
-      else downloadBlob(blob, filename);
+      if (prefersShareSheet(file)) return { saved: offerShare(file) };
+      downloadBlob(blob, filename);
+      return SAVE_RESULT_UNKNOWN;
     },
   };
 }

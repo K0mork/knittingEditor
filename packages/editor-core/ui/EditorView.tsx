@@ -4,7 +4,7 @@ import { ExportControls } from './ExportControls';
 import { GridControls } from './GridControls';
 import { gestureHintText, historyTitles, useInputEnvironment } from './inputEnvironment';
 import { StitchPicker } from './StitchPicker';
-import { BackupReminderBar } from './BackupReminder';
+import { BackupReminderBar } from './BackupReminderBar';
 import { backupStatusText } from '../state/backupReminder';
 import { EDITOR_PANEL_TITLES, type EditorController, type EditorPanel } from './useEditorController';
 
