@@ -26,13 +26,31 @@ interface Props {
   onPasteComplete: (ok: boolean) => void;
 }
 
-interface Viewport { x: number; y: number; cell: number }
+export interface Viewport { x: number; y: number; cell: number }
 interface PointerPosition { x: number; y: number }
 
-const LABEL_SIZE = 28;
+export const LABEL_SIZE = 28;
 const MIN_CELL_SIZE = 4;
 const MAX_CELL_SIZE = 72;
 const clampCellSize = (cell: number) => Math.min(MAX_CELL_SIZE, Math.max(MIN_CELL_SIZE, cell));
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+/**
+ * 盤面の位置を、端のマスの中心が表示領域（段・目の番号の帯を除いた部分）の中央に来るところまでに収める。
+ * 盤面を画面の外へ動かして見失うことはなく、端のマスは中央に置いて編集できる。
+ * 盤面が表示領域より小さいときも同じ規則にし、画面の端に張り付いて動かせなくならないようにする。
+ */
+export function clampViewport(view: Viewport, board: Pick<Board, 'rows' | 'cols'>, canvas: { width: number; height: number }): Viewport {
+  const areaWidth = canvas.width - LABEL_SIZE;
+  const areaHeight = canvas.height - LABEL_SIZE;
+  // 配置前や非表示で大きさが無いときは、中央を決められないので位置を変えない。
+  if (areaWidth <= 0 || areaHeight <= 0) return view;
+  const centerX = LABEL_SIZE + areaWidth / 2;
+  const centerY = LABEL_SIZE + areaHeight / 2;
+  const x = clamp(view.x, centerX - (board.cols - 0.5) * view.cell, centerX - 0.5 * view.cell);
+  const y = clamp(view.y, centerY - (board.rows - 0.5) * view.cell, centerY - 0.5 * view.cell);
+  return x === view.x && y === view.y ? view : { ...view, x, y };
+}
 // 複数セルを占める記号は、起点セルが表示範囲の外にあっても一部が画面へかかる。
 // 起点の探索範囲を最大記号の寸法だけ広げ、端で記号が丸ごと消えないようにする。
 const MAX_STITCH_WIDTH = Math.max(...STITCHES.map((stitch) => stitch.width));
@@ -101,6 +119,9 @@ export function BoardCanvas(props: Props) {
     context.fillRect(0, 0, width, height);
 
     const { board, selection, pasteBlock, mode } = propsRef.current;
+    // 画面の大きさ（回転・可変ウィンドウ）や段数・列数、編み図が変わると、
+    // 今の位置が範囲の外になることがあるので、描くたびに範囲へ戻す。
+    viewportRef.current = clampViewport(viewportRef.current, board, { width, height });
     const view = viewportRef.current;
     const firstCol = Math.max(0, Math.floor((-view.x + LABEL_SIZE) / view.cell));
     const firstRow = Math.max(0, Math.floor((-view.y + LABEL_SIZE) / view.cell));
@@ -175,7 +196,16 @@ export function BoardCanvas(props: Props) {
     return () => { observer.disconnect(); cancelAnimationFrame(frameRef.current); };
   }, []);
 
-  useEffect(requestDraw, [props.revision, props.selection, props.mode, props.pasteBlock]);
+  useEffect(requestDraw, [props.board, props.revision, props.selection, props.mode, props.pasteBlock]);
+
+  /** 移動・拡大の結果を範囲に収めて反映する。 */
+  const setViewport = (next: Viewport) => {
+    const canvas = canvasRef.current;
+    viewportRef.current = canvas
+      ? clampViewport(next, propsRef.current.board, { width: canvas.clientWidth, height: canvas.clientHeight })
+      : next;
+    requestDraw();
+  };
 
   // ReactのonWheelはpassiveで登録されるためpreventDefaultが効かず、
   // トラックパッドのピンチが盤面ではなくページ全体を拡大してしまう。
@@ -191,11 +221,10 @@ export function BoardCanvas(props: Props) {
         const worldX = (position.x - view.x) / view.cell;
         const worldY = (position.y - view.y) / view.cell;
         const cell = clampCellSize(view.cell * Math.exp(-event.deltaY * 0.002));
-        viewportRef.current = { x: position.x - worldX * cell, y: position.y - worldY * cell, cell };
+        setViewport({ x: position.x - worldX * cell, y: position.y - worldY * cell, cell });
       } else {
-        viewportRef.current = { ...view, x: view.x - event.deltaX, y: view.y - event.deltaY };
+        setViewport({ ...view, x: view.x - event.deltaX, y: view.y - event.deltaY });
       }
-      requestDraw();
     };
     canvas.addEventListener('wheel', handleWheel, { passive: false });
     return () => canvas.removeEventListener('wheel', handleWheel);
@@ -293,8 +322,7 @@ export function BoardCanvas(props: Props) {
       const nextCell = clampCellSize(initial.viewport.cell * distance / initial.distance);
       const worldX = (initial.center.x - initial.viewport.x) / initial.viewport.cell;
       const worldY = (initial.center.y - initial.viewport.y) / initial.viewport.cell;
-      viewportRef.current = { x: center.x - worldX * nextCell, y: center.y - worldY * nextCell, cell: nextCell };
-      requestDraw();
+      setViewport({ x: center.x - worldX * nextCell, y: center.y - worldY * nextCell, cell: nextCell });
       return;
     }
     if (gestureBlockedRef.current) return;

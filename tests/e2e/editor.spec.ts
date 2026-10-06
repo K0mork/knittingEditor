@@ -86,6 +86,73 @@ test('prevents the canvas wheel gesture from reaching page zoom', async ({ page 
   expect(prevented).toBe(true);
 });
 
+/** 盤面の番号の帯（`BoardCanvas.tsx`の`LABEL_SIZE`）を除いた表示領域の中央をクリックする。 */
+async function clickBoardCenter(page: import('@playwright/test').Page) {
+  const box = await page.getByLabel('編み図編集盤面').boundingBox();
+  expect(box).not.toBeNull();
+  const label = 28;
+  await page.mouse.click(box!.x + label + (box!.width - label) / 2, box!.y + label + (box!.height - label) / 2);
+}
+
+async function storedCells(page: import('@playwright/test').Page) {
+  await page.waitForTimeout(700);
+  return await page.evaluate(async () => {
+    const request = indexedDB.open('knitting-editor-v2');
+    const db = await new Promise<IDBDatabase>((resolve) => { request.onsuccess = () => resolve(request.result); });
+    const get = db.transaction('documents').objectStore('documents').getAll();
+    const documents = await new Promise<Array<{ rows: number; cols: number; cells: ArrayBuffer }>>((resolve) => { get.onsuccess = () => resolve(get.result); });
+    const { rows, cols, cells } = documents[0];
+    return { rows, cols, filled: [...new Uint32Array(cells).entries()].filter(([, value]) => value).map(([index]) => index) };
+  });
+}
+
+test('keeps the board on screen when scrolled far, with edge cells reaching the center', async ({ page }) => {
+  const scroll = (deltaX: number, deltaY: number) => page.getByLabel('編み図編集盤面').evaluate((element, delta) => {
+    element.dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaX: delta.deltaX, deltaY: delta.deltaY }));
+  }, { deltaX, deltaY });
+
+  // 盤面を右下へ大きく動かすと、左上のマスが表示領域の中央で止まる。
+  await scroll(-100_000, -100_000);
+  await clickBoardCenter(page);
+  expect((await storedCells(page)).filled).toEqual([0]);
+
+  // 反対へ大きく動かすと、右下のマスが表示領域の中央で止まる。
+  await scroll(100_000, 100_000);
+  await clickBoardCenter(page);
+  const { rows, cols, filled } = await storedCells(page);
+  expect(filled).toEqual([0, rows * cols - 1]);
+});
+
+test('keeps the board on screen when dragged far with two fingers', async ({ page }) => {
+  await page.getByLabel('編み図編集盤面').evaluate((element) => {
+    // Synthetic PointerEvents are not registered in the browser's native pointer-capture table.
+    element.setPointerCapture = () => {};
+    const rect = element.getBoundingClientRect();
+    const dispatch = (type: string, pointerId: number, x: number, y: number) => element.dispatchEvent(new PointerEvent(type, {
+      bubbles: true,
+      cancelable: true,
+      pointerId,
+      pointerType: 'touch',
+      clientX: rect.left + x,
+      clientY: rect.top + y,
+      button: 0,
+      isPrimary: pointerId === 1,
+    }));
+    // 2本指で盤面を左上へ大きく動かす。
+    dispatch('pointerdown', 1, 100, 100);
+    dispatch('pointerdown', 2, 160, 100);
+    dispatch('pointermove', 1, -20_000, -20_000);
+    dispatch('pointermove', 2, -19_940, -20_000);
+    dispatch('pointerup', 2, -19_940, -20_000);
+    dispatch('pointerup', 1, -20_000, -20_000);
+  });
+
+  // 右下のマスが表示領域の中央で止まっている。
+  await clickBoardCenter(page);
+  const { rows, cols, filled } = await storedCells(page);
+  expect(filled).toEqual([rows * cols - 1]);
+});
+
 test('erases stitches continuously', async ({ page }) => {
   const canvas = page.getByLabel('編み図編集盤面');
   const box = await canvas.boundingBox();
