@@ -55,12 +55,7 @@ launch_color_name=$(plutil -extract UILaunchScreen.UIColorName raw -o - "$INFO_P
 }
 jq -e '.colors | type == "array" and any(.[]; .idiom == "universal" and .color["color-space"] == "srgb")' "$LAUNCH_COLORSET_PATH" >/dev/null
 
-icon_width=$(sips -g pixelWidth "$ICON_PATH" | awk '/pixelWidth:/ { print $2; exit }')
-icon_height=$(sips -g pixelHeight "$ICON_PATH" | awk '/pixelHeight:/ { print $2; exit }')
-[ "$icon_width" = "1024" ] && [ "$icon_height" = "1024" ] || {
-  echo "AppIcon source must be 1024x1024: ${icon_width}x${icon_height}" >&2
-  exit 1
-}
+node "$SCRIPT_DIR/check-app-icons.mjs"
 
 check_screenshot() {
   path="$1"

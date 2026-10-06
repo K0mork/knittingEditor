@@ -8,6 +8,28 @@
 - 検証: `npm run typecheck`、`npm test`（124件）、`npm run build`、`npm run check:dist`、`npm run test:e2e`（79件成功・2件skip）が成功した。iOS Webの型検査とテスト（8件）が成功し、`xcodegen generate`でプロジェクトに差分が出ないことを確かめた。iPhone 16 Simulatorでアプリをビルドし、ブロックを保存してから削除し、アプリ内のダイアログで確認が出ること、キャンセルで残り、決定で消えることを手で確かめた。iPhone・iPadのSimulator一式、アプリ更新テスト、unsigned Release ArchiveはPRのCIに任せた。ローカルにNode.js 24が無く、Node.js 26.8.1で実行した。
 - デプロイ影響: マージ後、Web版でもブロックの削除で確認が出る。`deploy`と`smoke`の成功を確認し、本番でブロックを削除するときに確認が出ることを確かめる。TestFlight／App Storeへの影響は次に提出するビルドから。
 
+## 2026-10-06 — アプリアイコンのAny・Dark・Tintedを共通SVGから生成する
+
+- 影響: #78の既存の緑・針・糸を背景と前景のSVGに書き起こし、iOS 17用のAny、透過背景のDark、RGBグレースケールのTintedを`AppIcon.appiconset`へ登録した。Webのfavicon・192px・touch iconは同じAnyから再生成した。Icon Composerとクリア専用素材は今回の方式に含まない。
+- 主なファイル: `ios/design/app-icon/`、`scripts/generate-app-icons.mjs`、`ios/App/Assets.xcassets/AppIcon.appiconset/`、`public/`、`ios/scripts/check-app-icons.mjs`、`ios/scripts/check-release-assets.sh`、`ios/docs/APP_STORE_CHECKLIST.md`。
+- テスト: `scripts/check-app-icons.test.mjs`に、登録された3外観の合格と、誤った透過・カラーのTinted・画像サイズ・外観の重複を拒否する4件を追加。リリース検査は全外観の寸法・Any/Tintedのアルファ不在・Darkの透過背景と可視前景・Tinted全画素のR=G=Bを確認する。
+- ローカル検証: `node scripts/generate-app-icons.mjs`、`node scripts/generate-web-icons.mjs`、`node ios/scripts/check-app-icons.mjs`、`ios/scripts/check-app-store-docs.sh`、`sh -n ios/scripts/check-release-assets.sh`、`npm run typecheck`、`npm test`（127件）、`npm run build`、`npm run check:dist`、`npm run test:e2e`（Chromium/WebKit、79件成功・2件skip）が成功。Node.js 26.8.1で実行（CIは24）。`xcodegen generate`、XcodeBuildMCPの`build_run_sim`（Xcode 27.0、署名なし）が成功し、生成されたアプリに対する`ios/scripts/check-release-assets.sh /tmp/knitting-app-icons-derived/Build/Products/Debug-iphonesimulator/knittingEditor.app`も成功した。
+- 目視確認: iOS 18.2のiPhone 16とiPad (10th generation) Simulatorでホーム画面の「カスタマイズ」からライト・ダーク・色合いを切り替え、針と糸を判別できることを確認してスクリーンショットを保存した。iPhoneのSpotlightで「棒針編み図」を検索し、トップヒットの針と糸を判別できることも確認した。追加検証でiPadのSpotlight検索結果も確認した。設定の小サイズはiOS 27.0のiPhone 18 Proの「アプリ」一覧で確認し、針と糸を判別できた。iOS 18.2の設定一覧の空白とiPadOS 27.0の検索最適化中にアプリが出ない状態は、その画面での成功扱いにはしていない。iOS 17ランタイムは手元に無く、iOS 17上の表示は未確認（deployment targetは17.0のまま）。
+- CI: Simulatorテスト（iPhone/iPad）、アプリ更新、unsigned Release Archive、同梱物検査はPRのCIで確認する。
+- デプロイ影響: 現時点ではnone。マージ後はWebのアイコンがPagesへ配信されるため、deploy・smokeとHTTPSでの3アイコン取得を確認する。TestFlight／App Store提出は行っていない。Issue #78のasset catalog方式の素材・外観・小サイズ・Webとの同期・検査の完了条件を満たした。PRで各検証の端末とOSを明記し、マージ時にIssueを閉じる。
+
+## 2026-10-06 — 1000×1000盤面の実機測定を自動化し、iPhone・iPadで測る
+
+- 影響: アプリとWeb資産の内容は変えていない。#20の1000×1000盤面の保存・復元・メモリの実機測定を、手作業なしで行えるようにし、iPhone 17（iOS 27.0）とiPad Air 第5世代（iPadOS 27.0）で測った。
+  - UIテスト`testLargeBoardSavesAndRestores`は、盤面を手で1000×1000にしてから流す前提だった（数値欄への入力が安定しなかったため）。新しい編み図を作り、「盤面」パネルの段数・列数を入力して1000×1000にするところからテスト自身で行う。数値欄は、末尾をタップして入力の焦点が移ったことを確かめてから消して入力し、文字列ではなく数値で比べる（空にすると`0`へ戻り、`01000`になっても数値は同じ）。iPhoneでは「段数」の入力でキーボードが出たまま「列数」をタップしても焦点が移らないことがあったため、焦点が移るまでタップし直す（最大3回）。
+  - 測る範囲を、描画と保存と再起動後の復元に加え、バックグラウンドへ移して戻ったあとの盤面と、PNG・PDFの出力時間まで広げた。
+  - `ios/scripts/measure-large-board.sh <UDID>`を追加した。テストを流しながらInstrumentsのActivity Monitorで端末の全プロセスを記録し、アプリ本体とWebKitの各プロセスの最大メモリを表示する。盤面データはWebKitのコンテンツプロセスにあり、これまではInstruments.appを手で使う手順だった。
+  - 結果（`ios/docs/REAL_DEVICE_RELEASE_CHECKLIST.md`のM2）: 保存はiPhone 2.2秒・iPad 2.3秒、バックグラウンドからの復帰は1.2秒・1.3秒（盤面と記号は残った）、再起動後の復元は2.5〜2.6秒・2.7〜2.9秒、PNG出力は1.6秒・2.8秒、PDF出力は1.9秒・2.1〜2.2秒。WebKitのコンテンツプロセスの最大メモリは537.0 MiB・567.9 MiBで、どちらも再起動後のPNG出力の直後だった。測定の間、端末のクラッシュ記録とJetsamEventにアプリとWebKitのものは無かった。
+- 主なファイル: `ios/UITests/KnittingEditorUITests/KnittingEditorUITests.swift`、`ios/scripts/measure-large-board.sh`、`ios/docs/REAL_DEVICE_RELEASE_CHECKLIST.md`
+- テスト: `testLargeBoardSavesAndRestores`を上記のとおり書き換えた。`TEST_RUNNER_KNITTING_EDITOR_LARGE_BOARD=1`のときだけ実行する点は変えておらず、CIのSimulatorテストではskipのまま。
+- 検証（手元、Xcode 27.0、無料Personal Teamで署名）: iPhone 17（有線）とiPad Air 第5世代（有線）の実機で`build-for-testing`と`testLargeBoardSavesAndRestores`が成功した。`measure-large-board.sh`はiPhoneで最後まで成功し、iPadのメモリは同じ記録方法を手で実行して測った。スクリプトの集計部分はiPadの記録にも当てて、同じ値になることを確かめた。iPhoneでの初回は「列数」へ入力できずに失敗し、焦点の確認を加えたあとは成功した。記録の保存に数分かかり、60秒で打ち切る版では記録が壊れたため、待つ上限を5分にした。`sh -n`で構文を確かめた。Simulatorテスト一式、アプリ更新テスト、Release Archive、iOS Webの検査はPRのCIに任せた。
+- デプロイ影響: なし。TestFlight／App Storeへの影響もない。
+
 ## 2026-10-02 — iOS UIテストで、効かなかった「編み図」のタップを押し直し、ツールバーのスクロールを待つ
 
 - 影響: アプリとWeb資産の内容は変えていない。`main`のrun 36983458487とPR #54のrun 36984209721で、1回目に失敗して再試行で通ったiOS UIテスト2件（#66、#67）を直した。
