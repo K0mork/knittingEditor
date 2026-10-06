@@ -1,5 +1,8 @@
 import { useEffect, useState, type MouseEventHandler, type ReactNode } from 'react';
 import { BoardCanvas, type CanvasMode } from '../canvas/BoardCanvas';
+import { parseColor } from '../model/Board';
+import { describeColor } from '../model/usedColors';
+import { ColorPicker } from './ColorPicker';
 import { ExportControls } from './ExportControls';
 import { GridControls } from './GridControls';
 import { gestureHintText, historyTitles, useInputEnvironment } from './inputEnvironment';
@@ -79,7 +82,10 @@ export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, 
 
     <main className="workspace">
       <section className="primary-tools" aria-label="編集ツール">
-        <label className="color-tool"><span>色</span><input aria-label="記号の色" type="color" value={editor.selectedColor} onChange={(event) => editor.setSelectedColor(event.target.value)} /></label>
+        <button className="color-tool" aria-label={`記号の色を選ぶ（現在：${describeColor(parseColor(editor.selectedColor))} ${editor.selectedColor}）`} aria-haspopup="dialog" aria-expanded={editor.colorPickerOpen} onClick={() => editor.setColorPickerOpen(true)}>
+          <span>色</span>
+          <span className="color-tool-swatch" aria-hidden="true" style={{ backgroundColor: editor.selectedColor }} />
+        </button>
         <button className="stitch-tool" aria-label="編み目記号を選ぶ" aria-haspopup="dialog" aria-expanded={editor.stitchPickerOpen} onClick={() => editor.setStitchPickerOpen(true)}>
           <span aria-hidden="true" dangerouslySetInnerHTML={{ __html: editor.currentStitch.svg }} />
           <span className="stitch-tool-name">{editor.currentStitch.name}</span>
@@ -88,6 +94,15 @@ export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, 
         {MODE_BUTTONS.map((item) => modeButton(item.mode, item.label, () => editor.chooseMode(item.mode)))}
         {copiedBlock && modeButton('paste', '貼付', () => editor.startPaste(copiedBlock))}
       </section>
+
+      {editor.colorPickerOpen && <ColorPicker
+        board={board}
+        revision={session.revision}
+        selectedColor={editor.selectedColor}
+        onSelect={editor.selectColor}
+        onChange={editor.setSelectedColor}
+        onClose={() => editor.setColorPickerOpen(false)}
+      />}
 
       {editor.stitchPickerOpen && <StitchPicker
         selectedStitch={editor.selectedStitch}
