@@ -1,5 +1,6 @@
 import { STITCHES, STITCH_CATEGORY_LABELS, type StitchCategory } from '../stitches/catalog';
 import { useModalFocus } from './hooks';
+import { useInputEnvironment } from './inputEnvironment';
 
 export const STITCH_CATEGORY_ORDER: StitchCategory[] = ['basic', 'decrease', 'cable', 'twist', 'utility'];
 
@@ -12,11 +13,13 @@ export interface StitchPickerProps {
 /** 編み目記号の選択ダイアログ。Web版とiOS版で共通。 */
 export function StitchPicker({ selectedStitch, onSelect, onClose }: StitchPickerProps) {
   const pickerRef = useModalFocus<HTMLElement>(onClose, '.stitch-picker-heading button');
+  // キーボードの無いスマホやiOSアプリでは、押せないEscapeを案内しない。
+  const { keyboard } = useInputEnvironment();
   return <div className="stitch-picker-backdrop" onMouseDown={(event) => {
     if (event.target === event.currentTarget) onClose();
   }}>
     <section ref={pickerRef} className="stitch-picker" role="dialog" aria-modal="true" aria-labelledby="stitch-picker-title" aria-describedby="stitch-picker-description">
-      <div className="stitch-picker-heading"><div><h2 id="stitch-picker-title">編み目記号</h2><p id="stitch-picker-description">記号を選ぶと描画モードになります。Escapeで閉じます。</p></div><button onClick={onClose}>閉じる</button></div>
+      <div className="stitch-picker-heading"><div><h2 id="stitch-picker-title">編み目記号</h2><p id="stitch-picker-description">記号を選ぶと描画モードになります。{keyboard && 'Escapeで閉じます。'}</p></div><button onClick={onClose}>閉じる</button></div>
       {STITCH_CATEGORY_ORDER.map((category) => <div className="stitch-category" key={category}>
         <h3>{STITCH_CATEGORY_LABELS[category]}</h3>
         <div className="stitch-grid">

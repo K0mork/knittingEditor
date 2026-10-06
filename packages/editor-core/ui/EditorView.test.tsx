@@ -5,7 +5,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { EditorAnalytics } from '../analytics';
 import type { EditorPlatform } from '../platform';
 import { deleteBlock, initializeStorage, listBlocks, saveBlock } from '../storage/database';
-import { EditorView, type EditorViewProps } from './EditorView';
+import { EditorView, GESTURE_HINT_DURATION_MS, type EditorViewProps } from './EditorView';
 import { saveErrorMessage, useEditorController, type EditorControllerOptions } from './useEditorController';
 
 declare global {
@@ -96,7 +96,39 @@ describe('EditorView', () => {
     await click('消す');
     expect(button('消す').getAttribute('aria-pressed')).toBe('true');
     expect(button('描く').getAttribute('aria-pressed')).toBe('false');
-    expect(container.querySelector('.gesture-hint')?.textContent).toBe('1本指：消去　2本指：移動・拡大');
+    // jsdomはタッチ端末として振る舞わないので、マウス向けのヒントになる。
+    expect(container.querySelector('.gesture-hint')?.textContent).toMatch(/^ドラッグ：消去　ホイール：移動　(Ctrl|⌘)＋ホイール：拡大$/);
+  });
+
+  it('hides the gesture hint about ten seconds after opening', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const { container } = await renderEditor();
+      const hint = () => container.querySelector('.gesture-hint');
+      expect(hint()?.classList.contains('is-hidden')).toBe(false);
+      await act(async () => { vi.advanceTimersByTime(GESTURE_HINT_DURATION_MS - 1_000); });
+      expect(hint()?.classList.contains('is-hidden')).toBe(false);
+      await act(async () => { vi.advanceTimersByTime(1_000); });
+      expect(hint()?.classList.contains('is-hidden')).toBe(true);
+      expect(hint()?.getAttribute('aria-hidden')).toBe('true');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('asks a mouse user to click the paste position', async () => {
+    const block = { id: 'paste-prompt-block', name: '貼り付け案内ブロック', rows: 1, cols: 1, anchors: [], createdAt: Date.now() };
+    await saveBlock(block);
+    try {
+      const { container, click } = await renderEditor();
+      await click('ブロック');
+      const blockButton = Array.from(container.querySelectorAll<HTMLButtonElement>('.block-list button'))
+        .find((item) => item.textContent?.startsWith(block.name));
+      await act(async () => { blockButton!.click(); });
+      expect(container.querySelector('.toast')?.textContent).toBe('貼り付ける左上のセルをクリックしてください');
+    } finally {
+      await deleteBlock(block.id);
+    }
   });
 
   it('deletes a saved block only after the user confirms', async () => {

@@ -13,6 +13,7 @@ import {
 } from '../storage/database';
 import { errorMessage } from '../util/errors';
 import { useClipboardShortcuts, useHistoryShortcuts, useNotifier, usePanelFocus } from './hooks';
+import { getInputEnvironment, pastePromptText } from './inputEnvironment';
 
 export type BusyTask = 'PNGを生成中' | 'PDFを生成中' | 'バックアップを処理中';
 export type EditorPanel = 'documents' | 'grid' | 'blocks' | 'export';
@@ -25,7 +26,6 @@ export const EDITOR_PANEL_TITLES: Record<EditorPanel, string> = {
 // 盤面を差し替える操作はそこで止めるので、止めた理由を利用者へ伝える。
 const PENDING_SWITCH_MESSAGE = '編集中のため切り替えできませんでした。もう一度お試しください。';
 const PENDING_RESTORE_MESSAGE = '編集中のため復元できませんでした。もう一度お試しください。';
-const PASTE_PROMPT_MESSAGE = '貼り付ける左上のセルをタップしてください';
 
 export function saveErrorMessage(trigger: SaveTrigger): string {
   if (trigger === 'background') return 'バックグラウンド移行前の自動保存に失敗しました。バックアップを保存してください。';
@@ -157,7 +157,7 @@ export function useEditorController(options: EditorControllerOptions) {
     setPasteBlock(block);
     setMode('paste');
     setSelection(undefined);
-    notify(PASTE_PROMPT_MESSAGE);
+    notify(pastePromptText(getInputEnvironment()));
   }, [notify]);
 
   const copySelection = useCallback(() => {
