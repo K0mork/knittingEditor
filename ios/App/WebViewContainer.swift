@@ -14,6 +14,13 @@ final class WebViewModel {
     /// 編集画面の読み込み待ちを利用者へ伝えるかどうか。使い方ページのように
     /// `webReady`を送らない同梱ページでは表示しない。
     private(set) var isPreparingEditor = true
+    /// 編集画面を一度でも表示したかどうか。準備中の表示の色を、起動画面に続くときと
+    /// アプリ内で編集画面へ戻るときとで変える。
+    private(set) var hasShownEditor = false
+
+    var loadingStyle: EditorLoadingStyle {
+        hasShownEditor ? .inApp : .launch
+    }
 
     func attach(_ webView: WKWebView) {
         if self.webView !== webView {
@@ -27,6 +34,7 @@ final class WebViewModel {
     func webContentDidBecomeReady() {
         webContentReady = true
         isPreparingEditor = false
+        hasShownEditor = true
         flushPendingBackupIfReady()
     }
 
@@ -167,8 +175,11 @@ struct WebViewContainer: UIViewRepresentable {
         )
         webView.navigationDelegate = context.coordinator
         webView.allowsBackForwardNavigationGestures = false
+        // 文書が描画されるまでの間に見える色。編集画面・使い方ページの地の色にそろえ、
+        // 白や黒（ダークモードの`.systemBackground`）を挟まないようにする。
         webView.isOpaque = false
-        webView.backgroundColor = .systemBackground
+        webView.backgroundColor = AppColors.editorPageBackground
+        webView.scrollView.backgroundColor = AppColors.editorPageBackground
         model.attach(webView)
         context.coordinator.attach(webView)
         webView.load(URLRequest(url: LocalWebSchemeHandler.indexURL))
