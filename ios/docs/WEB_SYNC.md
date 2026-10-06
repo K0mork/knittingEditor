@@ -20,6 +20,7 @@ Web版とiOS版は同じリポジトリで管理する。以前の固定コミ�
 | `ui/useEditorController.ts` | 編集画面の状態と操作。記号・色・モード・選択範囲・貼り付け・パネル、編み図とブロックの操作、PNG/PDF出力、バックアップと復元。入力ダイアログ（`askText`・`askConfirm`）、ファイルの受け渡し（`platform`）、分析（`analytics`、省略時は送らない）を引数で受け取る。保存失敗の文言は`saveErrorMessage`にまとめる。 |
 | `ui/EditorView.tsx` | 編集画面の組み立て。見出し（`renderTitle`）、使い方リンクの処理（`onGuideClick`）、復元要求の横取り（`requestRestore`）、案内文（`backupNote`）、フッター、重ねる要素（`children`）だけを各ビルドから受け取る。 |
 | `ui/StitchPicker.tsx` | 記号ピッカー。フォーカストラップとEscapeでの閉じ方を含む。 |
+| `ui/ColorPicker.tsx` | 記号の色の選択。編み図で使っている色の一覧（`model/usedColors.ts`）と、一覧にない色を選ぶ色選択を出す。 |
 | `ui/GridControls.tsx` | 盤面設定。位置入力と確認は`askText`・`askConfirm`で受け取る。 |
 | `ui/ExportControls.tsx` | 保存・出力。PDFの推定ページ数は`export/pdfLayout.ts`をPDF Workerと共有する。 |
 | `ui/hooks.ts` | モーダルのフォーカス管理、ドロワーのフォーカス復帰、トースト、コピー／貼り付けのショートカット。 |

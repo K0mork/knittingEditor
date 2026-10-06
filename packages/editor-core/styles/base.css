@@ -47,20 +47,20 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 .workspace { min-width: 0; min-height: 0; display: grid; grid-template: auto 1fr auto / minmax(0, 1fr); position: relative; }
 .primary-tools { display: flex; gap: 7px; align-items: center; padding: 8px; background: rgba(255,254,249,.98); border-bottom: 1px solid var(--border); overflow-x: auto; z-index: 3; }
 .primary-tools button { flex: 0 0 auto; }
-.color-tool { display: flex; align-items: center; gap: 5px; font-size: .8rem; }
-.color-tool input { width: var(--tap-size); height: var(--tap-size); border: 0; padding: 2px; background: none; }
+.color-tool { display: flex; align-items: center; gap: 6px; padding: 4px 6px 4px 9px; font-size: .8rem; background: white; }
+.color-tool-swatch { display: block; width: 30px; height: 30px; border: 1px solid rgba(0, 0, 0, .2); border-radius: 7px; }
 .stitch-tool { min-width: 170px; display: flex; align-items: center; gap: 7px; padding: 4px 8px; text-align: left; background: white; }
 .stitch-tool > span:first-child { display: block; flex: 0 0 32px; width: 32px; height: 32px; color: #222; }
 .stitch-tool-name { flex: 1; white-space: nowrap; }
 .stitch-tool-chevron { color: #647269; font-size: 1.1rem; }
-.stitch-picker-backdrop { position: fixed; inset: 0; z-index: 12; display: grid; place-items: end center; padding-top: 24px; background: rgba(26, 39, 31, .32); }
-.stitch-picker { width: min(100%, 760px); max-height: min(82vh, 760px); max-height: min(82dvh, 760px); overflow: auto; padding: 14px max(14px, env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left)); border-radius: 18px 18px 0 0; background: var(--paper); box-shadow: 0 -12px 40px rgba(20, 38, 27, .24); }
-.stitch-picker-heading { position: sticky; top: -14px; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: -14px 0 8px; padding: 14px 0 9px; background: var(--paper); }
-.stitch-picker-heading > div { min-width: 0; }
-.stitch-picker-heading > button { flex: 0 0 auto; white-space: nowrap; }
-.stitch-picker-heading h2 { margin: 0; font-size: 1.15rem; }
-.stitch-picker-heading p { margin: 2px 0 0; color: #67756e; font-size: .76rem; }
-.stitch-category h3 { margin: 15px 0 7px; color: #53605a; font-size: .86rem; }
+.stitch-picker-backdrop, .color-picker-backdrop { position: fixed; inset: 0; z-index: 12; display: grid; place-items: end center; padding-top: 24px; background: rgba(26, 39, 31, .32); }
+.stitch-picker, .color-picker { width: min(100%, 760px); max-height: min(82vh, 760px); max-height: min(82dvh, 760px); overflow: auto; padding: 14px max(14px, env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left)); border-radius: 18px 18px 0 0; background: var(--paper); box-shadow: 0 -12px 40px rgba(20, 38, 27, .24); }
+.stitch-picker-heading, .color-picker-heading { position: sticky; top: -14px; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: -14px 0 8px; padding: 14px 0 9px; background: var(--paper); }
+.stitch-picker-heading > div, .color-picker-heading > div { min-width: 0; }
+.stitch-picker-heading > button, .color-picker-heading > button { flex: 0 0 auto; white-space: nowrap; }
+.stitch-picker-heading h2, .color-picker-heading h2 { margin: 0; font-size: 1.15rem; }
+.stitch-picker-heading p, .color-picker-heading p { margin: 2px 0 0; color: #67756e; font-size: .76rem; }
+.stitch-category h3, .color-picker h3 { margin: 15px 0 7px; color: #53605a; font-size: .86rem; }
 .stitch-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
 .stitch-option { min-width: 0; min-height: 104px; display: grid; grid-template-rows: 50px auto auto; place-items: center; gap: 3px; padding: 7px 4px; text-align: center; }
 .stitch-option.selected { border-color: var(--green); background: #edf7ef; box-shadow: inset 0 0 0 1px var(--green); }
@@ -69,6 +69,17 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 .stitch-option-symbol svg > * { vector-effect: non-scaling-stroke; }
 .stitch-option-name { max-width: 100%; font-size: .78rem; line-height: 1.25; overflow-wrap: anywhere; }
 .stitch-option small { color: #718078; font-size: .68rem; }
+.color-picker { width: min(100%, 480px); }
+/* 色見本はWeb版でも44px以上にする。色だけで見分けるので、押し間違えない大きさにそろえる。 */
+.used-color-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(max(44px, var(--tap-size)), 1fr)); gap: 8px; }
+.used-color { width: 100%; min-width: max(44px, var(--tap-size)); min-height: max(44px, var(--tap-size)); aspect-ratio: 1; padding: 0; border: 1px solid rgba(0, 0, 0, .2); border-radius: 10px; }
+.used-color:hover { border-color: rgba(0, 0, 0, .45); }
+.used-color.selected { box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--green); }
+.color-picker-note { margin: 0; color: #67756e; font-size: .8rem; }
+.used-color-grid + .color-picker-note { margin-top: 8px; }
+.color-picker-custom { display: flex; align-items: center; gap: 10px; min-height: max(44px, var(--tap-size)); font-size: .9rem; }
+.color-picker-custom input { flex: 0 0 auto; width: max(44px, var(--tap-size)); height: max(44px, var(--tap-size)); border: 0; padding: 2px; background: none; }
+.color-picker-custom code { color: #67756e; font-size: .8rem; }
 .canvas-wrap { min-height: 0; position: relative; overflow: hidden; }
 .board-canvas { display: block; width: 100%; height: 100%; touch-action: none; user-select: none; cursor: crosshair; }
 .board-canvas.mode-erase { cursor: cell; }
@@ -145,8 +156,8 @@ footer { display: none; }
   .drawer { inset: 74px 0 0 auto; width: 390px; max-height: none; border-radius: 18px 0 0 18px; box-shadow: -12px 0 40px rgba(20, 38, 27, .2); }
   .toast { bottom: 24px; }
   .selection-actions { bottom: 18px; }
-  .stitch-picker-backdrop { place-items: center; padding: 24px; }
-  .stitch-picker { border-radius: 18px; }
+  .stitch-picker-backdrop, .color-picker-backdrop { place-items: center; padding: 24px; }
+  .stitch-picker, .color-picker { border-radius: 18px; }
   .stitch-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 }
 

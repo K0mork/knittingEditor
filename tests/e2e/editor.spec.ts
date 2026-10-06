@@ -250,6 +250,59 @@ test('selects and stores the purl right-leaning two-stitch decrease', async ({ p
   expect(stitchId).toBe(26);
 });
 
+test('picks a color used in the chart from the color list and draws with it', async ({ page }) => {
+  const canvas = page.getByLabel('編み図編集盤面');
+  const box = await canvas.boundingBox();
+  const storedColors = async () => {
+    await page.waitForTimeout(700);
+    return await page.evaluate(async () => {
+      const request = indexedDB.open('knitting-editor-v2');
+      const db = await new Promise<IDBDatabase>((resolve) => { request.onsuccess = () => resolve(request.result); });
+      const get = db.transaction('documents').objectStore('documents').getAll();
+      const documents = await new Promise<Array<{ cells: ArrayBuffer }>>((resolve) => { get.onsuccess = () => resolve(get.result); });
+      return [...new Uint32Array(documents[0].cells)].filter(Boolean).map((value) => `#${(value & 0xffffff).toString(16).padStart(6, '0')}`);
+    });
+  };
+  const colorButton = page.getByRole('button', { name: /^記号の色を選ぶ/ });
+  const picker = page.getByRole('dialog', { name: '記号の色' });
+
+  // 何も置いていなければ一覧は空で、ほかの色から選ぶ。
+  await colorButton.click();
+  await expect(picker).toBeVisible();
+  await expect(picker.getByText('まだ記号を置いていません。')).toBeVisible();
+  await picker.getByRole('button', { name: '閉じる' }).click();
+  await expect(picker).toBeHidden();
+
+  await page.mouse.click(box!.x + 75, box!.y + 75);
+  await colorButton.click();
+  await picker.getByLabel('色を選ぶ').fill('#264653');
+  await expect(colorButton).toHaveAccessibleName('記号の色を選ぶ（現在：青緑 #264653）');
+  await picker.getByRole('button', { name: '閉じる' }).click();
+  await page.mouse.click(box!.x + 140, box!.y + 75);
+  expect(await storedColors()).toEqual(['#d33c32', '#264653']);
+
+  // 消すモードからでも、一覧で選べばその色で描けるようになる。
+  await page.getByRole('button', { name: '消す' }).click();
+  await colorButton.click();
+  const swatches = picker.getByRole('group', { name: 'この編み図で使っている色' }).getByRole('button');
+  await expect(swatches).toHaveCount(2);
+  await expect(swatches.nth(0)).toHaveAccessibleName('赤 #d33c32、記号1個');
+  await expect(swatches.nth(1)).toHaveAccessibleName('青緑 #264653、記号1個');
+  await expect(swatches.nth(1)).toHaveAttribute('aria-pressed', 'true');
+  for (const index of [0, 1]) {
+    const swatch = await swatches.nth(index).boundingBox();
+    expect(swatch!.width).toBeGreaterThanOrEqual(44);
+    expect(swatch!.height).toBeGreaterThanOrEqual(44);
+  }
+  await swatches.nth(0).click();
+  await expect(picker).toBeHidden();
+  await expect(colorButton).toHaveAccessibleName('記号の色を選ぶ（現在：赤 #d33c32）');
+  await expect(page.getByRole('button', { name: '描く' })).toHaveAttribute('aria-pressed', 'true');
+
+  await page.mouse.click(box!.x + 205, box!.y + 75);
+  expect(await storedColors()).toEqual(['#d33c32', '#264653', '#d33c32']);
+});
+
 test('creates a block and exports backup and PDF', async ({ page }) => {
   // iPhone相当の設定では共有シートへ渡す（別のテストで確かめる）。ここではダウンロードした`.knit`で往復を確かめる。
   await page.addInitScript(() => Object.defineProperty(Navigator.prototype, 'canShare', { value: undefined, configurable: true }));
