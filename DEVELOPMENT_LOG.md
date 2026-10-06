@@ -13,6 +13,16 @@
 - 検証: `npm run typecheck`、`npm test`（128件）、`npm run build`、`npm run check:dist`、`npm run test:e2e`（82件成功・2件skip）が成功した。iOS Webの型検査とテスト（8件）、`ios/scripts/check-app-store-docs.sh`が成功した。`xcodegen generate`でプロジェクトに差分が出ないことを確かめ、iPhone 16 Simulatorで`LocalWebSchemeHandlerTests`（17件、機内モード用の1件skip）が成功し、そのビルドに`ios/scripts/check-app-bundle.sh`と`ios/scripts/check-release-assets.sh`が成功した。ライセンスのページは幅375px（WebKit）と1280px（Chromium）で横にはみ出さないことを確かめた。iPhone・iPadのSimulator一式、アプリ更新テスト、unsigned Release ArchiveはPRのCIに任せた。ローカルにNode.js 24が無く、Node.js 26.8.1で実行した。
 - デプロイ影響: マージ後、Pagesに`/third-party-notices/`が加わり、Web版の「使い方」のフッターにリンクが出る。`smoke`が新しいページを確かめるので、`deploy`と`smoke`の成功を確認し、本番の「使い方」からリンクを開けることを確かめる。TestFlight／App Storeへの影響は次に提出するビルドから（暗号化の質問が出なくなり、ライセンス表記が入る）。
 
+## 2026-10-02 — iOS UIテストで、効かなかった「編み図」のタップを押し直し、ツールバーのスクロールを待つ
+
+- 影響: アプリとWeb資産の内容は変えていない。`main`のrun 36983458487とPR #54のrun 36984209721で、1回目に失敗して再試行で通ったiOS UIテスト2件（#66、#67）を直した。
+  - #66（iPad (A16)、`testPrimaryControlsRemainUsableInPortraitAndLandscape`）: 失敗時の画面構造は横向きの配置になっており、「編み図」をタップした10秒後もパネル（「閉じる」）が無かった。タップは横向きにしてから約10秒後なので、向きの待機ではなく、タップが効かなかった。PR #53で`createDocument`に入れた「パネルが開かないときだけ押し直す」処理を`openDocumentsPanel(in:)`にまとめ、このテストと、「編み図」から「新しい編み図」へ進むほかのテスト（背景タップ、入力欄のフォーカス、文字サイズ最大、再起動復元、編み図の切り替え、可変ウィンドウ）でも使うようにした。同じ手順を書き写していた箇所は`createDocument`に置き換えた。押し直すのは、10秒待ってもパネルが開いていない場合だけで、最後まで開かなければ失敗にする。向きの変更後の待機は、向きと関係なく成立する`app.windows.firstMatch`の存在確認だったので、WebViewが横長になるまで待つ`rotateToLandscape(_:)`に替えた。
+  - #67（iPhone 17、文字サイズ最大、`testAccessibilityExtraExtraExtraLargeKeepsPrimaryFlowsUsable`）: 失敗した回は、ツールバーをスワイプした0.02秒後に「範囲」を検査し、「範囲」はスワイプ前の位置（x=570、画面幅402）のままだった。成功した回は0.7秒後に検査していた。テスト側の待ち方の問題と判断した。スワイプのあと「範囲」が押せる位置に来るまで最大5秒待ち、来なければスワイプし直す（最大3回）。届かなければ、「範囲」とツールバーの位置を添えて失敗にする。文字サイズ最大のiPhone 16（iOS 18.2）では、1回のスワイプで「範囲」が押せる位置に来た（下の繰り返し実行）。起動直後の画面のスクリーンショットでも、操作メニューは画面内に収まっていた。アプリ側のレイアウトの不具合は見つからなかった。
+- 主なファイル: `ios/UITests/KnittingEditorUITests/KnittingEditorUITests.swift`
+- テスト: 上記のUIテストを修正した。テスト関数の一覧は`origin/main`と同じ（削除・改名なし）。
+- 検証（手元、Xcode 27.0、iOS 18.2 Simulator）: `xcodegen generate --spec ios/project.yml`とアプリ・テストターゲットの`build-for-testing`が成功した。iPhone 16とiPad (10th generation)のそれぞれで、`testAccessibilityExtraExtraExtraLargeKeepsPrimaryFlowsUsable`と`testPrimaryControlsRemainUsableInPortraitAndLandscape`を再試行なしの`-test-iterations 5`で実行し、両端末とも10回すべて成功した。iPad (10th generation)ではUIテスト一式（CIと同じく`testBackupExportSheetDismissesBackToEditor`を除く）を1回実行し、13件成功・5件skip（手動・専用スクリプト用）だった。CIの環境（Xcode 26.6、iOS 26.5のiPhone 17・iPad (A16)）は手元に無く、その環境での確認、アプリ更新テスト、Release Archive、iOS Webの検査はPRのCIに任せた。iOS 27で文字サイズ最大の起動が進まない件（#64）は、このPRでは扱っていない。
+- デプロイ影響: なし。iOSのUIテストだけの変更で、Pagesは再配信されない。TestFlight／App Storeへの影響もない。
+
 ## 2026-10-02 — iPad実機で、機内モードの前後にアプリが通信しないことを確かめる
 
 - 影響: アプリとWeb資産の内容は変えていない。M0の実機確認で最後に残っていた「機内モードの前後で外部への要求が発生しない」を、iPad Air 第5世代（iPadOS 27.0、有線接続、無料Personal Teamで署名した`main`の`6ad2592`）で確かめ、`ios/docs/REAL_DEVICE_RELEASE_CHECKLIST.md`に手順と結果を書いた（#19）。
