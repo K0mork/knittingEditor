@@ -1,0 +1,7 @@
+# 2026-10-06 — 10目・10段ごとに太線を入れ、PNG・PDFにも反映
+
+- 影響: 盤面の罫線に、10目・10段ごとの太線を入れた。画面、PNG、PDF（1ページとA4分割）にそろえて入る。番号は右下から数えるので、太線は番号の10・20・30…とその次の番号との境目に引き、段数・列数が10の倍数でない盤面でも番号とずれない。A4分割のPDFでは、ページごとに数え直さず盤面全体の番号に合わせる。盤面の外枠は通常の線のまま。太線は、画面では`#7d8a83`で、1セル12px以上のときは2px、それより小さいときは1px。PNGでは`#666666`で、1セル12px以上のときは2px。PDFでは濃さ0.4で、太さは1セルの7%（0.35〜0.9pt）。画面を最小の4pxまで縮小しても太線は濃さで見分けられたので、通常の線は消さずに残す。Web版とiOS版の両方に入る。
+- 主なファイル: `packages/editor-core/model/gridLines.ts`（新規、太線の位置の計算）、`packages/editor-core/canvas/strokeGrid.ts`（新規、画面とPNGで共通の罫線の描画）、`packages/editor-core/canvas/BoardCanvas.tsx`、`packages/editor-core/export/exporters.ts`、`packages/editor-core/export/pdf.worker.ts`
+- テスト: `gridLines.test.ts`を足した（10の倍数でない段数・列数、小さい盤面と外枠、A4分割の各ページ）。`strokeGrid.test.ts`を足した（太線と通常の線の位置と数、スクロールした表示範囲）。`pdf.worker.test.ts`に、1ページのPDFと、65段×43目のA4分割PDFの各ページで、太線の位置と数を確かめるテストを足した。Playwrightに、25段×23目のPNGを保存して画素を読み、太線の位置を確かめるテストを足した。太線を左上から数えるように変えると、これらのテストが失敗することを確かめた。
+- 検証: `npm run typecheck`、`npm test`（159件成功）、`npm run build`、`npm run check:dist`、`npm run test:e2e`（chromium-mobile、webkit-mobile、chromium-desktopで97件成功、2件は既存のスキップ）、iOS Webの`tsc -p tsconfig.app.json --noEmit`と`vitest run --config vite.config.ts`（8件成功）。手元のNode.jsは26で、指定の24ではない。65段×43目の盤面で、画面（デスクトップの既定・拡大・最小の縮小、モバイル）、PNG、1ページのPDF、A4分割のPDF（4ページ）をスクリーンショットで確かめた。iOSのSimulatorのテスト一式は、Swiftとビルド設定を変えていないので手元では実行せず、PRのCIに任せた。
+- デプロイ影響: Pagesへ配信される。配信後、`https://knittingeditor.com/`で盤面に太線が出ることと、PNG・PDFの保存で太線が入ることを確かめる。

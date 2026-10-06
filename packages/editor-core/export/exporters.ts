@@ -1,5 +1,6 @@
 import type { Board } from '../model/Board';
 import { drawCell } from '../stitches/drawCell';
+import { strokeGrid, type GridLineStyle } from '../canvas/strokeGrid';
 import type { PdfLayoutOptions } from './pdfLayout';
 import { labelStride, showsLabel } from './labels';
 
@@ -62,6 +63,14 @@ export function validatePngSize(board: Board, cellSize: number): { width: number
   return { width, height, valid: true };
 }
 
+/** PNGの罫線。10目・10段ごとの太線は、セルが小さいときは1pxにして記号の邪魔にならないようにする。 */
+export function pngGridStyles(cellSize: number): { minor: GridLineStyle; major: GridLineStyle } {
+  return {
+    minor: { color: '#bbbbbb', width: 1 },
+    major: { color: '#666666', width: cellSize >= 12 ? 2 : 1 },
+  };
+}
+
 export async function renderPng(board: Board, cellSize: number): Promise<Blob> {
   const size = validatePngSize(board, cellSize);
   if (!size.valid) throw new Error(`${size.reason}。PDF保存を利用してください。`);
@@ -100,16 +109,13 @@ export async function renderPng(board: Board, cellSize: number): Promise<Blob> {
     context.fillStyle = row % 2 === 0 ? '#f3f4f0' : '#fff';
     context.fillRect(left, top + row * cellSize, board.cols * cellSize, cellSize);
   }
-  context.beginPath();
-  for (let row = 0; row <= board.rows; row++) {
-    const y = top + row * cellSize + 0.5;
-    context.moveTo(left, y); context.lineTo(right, y);
-  }
-  for (let col = 0; col <= board.cols; col++) {
-    const x = left + col * cellSize + 0.5;
-    context.moveTo(x, top); context.lineTo(x, bottom);
-  }
-  context.strokeStyle = '#bbb'; context.stroke();
+  const grid = pngGridStyles(cellSize);
+  strokeGrid(
+    context,
+    { x: left, y: top, cell: cellSize, rows: board.rows, cols: board.cols, firstRow: 0, lastRow: board.rows - 1, firstCol: 0, lastCol: board.cols - 1 },
+    grid.minor,
+    grid.major,
+  );
   for (let row = 0; row < board.rows; row++) {
     for (let col = 0; col < board.cols; col++) {
       const value = board.valueAt(row, col);
