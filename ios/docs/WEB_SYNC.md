@@ -38,6 +38,7 @@ Web版とiOS版は同じリポジトリで管理する。以前の固定コミ�
 | `platform.ts` | `EditorPlatform`の実装。Web版はダウンロード、iOS版は`WKWebView`ブリッジ経由でFiles・共有シートへ渡す。Web版でもiPhone・iPadのSafariだけは、`<a download>`のPDFが編集中のタブを置き換えるため、`ShareFileDialog.tsx`の「共有・保存」ボタンから共有シート（Web Share API）で渡す。共有シートは利用者のタップの中でしか開けないので、生成後にもう一度押してもらう。 |
 | `storage/database.ts` | Web版だけが持ち、旧Safari `localStorage`からの移行と、それを先に行う`initializeStorage`を置く。iOS版にはファイル自体が無く、共通の`initializeStorage`を直接使うので移行を含めない。 |
 | `index.html`、`public/guide/` | Web版はSEO、canonical、CNAME、サイトマップを持つ。iOS版は同梱ページとして動作し、文言をアプリ前提にする。どちらの使い方ページも、ビルド時に生成する`/third-party-notices/`（`scripts/third-party-notices.mjs`）へリンクする。 |
+| `vite.config.ts` | iOS版は`modulePreload`を切り、ソースマップを同梱しない。 |
 
 ## テストの置き場所
 

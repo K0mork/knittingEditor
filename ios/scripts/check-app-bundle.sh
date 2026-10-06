@@ -22,20 +22,28 @@ for package in fflate idb react react-dom scheduler; do
   fi
 done
 
+# ソースマップはアプリで使わないので同梱しない（`ios/Web/vite.config.ts`）。
+source_maps=$(find "$WEB_ROOT" -type f -name '*.map')
+if [ -n "$source_maps" ]; then
+  echo "unexpected source maps in app bundle" >&2
+  printf '%s\n' "$source_maps" >&2
+  exit 1
+fi
+
 if [ ! -f "$APP_PATH/PrivacyInfo.xcprivacy" ]; then
   echo "missing Privacy Manifest" >&2
   exit 1
 fi
 plutil -lint "$APP_PATH/PrivacyInfo.xcprivacy" >/dev/null
 
-external_matches=$(find "$WEB_ROOT" -type f ! -name '*.map' -exec grep -nE 'googletagmanager|G-VVE0G4ZFL4|knittingeditor\.com' {} + || true)
+external_matches=$(find "$WEB_ROOT" -type f -exec grep -nE 'googletagmanager|G-VVE0G4ZFL4|knittingeditor\.com' {} + || true)
 if [ -n "$external_matches" ]; then
   echo "unexpected external runtime reference in app bundle" >&2
   printf '%s\n' "$external_matches" >&2
   exit 1
 fi
 
-network_matches=$(find "$WEB_ROOT" -type f ! -name '*.map' -exec grep -nE '(^|[^[:alnum:]_])(fetch|XMLHttpRequest|WebSocket|EventSource)[[:space:]]*\(' {} + || true)
+network_matches=$(find "$WEB_ROOT" -type f -exec grep -nE '(^|[^[:alnum:]_])(fetch|XMLHttpRequest|WebSocket|EventSource)[[:space:]]*\(' {} + || true)
 if [ -n "$network_matches" ]; then
   echo "unexpected network API in app bundle" >&2
   printf '%s\n' "$network_matches" >&2
