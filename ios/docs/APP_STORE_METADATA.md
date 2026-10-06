@@ -63,7 +63,7 @@
 - ビルド番号（`CURRENT_PROJECT_VERSION`）は`project.yml`では`1`のままにする。App Store Connectは、同じバージョンの中で前回より大きいビルド番号しか受け付けない。
 - XcodeのOrganizerからアップロードするときは、配布オプションの「Manage Version and Build Number」をオンにする。Xcodeが、App Store Connectにあるビルドより大きい番号を付けてアップロードする。
 - コマンドラインでArchiveするときは、`xcodebuild archive ... CURRENT_PROJECT_VERSION=<番号>`で、前回より大きい番号を指定する。
-- アップロードしたビルド番号は、`REAL_DEVICE_RELEASE_CHECKLIST.md`のM6の証跡と`DEVELOPMENT_LOG.md`に記録する。
+- アップロードしたビルド番号は、`REAL_DEVICE_RELEASE_CHECKLIST.md`のM6の証跡と`docs/dev-log/`の記録に書く。
 
 ## 申請前確認
 

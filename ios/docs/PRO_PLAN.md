@@ -237,7 +237,7 @@ Swift → Web（`CustomEvent`の`detail`）:
 | `docs/WEB_SYNC.md` | `EditorView`の`knitting`プロパティと、iOS版だけが渡すことを追記する |
 | `App/PrivacyInfo.xcprivacy` | 収集データが増えないことを確認する（StoreKitだけなら変更なしの見込み） |
 | App Store Connect | 有料アプリ契約・税務・口座の登録、スモールビジネスプログラムの申請、アプリ内課金の作成。課金のある最初のバージョンでは、アプリ内課金を一緒に審査へ出す |
-| Issue [#38](https://github.com/K0mork/knittingEditor/issues/38)・`DEVELOPMENT_LOG.md` | 実装の進捗と検証結果を記録する |
+| Issue [#38](https://github.com/K0mork/knittingEditor/issues/38)・`docs/dev-log/` | 実装の進捗と検証結果を記録する |
 
 オフラインの約束について:
 

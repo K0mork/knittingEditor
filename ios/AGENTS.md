@@ -63,11 +63,9 @@ ios/docs/            additional app design and release records
 
 ## Development Log
 
-記録先はリポジトリルートの`DEVELOPMENT_LOG.md`だけです。iOS側の変更もここへ書き、`ios/DEVELOPMENT_LOG.md`へは追記しません（統合前のアプリ履歴の凍結アーカイブです）。
+記録は、PRごとに`docs/dev-log/`へ1ファイルを足して書きます（ルートの`AGENTS.md`の「Development Log」、書式は`docs/dev-log/README.md`）。iOS側の変更も同じです。ルートの`DEVELOPMENT_LOG.md`（2026-10-06までの記録）と`ios/DEVELOPMENT_LOG.md`（統合前のアプリ履歴）は凍結アーカイブで、追記しません。
 
-ルートの`DEVELOPMENT_LOG.md`を、すべてのユーザー可視変更、挙動変更、データ移行、記号同期、テスト・ビルド・署名・配布設定変更で更新してください。
-
-新しい項目を先頭へ追加し、以下を必ず記録します。
+すべてのユーザー可視変更、挙動変更、データ移行、記号同期、テスト・ビルド・署名・配布設定変更で記録を足してください。以下を必ず記録します。
 
 - 日付と短い要約
 - 影響する挙動・方針と主なファイル
@@ -123,7 +121,7 @@ Simulatorテスト（iPhone・iPad）、アプリ更新テスト、unsigned Rele
 - コードベースを変更したら、指示がなくてもコミットする。
 - 1コミット1目的とし、フォーマットだけの変更は分離する。
 - Conventional Commit形式を使う。例: `docs: define offline app architecture`、`feat: add local web container`、`fix: flush saves on background`。
-- コミット前に差分、未追跡ファイル、実行済みテスト、`DEVELOPMENT_LOG.md`を確認する。
+- コミット前に差分、未追跡ファイル、実行済みテスト、`docs/dev-log/`の記録を確認する。
 - 統合先の正式なリモートは`https://github.com/K0mork/knittingEditor.git`とする。
 - 各作業で作成したコミットは、ユーザーから個別の指示がなくても同じ作業内で必ずGitHubへpushする。
 - push後に`git status --short --branch`または同等の方法で、ローカルHEADとリモート追跡ブランチの一致を確認する。
