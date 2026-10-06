@@ -36,7 +36,12 @@ if [ ! -f "$APP_PATH/PrivacyInfo.xcprivacy" ]; then
 fi
 plutil -lint "$APP_PATH/PrivacyInfo.xcprivacy" >/dev/null
 
-external_matches=$(find "$WEB_ROOT" -type f -exec grep -nE 'googletagmanager|G-VVE0G4ZFL4|knittingeditor\.com' {} + || true)
+# 「使い方」のサポートページとサポートのメールアドレスは、利用者が選んだときだけSafariとメールアプリで開くリンクなので除く。
+external_matches=$(find "$WEB_ROOT" -type f -exec perl -ne '
+  s{https://knittingeditor\.com/support/|support\@knittingeditor\.com}{}g;
+  print "$ARGV:$.:$_" if /googletagmanager|G-VVE0G4ZFL4|knittingeditor\.com/;
+  close ARGV if eof;
+' {} + || true)
 if [ -n "$external_matches" ]; then
   echo "unexpected external runtime reference in app bundle" >&2
   printf '%s\n' "$external_matches" >&2
