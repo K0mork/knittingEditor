@@ -3,7 +3,8 @@
 ## 実装・資産
 
 - [ ] Apple Developer Team、Bundle ID、署名証明書、Provisioning Profileを確定する。Teamは個人でApple Developer Programに加入する予定（2026-10-02に決定、#17）。署名はAutomaticを続ける。
-- [ ] AppIconの最終デザインと全サイズを登録する。
+- [x] AppIconのAny・Dark・Tintedを1024×1024で登録する（小サイズはXcodeが生成）。素材・再生成手順は`../design/app-icon/README.md`。
+- [ ] iPhone・iPadのホーム画面でライト・ダーク・色合いを切り替え、設定・Spotlightの小サイズと合わせて最終確認する（#78）。
 - [ ] 起動画面を確認する。
 - [x] App Store Connectの提出サイズ（iPhone 6.9インチ 1320×2868、iPad 13インチ 2064×2752）のスクリーンショットを`docs/screenshots/app-store-*.png`へ保存する。
 - [ ] iPhone／iPadの実機スクリーンショットを撮影する（任意。提出要件はSimulator素材で満たしている）。

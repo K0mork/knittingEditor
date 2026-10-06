@@ -1,5 +1,15 @@
 # Development Log
 
+## 2026-10-06 — アプリアイコンのAny・Dark・Tintedを共通SVGから生成する
+
+- 影響: #78の既存の緑・針・糸を背景と前景のSVGに書き起こし、iOS 17用のAny、透過背景のDark、RGBグレースケールのTintedを`AppIcon.appiconset`へ登録した。Webのfavicon・192px・touch iconは同じAnyから再生成した。Icon Composerとクリア専用素材は今回の方式に含まない。
+- 主なファイル: `ios/design/app-icon/`、`scripts/generate-app-icons.mjs`、`ios/App/Assets.xcassets/AppIcon.appiconset/`、`public/`、`ios/scripts/check-app-icons.mjs`、`ios/scripts/check-release-assets.sh`、`ios/docs/APP_STORE_CHECKLIST.md`。
+- テスト: `scripts/check-app-icons.test.mjs`に、登録された3外観の合格と、誤った透過・カラーのTinted・画像サイズ・外観の重複を拒否する4件を追加。リリース検査は全外観の寸法・Any/Tintedのアルファ不在・Darkの透過背景と可視前景・Tinted全画素のR=G=Bを確認する。
+- ローカル検証: `node scripts/generate-app-icons.mjs`、`node scripts/generate-web-icons.mjs`、`node ios/scripts/check-app-icons.mjs`、`ios/scripts/check-app-store-docs.sh`、`sh -n ios/scripts/check-release-assets.sh`、`npm run typecheck`、`npm test`（127件）、`npm run build`、`npm run check:dist`、`npm run test:e2e`（Chromium/WebKit、79件成功・2件skip）が成功。Node.js 26.8.1で実行（CIは24）。`xcodegen generate`、XcodeBuildMCPの`build_run_sim`（Xcode 27.0、署名なし）が成功し、生成されたアプリに対する`ios/scripts/check-release-assets.sh /tmp/knitting-app-icons-derived/Build/Products/Debug-iphonesimulator/knittingEditor.app`も成功した。
+- 目視確認: iOS 18.2のiPhone 16とiPad (10th generation) Simulatorでホーム画面の「カスタマイズ」からライト・ダーク・色合いを切り替え、針と糸を判別できることを確認してスクリーンショットを保存した。検証中のSimulator停止後、アクセシビリティ取得と日本語入力が不安定になったため、設定・Spotlightの小サイズ確認は未完了。iOS 17ランタイムは手元に無く、iOS 17上の表示は未確認（deployment targetは17.0のまま）。
+- CI: Simulatorテスト（iPhone/iPad）、アプリ更新、unsigned Release Archive、同梱物検査はPRのCIで確認する。
+- デプロイ影響: 現時点ではnone。マージ後はWebのアイコンがPagesへ配信されるため、deploy・smokeとHTTPSでの3アイコン取得を確認する。TestFlight／App Store提出は行っていない。小サイズ確認が残るため、このPRではIssue #78を自動で閉じない。
+
 ## 2026-10-02 — iPad実機で、機内モードの前後にアプリが通信しないことを確かめる
 
 - 影響: アプリとWeb資産の内容は変えていない。M0の実機確認で最後に残っていた「機内モードの前後で外部への要求が発生しない」を、iPad Air 第5世代（iPadOS 27.0、有線接続、無料Personal Teamで署名した`main`の`6ad2592`）で確かめ、`ios/docs/REAL_DEVICE_RELEASE_CHECKLIST.md`に手順と結果を書いた（#19）。
