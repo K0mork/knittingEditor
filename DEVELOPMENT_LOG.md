@@ -10,6 +10,17 @@
 - 検証（手元、Xcode 27.0、iOS 18.2 Simulator）: `xcodegen generate --spec ios/project.yml`とアプリ・テストターゲットの`build-for-testing`が成功した。iPhone 16とiPad (10th generation)のそれぞれで、`testAccessibilityExtraExtraExtraLargeKeepsPrimaryFlowsUsable`と`testPrimaryControlsRemainUsableInPortraitAndLandscape`を再試行なしの`-test-iterations 5`で実行し、両端末とも10回すべて成功した。iPad (10th generation)ではUIテスト一式（CIと同じく`testBackupExportSheetDismissesBackToEditor`を除く）を1回実行し、13件成功・5件skip（手動・専用スクリプト用）だった。CIの環境（Xcode 26.6、iOS 26.5のiPhone 17・iPad (A16)）は手元に無く、その環境での確認、アプリ更新テスト、Release Archive、iOS Webの検査はPRのCIに任せた。iOS 27で文字サイズ最大の起動が進まない件（#64）は、このPRでは扱っていない。
 - デプロイ影響: なし。iOSのUIテストだけの変更で、Pagesは再配信されない。TestFlight／App Storeへの影響もない。
 
+## 2026-10-02 — iPad実機で、機内モードの前後にアプリが通信しないことを確かめる
+
+- 影響: アプリとWeb資産の内容は変えていない。M0の実機確認で最後に残っていた「機内モードの前後で外部への要求が発生しない」を、iPad Air 第5世代（iPadOS 27.0、有線接続、無料Personal Teamで署名した`main`の`6ad2592`）で確かめ、`ios/docs/REAL_DEVICE_RELEASE_CHECKLIST.md`に手順と結果を書いた（#19）。
+  - 端末の通信を`rvictl`と`tcpdump -k NP`で、送受信したプロセス名つきで記録しながら、オンライン・機内モード・解除後のそれぞれで、起動、新しい編み図の作成、描画、PNG・PDF・`.knit`の保存、「使い方」の往復を行った。
+  - アプリ（`knittingEditor`）とWebKitのプロセスの通信は1件も無く、DNSなどを経由した通信の元プロセスにもアプリは無かった。記録された通信は、iPadOSのシステムと他のアプリのものだけだった。
+  - 操作が記録の時間内に行われたことは、端末のIndexedDBを有線で読み出し、2つの編み図の作成時刻と最後の更新時刻が記録の時間内にあることで確かめた。
+- 主なファイル: `ios/docs/REAL_DEVICE_RELEASE_CHECKLIST.md`
+- テスト: 実機での手動確認のため、テストは追加していない。`ios/scripts/check-device-readiness.sh`（`KNITTING_EDITOR_REQUIRE_WIRED=1`）が有線接続で成功した。記録ファイルには端末のMACアドレスとローカルネットワークのIPアドレスが含まれるため、リポジトリに入れていない。
+- 検証: 文書だけの変更なので、`ios/scripts/check-app-store-docs.sh`を実行した。Simulatorテストなどは変更が無いため実行していない。
+- デプロイ影響: なし。TestFlight／App Storeへの影響もない。
+
 ## 2026-10-02 — Pagesへの配信を`main`のrunに限り、並行セッションで他人のビルドやrunを確かめないようにする
 
 - 影響: アプリとWeb資産の内容は変えていない。
