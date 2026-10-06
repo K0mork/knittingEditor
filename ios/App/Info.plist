@@ -24,7 +24,7 @@
 			<key>UTTypeIdentifier</key>
 			<string>com.k0mork.knitting-editor.knit</string>
 			<key>UTTypeDescription</key>
-			<string>Knitting Editor backup</string>
+			<string>棒針編み図バックアップ</string>
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>public.data</string>
@@ -44,7 +44,7 @@
 	<array>
 		<dict>
 			<key>CFBundleTypeName</key>
-			<string>Knitting Editor backup</string>
+			<string>棒針編み図バックアップ</string>
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>LSHandlerRank</key>

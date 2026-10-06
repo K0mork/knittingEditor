@@ -1,0 +1,23 @@
+# 2026-10-06 — Filesに出る`.knit`の種類名を日本語にする
+
+- 影響: iOS版で、Filesの「情報を見る」の「種類」や共有シートに出る`.knit`の種類名は、英語の`Knitting Editor backup`だった（#82）。
+  - Info.plistの`UTTypeDescription`と`CFBundleTypeName`を`棒針編み図バックアップ`にした。
+  - 文字列カタログ`ios/App/InfoPlist.xcstrings`で、日本語`棒針編み図バックアップ`と英語`Knitting Chart Backup`を持つ。ビルドすると、アプリに`ja.lproj`と`en.lproj`の`InfoPlist.strings`が入る。InfoPlist.stringsでは、Info.plistの値そのものが訳のキーになる。
+  - 種類の識別子`com.k0mork.knitting-editor.knit`と拡張子`knit`は変えていない。既存の`.knit`の関連付けは保たれる。
+  - XcodeGenがプロジェクトの`knownRegions`に`en`を足した。
+  - アプリの言語の決まり方も変わる。これまでアプリには`.lproj`が1つも無かった。Info.plistに`CFBundleDevelopmentRegion`も無いので、Foundationはどの言語の端末でもアプリの言語を`en`と判定していた。これからは、日本語の端末では`ja`、それ以外の端末では`en`になる（macOSのFoundationで`Bundle.preferredLocalizations`を使って確かめた）。そのため、日本語の端末では、アプリ内でシステムが出す文言（ファイル選択のボタンなど）も日本語で出るはずである。ただし、実機とSimulatorのアプリ内では確かめていない。編み図の画面はWebの日本語のままで、ロケールに依存するコードは無い。
+  - App Storeの「言語」には、日本語に加えて英語が出る見込みである。アプリの画面自体は日本語だけである。
+- 主なファイル: `ios/App/Info.plist`、`ios/App/InfoPlist.xcstrings`、`ios/knittingEditor.xcodeproj/project.pbxproj`、`ios/scripts/check-app-bundle.sh`、`ios/Tests/KnittingEditorAppTests/KnittingEditorUTTypeTests.swift`
+- テスト:
+  - `KnittingEditorUTTypeTests`を足した。識別子と拡張子が変わっていないこと、Info.plistの値が訳のキーと一致すること、`ja.lproj`・`en.lproj`の訳を確かめる。システムが返す`UTType.localizedDescription`がアプリの表示言語の訳になっていることも確かめる。
+  - `ios/scripts/check-app-bundle.sh`に、ビルドしたアプリの種類の識別子、Info.plistの種類名、`ja.lproj`・`en.lproj`の訳の検査を足した。CIの`ios`ジョブ（Debug）と`release_archive`ジョブ（`check-release-assets.sh`経由のRelease）で実行される。
+- 検証:
+  - 手元のXcodeは27.0で、CIの26.6とは異なる。XcodeGenは2.46.0で、CIと同じ版である。
+  - `xcodegen generate --spec ios/project.yml`を実行した。プロジェクトの差分は、文字列カタログ、テストファイル、`knownRegions`の`en`だけだった。
+  - `xcodebuild build -project ios/knittingEditor.xcodeproj -scheme knittingEditor -destination 'generic/platform=iOS Simulator' -derivedDataPath <dir> CODE_SIGNING_ALLOWED=NO`が成功した。できたアプリの`ja.lproj/InfoPlist.strings`と`en.lproj/InfoPlist.strings`に、それぞれの訳が入っていることを確かめた。
+  - そのアプリに`ios/scripts/check-app-bundle.sh`を実行して通った。わざと壊したコピーでは失敗することも確かめた。壊し方は、英語の訳の書き換え、`ja.lproj`の削除、Info.plistの種類名を英語へ戻す変更、識別子の書き換えの4通りである。
+  - iPad Pro 11-inch (M5)（iOS 27.0）のSimulatorで、`-only-testing:knittingEditorTests/KnittingEditorUTTypeTests`の4件が通った。このSimulatorの表示言語は日本語なので、`localizedDescription`は日本語の経路だけを確かめた。英語の経路は、英語のSimulatorを使うCIで確かめる。
+  - 同じSimulatorで、Filesの「このiPad内」に置いた`.knit`を確かめた。操作には、コミットしない一時的なXCUITestを使った。「情報を見る」の「種類」には、日本語の言語設定（`-AppleLanguages (ja)`）では`棒針編み図バックアップ`が出た。英語の言語設定（`-AppleLanguages (en)`）では`Knitting Chart Backup`が出た。Filesの共有シートの見出しにも`棒針編み図バックアップ · 243 バイト`と出た。変更前のビルドでは、英語の言語設定で`Knitting Editor backup`と出ることも確かめた。スクリーンショットは手元に保存した。コミットはしない。`gh`ではPRに画像を添付できないため、PRへの添付は利用者に任せた。
+  - AirDropの受信画面は確かめていない。SimulatorではAirDropを使えないため、実機での確認が要る。そのため、このPRでは#82を閉じない。残りはIssueにコメントした。
+  - Simulatorのテスト一式（iPhone・iPad）、アプリ更新テスト、Release Archive、iOS Webの検査はPRのCIに任せた。Webのソースと`packages/`は変えていないので、Webの検査一式は手元で実行していない。
+- デプロイ影響: なし（iOSだけの変更で、Pagesへは配信しない）。次のTestFlightのビルドで、実機のFilesとAirDropの受信画面に日本語の種類名が出ることを確かめる。
