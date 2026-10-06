@@ -7,14 +7,18 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0DE1D11CC92E583D999981AC /* AppVersionInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB4206F13C4AE5996A13AB4F /* AppVersionInfo.swift */; };
+		18C56518B8BB0104B9D6DD6A /* AppVersionInfoTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98B454AC8083B55FA185DB3A /* AppVersionInfoTests.swift */; };
 		2A22B31E4E848E4416DE5D2E /* KnittingEditorUTType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E89D10B53EB561502464406 /* KnittingEditorUTType.swift */; };
 		2E279AF776F175B3F77DA1A5 /* Web in Resources */ = {isa = PBXBuildFile; fileRef = F41441F8FD8454433D85E51C /* Web */; };
 		3169FE3B0B8F832ABA6E5440 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 105A34342230A6B324A75809 /* PrivacyInfo.xcprivacy */; };
 		399AE0908FE88F56457A7A54 /* WebViewContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E643EAB3D8627886E3EDCB9 /* WebViewContainer.swift */; };
 		4C2C861608AD1B104C9DB85F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 594A6F94A2E8CE6BB9AB667E /* Assets.xcassets */; };
+		59A9148D359B433D6C65D747 /* ReviewRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0EFAC03FE6BC45A5DA5823E /* ReviewRequest.swift */; };
 		72A7C34CF22FD0138A1E8FE7 /* KnittingEditorUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 049604E8F16625AD6FE9AA3F /* KnittingEditorUITests.swift */; };
 		79639A7ABA8D77F463DE6AEF /* knitting-editor-v2-interop.knit.b64 in Resources */ = {isa = PBXBuildFile; fileRef = 81817C83F1B327D22010A448 /* knitting-editor-v2-interop.knit.b64 */; };
 		80BB0B545C49794374C7C699 /* KnittingEditorApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79CFD1A36C16A062BF1E7D49 /* KnittingEditorApp.swift */; };
+		A86536A01BCEF6CFFA6086E9 /* ReviewRequestTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DEBB9093EE26F31F21EBE11 /* ReviewRequestTests.swift */; };
 		CF285C11B3A112C566D556C3 /* NativeBridgeMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DA6B84D7E98986674AF1841 /* NativeBridgeMessage.swift */; };
 		D3CA49E4EE8BA3B56DA80D0E /* NativeBridgeMessageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE539ADB212ECD98B46BDB /* NativeBridgeMessageTests.swift */; };
 		D7C5FF536E7363BAD27BC269 /* LocalWebSchemeHandlerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02EEF60A275DC7E5B3AFEC1E /* LocalWebSchemeHandlerTests.swift */; };
@@ -42,6 +46,7 @@
 		02EEF60A275DC7E5B3AFEC1E /* LocalWebSchemeHandlerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalWebSchemeHandlerTests.swift; sourceTree = "<group>"; };
 		049604E8F16625AD6FE9AA3F /* KnittingEditorUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnittingEditorUITests.swift; sourceTree = "<group>"; };
 		07781248F43F310A19A846F2 /* knittingEditorTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = knittingEditorTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		0DEBB9093EE26F31F21EBE11 /* ReviewRequestTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewRequestTests.swift; sourceTree = "<group>"; };
 		105A34342230A6B324A75809 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		23B041EDB211844299152088 /* knittingEditor.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = knittingEditor.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2DA6B84D7E98986674AF1841 /* NativeBridgeMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeBridgeMessage.swift; sourceTree = "<group>"; };
@@ -50,8 +55,11 @@
 		79CFD1A36C16A062BF1E7D49 /* KnittingEditorApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnittingEditorApp.swift; sourceTree = "<group>"; };
 		81817C83F1B327D22010A448 /* knitting-editor-v2-interop.knit.b64 */ = {isa = PBXFileReference; path = "knitting-editor-v2-interop.knit.b64"; sourceTree = "<group>"; };
 		8D40BDC62512CFC6F6D66BE6 /* knittingEditorUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = knittingEditorUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		98B454AC8083B55FA185DB3A /* AppVersionInfoTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppVersionInfoTests.swift; sourceTree = "<group>"; };
 		9E89D10B53EB561502464406 /* KnittingEditorUTType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnittingEditorUTType.swift; sourceTree = "<group>"; };
+		AB4206F13C4AE5996A13AB4F /* AppVersionInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppVersionInfo.swift; sourceTree = "<group>"; };
 		B879541A0716033B76781073 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		C0EFAC03FE6BC45A5DA5823E /* ReviewRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewRequest.swift; sourceTree = "<group>"; };
 		CAFE539ADB212ECD98B46BDB /* NativeBridgeMessageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeBridgeMessageTests.swift; sourceTree = "<group>"; };
 		F2454BC6D34F2448DF141412 /* LocalWebSchemeHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalWebSchemeHandler.swift; sourceTree = "<group>"; };
 		F41441F8FD8454433D85E51C /* Web */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Web; path = AppResources/Web; sourceTree = SOURCE_ROOT; };
@@ -69,8 +77,10 @@
 		3F0C5DF9787E7BB97E09855A /* KnittingEditorAppTests */ = {
 			isa = PBXGroup;
 			children = (
+				98B454AC8083B55FA185DB3A /* AppVersionInfoTests.swift */,
 				02EEF60A275DC7E5B3AFEC1E /* LocalWebSchemeHandlerTests.swift */,
 				CAFE539ADB212ECD98B46BDB /* NativeBridgeMessageTests.swift */,
+				0DEBB9093EE26F31F21EBE11 /* ReviewRequestTests.swift */,
 			);
 			path = KnittingEditorAppTests;
 			sourceTree = "<group>";
@@ -124,6 +134,7 @@
 		E33E4B0F767B0C1D8E5B0686 /* App */ = {
 			isa = PBXGroup;
 			children = (
+				AB4206F13C4AE5996A13AB4F /* AppVersionInfo.swift */,
 				594A6F94A2E8CE6BB9AB667E /* Assets.xcassets */,
 				B879541A0716033B76781073 /* Info.plist */,
 				79CFD1A36C16A062BF1E7D49 /* KnittingEditorApp.swift */,
@@ -131,6 +142,7 @@
 				F2454BC6D34F2448DF141412 /* LocalWebSchemeHandler.swift */,
 				2DA6B84D7E98986674AF1841 /* NativeBridgeMessage.swift */,
 				105A34342230A6B324A75809 /* PrivacyInfo.xcprivacy */,
+				C0EFAC03FE6BC45A5DA5823E /* ReviewRequest.swift */,
 				4E643EAB3D8627886E3EDCB9 /* WebViewContainer.swift */,
 			);
 			path = App;
@@ -297,10 +309,12 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0DE1D11CC92E583D999981AC /* AppVersionInfo.swift in Sources */,
 				80BB0B545C49794374C7C699 /* KnittingEditorApp.swift in Sources */,
 				2A22B31E4E848E4416DE5D2E /* KnittingEditorUTType.swift in Sources */,
 				F892932BE7BC991009235A25 /* LocalWebSchemeHandler.swift in Sources */,
 				CF285C11B3A112C566D556C3 /* NativeBridgeMessage.swift in Sources */,
+				59A9148D359B433D6C65D747 /* ReviewRequest.swift in Sources */,
 				399AE0908FE88F56457A7A54 /* WebViewContainer.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -309,8 +323,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				18C56518B8BB0104B9D6DD6A /* AppVersionInfoTests.swift in Sources */,
 				D7C5FF536E7363BAD27BC269 /* LocalWebSchemeHandlerTests.swift in Sources */,
 				D3CA49E4EE8BA3B56DA80D0E /* NativeBridgeMessageTests.swift in Sources */,
+				A86536A01BCEF6CFFA6086E9 /* ReviewRequestTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
