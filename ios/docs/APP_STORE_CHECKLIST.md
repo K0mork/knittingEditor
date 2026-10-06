@@ -17,7 +17,7 @@
 - [x] App Store提出メタデータの下書きを`docs/APP_STORE_METADATA.md`へ用意する。
 - [x] 輸出コンプライアンスのため、`App/Info.plist`へ`ITSAppUsesNonExemptEncryption`を`false`で入れる。
 - [x] 同梱する第三者ソフトウェアのライセンス表記を、アプリ内の「使い方」から開ける`/third-party-notices/`へ置く。
-- [ ] アカウント無しで非公開に連絡できるサポート窓口とサポートURLを用意する（#75）。
+- [x] アカウント無しで非公開に連絡できるサポート窓口とサポートURLを用意する（#75）。窓口は`support@knittingeditor.com`、サポートURLは`https://knittingeditor.com/support/`。
 - [x] App Store Connectの年齢制限の質問票への回答を決める（#76）。回答は`docs/APP_STORE_METADATA.md`の「年齢制限の質問票」。
 - [ ] MacとApple Vision Proで配信するかを決める（#86）。
 
@@ -31,6 +31,7 @@
 - [ ] TestFlight内部テストでクラッシュログとメモリ警告を確認する。
 - [ ] App Store ConnectのApp Privacy回答をPrivacy Manifestと照合する。
 - [ ] Privacy Policy URLをApp Store Connectへ登録し、公開状態を確認する。
+- [ ] 外部のアドレスから`support@knittingeditor.com`へ送ったメールが届き、同じアドレスから返信できることを確かめてから、サポートURL`https://knittingeditor.com/support/`をApp Store Connectへ登録する。
 - [ ] 審査メモへ`docs/APP_REVIEW_NOTES.md`の要点を転記する。
 - [ ] App Store Connectの「著作権」欄に「2026 K0mork」を入力し、販売元が加入者の法的氏名で表示されることを確かめる（`docs/APP_STORE_METADATA.md`の「販売元と著作権表記」）。
 - [ ] 年齢制限の質問票に`docs/APP_STORE_METADATA.md`の「年齢制限の質問票」のとおり回答し、4+になることを確かめる。

@@ -53,6 +53,14 @@ App Store Connectの年齢制限は、質問票への回答から決まる（202
   - リンクをアプリ内で開くようにするなど、WKWebViewの表示範囲を変えるとき。
   - ユーザー間で編み図を共有する機能、広告、アカウントを加えるとき。
 
+## サポート窓口
+
+- 問い合わせは、アカウント無しで非公開に送れるメール`support@knittingeditor.com`で受ける（2026-10-06に決定、#75）。独自ドメインのアドレスにし、受けたメールは開発者の普段のアドレスへ転送する。返信は必ずこのアドレスから送り、個人のアドレスを利用者に知らせない。
+- サポートURLは`https://knittingeditor.com/support/`（`public/support/index.html`）。メールの連絡先、問い合わせに書いてほしいこと、よくある質問、GitHub Issuesへのリンクを載せる。App Review Guidelines 1.5（利用者が簡単に連絡できる手段）に対応する。
+- アプリ内の「使い方」の「サポート」から、メール（`mailto:`、メールアプリで開く）とサポートページ（Safariで開く）に進める。
+- GitHub Issuesは、アカウントを持つ人が公開の場で報告する場所として残す。
+- メールの受信はApp Store Connectへの登録前に確かめる（`APP_STORE_CHECKLIST.md`）。
+
 ## 説明文案
 
 棒針編みの編み図を、iPhoneとiPadで作成・保存・出力できるアプリです。
@@ -63,7 +71,7 @@ App Store Connectの年齢制限は、質問票への回答から決まる（202
 
 ## URLと提出メモ
 
-- サポートURL: `https://github.com/K0mork/knittingEditor/issues`（公開リポジトリが利用可能なことを提出前に確認）。アカウント無しで非公開に連絡できる窓口へ替える予定（#75）
+- サポートURL: `https://knittingeditor.com/support/`。下記「サポート窓口」
 - プライバシーポリシーURL候補: `https://github.com/K0mork/knittingEditor/blob/main/ios/docs/PRIVACY_POLICY.md`（App Store Connect登録前に公開状態と表示を確認）
 - 審査メモ: [`APP_REVIEW_NOTES.md`](APP_REVIEW_NOTES.md)の4.2説明と機内モード手順を転記する。
 - スクリーンショット: iPhone縦、iPhone横、iPad全画面、iPad可変幅を実機またはTestFlightで撮影して差し替える。
