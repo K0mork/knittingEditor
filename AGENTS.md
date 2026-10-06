@@ -43,7 +43,7 @@ This repository, its history, and everything posted on GitHub (issues, pull requ
 - Unannounced prices, revenue or fee calculations, sales forecasts, break-even estimates, and other business plans that are not yet public.
 - Personal data: names other than the published copyright holder, email addresses, postal addresses, tax, bank, or contract details, and data about individual users.
 
-Write qualitative statements instead, for example "PDF exports are recorded" or "the event arrived in GA4 Realtime". Keep figures, prices, and calculations in the root `private/` directory, which Git ignores, or outside the repository, and refer to them only by that location. Before committing, pushing, or posting to GitHub, check the diff and the text for these items.
+Write qualitative statements instead, for example "PDF exports are recorded" or "the event arrived in GA4 Realtime". Keep figures, prices, calculations, unannounced schedules, and personal tax or legal details in the root `private/` directory, which Git ignores, or outside the repository, and refer to them only by that location. `private/` exists only in the main checkout at the repository root, where it may be a symbolic link to the maintainer's synced folder; from a worktree, read and write the main checkout's `private/` instead of creating another one. Its `README.md` lists what each file holds. Before committing, pushing, or posting to GitHub, check the diff and the text for these items.
 
 If confidential information has already been pushed, stop and tell the user, then remove it from the current files with a new commit. Rewriting the history of a non-`main` branch or deleting pull request description revisions requires the user's approval, and `main` history must never be force-pushed.
 
