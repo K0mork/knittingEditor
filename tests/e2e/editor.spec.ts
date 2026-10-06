@@ -153,6 +153,31 @@ test('keeps the board on screen when dragged far with two fingers', async ({ pag
   expect(filled).toEqual([rows * cols - 1]);
 });
 
+test('matches the guidance to the input method and hides the gesture hint after about ten seconds', async ({ page }, testInfo) => {
+  const touch = Boolean(testInfo.project.use.hasTouch);
+  await page.clock.install();
+  await page.reload();
+  const hint = page.locator('.gesture-hint');
+  if (touch) await expect(hint).toHaveText('1本指：描画　2本指：移動・拡大');
+  else await expect(hint).toHaveText(/^ドラッグ：描画　ホイール：移動　(Ctrl|⌘)＋ホイール：拡大$/);
+
+  const undo = page.getByRole('button', { name: '元に戻す' });
+  await expect(undo).toHaveAttribute('title', /^元に戻す（(⌘Z|Ctrl\+Z)）$/);
+
+  // キーボードの無いスマホでは、Escapeで閉じる案内を出さない。
+  const pickerButton = page.getByRole('button', { name: '編み目記号を選ぶ' });
+  if (touch) await pickerButton.tap(); else await pickerButton.click();
+  const description = page.locator('#stitch-picker-description');
+  await expect(description).toHaveText(touch ? '記号を選ぶと描画モードになります。' : '記号を選ぶと描画モードになります。Escapeで閉じます。');
+  await page.getByRole('dialog', { name: '編み目記号' }).getByRole('button', { name: '閉じる' }).click();
+
+  await expect(hint).toBeVisible();
+  await page.clock.runFor(9_000);
+  await expect(hint).toBeVisible();
+  await page.clock.runFor(1_000);
+  await expect(hint).toBeHidden();
+});
+
 test('erases stitches continuously', async ({ page }) => {
   const canvas = page.getByLabel('編み図編集盤面');
   const box = await canvas.boundingBox();
@@ -162,7 +187,7 @@ test('erases stitches continuously', async ({ page }) => {
   await page.mouse.up();
 
   await page.getByRole('button', { name: '消す' }).click();
-  await expect(page.getByText('1本指：消去', { exact: false })).toBeVisible();
+  await expect(page.getByRole('button', { name: '消す' })).toHaveAttribute('aria-pressed', 'true');
   await page.mouse.move(box!.x + 75, box!.y + 75);
   await page.mouse.down();
   await page.mouse.move(box!.x + 165, box!.y + 75, { steps: 6 });

@@ -1,7 +1,8 @@
-import type { MouseEventHandler, ReactNode } from 'react';
+import { useEffect, useState, type MouseEventHandler, type ReactNode } from 'react';
 import { BoardCanvas, type CanvasMode } from '../canvas/BoardCanvas';
 import { ExportControls } from './ExportControls';
 import { GridControls } from './GridControls';
+import { gestureHintText, historyTitles, useInputEnvironment } from './inputEnvironment';
 import { StitchPicker } from './StitchPicker';
 import { EDITOR_PANEL_TITLES, type EditorController, type EditorPanel } from './useEditorController';
 
@@ -42,9 +43,24 @@ function HistoryIcon({ direction }: { direction: 'undo' | 'redo' }) {
   </svg>;
 }
 
+/** 操作のヒントを出しておく時間。盤面の下の段を隠すので、読み終えたころに消す。 */
+export const GESTURE_HINT_DURATION_MS = 10_000;
+
+/** 盤面の右下に出す操作のヒント。開いてから`GESTURE_HINT_DURATION_MS`で消える。 */
+function GestureHint({ mode }: { mode: CanvasMode }) {
+  const environment = useInputEnvironment();
+  const [visible, setVisible] = useState(true);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setVisible(false), GESTURE_HINT_DURATION_MS);
+    return () => window.clearTimeout(timer);
+  }, []);
+  return <div className={visible ? 'gesture-hint' : 'gesture-hint is-hidden'} aria-hidden={!visible || undefined}>{gestureHintText(mode, environment)}</div>;
+}
+
 /** 編集画面の組み立て。Web版とiOS版で共通。 */
 export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, backupNote, footer, children }: EditorViewProps) {
   const { session, mode, panel, selection, copiedBlock } = editor;
+  const history = historyTitles(useInputEnvironment());
   const { board, activeDocument, dirty } = session;
   if (editor.initializationError) return <main className="loading" role="alert">編み図を読み込めませんでした：{editor.initializationError}<button onClick={() => window.location.reload()}>再読み込み</button></main>;
   if (!board || !activeDocument) return <main className="loading">編み図を読み込んでいます…</main>;
@@ -87,7 +103,7 @@ export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, 
       <section className="canvas-wrap">
         <BoardCanvas board={board} revision={session.revision} stitchKey={editor.selectedStitch} color={editor.selectedColor} mode={mode}
           selection={selection} pasteBlock={editor.pasteBlock} onChange={editor.strokeChanged} onEditEnd={editor.commitStroke} onSelectionChange={editor.setSelection} onPasteComplete={editor.handlePasteComplete} />
-        <div className="gesture-hint">1本指：{editor.modeLabel}　2本指：移動・拡大</div>
+        <GestureHint mode={mode} />
       </section>
 
       <p className="visually-hidden" role="status" aria-live="polite" aria-atomic="true">{editor.modeLabel}モード。{selection ? '選択範囲あり' : '選択範囲なし'}</p>
@@ -96,8 +112,8 @@ export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, 
         {ACTION_BAR_PANELS.map((item) => <button key={item.panel} aria-controls="app-drawer" aria-expanded={panel === item.panel} onClick={() => editor.togglePanel(item.panel)}>{item.label}</button>)}
         {/* 上の道具列は狭い画面で余白が無いので、親指の届く操作メニューに置く。盤面には重ねない。 */}
         <div className="history-tools" role="group" aria-label="編集履歴">
-          <button aria-label="元に戻す" title="元に戻す（⌘Z / Ctrl+Z）" disabled={!session.canUndo} onClick={editor.undo}><HistoryIcon direction="undo" /><span className="history-label" aria-hidden="true">戻す</span></button>
-          <button aria-label="やり直す" title="やり直す（⇧⌘Z / Ctrl+Y）" disabled={!session.canRedo} onClick={editor.redo}><HistoryIcon direction="redo" /><span className="history-label" aria-hidden="true">やり直す</span></button>
+          <button aria-label="元に戻す" title={history.undo} disabled={!session.canUndo} onClick={editor.undo}><HistoryIcon direction="undo" /><span className="history-label" aria-hidden="true">戻す</span></button>
+          <button aria-label="やり直す" title={history.redo} disabled={!session.canRedo} onClick={editor.redo}><HistoryIcon direction="redo" /><span className="history-label" aria-hidden="true">やり直す</span></button>
         </div>
       </nav>
     </main>
