@@ -90,7 +90,15 @@ final class KnittingEditorUITests: XCTestCase {
             .firstMatch
         XCTAssertTrue(emptyCanvas.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
 
+        // 盤面のピンチは、画面全体の拡大を止めても（#81）盤面自身の拡大として効く。
+        // 拡大は盤面の描画だけに表れ、アクセシビリティの値には出ないので、盤面の画像で比べる。
+        let canvasBeforePinch = emptyCanvas.screenshot().pngRepresentation
         emptyCanvas.pinch(withScale: 2.0, velocity: 1.0)
+        XCTAssertNotEqual(
+            emptyCanvas.screenshot().pngRepresentation,
+            canvasBeforePinch,
+            "盤面のピンチで盤面が拡大されない: \(app.debugDescription)"
+        )
         emptyCanvas.pinch(withScale: 0.5, velocity: -1.0)
 
         // 記号数は0のまま変わらない。増えていれば指の位置へ記号が入っている。
@@ -169,6 +177,7 @@ final class KnittingEditorUITests: XCTestCase {
     /// 使い方ページの外部リンクを長押ししても、リンクのプレビューを出さない（#81）。
     /// 既定ではプレビューが外部のページをアプリ内で読み込み、「Open Link」「Add to Reading
     /// List」などのメニューを出していた。外部リンクはタップしたときだけSafariで開く。
+    /// 対策（`allowsLinkPreview = false`）を外したビルドでは、iOS 18.2で失敗することを確かめた。
     func testGuideExternalLinkShowsNoPreview() {
         let app = XCUIApplication()
         app.launch()
@@ -183,12 +192,31 @@ final class KnittingEditorUITests: XCTestCase {
         scrollWebViewUntilHittable(supportLink, in: app)
         supportLink.press(forDuration: 1.5)
 
-        // プレビューのメニューはコレクションビューとして公開される。表示の文言は端末の言語で変わる。
-        XCTAssertFalse(
-            app.collectionViews.firstMatch.waitForExistence(timeout: 3),
-            "外部リンクの長押しでプレビューが出た: \(app.debugDescription)"
+        // iOS 18.2・27.0では、プレビューのメニューはコレクションビューとして公開された。
+        // OSの版によってはメニュー項目やシートとして出るおそれがあるため、どの形でも出ないことと、
+        // リンク用の操作（文言は端末の言語で変わる）が無いことを確かめる。
+        let linkActionLabels = [
+            "Open Link", "Add to Reading List", "Copy Link",
+            "リンクを開く", "リーディングリストに追加", "リンクをコピー",
+        ]
+        let previewAppeared = XCTNSPredicateExpectation(
+            predicate: NSPredicate { object, _ in
+                guard let app = object as? XCUIApplication else { return false }
+                return app.collectionViews.firstMatch.exists
+                    || app.menuItems.firstMatch.exists
+                    || app.sheets.firstMatch.exists
+                    || app.descendants(matching: .any)
+                        .matching(NSPredicate(format: "label IN %@", linkActionLabels))
+                        .firstMatch.exists
+            },
+            object: app
         )
-        XCTAssertEqual(app.state, .runningForeground, "長押しで外部リンクを開いてはいけない")
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [previewAppeared], timeout: 3),
+            .timedOut,
+            "外部リンクの長押しでプレビューやリンクのメニューが出た: \(app.debugDescription)"
+        )
+        // 使い方ページのまま残っている（長押しでページを移っていない）。
         XCTAssertTrue(supportLink.exists, app.debugDescription)
     }
 
