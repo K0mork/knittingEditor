@@ -3,8 +3,9 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { EditorAnalytics } from '../analytics';
+import { Board } from '../model/Board';
 import { SAVE_RESULT_UNKNOWN, type EditorPlatform } from '../platform';
-import { deleteBlock, initializeStorage, listBlocks, saveBlock } from '../storage/database';
+import { deleteBlock, initializeStorage, listBlocks, saveBlock, type ChartDocument } from '../storage/database';
 import { EditorView, GESTURE_HINT_DURATION_MS, type EditorViewProps } from './EditorView';
 import { saveErrorMessage, useEditorController, type EditorControllerOptions } from './useEditorController';
 
@@ -98,6 +99,46 @@ describe('EditorView', () => {
     expect(button('描く').getAttribute('aria-pressed')).toBe('false');
     // jsdomはタッチ端末として振る舞わないので、マウス向けのヒントになる。
     expect(container.querySelector('.gesture-hint')?.textContent).toMatch(/^ドラッグ：消去　ホイール：移動　(Ctrl|⌘)＋ホイール：拡大$/);
+  });
+
+  it('picks a color used in the chart and returns to drawing', async () => {
+    const board = new Board(4, 4);
+    board.place(0, 0, 'knit', '#264653');
+    board.place(0, 1, 'knit', '#264653');
+    board.place(1, 0, 'purl', '#f4a261');
+    const document: ChartDocument = {
+      id: 'used-colors', name: '配色', rows: board.rows, cols: board.cols,
+      cells: board.cells.slice().buffer as ArrayBuffer, createdAt: 1, updatedAt: 1,
+    };
+    const { container, button, click } = await renderEditor({ initialize: async () => ({ documents: [document], activeId: document.id, blocks: [] }) });
+    const colorButton = () => container.querySelector<HTMLButtonElement>('.color-tool')!;
+    expect(colorButton().getAttribute('aria-label')).toBe('記号の色を選ぶ（現在：赤 #d33c32）');
+
+    await click('消す');
+    await act(async () => { colorButton().click(); });
+    const dialog = container.querySelector('[role="dialog"]')!;
+    expect(dialog.getAttribute('aria-labelledby')).toBe('color-picker-title');
+    const swatches = Array.from(dialog.querySelectorAll<HTMLButtonElement>('.used-color'));
+    expect(swatches.map((item) => item.getAttribute('aria-label'))).toEqual(['青緑 #264653、記号2個', 'オレンジ #f4a261、記号1個']);
+    expect(swatches.every((item) => item.getAttribute('aria-pressed') === 'false')).toBe(true);
+
+    await act(async () => { swatches[1].click(); });
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
+    expect(colorButton().getAttribute('aria-label')).toBe('記号の色を選ぶ（現在：オレンジ #f4a261）');
+    expect(button('描く').getAttribute('aria-pressed')).toBe('true');
+
+    await act(async () => { colorButton().click(); });
+    expect(container.querySelector('.used-color.selected')?.getAttribute('aria-label')).toBe('オレンジ #f4a261、記号1個');
+  });
+
+  it('shows an empty used-color list and keeps the custom color picker', async () => {
+    const { container } = await renderEditor();
+    await act(async () => { container.querySelector<HTMLButtonElement>('.color-tool')!.click(); });
+    const dialog = container.querySelector('[role="dialog"]')!;
+    expect(dialog.querySelectorAll('.used-color')).toHaveLength(0);
+    expect(dialog.textContent).toContain('まだ記号を置いていません。');
+    const input = dialog.querySelector<HTMLInputElement>('input[type="color"]')!;
+    expect(input.value).toBe('#d33c32');
   });
 
   it('hides the gesture hint about ten seconds after opening', async () => {

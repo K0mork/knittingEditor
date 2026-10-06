@@ -57,6 +57,7 @@ export function useEditorController(options: EditorControllerOptions) {
   const [selectedStitch, setSelectedStitch] = useState('knit');
   const [stitchPickerOpen, setStitchPickerOpen] = useState(false);
   const [selectedColor, setSelectedColor] = useState('#d33c32');
+  const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const [mode, setMode] = useState<CanvasMode>('draw');
   const [selection, setSelection] = useState<Rect>();
   const [pasteBlock, setPasteBlock] = useState<PatternBlock>();
@@ -145,6 +146,14 @@ export function useEditorController(options: EditorControllerOptions) {
     setSelection(undefined);
     setStitchPickerOpen(false);
     analytics.track('stitch_selected', { stitch_key: key });
+  };
+
+  /** 使っている色の一覧から選んだとき。記号を選んだときと同じく、そのまま描けるようにする。 */
+  const selectColor = (color: string) => {
+    setSelectedColor(color);
+    setMode('draw');
+    setSelection(undefined);
+    setColorPickerOpen(false);
   };
 
   const switchDocument = useCallback(async (document: ChartDocument, saveCurrent = true) => {
@@ -309,7 +318,7 @@ export function useEditorController(options: EditorControllerOptions) {
     notify, message,
     initializationError, busy,
     selectedStitch, currentStitch, selectStitch, stitchPickerOpen, setStitchPickerOpen,
-    selectedColor, setSelectedColor,
+    selectedColor, setSelectedColor, selectColor, colorPickerOpen, setColorPickerOpen,
     mode, modeLabel: CANVAS_MODE_LABELS[mode], chooseMode,
     selection, setSelection, clearSelection, startSelecting,
     pasteBlock, copiedBlock, startPaste, copySelection, choosePasteBlock, handlePasteComplete,

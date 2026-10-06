@@ -90,7 +90,15 @@ final class KnittingEditorUITests: XCTestCase {
             .firstMatch
         XCTAssertTrue(emptyCanvas.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
 
+        // 盤面のピンチは、画面全体の拡大を止めても（#81）盤面自身の拡大として効く。
+        // 拡大は盤面の描画だけに表れ、アクセシビリティの値には出ないので、盤面の画像で比べる。
+        let canvasBeforePinch = emptyCanvas.screenshot().pngRepresentation
         emptyCanvas.pinch(withScale: 2.0, velocity: 1.0)
+        XCTAssertNotEqual(
+            emptyCanvas.screenshot().pngRepresentation,
+            canvasBeforePinch,
+            "盤面のピンチで盤面が拡大されない: \(app.debugDescription)"
+        )
         emptyCanvas.pinch(withScale: 0.5, velocity: -1.0)
 
         // 記号数は0のまま変わらない。増えていれば指の位置へ記号が入っている。
@@ -113,6 +121,103 @@ final class KnittingEditorUITests: XCTestCase {
                 .waitForExistence(timeout: Self.editorAppearanceTimeout),
             app.debugDescription
         )
+    }
+
+    /// 盤面の外では、WKWebView由来のWebページ特有の挙動を出さない（#81）。
+    ///
+    /// 対策前は、見出しやツールバーのピンチで画面全体が拡大され（「保存」が約2倍になって
+    /// 画面外へ出た）、見出し・ラベル・ボタン・リンクの長押しで文字が選択されて
+    /// 「Copy」「Look Up」などのメニューが出た。入力欄の文字選択は
+    /// `testDocumentDialogRemainsUsableAfterFocusingInput`で確かめる。
+    func testEditorChromeIgnoresPageZoomAndTextSelection() {
+        let app = XCUIApplication()
+        app.launch()
+
+        let webView = app.webViews.firstMatch
+        XCTAssertTrue(webView.waitForExistence(timeout: Self.editorAppearanceTimeout))
+        let heading = webView.staticTexts["棒針編み図エディタ"].firstMatch
+        let colorLabel = webView.staticTexts["色"].firstMatch
+        let save = app.buttons["保存"]
+        XCTAssertTrue(save.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+        XCTAssertTrue(heading.waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertTrue(colorLabel.waitForExistence(timeout: 10), app.debugDescription)
+        // ピンチは要素の内側へ寄せた2点で行うため、小さな要素（「色」）では位置を計算できない。
+        let toolbar = webView.otherElements
+            .matching(NSPredicate(format: "label BEGINSWITH %@", "編集ツール"))
+            .firstMatch
+        XCTAssertTrue(toolbar.waitForExistence(timeout: 10), app.debugDescription)
+
+        let headingFrame = heading.frame
+        let saveFrame = save.frame
+        heading.pinch(withScale: 3.0, velocity: 2.0)
+        toolbar.pinch(withScale: 3.0, velocity: 2.0)
+        heading.doubleTap()
+        assertFrameUnchanged(of: heading, from: headingFrame, in: app, note: "見出し")
+        assertFrameUnchanged(of: save, from: saveFrame, in: app, note: "保存")
+
+        for (name, element) in [
+            ("見出し", heading),
+            ("ラベル", colorLabel),
+            ("リンク", app.links["使い方"]),
+            // 押すと状態が変わるボタンは、長押しの後のタップが効かないことがあり、
+            // 後続の操作が不安定になる。選択中のモードは押し直しても変わらない。
+            ("ボタン", app.switches["描く"]),
+        ] {
+            XCTAssertTrue(element.waitForExistence(timeout: 10), "\(name): \(app.debugDescription)")
+            element.press(forDuration: 1.5)
+            XCTAssertFalse(
+                app.menuItems.firstMatch.waitForExistence(timeout: 2),
+                "\(name)の長押しで文字選択のメニューが出た: \(app.debugDescription)"
+            )
+        }
+
+        XCTAssertEqual(app.switches["描く"].value as? String, "1", app.debugDescription)
+    }
+
+    /// 使い方ページの外部リンクを長押ししても、リンクのプレビューを出さない（#81）。
+    /// 既定ではプレビューが外部のページをアプリ内で読み込み、「Open Link」「Add to Reading
+    /// List」などのメニューを出していた。外部リンクはタップしたときだけSafariで開く。
+    /// 対策（`allowsLinkPreview = false`）を外したビルドでは、iOS 18.2で失敗することを確かめた。
+    func testGuideExternalLinkShowsNoPreview() {
+        let app = XCUIApplication()
+        app.launch()
+
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
+        let guideLink = app.links["使い方"]
+        XCTAssertTrue(guideLink.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+        guideLink.tap()
+
+        let supportLink = app.links["サポートページ"]
+        XCTAssertTrue(supportLink.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+        scrollWebViewUntilHittable(supportLink, in: app)
+        supportLink.press(forDuration: 1.5)
+
+        // iOS 18.2・27.0では、プレビューのメニューはコレクションビューとして公開された。
+        // OSの版によってはメニュー項目やシートとして出るおそれがあるため、どの形でも出ないことと、
+        // リンク用の操作（文言は端末の言語で変わる）が無いことを確かめる。
+        let linkActionLabels = [
+            "Open Link", "Add to Reading List", "Copy Link",
+            "リンクを開く", "リーディングリストに追加", "リンクをコピー",
+        ]
+        let previewAppeared = XCTNSPredicateExpectation(
+            predicate: NSPredicate { object, _ in
+                guard let app = object as? XCUIApplication else { return false }
+                return app.collectionViews.firstMatch.exists
+                    || app.menuItems.firstMatch.exists
+                    || app.sheets.firstMatch.exists
+                    || app.descendants(matching: .any)
+                        .matching(NSPredicate(format: "label IN %@", linkActionLabels))
+                        .firstMatch.exists
+            },
+            object: app
+        )
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [previewAppeared], timeout: 3),
+            .timedOut,
+            "外部リンクの長押しでプレビューやリンクのメニューが出た: \(app.debugDescription)"
+        )
+        // 使い方ページのまま残っている（長押しでページを移っていない）。
+        XCTAssertTrue(supportLink.exists, app.debugDescription)
     }
 
     /// 盤面のタップで置いた記号を、操作メニューの「元に戻す」「やり直す」で取り消し・再実行できる。
@@ -691,6 +796,17 @@ final class KnittingEditorUITests: XCTestCase {
         let keyboardShown = app.keyboards.firstMatch.waitForExistence(timeout: 5)
         XCTAssertTrue(app.buttons["キャンセル"].isHittable, "キーボード表示=\(keyboardShown): \(app.debugDescription)")
         XCTAssertTrue(app.buttons["決定"].isHittable, "キーボード表示=\(keyboardShown): \(app.debugDescription)")
+
+        // 画面の文字選択を抑えても（#81）、入力欄では文字を選択してコピーできる。
+        nameField.doubleTap()
+        let selectionActions = app.menuItems.matching(NSPredicate(
+            format: "label IN %@",
+            ["Copy", "コピー", "Cut", "カット", "Select", "選択", "Select All", "すべてを選択"]
+        )).firstMatch
+        XCTAssertTrue(
+            selectionActions.waitForExistence(timeout: 10),
+            "入力欄で文字を選択・コピーできない: \(app.debugDescription)"
+        )
     }
 
     func testCoreEditorControlsExposeAccessibleNamesAndState() {
@@ -822,6 +938,29 @@ final class KnittingEditorUITests: XCTestCase {
             thenHoldForDuration: 0.0
         )
         return "閉じ方=下スワイプ(×ボタン exists=\(buttonExists) hittable=\(buttonHittable)) window=\(app.windows.firstMatch.frame)"
+    }
+
+    /// 要素の位置と大きさが変わらないことを確かめる。画面全体が拡大されると、拡大の
+    /// アニメーションのあとで値が変わるため、少し待ってから判断する。
+    private func assertFrameUnchanged(
+        of element: XCUIElement,
+        from frame: CGRect,
+        in app: XCUIApplication,
+        note: String
+    ) {
+        let changed = XCTNSPredicateExpectation(
+            predicate: NSPredicate { object, _ in
+                guard let current = (object as? XCUIElement)?.frame else { return false }
+                return abs(current.minX - frame.minX) > 1 || abs(current.minY - frame.minY) > 1
+                    || abs(current.width - frame.width) > 1 || abs(current.height - frame.height) > 1
+            },
+            object: element
+        )
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [changed], timeout: 2),
+            .timedOut,
+            "\(note)の位置が変わった（画面全体が拡大された） before=\(frame) after=\(element.frame): \(app.debugDescription)"
+        )
     }
 
     private func screenshotAttachment(named name: String) -> XCTAttachment {
