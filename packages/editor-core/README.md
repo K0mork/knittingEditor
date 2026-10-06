@@ -7,7 +7,7 @@ Web版（ルートの`src/`）とiOS版（`ios/Web/src/`）が共有する実装
 
 | 範囲 | 内容 |
 |---|---|
-| `model/` | packed盤面、色、記号の配置。ReactにもDOMにも依存しない。 |
+| `model/` | packed盤面、色、記号の配置、編み図一覧の縮小画像（`thumbnail.ts`）。ReactにもDOMにも依存しない。 |
 | `stitches/` | 記号カタログとベクター記号。`catalog.ts`と`glyphs.ts`は一体で扱う。 |
 | `storage/` | IndexedDBと`.knit`バックアップの入出力・検証。 |
 | `export/` | PNG描画、PDF Worker、PDFの用紙分割計算。Canvas APIを使う。 |

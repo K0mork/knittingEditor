@@ -1,7 +1,11 @@
 import { useEffect, useState, type MouseEventHandler, type ReactNode } from 'react';
 import { BoardCanvas, type CanvasMode } from '../canvas/BoardCanvas';
+import { parseColor } from '../model/Board';
+import { describeColor } from '../model/usedColors';
+import { ColorPicker } from './ColorPicker';
 import { ExportControls } from './ExportControls';
 import { GridControls } from './GridControls';
+import { DocumentList } from './DocumentList';
 import { gestureHintText, historyTitles, useInputEnvironment } from './inputEnvironment';
 import { StitchPicker } from './StitchPicker';
 import { EDITOR_PANEL_TITLES, type EditorController, type EditorPanel } from './useEditorController';
@@ -79,7 +83,10 @@ export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, 
 
     <main className="workspace">
       <section className="primary-tools" aria-label="編集ツール">
-        <label className="color-tool"><span>色</span><input aria-label="記号の色" type="color" value={editor.selectedColor} onChange={(event) => editor.setSelectedColor(event.target.value)} /></label>
+        <button className="color-tool" aria-label={`記号の色を選ぶ（現在：${describeColor(parseColor(editor.selectedColor))} ${editor.selectedColor}）`} aria-haspopup="dialog" aria-expanded={editor.colorPickerOpen} onClick={() => editor.setColorPickerOpen(true)}>
+          <span>色</span>
+          <span className="color-tool-swatch" aria-hidden="true" style={{ backgroundColor: editor.selectedColor }} />
+        </button>
         <button className="stitch-tool" aria-label="編み目記号を選ぶ" aria-haspopup="dialog" aria-expanded={editor.stitchPickerOpen} onClick={() => editor.setStitchPickerOpen(true)}>
           <span aria-hidden="true" dangerouslySetInnerHTML={{ __html: editor.currentStitch.svg }} />
           <span className="stitch-tool-name">{editor.currentStitch.name}</span>
@@ -88,6 +95,15 @@ export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, 
         {MODE_BUTTONS.map((item) => modeButton(item.mode, item.label, () => editor.chooseMode(item.mode)))}
         {copiedBlock && modeButton('paste', '貼付', () => editor.startPaste(copiedBlock))}
       </section>
+
+      {editor.colorPickerOpen && <ColorPicker
+        board={board}
+        revision={session.revision}
+        selectedColor={editor.selectedColor}
+        onSelect={editor.selectColor}
+        onChange={editor.setSelectedColor}
+        onClose={() => editor.setColorPickerOpen(false)}
+      />}
 
       {editor.stitchPickerOpen && <StitchPicker
         selectedStitch={editor.selectedStitch}
@@ -122,12 +138,9 @@ export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, 
       <div className="drawer-heading"><h2 id="app-drawer-title" tabIndex={-1}>{EDITOR_PANEL_TITLES[panel]}</h2><button onClick={editor.closePanel}>閉じる</button></div>
       {panel === 'documents' && <>
         <button className="primary" onClick={() => void editor.createNewDocument()}>新しい編み図</button>
-        <div className="document-list">{session.documents.map((document) => <div className={document.id === activeDocument.id ? 'document active' : 'document'} key={document.id}>
-          <button onClick={() => void editor.switchDocument(document)}>{document.name}<small>{document.rows}×{document.cols}</small></button>
-          <div><button aria-label="名前変更" onClick={() => void editor.renameChart(document)}>名称</button>
-          <button aria-label="複製" onClick={() => void editor.duplicateChart(document)}>複製</button>
-          <button aria-label="削除" disabled={session.documents.length === 1} onClick={() => void editor.deleteChart(document)}>削除</button></div>
-        </div>)}</div>
+        <DocumentList documents={session.documents} activeId={activeDocument.id}
+          onOpen={(document) => void editor.switchDocument(document)} onRename={(document) => void editor.renameChart(document)}
+          onDuplicate={(document) => void editor.duplicateChart(document)} onDelete={(document) => void editor.deleteChart(document)} />
       </>}
       {panel === 'grid' && <GridControls board={board} changed={editor.changed} askText={editor.askText} askConfirm={editor.askConfirm} notify={editor.notify} />}
       {panel === 'blocks' && <>

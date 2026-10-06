@@ -19,6 +19,7 @@
 		CF285C11B3A112C566D556C3 /* NativeBridgeMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DA6B84D7E98986674AF1841 /* NativeBridgeMessage.swift */; };
 		D3CA49E4EE8BA3B56DA80D0E /* NativeBridgeMessageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFE539ADB212ECD98B46BDB /* NativeBridgeMessageTests.swift */; };
 		D7C5FF536E7363BAD27BC269 /* LocalWebSchemeHandlerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02EEF60A275DC7E5B3AFEC1E /* LocalWebSchemeHandlerTests.swift */; };
+		DA9BED17DD090F6AE8270C7A /* AppAppearanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4FB5A4B7A1BE555D1AC9899 /* AppAppearanceTests.swift */; };
 		E0EFF7BEEF040AF9BD12FE82 /* KnittingEditorUTTypeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8552AECC9B947C62C1E8D5EA /* KnittingEditorUTTypeTests.swift */; };
 		F892932BE7BC991009235A25 /* LocalWebSchemeHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2454BC6D34F2448DF141412 /* LocalWebSchemeHandler.swift */; };
 /* End PBXBuildFile section */
@@ -57,6 +58,7 @@
 		9E89D10B53EB561502464406 /* KnittingEditorUTType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnittingEditorUTType.swift; sourceTree = "<group>"; };
 		B879541A0716033B76781073 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		CAFE539ADB212ECD98B46BDB /* NativeBridgeMessageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeBridgeMessageTests.swift; sourceTree = "<group>"; };
+		E4FB5A4B7A1BE555D1AC9899 /* AppAppearanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppAppearanceTests.swift; sourceTree = "<group>"; };
 		F2454BC6D34F2448DF141412 /* LocalWebSchemeHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalWebSchemeHandler.swift; sourceTree = "<group>"; };
 		F41441F8FD8454433D85E51C /* Web */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Web; path = AppResources/Web; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
@@ -73,6 +75,7 @@
 		3F0C5DF9787E7BB97E09855A /* KnittingEditorAppTests */ = {
 			isa = PBXGroup;
 			children = (
+				E4FB5A4B7A1BE555D1AC9899 /* AppAppearanceTests.swift */,
 				8552AECC9B947C62C1E8D5EA /* KnittingEditorUTTypeTests.swift */,
 				02EEF60A275DC7E5B3AFEC1E /* LocalWebSchemeHandlerTests.swift */,
 				CAFE539ADB212ECD98B46BDB /* NativeBridgeMessageTests.swift */,
@@ -317,6 +320,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DA9BED17DD090F6AE8270C7A /* AppAppearanceTests.swift in Sources */,
 				E0EFF7BEEF040AF9BD12FE82 /* KnittingEditorUTTypeTests.swift in Sources */,
 				D7C5FF536E7363BAD27BC269 /* LocalWebSchemeHandlerTests.swift in Sources */,
 				D3CA49E4EE8BA3B56DA80D0E /* NativeBridgeMessageTests.swift in Sources */,

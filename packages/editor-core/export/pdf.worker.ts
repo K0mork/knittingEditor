@@ -6,6 +6,7 @@ import { cellColor, cellStitchId } from '../model/Board';
 import { PDF_LABEL_FONT_SIZE, PDF_LABEL_GAP, pdfLabelWidth, pdfPageLayout, type PdfLayoutOptions, type PdfTile } from './pdfLayout';
 import { errorMessage } from '../util/errors';
 import { labelStride, showsLabel } from './labels';
+import { majorGridLines } from '../model/gridLines';
 
 export interface PdfRequest extends PdfLayoutOptions {
   rows: number;
@@ -77,6 +78,43 @@ function tileLabels(tile: PdfTile, request: PdfRequest, originX: number, originY
   return commands;
 }
 
+/** 通常の罫線と、10目・10段ごとの太線の太さ（pt）と濃さ。 */
+const PDF_MINOR_GRID = '0.35 w 0.78 G';
+const PDF_MAJOR_GRID_GRAY = 0.4;
+const PDF_MAJOR_GRID_MAX_WIDTH = 0.9;
+
+/** 太線の太さ。盤面を1ページに縮めてセルが小さいときは、記号を潰さないよう細くする。 */
+export function pdfMajorGridWidth(cellSize: number): number {
+  return Math.min(PDF_MAJOR_GRID_MAX_WIDTH, Math.max(0.35, cellSize * 0.07));
+}
+
+/**
+ * ページの罫線。太線は分割したページでも盤面全体の番号の10・20・30…の境目に引く。
+ * 通常の線を先に、太線をあとに描き、交点で太線が途切れないようにする。
+ */
+function tileGrid(tile: PdfTile, request: PdfRequest, originX: number, originY: number, cellSize: number): string {
+  const majorRows = new Set(majorGridLines(request.rows, tile.row, tile.rows));
+  const majorCols = new Set(majorGridLines(request.cols, tile.col, tile.cols));
+  const left = originX.toFixed(3);
+  const right = (originX + tile.cols * cellSize).toFixed(3);
+  const bottom = originY.toFixed(3);
+  const top = (originY + tile.rows * cellSize).toFixed(3);
+  // PDFの座標は下が0なので、上から`line`本目の横線は`tile.rows - line`段ぶん上にある。
+  const rowLine = (line: number) => { const y = (originY + (tile.rows - line) * cellSize).toFixed(3); return `${left} ${y} m ${right} ${y} l `; };
+  const colLine = (line: number) => { const x = (originX + line * cellSize).toFixed(3); return `${x} ${bottom} m ${x} ${top} l `; };
+  let minor = `${PDF_MINOR_GRID} `;
+  for (let line = 0; line <= tile.rows; line++) if (!majorRows.has(line)) minor += rowLine(line);
+  for (let line = 0; line <= tile.cols; line++) if (!majorCols.has(line)) minor += colLine(line);
+  let commands = `${minor}S\n`;
+  if (majorRows.size || majorCols.size) {
+    let major = `${pdfMajorGridWidth(cellSize).toFixed(3)} w ${PDF_MAJOR_GRID_GRAY} G `;
+    for (const line of majorRows) major += rowLine(line);
+    for (const line of majorCols) major += colLine(line);
+    commands += `${major}S\n`;
+  }
+  return commands;
+}
+
 export function buildPdf(request: PdfRequest): Uint8Array {
   const cells = new Uint32Array(request.cells);
   const { pageWidth, pageHeight, margin, rowLabelWidth, colLabelHeight, cellSize, tiles } = pdfPageLayout(request.rows, request.cols, request);
@@ -102,16 +140,7 @@ export function buildPdf(request: PdfRequest): Uint8Array {
     const originX = margin + rowLabelWidth;
     const originY = pageHeight - margin - colLabelHeight - tile.rows * cellSize;
     function* pageCommands(): Generator<string> {
-      let grid = '0.35 w 0.78 G ';
-      for (let row = 0; row <= tile.rows; row++) {
-        const y = (originY + row * cellSize).toFixed(3);
-        grid += `${originX.toFixed(3)} ${y} m ${(originX + tile.cols * cellSize).toFixed(3)} ${y} l `;
-      }
-      for (let col = 0; col <= tile.cols; col++) {
-        const x = (originX + col * cellSize).toFixed(3);
-        grid += `${x} ${originY.toFixed(3)} m ${x} ${(originY + tile.rows * cellSize).toFixed(3)} l `;
-      }
-      yield `${grid}S\n`;
+      yield tileGrid(tile, request, originX, originY, cellSize);
       yield tileLabels(tile, request, originX, originY, cellSize);
       for (let localRow = 0; localRow < tile.rows; localRow++) {
         let rowCommands = '';

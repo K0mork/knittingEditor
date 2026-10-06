@@ -250,6 +250,59 @@ test('selects and stores the purl right-leaning two-stitch decrease', async ({ p
   expect(stitchId).toBe(26);
 });
 
+test('picks a color used in the chart from the color list and draws with it', async ({ page }) => {
+  const canvas = page.getByLabel('編み図編集盤面');
+  const box = await canvas.boundingBox();
+  const storedColors = async () => {
+    await page.waitForTimeout(700);
+    return await page.evaluate(async () => {
+      const request = indexedDB.open('knitting-editor-v2');
+      const db = await new Promise<IDBDatabase>((resolve) => { request.onsuccess = () => resolve(request.result); });
+      const get = db.transaction('documents').objectStore('documents').getAll();
+      const documents = await new Promise<Array<{ cells: ArrayBuffer }>>((resolve) => { get.onsuccess = () => resolve(get.result); });
+      return [...new Uint32Array(documents[0].cells)].filter(Boolean).map((value) => `#${(value & 0xffffff).toString(16).padStart(6, '0')}`);
+    });
+  };
+  const colorButton = page.getByRole('button', { name: /^記号の色を選ぶ/ });
+  const picker = page.getByRole('dialog', { name: '記号の色' });
+
+  // 何も置いていなければ一覧は空で、ほかの色から選ぶ。
+  await colorButton.click();
+  await expect(picker).toBeVisible();
+  await expect(picker.getByText('まだ記号を置いていません。')).toBeVisible();
+  await picker.getByRole('button', { name: '閉じる' }).click();
+  await expect(picker).toBeHidden();
+
+  await page.mouse.click(box!.x + 75, box!.y + 75);
+  await colorButton.click();
+  await picker.getByLabel('色を選ぶ').fill('#264653');
+  await expect(colorButton).toHaveAccessibleName('記号の色を選ぶ（現在：青緑 #264653）');
+  await picker.getByRole('button', { name: '閉じる' }).click();
+  await page.mouse.click(box!.x + 140, box!.y + 75);
+  expect(await storedColors()).toEqual(['#d33c32', '#264653']);
+
+  // 消すモードからでも、一覧で選べばその色で描けるようになる。
+  await page.getByRole('button', { name: '消す' }).click();
+  await colorButton.click();
+  const swatches = picker.getByRole('group', { name: 'この編み図で使っている色' }).getByRole('button');
+  await expect(swatches).toHaveCount(2);
+  await expect(swatches.nth(0)).toHaveAccessibleName('赤 #d33c32、記号1個');
+  await expect(swatches.nth(1)).toHaveAccessibleName('青緑 #264653、記号1個');
+  await expect(swatches.nth(1)).toHaveAttribute('aria-pressed', 'true');
+  for (const index of [0, 1]) {
+    const swatch = await swatches.nth(index).boundingBox();
+    expect(swatch!.width).toBeGreaterThanOrEqual(44);
+    expect(swatch!.height).toBeGreaterThanOrEqual(44);
+  }
+  await swatches.nth(0).click();
+  await expect(picker).toBeHidden();
+  await expect(colorButton).toHaveAccessibleName('記号の色を選ぶ（現在：赤 #d33c32）');
+  await expect(page.getByRole('button', { name: '描く' })).toHaveAttribute('aria-pressed', 'true');
+
+  await page.mouse.click(box!.x + 205, box!.y + 75);
+  expect(await storedColors()).toEqual(['#d33c32', '#264653', '#d33c32']);
+});
+
 test('creates a block and exports backup and PDF', async ({ page }) => {
   // iPhone相当の設定では共有シートへ渡す（別のテストで確かめる）。ここではダウンロードした`.knit`で往復を確かめる。
   await page.addInitScript(() => Object.defineProperty(Navigator.prototype, 'canShare', { value: undefined, configurable: true }));
@@ -295,6 +348,46 @@ test('creates a block and exports backup and PDF', async ({ page }) => {
   const pdfDownload = page.waitForEvent('download');
   await page.getByRole('button', { name: 'PDFを保存' }).click();
   expect((await pdfDownload).suggestedFilename()).toMatch(/\.pdf$/);
+});
+
+test('draws the ten-stitch major lines in the PNG at the numbered tens', async ({ page }) => {
+  await page.addInitScript(() => Object.defineProperty(Navigator.prototype, 'canShare', { value: undefined, configurable: true }));
+  await page.reload();
+  await page.getByRole('button', { name: '盤面' }).click();
+  await page.getByLabel('段数').fill('25');
+  await page.getByLabel('列数').fill('23');
+  await page.getByRole('button', { name: '変更' }).click();
+  await page.getByRole('button', { name: '閉じる' }).click();
+
+  await page.getByRole('button', { name: '保存' }).click();
+  // 25段×23目は既定の1セル24pxで、四辺の番号の帯も24px。
+  await expect(page.getByText('600×648px')).toBeVisible();
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'PNGを保存' }).click();
+  const png = readFileSync((await (await download).path())!);
+
+  // 盤面の中を縦・横に1本ずつたどり、太線の色（#666）の画素の位置を集める。
+  const darkPixels = await page.evaluate(async (base64) => {
+    const image = await createImageBitmap(await (await fetch(`data:image/png;base64,${base64}`)).blob());
+    const canvas = new OffscreenCanvas(image.width, image.height);
+    const context = canvas.getContext('2d')!;
+    context.drawImage(image, 0, 0);
+    const isDark = (x: number, y: number) => {
+      const [red, green, blue] = context.getImageData(x, y, 1, 1).data;
+      return red === 0x66 && green === 0x66 && blue === 0x66;
+    };
+    const rows: number[] = [];
+    const cols: number[] = [];
+    // 0段目・0目のマスの中央（左上の帯24pxの内側）を通る線でたどる。
+    for (let y = 24; y < 24 + 25 * 24; y++) if (isDark(36, y)) rows.push(y);
+    for (let x = 24; x < 24 + 23 * 24; x++) if (isDark(x, 36)) cols.push(x);
+    return { rows, cols };
+  }, png.toString('base64'));
+  // 段番号10・20の上の罫線は上端から15本目・5本目、目番号10・20の左の罫線は左端から13本目・3本目。
+  // 2pxの太線は罫線の位置の上側（左側）の画素と合わせて2画素になる。
+  const line = (index: number) => [24 + index * 24 - 1, 24 + index * 24];
+  expect(darkPixels.rows).toEqual([...line(5), ...line(15)]);
+  expect(darkPixels.cols).toEqual([...line(3), ...line(13)]);
 });
 
 test('hands PNG and PDF to the share sheet on iPhone Safari without leaving the editor', async ({ page }, testInfo) => {

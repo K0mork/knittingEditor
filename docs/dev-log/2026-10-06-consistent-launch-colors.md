@@ -1,0 +1,27 @@
+# 2026-10-06 — iOS版を明るい配色に固定し、起動画面から編集画面までの色をそろえる
+
+- 影響: 端末がダークモードのとき、起動画面（緑）→準備中の表示（黒）→編集画面（明るい生成り色）と色が切り替わっていたのを直した（#79）。ライトモードでも、準備中の表示は白だった。v1.0では、ダークモードに対応せず、明るい配色に固定する。編集画面のCSSにはダーク用の配色が無く、ダークモードへ対応するには、盤面・ダイアログ・使い方ページの配色と、紙に印刷するPNG・PDFの扱いを決める必要があるため。
+  - `Info.plist`に`UIUserInterfaceStyle`=`Light`を足した。端末がダークモードでも、アプリの中（準備中の表示、保存画面などのシステムのダイアログ、ステータスバーの領域）は明るい配色になる。
+  - 起動直後の準備中の表示を、起動画面と同じ`LaunchBackground`の緑にした。文字とくるくる回る表示は白（緑とのコントラスト比は約6:1）。起動画面から準備中の表示へは色が変わらず、次に編集画面が出る。
+  - 使い方ページから編集画面へ戻るときなど、編集画面を一度表示したあとの準備中の表示は、編集画面の地の色（`#f3f0e8`）にした。文字は編集画面の補足の文字と同じ`#526059`（コントラスト比は約5.9:1）。使い方ページの地の色も同じなので、アプリの中で緑が一瞬出ることはない。
+  - `WKWebView`の背景を`.systemBackground`から編集画面の地の色（`#f3f0e8`）に変えた。文書が描かれるまでの間に白や黒が見えない。
+  - 起動画面の色（`LaunchBackground`）とApp Store用の起動画面のスクリーンショットは変えていない。
+  - Web版は変えていない。
+- 主なファイル: `ios/App/Info.plist`、`ios/App/KnittingEditorApp.swift`、`ios/App/WebViewContainer.swift`、`ios/Tests/KnittingEditorAppTests/AppAppearanceTests.swift`（新規）、`ios/knittingEditor.xcodeproj/project.pbxproj`（XcodeGenで再生成し、新しいテストファイルを足した）
+- テスト: `AppAppearanceTests`を足した。`UIUserInterfaceStyle`が`Light`であること、起動画面が`LaunchBackground`を使い、起動直後の準備中の表示が同じ色であること（ライト・ダークの両方で）、準備中の表示の文字のコントラスト比がWCAGのAA（4.5:1）以上であること、編集画面へ戻るときの準備中の表示と`WKWebView`の背景の色が`#f3f0e8`で、同梱した編集画面のCSSにも同じ色があること、準備中の表示の配色が「起動直後」から「編集画面を表示したあと」へ切り替わり、使い方ページから戻るときも起動画面の色に戻らないことを確かめる。
+- 検証:
+  - `xcodegen generate --spec ios/project.yml`を実行し、新しいテストファイルが`project.pbxproj`へ入ることを確かめた。
+  - 手元のiPhone 18 Pro Simulator（iOS 27.0、Xcode 27.0。CIは26.6）で`xcodebuild test -project ios/knittingEditor.xcodeproj -scheme knittingEditor -destination 'platform=iOS Simulator,id=<udid>' -only-testing:knittingEditorTests CODE_SIGNING_ALLOWED=NO`を実行した。33件中、機内モード用の1件がskipされ、失敗は0件だった（`AppAppearanceTests`は7件すべて成功）。
+  - 変更したファイルで、コンパイラの警告が増えていないことを確かめた。
+  - 画面の色は、Simulatorでアプリを入れ直して起動し、`xcrun simctl io recordVideo`の画面収録と`xcrun simctl io screenshot`の連続撮影で、ライト・ダークそれぞれの起動から編集画面までを確かめた（収録はリポジトリに入れていない）。端末はiPhone 18 Pro（iOS 27.0）、iPhone 16（iOS 18.2）、iPad (10th generation)（iOS 18.2）。
+    - どの端末でも、ライト・ダークとも「起動画面（緑）→準備中の表示（緑）→編集画面」となり、黒や白の全面表示は出なかった。変更前の状態（Issueの記載では、ダークモードで準備中の表示が黒）は手元で収録していない。
+    - 準備中の表示が消えてから編集画面が出るまでに、0.1〜0.3秒ほど編集画面の地の色だけの画面や、Web側の「編み図を読み込んでいます…」が見えた。色は編集画面と同じ。iOS 27.0では`ios/Web/index.html`の仮の文言が一瞬見えることもあった。`webReady`が端末内データの準備より前に届くためで、この変更の前からある。#117 に分けた。
+    - iOS 27.0のSimulatorでは、起動画面の緑が準備中の表示の緑より鮮やかに表示された（iOS 18.2では同じ色）。色空間を`display-p3`にしても差は残ったため、色定義は変えていない。実機で確かめることを #117 に書いた。
+    - 使い方ページから戻るときの準備中の表示は、レビューの指摘のあとにiPhone 16（iOS 18.2）のSimulatorで確かめた。編集画面→「使い方」→使い方ページの「編み図を作成する」の順に操作し、`xcrun simctl io recordVideo`の収録を30コマ/秒で切り出して見た。使い方ページ（`#f3f0e8`）→準備中の表示（`#f3f0e8`、文字は`#526059`、約0.2秒）→地の色だけのページ（約0.2秒）→編集画面と移り、緑・黒・白の全面表示ははさまらなかった（収録はリポジトリに入れていない）。
+  - Simulatorのテスト一式（iPhone・iPad）、アプリ更新テスト、Release Archive、同梱物の検査は、PRのCIに任せた。Webのソースと`packages/`は変えていないので、Webの必須スイートとiOS Webの検査は実行していない。
+- レビューの指摘への対応:
+  - `AppColors.editorSecondaryText`のドキュメントコメントの括弧の中が空だったので、参照元（`packages/editor-core/styles/base.css`の`.gesture-hint`の`color`）を書いた。
+  - `testEditorPageBackgroundMatchesBundledStylesheet`は、圧縮後のCSSに`background:#f3f0e8`という文字列があるかを見ていた。同梱のCSSの`:root`の中から`background`（または`background-color`）の色を空白に寛容な正規表現で取り出し、`AppColors.editorPageBackground`の色と比べるようにした。圧縮の有無、空白、宣言の順番、3桁の書き方が変わっても、色が同じなら失敗しない。
+  - 確認: 手元のiPhone 18 Pro Simulator（iOS 27.0、Xcode 27.0）で`xcodebuild test -project ios/knittingEditor.xcodeproj -scheme knittingEditor -destination 'platform=iOS Simulator,id=<udid>' -only-testing:knittingEditorTests/AppAppearanceTests CODE_SIGNING_ALLOWED=NO`を実行し、7件すべて成功した（アプリのビルドを含む）。ファイルの追加は無いので`xcodegen generate`は実行していない。Simulatorのテスト一式（iPhone・iPad）、アプリ更新テスト、Release Archive、同梱物の検査は、PRのCIに任せた。
+- 今後: ダークモードへの対応は #116 に分けた。
+- デプロイ影響: Pagesへの配信はない（iOSだけの変更）。TestFlightに載せたら、実機のライト・ダークそれぞれで、起動から編集画面まで色がちらつかないことを確かめる。
