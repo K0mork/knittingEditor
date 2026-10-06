@@ -145,12 +145,7 @@ final class KnittingEditorUITests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
 
-        let documents = app.buttons["編み図"]
-        XCTAssertTrue(documents.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
-        documents.tap()
-        let newDocument = app.buttons["新しい編み図"]
-        XCTAssertTrue(newDocument.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
-        newDocument.tap()
+        openDocumentsPanel(in: app).tap()
 
         let nameField = app.textFields["入力"]
         XCTAssertTrue(nameField.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
@@ -186,17 +181,7 @@ final class KnittingEditorUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
-        let documents = app.buttons["編み図"]
-        XCTAssertTrue(documents.waitForExistence(timeout: Self.editorAppearanceTimeout))
-        documents.tap()
-
-        let newDocument = app.buttons["新しい編み図"]
-        XCTAssertTrue(newDocument.waitForExistence(timeout: Self.editorAppearanceTimeout))
-        newDocument.tap()
-        let nameField = app.textFields["入力"]
-        XCTAssertTrue(nameField.waitForExistence(timeout: Self.editorAppearanceTimeout))
-        replaceText("再起動復元テスト", in: nameField, app: app)
-        confirmDialog(closing: nameField, in: app)
+        createDocument(named: "再起動復元テスト", in: app)
 
         let webView = app.webViews.firstMatch
         let canvas = webView.otherElements
@@ -229,17 +214,7 @@ final class KnittingEditorUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
-        let documents = app.buttons["編み図"]
-        XCTAssertTrue(documents.waitForExistence(timeout: Self.editorAppearanceTimeout))
-        documents.tap()
-
-        let newDocument = app.buttons["新しい編み図"]
-        XCTAssertTrue(newDocument.waitForExistence(timeout: Self.editorAppearanceTimeout))
-        newDocument.tap()
-        let nameField = app.textFields["入力"]
-        XCTAssertTrue(nameField.waitForExistence(timeout: Self.editorAppearanceTimeout))
-        replaceText("M2切替A", in: nameField, app: app)
-        confirmDialog(closing: nameField, in: app)
+        createDocument(named: "M2切替A", in: app)
 
         let webView = app.webViews.firstMatch
         let emptyCanvas = webView.otherElements
@@ -253,11 +228,7 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertTrue(editedCanvas.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
         waitForDocumentSave(named: "M2切替A", in: webView)
 
-        documents.tap()
-        newDocument.tap()
-        XCTAssertTrue(nameField.waitForExistence(timeout: Self.editorAppearanceTimeout))
-        replaceText("M2切替B", in: nameField, app: app)
-        confirmDialog(closing: nameField, in: app)
+        createDocument(named: "M2切替B", in: app)
 
         let secondEmptyCanvas = webView.otherElements
             .matching(NSPredicate(format: "label CONTAINS %@", "記号0個"))
@@ -272,7 +243,7 @@ final class KnittingEditorUITests: XCTestCase {
             app.debugDescription
         )
         waitForDocumentSave(named: "M2切替B", in: webView)
-        documents.tap()
+        openDocumentsPanel(in: app)
         let documentA = app.buttons
             .matching(NSPredicate(format: "label BEGINSWITH %@", "M2切替A"))
             .firstMatch
@@ -286,7 +257,7 @@ final class KnittingEditorUITests: XCTestCase {
             app.debugDescription
         )
 
-        documents.tap()
+        openDocumentsPanel(in: app)
         let documentB = app.buttons
             .matching(NSPredicate(format: "label BEGINSWITH %@", "M2切替B"))
             .firstMatch
@@ -343,14 +314,7 @@ final class KnittingEditorUITests: XCTestCase {
 
         // 盤面の状態に依存しないよう、空の編み図を作ってから描画を確認する。
         // 小さいウィンドウでのダイアログとキーボード入力もここで通る。
-        app.buttons["編み図"].tap()
-        let newDocument = app.buttons["新しい編み図"]
-        XCTAssertTrue(newDocument.waitForExistence(timeout: 10), app.debugDescription)
-        newDocument.tap()
-        let nameField = app.textFields["入力"]
-        XCTAssertTrue(nameField.waitForExistence(timeout: 10), app.debugDescription)
-        replaceText("可変ウィンドウ確認", in: nameField, app: app)
-        confirmDialog(closing: nameField, in: app)
+        createDocument(named: "可変ウィンドウ確認", in: app)
 
         let canvas = app.webViews.firstMatch.otherElements
             .matching(NSPredicate(format: "label CONTAINS %@", "記号0個"))
@@ -698,12 +662,10 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
         assertPrimaryControlsAreUsable(in: app)
 
-        XCUIDevice.shared.orientation = .landscapeLeft
-        XCTAssertTrue(app.windows.firstMatch.waitForExistence(timeout: 5))
+        rotateToLandscape(app)
         assertPrimaryControlsAreUsable(in: app)
 
-        app.buttons["編み図"].tap()
-        XCTAssertTrue(app.buttons["新しい編み図"].waitForExistence(timeout: 10))
+        openDocumentsPanel(in: app)
         XCTAssertTrue(app.buttons["閉じる"].isHittable, app.debugDescription)
     }
 
@@ -712,12 +674,7 @@ final class KnittingEditorUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
-        let documents = app.buttons["編み図"]
-        XCTAssertTrue(documents.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
-        documents.tap()
-        let newDocument = app.buttons["新しい編み図"]
-        XCTAssertTrue(newDocument.waitForExistence(timeout: 10))
-        newDocument.tap()
+        openDocumentsPanel(in: app).tap()
 
         let nameField = app.textFields["入力"]
         XCTAssertTrue(nameField.waitForExistence(timeout: 10))
@@ -785,8 +742,7 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
         assertPrimaryControlsAreUsable(in: app)
 
-        app.buttons["編み図"].tap()
-        XCTAssertTrue(app.buttons["新しい編み図"].waitForExistence(timeout: 10))
+        openDocumentsPanel(in: app)
         XCTAssertTrue(app.buttons["閉じる"].isHittable, app.debugDescription)
         app.buttons["閉じる"].tap()
 
@@ -798,7 +754,7 @@ final class KnittingEditorUITests: XCTestCase {
 
         // 横向きの回帰防止。ヘッダーを固定高にしていたため、最大アクセシビリティサイズでは
         // 「編み図」「使い方」が画面上端の外（y=-58）へ押し出されて操作できなかった。
-        XCUIDevice.shared.orientation = .landscapeLeft
+        rotateToLandscape(app)
         XCTAssertTrue(app.buttons["編み図"].waitForExistence(timeout: 10), app.debugDescription)
         assertWithinWindow(app.buttons["編み図"], in: app)
         assertWithinWindow(app.links["使い方"], in: app)
@@ -893,14 +849,26 @@ final class KnittingEditorUITests: XCTestCase {
     /// 最後に入力結果を検査する。
     /// 空の盤面から始めるため、名前を指定して新しい編み図を作る。
     private func createDocument(named name: String, in app: XCUIApplication) {
+        openDocumentsPanel(in: app).tap()
+        let nameField = app.textFields["入力"]
+        XCTAssertTrue(nameField.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+        replaceText(name, in: nameField, app: app)
+        confirmDialog(closing: nameField, in: app)
+    }
+
+    /// 「編み図」を押してパネルを開き、「新しい編み図」を返す。
+    ///
+    /// 起動直後や画面の向きを変えた直後は「編み図」のタップが効かず、パネルが開かないことが
+    /// ある（iPadのCIで、起動直後は「新しい編み図」が45秒現れず、横向きにした約10秒後の
+    /// タップでもパネルの「閉じる」が無いままだった）。しばらく待っても出ないときは、
+    /// パネルが開いていない（「閉じる」もない）場合に限って押し直す。開いているのに
+    /// 出なければ押し直すとパネルを閉じてしまうので、そのまま待って失敗にする。
+    @discardableResult
+    private func openDocumentsPanel(in app: XCUIApplication) -> XCUIElement {
         let documents = app.buttons["編み図"]
         XCTAssertTrue(documents.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
         documents.tap()
         let newDocument = app.buttons["新しい編み図"]
-        // 起動直後は「編み図」のタップが効かず、パネルが開かないことがある（iPadのCIで
-        // 「新しい編み図」が45秒現れなかった）。しばらく待っても出ないときは、パネルが
-        // 開いていない（「閉じる」もない）場合に限って押し直す。開いているのに出なければ
-        // 押し直すとパネルを閉じてしまうので、そのまま待って失敗にする。
         if !newDocument.waitForExistence(timeout: 10), !app.buttons["閉じる"].exists {
             documents.tap()
         }
@@ -908,11 +876,28 @@ final class KnittingEditorUITests: XCTestCase {
             newDocument.waitForExistence(timeout: Self.editorAppearanceTimeout),
             "「編み図」でパネルが開かない: \(app.debugDescription)"
         )
-        newDocument.tap()
-        let nameField = app.textFields["入力"]
-        XCTAssertTrue(nameField.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
-        replaceText(name, in: nameField, app: app)
-        confirmDialog(closing: nameField, in: app)
+        return newDocument
+    }
+
+    /// 端末を横向きにし、WebViewが横長に配置し直されるまで待つ。
+    ///
+    /// 向きの設定は端末へ伝えた時点で戻り、レイアウトの完了を待たない。以前の
+    /// `app.windows.firstMatch`の存在確認は向きと関係なく成立し、待機になっていなかった。
+    private func rotateToLandscape(_ app: XCUIApplication) {
+        XCUIDevice.shared.orientation = .landscapeLeft
+        let webView = app.webViews.firstMatch
+        let landscape = XCTNSPredicateExpectation(
+            predicate: NSPredicate { element, _ in
+                guard let frame = (element as? XCUIElement)?.frame else { return false }
+                return frame.width > frame.height
+            },
+            object: webView
+        )
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [landscape], timeout: 10),
+            .completed,
+            "横向きの配置にならない webView=\(webView.frame): \(app.debugDescription)"
+        )
     }
 
     private func replaceText(_ text: String, in field: XCUIElement, app: XCUIApplication) {
@@ -1016,14 +1001,35 @@ final class KnittingEditorUITests: XCTestCase {
         for name in ["描く", "消す", "範囲"] {
             XCTAssertTrue(app.switches[name].waitForExistence(timeout: 10), "\(name) が見つかりません: \(app.debugDescription)")
         }
-        if !app.switches["範囲"].isHittable {
-            let toolbar = app.otherElements
-                .matching(NSPredicate(format: "label BEGINSWITH %@", "編集ツール"))
-                .firstMatch
+        // 編集ツールは横スクロールで、狭い画面や大きな文字では「範囲」が右の画面外にある。
+        // スワイプの直後はスクロールがまだ反映されていないことがある（CIのiPhone 17・文字サイズ
+        // 最大で、スワイプ0.02秒後の検査では「範囲」がスワイプ前の位置のままだった。成功した
+        // 回は0.7秒後に検査していた）。押せる位置に来るまで待ち、来なければスワイプし直す。
+        // ツールバーが動かない・届かない不具合は、最後の検査で失敗になる。
+        let rangeSwitch = app.switches["範囲"]
+        let toolbar = app.otherElements
+            .matching(NSPredicate(format: "label BEGINSWITH %@", "編集ツール"))
+            .firstMatch
+        var swipes = 0
+        while !rangeSwitch.isHittable, swipes < 3 {
             XCTAssertTrue(toolbar.waitForExistence(timeout: 5), app.debugDescription)
             toolbar.swipeLeft()
+            swipes += 1
+            _ = waitForHittable(rangeSwitch, timeout: 5)
         }
-        XCTAssertTrue(app.switches["範囲"].isHittable, app.debugDescription)
+        XCTAssertTrue(
+            rangeSwitch.isHittable,
+            "「範囲」をツールバーのスクロールで押せる位置へ出せない（スワイプ\(swipes)回） " +
+                "範囲=\(rangeSwitch.frame) ツールバー=\(toolbar.frame): \(app.debugDescription)"
+        )
+    }
+
+    private func waitForHittable(_ element: XCUIElement, timeout: TimeInterval) -> Bool {
+        let hittable = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "isHittable == true"),
+            object: element
+        )
+        return XCTWaiter.wait(for: [hittable], timeout: timeout) == .completed
     }
 
     private func cancelExportAlert(in app: XCUIApplication) {
