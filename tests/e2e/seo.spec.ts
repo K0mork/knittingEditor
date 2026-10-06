@@ -105,12 +105,29 @@ test('links the guide to the third-party license notices', async ({ page }) => {
   await expect(page).toHaveURL(/\/guide\/$/);
 });
 
-test('publishes the guide in the sitemap', async ({ page }) => {
+test('serves the support page with a private contact and links it from the guide', async ({ page }) => {
+  await page.goto('/guide/');
+  await page.getByRole('link', { name: 'サポート・お問い合わせ' }).click();
+  await expect(page).toHaveURL(/\/support\/$/);
+  await expect(page).toHaveTitle('サポート｜棒針編み図エディタ');
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://knittingeditor.com/support/');
+  await expect(page.locator('meta[property="og:url"]')).toHaveAttribute('content', 'https://knittingeditor.com/support/');
+  await expectLargeImageCard(page);
+  await expectAppIconLinks(page);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('サポート');
+  await expect(page.getByRole('link', { name: 'support@knittingeditor.com' })).toHaveAttribute('href', 'mailto:support@knittingeditor.com');
+  await expect(page.getByRole('link', { name: 'GitHub Issues' })).toHaveAttribute('href', 'https://github.com/K0mork/knittingEditor/issues');
+  await page.getByRole('link', { name: '使い方' }).click();
+  await expect(page).toHaveURL(/\/guide\/$/);
+});
+
+test('publishes the guide and the support page in the sitemap', async ({ page }) => {
   const sitemap = await page.request.get('/sitemap.xml');
   expect(sitemap.status()).toBe(200);
   const xml = await sitemap.text();
   expect(xml).toContain('<loc>https://knittingeditor.com/</loc>');
   expect(xml).toContain('<loc>https://knittingeditor.com/guide/</loc>');
+  expect(xml).toContain('<loc>https://knittingeditor.com/support/</loc>');
 });
 
 test('serves the app icon as the favicon and touch icons', async ({ page }) => {

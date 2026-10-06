@@ -21,6 +21,7 @@ if (!origin.startsWith('https://')) throw new Error(`本番URLはHTTPSで指定�
 const files = [
   { path: '/', type: 'text/html', distFile: 'index.html' },
   { path: '/guide/', type: 'text/html', distFile: 'guide/index.html' },
+  { path: '/support/', type: 'text/html', distFile: 'support/index.html' },
   { path: '/third-party-notices/', type: 'text/html', distFile: 'third-party-notices/index.html' },
   { path: '/favicon.ico', type: 'image/vnd.microsoft.icon' },
   { path: '/icon-192.png', type: 'image/png' },

@@ -1,0 +1,7 @@
+# 2026-10-06 — アカウント無しで非公開に問い合わせできるサポートページを追加
+
+- 影響: `https://knittingeditor.com/support/`を新設し、メール（`support@knittingeditor.com`）で非公開に問い合わせられるようにした。GitHub Issuesは公開の報告先として残す。Web版の使い方ページのフッターからサポートページへ進める。iOS版の「使い方」の「サポート」は、GitHub Issuesの代わりにメール（メールアプリで開く）とサポートページ（Safariで開く）へ案内する。App Storeのサポートを、GitHub Issuesだけでは審査で指摘されるおそれがあるため（App Review Guidelines 1.5、#75）。
+- 主なファイル: `public/support/index.html`、`public/guide/index.html`、`public/sitemap.xml`、`ios/Web/public/guide/index.html`、`scripts/check-dist.mjs`、`scripts/check-live-site.mjs`、`ios/scripts/check-app-store-docs.sh`、`ios/docs/APP_STORE_METADATA.md`、`ios/docs/APP_STORE_CHECKLIST.md`、`ios/docs/PRIVACY_POLICY.md`、`ios/docs/APP_REVIEW_NOTES.md`
+- テスト: `tests/e2e/seo.spec.ts`に、使い方ページからサポートページへ進み、メタデータ、`mailto:`のメールリンク、GitHub Issuesへのリンク、使い方へ戻るリンクを確かめるテストを足した。サイトマップのテストに`/support/`を足した。`check-dist`は`support/index.html`の存在、og:image、アイコンを、`check-live-site`（`smoke`）は配信後の`/support/`を確かめる。
+- 検証: `npm run typecheck`、`npm test`（133件）、`npm run build`、`npm run check:dist`、`npm run test:e2e`（chromium-desktop、chromium-mobile、webkit-mobileで85件成功、既存の2件はスキップ）、`ios/scripts/check-app-store-docs.sh`、iOS Webの型検査（`tsc -p tsconfig.app.json --noEmit`）とテスト（`vitest run --config vite.config.ts`、8件）はすべて成功。手元のNode.jsは26で、指定の24ではない。ビルドした`dist/support/index.html`を幅375pxと幅800pxで表示し、横にはみ出さないことを確かめた。iOSのSimulatorの検査とアプリのビルドはPRのCIに任せた（Swiftとビルド設定は変えていない）。
+- デプロイ影響: Pagesへ`/support/`が配信される。配信後に`smoke`が`/support/`を確かめる。`support@knittingeditor.com`の受信設定（DNSのMXレコードと転送）はリポジトリの外で行い、外部のアドレスから送ったメールが届き、同じアドレスから返信できることを、このPRをマージする前に確かめる。

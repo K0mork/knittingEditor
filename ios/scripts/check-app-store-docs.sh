@@ -82,8 +82,8 @@ for key in CFBundleDisplayName CFBundleName; do
   }
 done
 
-grep -qE -- 'サポートURL: `https://github\.com/K0mork/knittingEditor/issues`' "$METADATA" || {
-  echo "support URL is missing or does not target the public repository" >&2
+grep -qE -- 'サポートURL: `https://knittingeditor\.com/support/`' "$METADATA" || {
+  echo "support URL is missing or does not target the support page" >&2
   exit 1
 }
 grep -qE -- 'プライバシーポリシーURL候補: `https://github\.com/K0mork/knittingEditor/blob/main/ios/docs/PRIVACY_POLICY\.md`' "$METADATA" || {
