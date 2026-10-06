@@ -368,30 +368,27 @@ final class KnittingEditorUITests: XCTestCase {
     }
 
 
-    /// 1000×1000盤面の保存と再起動復元にかかる時間を実機で測る。
+    /// 1000×1000盤面の描画・保存・再起動復元・PNG/PDF出力にかかる時間を実機で測る。
     ///
-    /// 盤面サイズの数値欄はXCUITestからの入力が安定しない（キャレット位置が定まらず
-    /// `20`から`01000`や`100020`になる）ため、盤面は手で1000×1000にしてから実行する。
+    /// 盤面は毎回、新しい編み図を作って「盤面」パネルの段数・列数で1000×1000にする。
+    /// 測るだけで遅いため、CIでは実行しない。実機で次のように実行する。
     ///
     ///     TEST_RUNNER_KNITTING_EDITOR_LARGE_BOARD=1 xcodebuild test ... \
     ///       -only-testing:knittingEditorUITests/KnittingEditorUITests/testLargeBoardSavesAndRestores
     func testLargeBoardSavesAndRestores() throws {
         try XCTSkipUnless(
             ProcessInfo.processInfo.environment["KNITTING_EDITOR_LARGE_BOARD"] == "1",
-            "盤面を手で1000×1000にしたうえで、TEST_RUNNER_KNITTING_EDITOR_LARGE_BOARD=1を付けて実行する"
+            "時間がかかるため、TEST_RUNNER_KNITTING_EDITOR_LARGE_BOARD=1を付けたときだけ実行する"
         )
         let app = XCUIApplication()
         app.launch()
         let webView = app.webViews.firstMatch
         XCTAssertTrue(webView.waitForExistence(timeout: Self.editorAppearanceTimeout))
+        createDocument(named: "1000×1000測定", in: app)
 
-        let large = webView.otherElements
-            .matching(NSPredicate(format: "label CONTAINS %@", "1000段、1000目"))
-            .firstMatch
-        XCTAssertTrue(
-            large.waitForExistence(timeout: 120),
-            "1000×1000の編み図を開いた状態で実行する: \(app.debugDescription)"
-        )
+        let resizeStart = Date()
+        let large = resizeBoard(rows: 1000, cols: 1000, in: app)
+        let resizeSeconds = Date().timeIntervalSince(resizeStart)
         let before = try XCTUnwrap(stitchCount(of: large), app.debugDescription)
 
         // 記号を1つ置いてから、保存が完了するまでを測る。
@@ -407,30 +404,94 @@ final class KnittingEditorUITests: XCTestCase {
             "1000×1000盤面へ描画できない: \(app.debugDescription)"
         )
         let editSeconds = Date().timeIntervalSince(editStart)
+        let after = try XCTUnwrap(stitchCount(of: large), app.debugDescription)
 
         let saveStart = Date()
-        let saving = webView.descendants(matching: .staticText)
-            .matching(NSPredicate(format: "label CONTAINS %@", "（保存中…）"))
-            .firstMatch
-        let saved = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: saving)
-        XCTAssertEqual(XCTWaiter.wait(for: [saved], timeout: 120), .completed, app.debugDescription)
+        waitForDocumentSave(named: "1000×1000測定", in: webView)
         let saveSeconds = Date().timeIntervalSince(saveStart)
 
         app.terminate()
         let restoreStart = Date()
         app.launch()
         let restored = app.webViews.firstMatch.otherElements
-            .matching(NSPredicate(format: "label CONTAINS %@", "1000段、1000目"))
+            .matching(NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", "1000段、1000目", "記号\(after)個"))
             .firstMatch
         XCTAssertTrue(restored.waitForExistence(timeout: 180), "再起動後に1000×1000を復元できない: \(app.debugDescription)")
         let restoreSeconds = Date().timeIntervalSince(restoreStart)
 
+        let pngSeconds = measureExport(button: "PNGを保存", in: app)
+        let pdfSeconds = measureExport(button: "PDFを保存", in: app)
+
         let summary = String(
-            format: "1000×1000 描画反映 %.1f秒 / 保存完了まで %.1f秒 / 再起動から復元まで %.1f秒",
-            editSeconds, saveSeconds, restoreSeconds
+            format: "1000×1000 盤面変更 %.1f秒 / 描画反映 %.1f秒 / 保存完了まで %.1f秒 / 再起動から復元まで %.1f秒 / PNG %.1f秒 / PDF %.1f秒",
+            resizeSeconds, editSeconds, saveSeconds, restoreSeconds, pngSeconds, pdfSeconds
         )
         print("LARGEBOARD \(summary)")
         XCTContext.runActivity(named: summary) { _ in }
+    }
+
+    /// 「盤面」パネルの段数・列数で盤面の大きさを変え、変更後の盤面を返す。
+    private func resizeBoard(rows: Int, cols: Int, in app: XCUIApplication) -> XCUIElement {
+        app.buttons["盤面"].tap()
+        let rowsField = app.textFields["段数"]
+        XCTAssertTrue(rowsField.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+        replaceNumber(rows, in: rowsField, app: app)
+        replaceNumber(cols, in: app.textFields["列数"], app: app)
+        app.buttons["変更"].tap()
+
+        let resized = app.webViews.firstMatch.otherElements
+            .matching(NSPredicate(format: "label CONTAINS %@", "\(rows)段、\(cols)目"))
+            .firstMatch
+        XCTAssertTrue(resized.waitForExistence(timeout: 120), "盤面を\(rows)×\(cols)にできない: \(app.debugDescription)")
+        app.buttons["閉じる"].tap()
+        return resized
+    }
+
+    /// 数値欄の値を置き換える。
+    ///
+    /// 欄はReactの制御された`type="number"`で、空にすると`0`へ戻る。キャレットが先頭に
+    /// 入ると`20`が`100020`のようになるため、`replaceText`と同じく末尾側を叩いてから
+    /// 消して入力する。末尾で`0`の後ろに入力した`01000`は数値として同じなので、
+    /// 文字列ではなく数値で比べる。
+    private func replaceNumber(_ number: Int, in field: XCUIElement, app: XCUIApplication) {
+        XCTAssertTrue(field.waitForExistence(timeout: 10), app.debugDescription)
+        let text = String(number)
+        for _ in 0..<2 {
+            field.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+            _ = app.keyboards.firstMatch.waitForExistence(timeout: 10)
+            let current = (field.value as? String) ?? ""
+            let deletes = String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count + text.count + 2)
+            field.typeText(deletes + text)
+            let reached = XCTNSPredicateExpectation(
+                predicate: NSPredicate { element, _ in
+                    ((element as? XCUIElement)?.value as? String).flatMap { Int($0) } == number
+                },
+                object: field
+            )
+            if XCTWaiter.wait(for: [reached], timeout: 10) == .completed { return }
+        }
+        XCTFail("数値欄を\(text)にできない value=\(String(describing: field.value)): \(app.debugDescription)")
+    }
+
+    /// 保存パネルから出力を始め、ファイルの保存先を選ぶ画面が出るまでの秒数を返す。
+    private func measureExport(button name: String, in app: XCUIApplication) -> TimeInterval {
+        let save = app.buttons["保存"]
+        XCTAssertTrue(save.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+        save.tap()
+        let export = app.buttons[name]
+        XCTAssertTrue(export.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+        let start = Date()
+        export.tap()
+        XCTAssertTrue(
+            app.buttons["ファイルに保存"].waitForExistence(timeout: 180),
+            "1000×1000の\(name)が完了しない: \(app.debugDescription)"
+        )
+        let seconds = Date().timeIntervalSince(start)
+        cancelExportAlert(in: app)
+        if app.buttons["閉じる"].exists {
+            app.buttons["閉じる"].tap()
+        }
+        return seconds
     }
 
     /// App Storeスクリーンショット用に、画面を埋める大きさの盤面を用意する。
