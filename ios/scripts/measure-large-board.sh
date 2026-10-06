@@ -48,8 +48,19 @@ TEST_RUNNER_KNITTING_EDITOR_LARGE_BOARD=1 xcodebuild test-without-building -proj
   > "$OUT/test.log" 2>&1 || status=$?
 
 sleep 5
+# 保存には1分以上かかることがある。テストが起動前に失敗すると、xctraceは中断の合図の
+# あと保存を終えずに止まることがあるため、5分待っても終わらなければ打ち切る。
 kill -INT "$trace_pid" 2>/dev/null || true
-wait "$trace_pid" || true
+waited=0
+while kill -0 "$trace_pid" 2>/dev/null && [ "$waited" -lt 300 ]; do
+  sleep 1
+  waited=$((waited + 1))
+done
+if kill -0 "$trace_pid" 2>/dev/null; then
+  echo 'WARNING: xctrace did not finish saving within 5 minutes; stopping it.' >&2
+  kill -TERM "$trace_pid" 2>/dev/null || true
+fi
+wait "$trace_pid" 2>/dev/null || true
 
 grep -E 'LARGEBOARD|Test Case .*(passed|failed)|automation mode' "$OUT/test.log" || true
 if [ "$status" -ne 0 ]; then

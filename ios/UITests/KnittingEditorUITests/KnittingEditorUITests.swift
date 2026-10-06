@@ -368,7 +368,7 @@ final class KnittingEditorUITests: XCTestCase {
     }
 
 
-    /// 1000×1000盤面の描画・保存・再起動復元・PNG/PDF出力にかかる時間を実機で測る。
+    /// 1000×1000盤面の描画・保存・バックグラウンドからの復帰・再起動復元・PNG/PDF出力にかかる時間を実機で測る。
     ///
     /// 盤面は毎回、新しい編み図を作って「盤面」パネルの段数・列数で1000×1000にする。
     /// 測るだけで遅いため、CIでは実行しない。実機で次のように実行する。
@@ -410,6 +410,20 @@ final class KnittingEditorUITests: XCTestCase {
         waitForDocumentSave(named: "1000×1000測定", in: webView)
         let saveSeconds = Date().timeIntervalSince(saveStart)
 
+        // バックグラウンドへ移してから戻っても、盤面と記号がそのまま残る。
+        XCUIDevice.shared.press(.home)
+        XCTAssertTrue(
+            app.wait(for: .runningBackgroundSuspended, timeout: 30) || app.state == .runningBackground,
+            "ホームへ戻ってもバックグラウンドへ移らない state=\(app.state.rawValue)"
+        )
+        let resumeStart = Date()
+        app.activate()
+        let resumed = app.webViews.firstMatch.otherElements
+            .matching(NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", "1000段、1000目", "記号\(after)個"))
+            .firstMatch
+        XCTAssertTrue(resumed.waitForExistence(timeout: 60), "復帰後に盤面と記号が残っていない: \(app.debugDescription)")
+        let resumeSeconds = Date().timeIntervalSince(resumeStart)
+
         app.terminate()
         let restoreStart = Date()
         app.launch()
@@ -423,8 +437,8 @@ final class KnittingEditorUITests: XCTestCase {
         let pdfSeconds = measureExport(button: "PDFを保存", in: app)
 
         let summary = String(
-            format: "1000×1000 盤面変更 %.1f秒 / 描画反映 %.1f秒 / 保存完了まで %.1f秒 / 再起動から復元まで %.1f秒 / PNG %.1f秒 / PDF %.1f秒",
-            resizeSeconds, editSeconds, saveSeconds, restoreSeconds, pngSeconds, pdfSeconds
+            format: "1000×1000 盤面変更 %.1f秒 / 描画反映 %.1f秒 / 保存完了まで %.1f秒 / バックグラウンドから復帰 %.1f秒 / 再起動から復元まで %.1f秒 / PNG %.1f秒 / PDF %.1f秒",
+            resizeSeconds, editSeconds, saveSeconds, resumeSeconds, restoreSeconds, pngSeconds, pdfSeconds
         )
         print("LARGEBOARD \(summary)")
         XCTContext.runActivity(named: summary) { _ in }
@@ -457,7 +471,13 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertTrue(field.waitForExistence(timeout: 10), app.debugDescription)
         let text = String(number)
         for _ in 0..<2 {
-            field.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+            // 隣の欄へ入力したあとは、キーボードが出たままタップしても焦点が移らないことが
+            // ある（iPhone実機で、「段数」の次に「列数」へ入力できなかった）。焦点が移った
+            // ことを確かめてから入力する。
+            for _ in 0..<3 {
+                field.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+                if waitForKeyboardFocus(on: field, timeout: 5) { break }
+            }
             _ = app.keyboards.firstMatch.waitForExistence(timeout: 10)
             let current = (field.value as? String) ?? ""
             let deletes = String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count + text.count + 2)
@@ -471,6 +491,14 @@ final class KnittingEditorUITests: XCTestCase {
             if XCTWaiter.wait(for: [reached], timeout: 10) == .completed { return }
         }
         XCTFail("数値欄を\(text)にできない value=\(String(describing: field.value)): \(app.debugDescription)")
+    }
+
+    private func waitForKeyboardFocus(on element: XCUIElement, timeout: TimeInterval) -> Bool {
+        let focused = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "hasKeyboardFocus == true"),
+            object: element
+        )
+        return XCTWaiter.wait(for: [focused], timeout: timeout) == .completed
     }
 
     /// 保存パネルから出力を始め、ファイルの保存先を選ぶ画面が出るまでの秒数を返す。
