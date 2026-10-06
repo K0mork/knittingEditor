@@ -1,5 +1,13 @@
 # Development Log
 
+## 2026-10-06 — ブロックの削除の前に確認する
+
+- 影響: 「ブロック」の一覧で「削除」を押すと、確認なしにすぐ消え、元に戻すこともできなかった（#91）。編み図の削除と同じく`askConfirm`で「ブロック「{名前}」を削除しますか？」と確認し、キャンセルしたら何も消さないようにした。Web版はブラウザの確認ダイアログ、iOS版はアプリ内のダイアログ（`ios/Web/src/AppDialog.tsx`）で確認する。
+- 主なファイル: `packages/editor-core/ui/useEditorController.ts`
+- テスト: `packages/editor-core/ui/EditorView.test.tsx`に、確認を断ると残り、承諾すると消えるテストを足した（修正前のコードでは失敗することを確かめた）。E2Eの`creates a block and exports backup and PDF`に、確認の文言と、断ると残ることの確認を足した。
+- 検証: `npm run typecheck`、`npm test`（124件）、`npm run build`、`npm run check:dist`、`npm run test:e2e`（79件成功・2件skip）が成功した。iOS Webの型検査とテスト（8件）が成功し、`xcodegen generate`でプロジェクトに差分が出ないことを確かめた。iPhone 16 Simulatorでアプリをビルドし、ブロックを保存してから削除し、アプリ内のダイアログで確認が出ること、キャンセルで残り、決定で消えることを手で確かめた。iPhone・iPadのSimulator一式、アプリ更新テスト、unsigned Release ArchiveはPRのCIに任せた。ローカルにNode.js 24が無く、Node.js 26.8.1で実行した。
+- デプロイ影響: マージ後、Web版でもブロックの削除で確認が出る。`deploy`と`smoke`の成功を確認し、本番でブロックを削除するときに確認が出ることを確かめる。TestFlight／App Storeへの影響は次に提出するビルドから。
+
 ## 2026-10-02 — iPad実機で、機内モードの前後にアプリが通信しないことを確かめる
 
 - 影響: アプリとWeb資産の内容は変えていない。M0の実機確認で最後に残っていた「機内モードの前後で外部への要求が発生しない」を、iPad Air 第5世代（iPadOS 27.0、有線接続、無料Personal Teamで署名した`main`の`6ad2592`）で確かめ、`ios/docs/REAL_DEVICE_RELEASE_CHECKLIST.md`に手順と結果を書いた（#19）。

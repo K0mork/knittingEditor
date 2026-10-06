@@ -175,6 +175,16 @@ test('creates a block and exports backup and PDF', async ({ page }) => {
   await page.getByRole('button', { name: '選択範囲をブロック保存' }).click();
   await expect(page.getByText('テストブロック')).toBeVisible();
 
+  // ブロックの削除は元に戻せないので、確認を断ると残る。
+  const blockRow = page.locator('.block-list > div').filter({ hasText: 'テストブロック' });
+  page.once('dialog', async (dialog) => {
+    expect(dialog.type()).toBe('confirm');
+    expect(dialog.message()).toBe('ブロック「テストブロック」を削除しますか？');
+    await dialog.dismiss();
+  });
+  await blockRow.getByRole('button', { name: '削除' }).click();
+  await expect(blockRow).toBeVisible();
+
   await page.getByRole('button', { name: '閉じる' }).click();
   await page.getByRole('button', { name: '保存' }).click();
   const backupDownload = page.waitForEvent('download');
