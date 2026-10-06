@@ -102,12 +102,23 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 .drawer-heading > button { white-space: nowrap; }
 .drawer h3 { margin: 18px 0 8px; font-size: .9rem; color: #53605a; }
 .document-list, .block-list { display: grid; gap: 8px; margin-top: 12px; }
-.document { display: grid; grid-template-columns: 1fr auto; gap: 6px; border: 1px solid var(--border); border-radius: 12px; padding: 6px; }
+.document-list { padding: 0; margin-bottom: 0; list-style: none; }
+.document { min-width: 0; display: grid; gap: 6px; border: 1px solid var(--border); border-radius: 12px; padding: 6px; }
 .document.active { border-color: var(--green); background: #f0f8f1; }
 .document > button, .block-list div > button:first-child { text-align: left; border: 0; background: transparent; }
 .document small, .block-list small { display: block; color: #718078; }
-.document > div { display: flex; gap: 4px; align-items: center; }
-.document > div button { min-height: var(--compact-tap-size); padding: 5px 7px; font-size: .75rem; }
+/* 縮小画像と名前を1つのボタンにし、名前変更・複製・削除は下の段に同じ幅で並べる。
+   狭い画面でも名前を削らず、3つのボタンも押しやすい幅を保つ。 */
+.document-open { min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 10px; padding: 4px; }
+.document-thumbnail-frame { display: block; width: 64px; height: 64px; border: 1px solid var(--border); border-radius: 8px; background: #e9ece6; overflow: hidden; }
+/* 小さな盤面はセルの境目をぼかさずに拡大する。盤面の外は枠の地色で見分ける。 */
+.document-thumbnail { display: block; width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
+/* 枠より大きい縮小画像（長辺63〜96画素）は縮めて表示する。pixelatedのままだと段や目が抜けるので滑らかに縮める。 */
+.document-thumbnail.downscaled { image-rendering: auto; }
+.document-text { min-width: 0; display: grid; gap: 2px; }
+.document-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.document-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.document-actions button { min-width: 0; min-height: var(--compact-tap-size); padding: 5px 7px; font-size: .8rem; }
 .block-list div { display: grid; grid-template-columns: 1fr auto; gap: 6px; border: 1px solid var(--border); border-radius: 12px; padding: 5px; }
 .button-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 7px; }
 .size-inputs { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: end; }
