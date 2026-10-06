@@ -34,10 +34,10 @@ Web版とiOS版は同じリポジトリで管理する。以前の固定コミ�
 | `App.tsx` | `useEditorController`と`EditorView`へ差分を渡すだけにする。iOS版はネイティブブリッジ、アプリ内ダイアログ（`AppDialog.tsx`、`window.prompt`/`confirm`の代替）、ストレージ初期化タイムアウト、使い方ページ遷移前・バックグラウンド移行前の保存flushを持つ。Web版は`window.prompt`、旧データ移行つきの初期化、GA4、SEO向けの説明表示を持つ。 |
 | `analytics.ts` | Web版だけが持ち、GA4を初期化して`EditorAnalytics`を実装する。iOS版にはファイル自体が無く、分析を渡さないのでイベントも外部スクリプトも発生させない。 |
 | `main.tsx` | iOS版は`initializeAnalytics()`を呼ばない。 |
-| `styles.css` | 共通CSSへの差分だけ。iOS版はタップ領域44px、Dynamic Type、テキスト自動拡大の抑止、アプリ内ダイアログの様式。Web版はSEO向けの説明文と編み図名の表示。 |
+| `styles.css` | 共通CSSへの差分だけ。iOS版はタップ領域44px、Dynamic Type、テキスト自動拡大の抑止、長押しの文字選択とメニュー（コピー・調べる）の抑止、アプリ内ダイアログの様式。文字選択は入力欄（`input`・`textarea`）だけ元に戻し、編み図名などを選択・コピー・貼り付けできるようにする。Web版はSEO向けの説明文と編み図名の表示で、文字選択は抑えない（ブラウザでは説明文や見出しを選んでコピーできるのが普通で、長押しのメニューもWebページとして自然なため）。 |
 | `platform.ts` | `EditorPlatform`の実装。Web版はダウンロード、iOS版は`WKWebView`ブリッジ経由でFiles・共有シートへ渡す。Web版でもiPhone・iPadのSafariだけは、`<a download>`のPDFが編集中のタブを置き換えるため、`ShareFileDialog.tsx`の「共有・保存」ボタンから共有シート（Web Share API）で渡す。共有シートは利用者のタップの中でしか開けないので、生成後にもう一度押してもらう。 |
 | `storage/database.ts` | Web版だけが持ち、旧Safari `localStorage`からの移行と、それを先に行う`initializeStorage`を置く。iOS版にはファイル自体が無く、共通の`initializeStorage`を直接使うので移行を含めない。 |
-| `index.html`、`public/guide/` | Web版はSEO、canonical、CNAME、サイトマップを持つ。iOS版は同梱ページとして動作し、文言をアプリ前提にする。どちらの使い方ページも、ビルド時に生成する`/third-party-notices/`（`scripts/third-party-notices.mjs`）へリンクする。 |
+| `index.html`、`public/guide/` | Web版はSEO、canonical、CNAME、サイトマップを持つ。iOS版は同梱ページとして動作し、文言をアプリ前提にする。どちらの使い方ページも、ビルド時に生成する`/third-party-notices/`（`scripts/third-party-notices.mjs`）へリンクする。iOS版の編集画面はviewportを`maximum-scale=1, user-scalable=no`にし、盤面の外のピンチやダブルタップで画面全体を拡大しない（文字の拡大はDynamic Typeと端末の「ズーム」で行う）。Web版は`maximum-scale=5`のままで、ブラウザの拡大を残す。iOS版の使い方ページは読み物でDynamic Typeに追従しないので、拡大と文字選択を残す。リンクの長押しプレビューは`WKWebView.allowsLinkPreview = false`で両ページとも出さない。 |
 | `vite.config.ts` | iOS版は`modulePreload`を切り、ソースマップを同梱しない。 |
 
 ## テストの置き場所
