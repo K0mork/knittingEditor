@@ -173,6 +173,10 @@ struct WebViewContainer: UIViewRepresentable {
             frame: CGRect(origin: .zero, size: Self.initialFrameSize),
             configuration: configuration
         )
+        // リンクを長押しすると、既定ではプレビューと「Open Link」などのメニューが出て、
+        // 外部リンクのページをアプリ内で読み込もうとする。外部リンクはタップされたときだけ
+        // `decidePolicyFor`からSafariへ渡す（#81）。
+        webView.allowsLinkPreview = false
         webView.navigationDelegate = context.coordinator
         webView.allowsBackForwardNavigationGestures = false
         // 文書が描画されるまでの間に見える色。編集画面・使い方ページの地の色にそろえ、
