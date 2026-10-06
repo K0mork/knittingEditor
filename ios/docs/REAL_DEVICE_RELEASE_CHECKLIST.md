@@ -224,4 +224,4 @@ TEST_RUNNER_KNITTING_EDITOR_MANUAL_WINDOW=1 xcodebuild test \
 
 ## 記録ルール
 
-実施結果はこのファイルのチェック欄だけでなく、`DEVELOPMENT_LOG.md`へ日付、commit、端末、結果、未実施項目、配布影響を追記する。失敗は再現手順とログを残し、原因未確認のままskipや完了へ変更しない。
+実施結果はこのファイルのチェック欄だけでなく、`docs/dev-log/`の記録に日付、commit、端末、結果、未実施項目、配布影響を書く。失敗は再現手順とログを残し、原因未確認のままskipや完了へ変更しない。
