@@ -10,6 +10,18 @@
 - CI: Simulatorテスト（iPhone/iPad）、アプリ更新、unsigned Release Archive、同梱物検査はPRのCIで確認する。
 - デプロイ影響: 現時点ではnone。マージ後はWebのアイコンがPagesへ配信されるため、deploy・smokeとHTTPSでの3アイコン取得を確認する。TestFlight／App Store提出は行っていない。Issue #78のasset catalog方式の素材・外観・小サイズ・Webとの同期・検査の完了条件を満たした。PRで各検証の端末とOSを明記し、マージ時にIssueを閉じる。
 
+## 2026-10-06 — 1000×1000盤面の実機測定を自動化し、iPhone・iPadで測る
+
+- 影響: アプリとWeb資産の内容は変えていない。#20の1000×1000盤面の保存・復元・メモリの実機測定を、手作業なしで行えるようにし、iPhone 17（iOS 27.0）とiPad Air 第5世代（iPadOS 27.0）で測った。
+  - UIテスト`testLargeBoardSavesAndRestores`は、盤面を手で1000×1000にしてから流す前提だった（数値欄への入力が安定しなかったため）。新しい編み図を作り、「盤面」パネルの段数・列数を入力して1000×1000にするところからテスト自身で行う。数値欄は、末尾をタップして入力の焦点が移ったことを確かめてから消して入力し、文字列ではなく数値で比べる（空にすると`0`へ戻り、`01000`になっても数値は同じ）。iPhoneでは「段数」の入力でキーボードが出たまま「列数」をタップしても焦点が移らないことがあったため、焦点が移るまでタップし直す（最大3回）。
+  - 測る範囲を、描画と保存と再起動後の復元に加え、バックグラウンドへ移して戻ったあとの盤面と、PNG・PDFの出力時間まで広げた。
+  - `ios/scripts/measure-large-board.sh <UDID>`を追加した。テストを流しながらInstrumentsのActivity Monitorで端末の全プロセスを記録し、アプリ本体とWebKitの各プロセスの最大メモリを表示する。盤面データはWebKitのコンテンツプロセスにあり、これまではInstruments.appを手で使う手順だった。
+  - 結果（`ios/docs/REAL_DEVICE_RELEASE_CHECKLIST.md`のM2）: 保存はiPhone 2.2秒・iPad 2.3秒、バックグラウンドからの復帰は1.2秒・1.3秒（盤面と記号は残った）、再起動後の復元は2.5〜2.6秒・2.7〜2.9秒、PNG出力は1.6秒・2.8秒、PDF出力は1.9秒・2.1〜2.2秒。WebKitのコンテンツプロセスの最大メモリは537.0 MiB・567.9 MiBで、どちらも再起動後のPNG出力の直後だった。測定の間、端末のクラッシュ記録とJetsamEventにアプリとWebKitのものは無かった。
+- 主なファイル: `ios/UITests/KnittingEditorUITests/KnittingEditorUITests.swift`、`ios/scripts/measure-large-board.sh`、`ios/docs/REAL_DEVICE_RELEASE_CHECKLIST.md`
+- テスト: `testLargeBoardSavesAndRestores`を上記のとおり書き換えた。`TEST_RUNNER_KNITTING_EDITOR_LARGE_BOARD=1`のときだけ実行する点は変えておらず、CIのSimulatorテストではskipのまま。
+- 検証（手元、Xcode 27.0、無料Personal Teamで署名）: iPhone 17（有線）とiPad Air 第5世代（有線）の実機で`build-for-testing`と`testLargeBoardSavesAndRestores`が成功した。`measure-large-board.sh`はiPhoneで最後まで成功し、iPadのメモリは同じ記録方法を手で実行して測った。スクリプトの集計部分はiPadの記録にも当てて、同じ値になることを確かめた。iPhoneでの初回は「列数」へ入力できずに失敗し、焦点の確認を加えたあとは成功した。記録の保存に数分かかり、60秒で打ち切る版では記録が壊れたため、待つ上限を5分にした。`sh -n`で構文を確かめた。Simulatorテスト一式、アプリ更新テスト、Release Archive、iOS Webの検査はPRのCIに任せた。
+- デプロイ影響: なし。TestFlight／App Storeへの影響もない。
+
 ## 2026-10-02 — iOS UIテストで、効かなかった「編み図」のタップを押し直し、ツールバーのスクロールを待つ
 
 - 影響: アプリとWeb資産の内容は変えていない。`main`のrun 36983458487とPR #54のrun 36984209721で、1回目に失敗して再試行で通ったiOS UIテスト2件（#66、#67）を直した。
