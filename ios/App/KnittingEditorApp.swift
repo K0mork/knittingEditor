@@ -59,7 +59,7 @@ enum AppColors {
         ?? UIColor(red: 0.204, green: 0.435, blue: 0.259, alpha: 1)
     /// 編集画面と使い方ページの地の色。`packages/editor-core/styles/base.css`の`:root`の`background`と同じ。
     static let editorPageBackground = UIColor(red: 0xF3 / 255, green: 0xF0 / 255, blue: 0xE8 / 255, alpha: 1)
-    /// 編集画面の補足の文字の色（）。地の色とのコントラスト比は約5.9:1。
+    /// 編集画面の補足の文字の色（`packages/editor-core/styles/base.css`の`.gesture-hint`の`color`と同じ）。地の色とのコントラスト比は約5.9:1。
     static let editorSecondaryText = UIColor(red: 0x52 / 255, green: 0x60 / 255, blue: 0x59 / 255, alpha: 1)
 }
 

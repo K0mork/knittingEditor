@@ -48,7 +48,29 @@ final class AppAppearanceTests: XCTestCase {
             .filter { $0.pathExtension == "css" }
         XCTAssertFalse(stylesheets.isEmpty, "同梱のCSSが見つからない")
         let css = try stylesheets.map { try String(contentsOf: $0, encoding: .utf8) }.joined().lowercased()
-        XCTAssertTrue(css.contains("background:#f3f0e8"), "編集画面のCSSの地の色が変わったら`AppColors.editorPageBackground`もそろえる")
+        let declared = try XCTUnwrap(rootBackgroundHex(in: css), "同梱のCSSの`:root`に地の色の宣言が見つからない")
+        let expected = rgba(AppColors.editorPageBackground).prefix(3).map { String(format: "%02x", $0) }.joined()
+        XCTAssertEqual(declared, expected, "編集画面のCSSの地の色が変わったら`AppColors.editorPageBackground`もそろえる")
+    }
+
+    /// `:root`の`background`（または`background-color`）に書かれた最後の色を、6桁の16進数で返す。
+    /// 圧縮の有無や宣言の順番、空白、3桁の書き方に左右されないようにする。
+    private func rootBackgroundHex(in css: String) throws -> String? {
+        let rootBlock = try NSRegularExpression(pattern: #":root\s*\{([^}]*)\}"#)
+        let declaration = try NSRegularExpression(
+            pattern: #"(?:^|[;{\s])background(?:-color)?\s*:\s*#([0-9a-f]{6}|[0-9a-f]{3})(?![0-9a-f])"#
+        )
+        var found: String?
+        for block in rootBlock.matches(in: css, range: NSRange(css.startIndex..., in: css)) {
+            guard let bodyRange = Range(block.range(at: 1), in: css) else { continue }
+            let body = String(css[bodyRange])
+            for match in declaration.matches(in: body, range: NSRange(body.startIndex..., in: body)) {
+                guard let hexRange = Range(match.range(at: 1), in: body) else { continue }
+                let hex = String(body[hexRange])
+                found = hex.count == 3 ? hex.map { "\($0)\($0)" }.joined() : hex
+            }
+        }
+        return found
     }
 
     @MainActor
