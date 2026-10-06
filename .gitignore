@@ -13,7 +13,8 @@ playwright-report/
 test-results/
 *.tsbuildinfo
 # 利用分析の数値・価格・収益試算などの非公開メモ。AGENTS.mdの「Confidential Information」を参照。
-/private/
+# 同期フォルダへのシンボリックリンクでも除外されるよう、末尾に`/`を付けない。
+/private
 
 # Claude Code: session worktrees (see AGENTS.md "Branches, Worktrees & Cleanup"), the lock a running
 # session writes, and personal settings. `.claude/launch.json` and `.claude/settings.json` are shared.
