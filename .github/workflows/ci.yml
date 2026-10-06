@@ -147,13 +147,12 @@ jobs:
       - name: Check the App Store documents
         run: ios/scripts/check-app-store-docs.sh
 
+  # 中身は型検査とVitestだけで、XcodeもSimulatorも使わない。macOSランナーは同時に
+  # 動かせる数が少ないので、ここで1つ使うとSimulatorを使うジョブが空きを待つ。
   ios_web:
     needs: changes
     if: needs.changes.outputs.ios == 'true'
-    runs-on: macos-26
-    # `ios`ジョブと同じXcodeに固定する。
-    env:
-      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
@@ -199,7 +198,7 @@ jobs:
           udid="$(ios/scripts/boot-simulator.sh '${{ matrix.device }}')"
           echo "udid=$udid" >> "$GITHUB_OUTPUT"
       - name: Install XcodeGen
-        run: brew install xcodegen
+        run: ios/scripts/install-xcodegen.sh "$RUNNER_TEMP/xcodegen"
       - name: Generate Xcode project
         run: xcodegen generate --spec ios/project.yml
       - name: Wait for simulator boot
@@ -210,6 +209,7 @@ jobs:
           -project ios/knittingEditor.xcodeproj
           -scheme knittingEditor
           -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.udid }}'
+          -derivedDataPath "$RUNNER_TEMP/DerivedData"
           -retry-tests-on-failure
           -test-iterations 2
           -test-timeouts-enabled YES
@@ -217,12 +217,9 @@ jobs:
           -maximum-test-execution-time-allowance 240
           -skip-testing:knittingEditorUITests/KnittingEditorUITests/testBackupExportSheetDismissesBackToEditor
           CODE_SIGNING_ALLOWED=NO
+      # テストのためにビルドしたDebugのアプリをそのまま検査する。ビルドし直すと1〜2分かかる。
       - name: Verify generated app bundle
-        run: |
-          xcodebuild build -project ios/knittingEditor.xcodeproj -scheme knittingEditor \
-            -sdk iphonesimulator -configuration Debug CODE_SIGNING_ALLOWED=NO \
-            -derivedDataPath "$RUNNER_TEMP/DerivedData"
-          ios/scripts/check-app-bundle.sh "$RUNNER_TEMP/DerivedData/Build/Products/Debug-iphonesimulator/knittingEditor.app"
+        run: ios/scripts/check-app-bundle.sh "$RUNNER_TEMP/DerivedData/Build/Products/Debug-iphonesimulator/knittingEditor.app"
 
   app_update:
     needs: changes
@@ -253,7 +250,7 @@ jobs:
           udid="$(ios/scripts/boot-simulator.sh '${{ matrix.device }}')"
           echo "udid=$udid" >> "$GITHUB_OUTPUT"
       - name: Install XcodeGen
-        run: brew install xcodegen
+        run: ios/scripts/install-xcodegen.sh "$RUNNER_TEMP/xcodegen"
       - name: Generate Xcode project
         run: xcodegen generate --spec ios/project.yml
       - name: Simulate app update and restore IndexedDB
@@ -278,7 +275,7 @@ jobs:
           xcodebuild -version
           xcrun simctl list runtimes
       - name: Install XcodeGen
-        run: brew install xcodegen
+        run: ios/scripts/install-xcodegen.sh "$RUNNER_TEMP/xcodegen"
       - name: Generate Xcode project
         run: xcodegen generate --spec ios/project.yml
       - name: Create unsigned Release archive
