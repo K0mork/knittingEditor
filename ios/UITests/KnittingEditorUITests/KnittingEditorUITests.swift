@@ -550,12 +550,7 @@ final class KnittingEditorUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: appUpdateElementTimeout))
-        let documents = app.buttons["編み図"]
-        XCTAssertTrue(documents.waitForExistence(timeout: appUpdateElementTimeout))
-        documents.tap()
-        let newDocument = app.buttons["新しい編み図"]
-        XCTAssertTrue(newDocument.waitForExistence(timeout: appUpdateElementTimeout))
-        newDocument.tap()
+        openDocumentsPanel(in: app, timeout: appUpdateElementTimeout).tap()
         let nameField = app.textFields["入力"]
         XCTAssertTrue(nameField.waitForExistence(timeout: appUpdateElementTimeout))
         replaceText("アプリ更新復元fixture", in: nameField, app: app)
@@ -584,9 +579,7 @@ final class KnittingEditorUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: appUpdateElementTimeout))
-        let documents = app.buttons["編み図"]
-        XCTAssertTrue(documents.waitForExistence(timeout: appUpdateElementTimeout))
-        documents.tap()
+        openDocumentsPanel(in: app, timeout: appUpdateElementTimeout)
         let restoredDocument = app.buttons
             .matching(NSPredicate(format: "label BEGINSWITH %@", "アプリ更新復元fixture"))
             .firstMatch
@@ -875,17 +868,21 @@ final class KnittingEditorUITests: XCTestCase {
     /// タップでもパネルの「閉じる」が無いままだった）。しばらく待っても出ないときは、
     /// パネルが開いていない（「閉じる」もない）場合に限って押し直す。開いているのに
     /// 出なければ押し直すとパネルを閉じてしまうので、そのまま待って失敗にする。
+    /// アプリ更新テストのように遅い実行では、`timeout`で最後の待機を延ばす。
     @discardableResult
-    private func openDocumentsPanel(in app: XCUIApplication) -> XCUIElement {
+    private func openDocumentsPanel(
+        in app: XCUIApplication,
+        timeout: TimeInterval = KnittingEditorUITests.editorAppearanceTimeout
+    ) -> XCUIElement {
         let documents = app.buttons["編み図"]
-        XCTAssertTrue(documents.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+        XCTAssertTrue(documents.waitForExistence(timeout: timeout), app.debugDescription)
         documents.tap()
         let newDocument = app.buttons["新しい編み図"]
         if !newDocument.waitForExistence(timeout: 10), !app.buttons["閉じる"].exists {
             documents.tap()
         }
         XCTAssertTrue(
-            newDocument.waitForExistence(timeout: Self.editorAppearanceTimeout),
+            newDocument.waitForExistence(timeout: timeout),
             "「編み図」でパネルが開かない: \(app.debugDescription)"
         )
         return newDocument
