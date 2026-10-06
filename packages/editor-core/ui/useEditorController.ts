@@ -5,6 +5,7 @@ import { renderPdf, renderPng, validatePngSize } from '../export/exporters';
 import type { PdfLayoutOptions } from '../export/pdfLayout';
 import type { PatternBlock, Rect } from '../model/Board';
 import type { EditorPlatform } from '../platform';
+import { useBackupReminder } from '../state/useBackupReminder';
 import { useEditorSession, type EditorSessionInit, type SaveTrigger } from '../state/useEditorSession';
 import { STITCHES, type StitchDefinition } from '../stitches/catalog';
 import {
@@ -82,6 +83,8 @@ export function useEditorController(options: EditorControllerOptions) {
     board, activeDocument, changed: markChanged, commitEdit, saveNow, switchDocument: switchSessionDocument,
     refreshDocuments, refreshBlocks, applyActiveDocumentName,
   } = session;
+  const backupReminder = useBackupReminder(activeDocument);
+  const { countEdit } = backupReminder;
 
   // 指を離すたびに盤面全体を比べないよう、書き換えがあったときだけ履歴へ積む。
   const strokePendingRef = useRef(false);
@@ -95,22 +98,25 @@ export function useEditorController(options: EditorControllerOptions) {
     if (!strokePendingRef.current) return;
     strokePendingRef.current = false;
     commitEdit();
-  }, [commitEdit]);
+    countEdit();
+  }, [commitEdit, countEdit]);
   /** 1回で終わる書き換え（貼り付け、盤面設定）。すぐ1件の履歴にする。 */
   const changed = useCallback(() => {
     strokePendingRef.current = false;
     analytics.trackFirstEdit();
     markChanged();
     commitEdit();
-  }, [analytics, markChanged, commitEdit]);
+    countEdit();
+  }, [analytics, markChanged, commitEdit, countEdit]);
 
   const stepHistory = useCallback((direction: 'undo' | 'redo') => {
     const moved = direction === 'undo' ? session.undo() : session.redo();
     if (!moved) return;
+    countEdit();
     // 寸法が戻ると選択範囲が盤面の外を指しうるので、選択は解除する。
     setSelection(undefined);
     notify(direction === 'undo' ? '元に戻しました' : 'やり直しました');
-  }, [session.undo, session.redo, notify]);
+  }, [session.undo, session.redo, notify, countEdit]);
   const undo = useCallback(() => stepHistory('undo'), [stepHistory]);
   const redo = useCallback(() => stepHistory('redo'), [stepHistory]);
   useHistoryShortcuts({ onUndo: undo, onRedo: redo });
@@ -264,6 +270,8 @@ export function useEditorController(options: EditorControllerOptions) {
       if (await saveNow() === 'failed') return;
       const blob = await exportBackup(all ? undefined : [activeDocument.id]);
       await platform.saveFile(blob, all ? 'knitting-editor-backup.knit' : `${activeDocument.name}.knit`);
+      // 共有シートやダウンロードへ渡した時点を書き出した日時とする。ホストは保存を終えたかを返さない。
+      await backupReminder.recordExport(all ? undefined : [activeDocument.id]);
       analytics.track('backup_exported', { backup_scope: all ? 'all' : 'current' });
     } catch (error) { reportFailure('backup_export', error); }
     finally { setBusy(undefined); }
@@ -308,7 +316,7 @@ export function useEditorController(options: EditorControllerOptions) {
     saveSelectionAsBlock, removeBlock,
     runPngExport, runPdfExport,
     createNewDocument, switchDocument, renameChart, duplicateChart, deleteChart,
-    backup, restore,
+    backup, restore, backupReminder,
   };
 }
 

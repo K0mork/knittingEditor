@@ -22,6 +22,7 @@ Web版とiOS版は同じリポジトリで管理する。以前の固定コミ�
 | `ui/StitchPicker.tsx` | 記号ピッカー。フォーカストラップとEscapeでの閉じ方を含む。 |
 | `ui/GridControls.tsx` | 盤面設定。位置入力と確認は`askText`・`askConfirm`で受け取る。 |
 | `ui/ExportControls.tsx` | 保存・出力。PDFの推定ページ数は`export/pdfLayout.ts`をPDF Workerと共有する。 |
+| `state/backupReminder.ts`・`state/useBackupReminder.ts`・`ui/BackupReminder.tsx` | 最後の`.knit`書き出し日時の記録と、書き出しを勧める帯。日時は編み図ごとに設定（`lastBackupAt:<編み図ID>`）へ置き、編み図の記録と`.knit`には入れない。勧めは、最後の書き出し（無ければ作成）から7日以上たって変更があるとき、または開いてから50回編集したときに、道具列と盤面の間へ1段だけ出す。「あとで」で3日間（全編み図）出さない。Web版もブラウザのデータ消去やSafariの保存期限で端末内データが消えうるので、iOS版と同じ表示を出し、差分は設けない。 |
 | `ui/hooks.ts` | モーダルのフォーカス管理、ドロワーのフォーカス復帰、トースト、コピー／貼り付けのショートカット。 |
 | `styles/base.css` | 共通の見た目。環境で変える寸法はカスタムプロパティ（`--tap-size`など）で受け取る。 |
 
@@ -46,7 +47,7 @@ Web版とiOS版は同じリポジトリで管理する。以前の固定コミ�
 
 現在の内訳は次のとおりで、共通テストの二重管理は解消済みである。
 
-- `packages/editor-core`：盤面モデル、記号カタログ、ベクター記号、Canvas、PNG/PDF出力、PDFレイアウト計算、IndexedDBと`.knit`入出力（大盤面の保存・復元を含む）、編集セッション、編集画面、base64変換、分析バケット。
+- `packages/editor-core`：盤面モデル、記号カタログ、ベクター記号、Canvas、PNG/PDF出力、PDFレイアウト計算、IndexedDBと`.knit`入出力（大盤面の保存・復元を含む）、編集セッション、編集画面、最後のバックアップ日時と書き出しの勧め（既存データの読み出しを含む）、base64変換、分析バケット。
 - `src/`（Web固有）：旧Safari `localStorage`からの移行、GA4アナリティクス、iPhone・iPad Safariの共有シート判定と確認ダイアログ。
 - `ios/Web/src/`（iOS固有）：ネイティブブリッジ、`async`のタイムアウト、ブリッジ経由の`.knit`入出力と`.knit`相互運用fixture（`backupInterchange.test.ts`、`ios/test-fixtures/`）。
 

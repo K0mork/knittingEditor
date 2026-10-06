@@ -4,6 +4,8 @@ import { ExportControls } from './ExportControls';
 import { GridControls } from './GridControls';
 import { gestureHintText, historyTitles, useInputEnvironment } from './inputEnvironment';
 import { StitchPicker } from './StitchPicker';
+import { BackupReminderBar } from './BackupReminder';
+import { backupStatusText } from '../state/backupReminder';
 import { EDITOR_PANEL_TITLES, type EditorController, type EditorPanel } from './useEditorController';
 
 export interface EditorViewProps {
@@ -100,6 +102,10 @@ export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, 
         <button onClick={editor.clearSelection}>解除</button>
       </div>}
 
+      {/* ドロワーや処理中の表示と重なるときは出さない。 */}
+      {editor.backupReminder.kind && !panel && !editor.busy && <BackupReminderBar kind={editor.backupReminder.kind}
+        lastBackupAt={editor.backupReminder.lastBackupAt} onBackup={() => void editor.backup(false)} onSnooze={editor.backupReminder.snooze} />}
+
       <section className="canvas-wrap">
         <BoardCanvas board={board} revision={session.revision} stitchKey={editor.selectedStitch} color={editor.selectedColor} mode={mode}
           selection={selection} pasteBlock={editor.pasteBlock} onChange={editor.strokeChanged} onEditEnd={editor.commitStroke} onSelectionChange={editor.setSelection} onPasteComplete={editor.handlePasteComplete} />
@@ -137,6 +143,7 @@ export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, 
       </>}
       {panel === 'export' && <ExportControls board={board} onPng={editor.runPngExport} onPdf={editor.runPdfExport} onBackup={editor.backup}
         onRestore={() => { if (!requestRestore?.()) editor.fileInputRef.current?.click(); }}
+        backupStatus={editor.backupReminder.loaded ? backupStatusText(editor.backupReminder.lastBackupAt) : undefined}
         backupNote={backupNote} />}
     </aside>}
 
