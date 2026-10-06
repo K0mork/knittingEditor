@@ -56,8 +56,20 @@ final class KnittingEditorUITests: XCTestCase {
             "使い方ページで編集画面の読み込み表示を残さない: \(app.debugDescription)"
         )
 
-        app.links["棒針編み図エディタへ戻る"].tap()
-        XCTAssertTrue(app.buttons["保存"].waitForExistence(timeout: 20), app.debugDescription)
+        // 戻るリンクはページの一番下にある。XCUITestの自動スクロールに任せると、
+        // タップ位置が画面の外（y=3275）で計算されて外れ、使い方ページのまま残った（#95）。
+        // 自分でページを送り、押せる位置に来てから叩く。使い方ページのまま（リンクが残って
+        // いる）ときに限って押し直し、最後まで戻らなければ失敗にする。
+        let back = app.links["棒針編み図エディタへ戻る"]
+        XCTAssertTrue(back.waitForExistence(timeout: 10), app.debugDescription)
+        scrollWebViewUntilHittable(back, in: app)
+        back.tap()
+        let save = app.buttons["保存"]
+        if !save.waitForExistence(timeout: 10), back.exists {
+            scrollWebViewUntilHittable(back, in: app)
+            back.tap()
+        }
+        XCTAssertTrue(save.waitForExistence(timeout: 20), "使い方ページから編集画面へ戻れない: \(app.debugDescription)")
         XCTAssertFalse(app.otherElements["editorLoadingOverlay"].exists, app.debugDescription)
     }
 
@@ -538,12 +550,7 @@ final class KnittingEditorUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: appUpdateElementTimeout))
-        let documents = app.buttons["編み図"]
-        XCTAssertTrue(documents.waitForExistence(timeout: appUpdateElementTimeout))
-        documents.tap()
-        let newDocument = app.buttons["新しい編み図"]
-        XCTAssertTrue(newDocument.waitForExistence(timeout: appUpdateElementTimeout))
-        newDocument.tap()
+        openDocumentsPanel(in: app, timeout: appUpdateElementTimeout).tap()
         let nameField = app.textFields["入力"]
         XCTAssertTrue(nameField.waitForExistence(timeout: appUpdateElementTimeout))
         replaceText("アプリ更新復元fixture", in: nameField, app: app)
@@ -572,9 +579,7 @@ final class KnittingEditorUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: appUpdateElementTimeout))
-        let documents = app.buttons["編み図"]
-        XCTAssertTrue(documents.waitForExistence(timeout: appUpdateElementTimeout))
-        documents.tap()
+        openDocumentsPanel(in: app, timeout: appUpdateElementTimeout)
         let restoredDocument = app.buttons
             .matching(NSPredicate(format: "label BEGINSWITH %@", "アプリ更新復元fixture"))
             .firstMatch
@@ -863,17 +868,21 @@ final class KnittingEditorUITests: XCTestCase {
     /// タップでもパネルの「閉じる」が無いままだった）。しばらく待っても出ないときは、
     /// パネルが開いていない（「閉じる」もない）場合に限って押し直す。開いているのに
     /// 出なければ押し直すとパネルを閉じてしまうので、そのまま待って失敗にする。
+    /// アプリ更新テストのように遅い実行では、`timeout`で最後の待機を延ばす。
     @discardableResult
-    private func openDocumentsPanel(in app: XCUIApplication) -> XCUIElement {
+    private func openDocumentsPanel(
+        in app: XCUIApplication,
+        timeout: TimeInterval = KnittingEditorUITests.editorAppearanceTimeout
+    ) -> XCUIElement {
         let documents = app.buttons["編み図"]
-        XCTAssertTrue(documents.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+        XCTAssertTrue(documents.waitForExistence(timeout: timeout), app.debugDescription)
         documents.tap()
         let newDocument = app.buttons["新しい編み図"]
         if !newDocument.waitForExistence(timeout: 10), !app.buttons["閉じる"].exists {
             documents.tap()
         }
         XCTAssertTrue(
-            newDocument.waitForExistence(timeout: Self.editorAppearanceTimeout),
+            newDocument.waitForExistence(timeout: timeout),
             "「編み図」でパネルが開かない: \(app.debugDescription)"
         )
         return newDocument
@@ -1021,6 +1030,25 @@ final class KnittingEditorUITests: XCTestCase {
             rangeSwitch.isHittable,
             "「範囲」をツールバーのスクロールで押せる位置へ出せない（スワイプ\(swipes)回） " +
                 "範囲=\(rangeSwitch.frame) ツールバー=\(toolbar.frame): \(app.debugDescription)"
+        )
+    }
+
+    /// WebViewのページを上へ送り、要素が押せる位置に来るまで待つ。
+    private func scrollWebViewUntilHittable(
+        _ element: XCUIElement,
+        in app: XCUIApplication,
+        maximumSwipes: Int = 12
+    ) {
+        let webView = app.webViews.firstMatch
+        var swipes = 0
+        while !element.isHittable, swipes < maximumSwipes {
+            webView.swipeUp()
+            swipes += 1
+            _ = waitForHittable(element, timeout: 2)
+        }
+        XCTAssertTrue(
+            element.isHittable,
+            "スワイプ\(swipes)回で押せる位置に来ない frame=\(element.frame): \(app.debugDescription)"
         )
     }
 

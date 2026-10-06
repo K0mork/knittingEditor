@@ -1,5 +1,16 @@
 # Development Log
 
+## 2026-10-06 — iOS UIテストで、使い方ページ下端の戻るリンクまで自分でページを送ってから叩き、アプリ更新テストでも効かなかったタップを押し直す
+
+- 影響: アプリとWeb資産の内容は変えていない。PR #74のrun 37402923548の`ios (iPhone 17)`で、`testGuideNavigationReturnsToUsableEditor`が1回目に失敗し、再試行で通った（#95）。「棒針編み図エディタへ戻る」は使い方ページの一番下にあり、XCUITestの自動スクロールに任せたタップの位置が画面の外（y=3275）で計算されて外れ、使い方ページのまま「保存」が20秒現れなかった。
+  - タップの前に、WebViewを上へスワイプしてページを送り、リンクが押せる位置に来るまで待つ（`scrollWebViewUntilHittable`、最大12回）。届かなければリンクの位置を添えて失敗にする。
+  - タップのあと10秒たっても「保存」が出ず、使い方ページのまま（リンクが残っている）のときに限って押し直す。最後まで戻らなければ失敗にし、リンクが効かない不具合は隠さない。
+  - このPRのCI（run 37408596179）の`app_update (iPhone 17)`で、`testSeedDocumentForAppUpdateProbe`が1回目に失敗した。「編み図」のタップでパネルが開かず、「新しい編み図」が60秒現れなかった（#66と同じ型）。アプリ更新テストの2本は待ち時間が60秒で、PR #71の`openDocumentsPanel(in:)`を使っていなかった。`openDocumentsPanel`に最後の待機の`timeout`を足し、この2本でも使うようにした。
+- 主なファイル: `ios/UITests/KnittingEditorUITests/KnittingEditorUITests.swift`
+- テスト: 上記のUIテストを修正した。テスト関数の一覧は`origin/main`と同じ。
+- 検証（手元、Xcode 27.0、iOS 18.2 Simulator）: `xcodegen generate --spec ios/project.yml`と`build-for-testing`が成功した。iPhone 16で`testGuideNavigationReturnsToUsableEditor`を再試行なしの`-test-iterations 10`で実行し、10回すべて成功した。どの回も4回のスワイプでリンクが押せる位置に来て、タップは1回で戻り、XCUITestの自動スクロール（`Computed hit point`）は使われなかった。`SIMULATOR_UDID=<iPhone 16> ios/scripts/simulate-app-update.sh`で、種データの作成と更新後の復元の両方が成功した。CIの環境（Xcode 26.6、iOS 26.5のiPhone 17・iPad (A16)）での確認、Release Archive、iOS Webの検査はPRのCIに任せた。
+- デプロイ影響: なし。iOSのUIテストだけの変更で、Pagesは再配信されない。TestFlight／App Storeへの影響もない。
+
 ## 2026-10-06 — アプリアイコンのAny・Dark・Tintedを共通SVGから生成する
 
 - 影響: #78の既存の緑・針・糸を背景と前景のSVGに書き起こし、iOS 17用のAny、透過背景のDark、RGBグレースケールのTintedを`AppIcon.appiconset`へ登録した。Webのfavicon・192px・touch iconは同じAnyから再生成した。Icon Composerとクリア専用素材は今回の方式に含まない。
