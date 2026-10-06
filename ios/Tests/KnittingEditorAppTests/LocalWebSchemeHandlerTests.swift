@@ -188,6 +188,19 @@ final class LocalWebSchemeHandlerTests: XCTestCase {
         XCTAssertEqual(packages as? String, "fflate,idb,react,react-dom,scheduler")
     }
 
+    /// 読み込みの通知が来ないとき、テストの実行時間上限を待たずに失敗として返すことを確認する。
+    @MainActor
+    func testNavigationWaitFailsWhenNoNavigationCallbackArrives() async {
+        let delegate = NavigationDelegate()
+        do {
+            try await delegate.waitForLoad(timeout: .milliseconds(100))
+            XCTFail("通知が無いのに読み込み完了として返った")
+        } catch NavigationWaitError.timedOut {
+        } catch {
+            XCTFail("想定外のエラー: \(error)")
+        }
+    }
+
     @MainActor
     func testLocalEditorDoesNotInvokeRuntimeNetworkAPIs() async throws {
         let webView = try makeWebView(networkProbe: true)
@@ -358,28 +371,57 @@ final class LocalWebSchemeHandlerTests: XCTestCase {
     }
 }
 
+private enum NavigationWaitError: Error {
+    case timedOut(Duration)
+    case webContentProcessTerminated
+}
+
 @MainActor
 private final class NavigationDelegate: NSObject, WKNavigationDelegate {
-    private var continuation: CheckedContinuation<Void, Error>?
+    /// 正常な読み込みは数秒で終わる。起動直後のSimulatorでWebKitのプロセスが立ち上がらないと
+    /// 完了も失敗も通知されず、テストの実行時間上限（CIでは150秒）まで待ち続ける。
+    /// 上限超えは`-retry-tests-on-failure`の再試行対象外なので、その前に失敗として返す。
+    nonisolated static let loadTimeout: Duration = .seconds(30)
 
-    func waitForLoad() async throws {
+    private var continuation: CheckedContinuation<Void, Error>?
+    private var result: Result<Void, Error>?
+
+    func waitForLoad(timeout: Duration = loadTimeout) async throws {
+        if let result {
+            return try result.get()
+        }
+        let timeoutTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: timeout)
+            guard !Task.isCancelled else { return }
+            self?.finish(.failure(NavigationWaitError.timedOut(timeout)))
+        }
+        defer { timeoutTask.cancel() }
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             self.continuation = continuation
         }
     }
 
-    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        continuation?.resume()
+    /// 最初の結果だけを採る。待ち始める前に届いた結果も取りこぼさない。
+    private func finish(_ result: Result<Void, Error>) {
+        guard self.result == nil else { return }
+        self.result = result
+        continuation?.resume(with: result)
         continuation = nil
+    }
+
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        finish(.success(()))
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-        continuation?.resume(throwing: error)
-        continuation = nil
+        finish(.failure(error))
     }
 
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
-        continuation?.resume(throwing: error)
-        continuation = nil
+        finish(.failure(error))
+    }
+
+    func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+        finish(.failure(NavigationWaitError.webContentProcessTerminated))
     }
 }
