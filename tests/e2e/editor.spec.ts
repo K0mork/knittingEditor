@@ -297,6 +297,46 @@ test('creates a block and exports backup and PDF', async ({ page }) => {
   expect((await pdfDownload).suggestedFilename()).toMatch(/\.pdf$/);
 });
 
+test('draws the ten-stitch major lines in the PNG at the numbered tens', async ({ page }) => {
+  await page.addInitScript(() => Object.defineProperty(Navigator.prototype, 'canShare', { value: undefined, configurable: true }));
+  await page.reload();
+  await page.getByRole('button', { name: '盤面' }).click();
+  await page.getByLabel('段数').fill('25');
+  await page.getByLabel('列数').fill('23');
+  await page.getByRole('button', { name: '変更' }).click();
+  await page.getByRole('button', { name: '閉じる' }).click();
+
+  await page.getByRole('button', { name: '保存' }).click();
+  // 25段×23目は既定の1セル24pxで、四辺の番号の帯も24px。
+  await expect(page.getByText('600×648px')).toBeVisible();
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'PNGを保存' }).click();
+  const png = readFileSync((await (await download).path())!);
+
+  // 盤面の中を縦・横に1本ずつたどり、太線の色（#666）の画素の位置を集める。
+  const darkPixels = await page.evaluate(async (base64) => {
+    const image = await createImageBitmap(await (await fetch(`data:image/png;base64,${base64}`)).blob());
+    const canvas = new OffscreenCanvas(image.width, image.height);
+    const context = canvas.getContext('2d')!;
+    context.drawImage(image, 0, 0);
+    const isDark = (x: number, y: number) => {
+      const [red, green, blue] = context.getImageData(x, y, 1, 1).data;
+      return red === 0x66 && green === 0x66 && blue === 0x66;
+    };
+    const rows: number[] = [];
+    const cols: number[] = [];
+    // 0段目・0目のマスの中央（左上の帯24pxの内側）を通る線でたどる。
+    for (let y = 24; y < 24 + 25 * 24; y++) if (isDark(36, y)) rows.push(y);
+    for (let x = 24; x < 24 + 23 * 24; x++) if (isDark(x, 36)) cols.push(x);
+    return { rows, cols };
+  }, png.toString('base64'));
+  // 段番号10・20の上の罫線は上端から15本目・5本目、目番号10・20の左の罫線は左端から13本目・3本目。
+  // 2pxの太線は罫線の位置の上側（左側）の画素と合わせて2画素になる。
+  const line = (index: number) => [24 + index * 24 - 1, 24 + index * 24];
+  expect(darkPixels.rows).toEqual([...line(5), ...line(15)]);
+  expect(darkPixels.cols).toEqual([...line(3), ...line(13)]);
+});
+
 test('hands PNG and PDF to the share sheet on iPhone Safari without leaving the editor', async ({ page }, testInfo) => {
   // iOSのSafariは<a download>のPDFで編集中のタブを置き換えるため、共有シートで渡す。
   // Playwrightのブラウザには共有APIが無いので、iPhone相当の設定で差し替えて確かめる。

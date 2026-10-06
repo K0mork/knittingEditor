@@ -3,6 +3,7 @@ import { unzlibSync } from 'fflate';
 import { Board, packCell } from '../model/Board';
 import { STITCHES, STITCH_BY_KEY } from '../stitches/catalog';
 import { buildPdf, type PdfRequest } from './pdf.worker';
+import { pdfPageLayout } from './pdfLayout';
 
 function request(rows: number, cols: number, dense: boolean): PdfRequest {
   const cells = new Uint32Array(rows * cols);
@@ -25,6 +26,21 @@ function decodedStreams(pdf: Uint8Array): string[] {
   }
   return streams;
 }
+
+/** ページの命令から、通常の罫線を除いた太線の横線のy座標と縦線のx座標を取り出す。 */
+function majorGrid(page: string): { width: number; horizontal: number[]; vertical: number[] } {
+  const match = page.match(/^([\d.]+) w 0\.4 G (.*)S$/m);
+  if (!match) return { width: 0, horizontal: [], vertical: [] };
+  const horizontal: number[] = [];
+  const vertical: number[] = [];
+  for (const [, x1, y1, x2, y2] of match[2].matchAll(/([\d.]+) ([\d.]+) m ([\d.]+) ([\d.]+) l/g)) {
+    if (y1 === y2) horizontal.push(Number(y1));
+    else if (x1 === x2) vertical.push(Number(x1));
+  }
+  return { width: Number(match[1]), horizontal, vertical };
+}
+
+const gridPages = (pdf: Uint8Array) => decodedStreams(pdf).filter((stream) => stream.includes('0.35 w 0.78 G'));
 
 describe('PDF worker', () => {
   it('writes a syntactically structured PDF', () => {
@@ -94,5 +110,45 @@ describe('PDF worker', () => {
     expect(commands).toContain('(50) Tj');
     expect(commands).not.toContain('(49) Tj');
   });
-});
 
+  it('draws major lines at the numbered tens of a single-page chart', () => {
+    const input = request(25, 23, false);
+    const { pageHeight, margin, rowLabelWidth, colLabelHeight, cellSize } = pdfPageLayout(25, 23, input);
+    const [page] = gridPages(buildPdf(input));
+    const originX = margin + rowLabelWidth;
+    const originY = pageHeight - margin - colLabelHeight - 25 * cellSize;
+    const major = majorGrid(page);
+    expect(major.width).toBeGreaterThan(0.35);
+    // PDFの座標は下が0なので、段番号nの上の線は下端からnセル上、目番号nの左の線は右端からnセル左にある。
+    expect(major.horizontal.map((y) => Math.round((y - originY) / cellSize))).toEqual([20, 10]);
+    expect(major.vertical.map((x) => 23 - Math.round((x - originX) / cellSize))).toEqual([20, 10]);
+  });
+
+  it('aligns the major lines on every tiled page with the board-wide numbers', () => {
+    // 段数・列数が10の倍数でないと、左上から数えた位置と番号の10の倍数がずれる。
+    const [totalRows, totalCols] = [65, 43];
+    const input: PdfRequest = { ...request(totalRows, totalCols, false), layout: 'tiled' };
+    const { pageHeight, margin, rowLabelWidth, colLabelHeight, cellSize, tiles } = pdfPageLayout(totalRows, totalCols, input);
+    const pages = gridPages(buildPdf(input));
+    expect(pages).toHaveLength(tiles.length);
+    expect(tiles.length).toBeGreaterThan(1);
+    const rowNumbers = new Set<number>();
+    const colNumbers = new Set<number>();
+    tiles.forEach((tile, index) => {
+      const originX = margin + rowLabelWidth;
+      const originY = pageHeight - margin - colLabelHeight - tile.rows * cellSize;
+      const major = majorGrid(pages[index]);
+      // 線の位置を盤面全体の段番号・目番号に戻す。ページの中の番号の範囲にある10の倍数だけが太線になる。
+      const rows = major.horizontal.map((y) => totalRows - tile.row - tile.rows + Math.round((y - originY) / cellSize));
+      const cols = major.vertical.map((x) => totalCols - tile.col - Math.round((x - originX) / cellSize));
+      const expectedRows = [10, 20, 30, 40, 50, 60].filter((number) => number <= totalRows - tile.row && number >= totalRows - tile.row - tile.rows);
+      const expectedCols = [10, 20, 30, 40].filter((number) => number <= totalCols - tile.col && number >= totalCols - tile.col - tile.cols);
+      expect(rows.sort((a, b) => a - b), `page ${index + 1} rows`).toEqual(expectedRows);
+      expect(cols.sort((a, b) => a - b), `page ${index + 1} cols`).toEqual(expectedCols);
+      rows.forEach((number) => rowNumbers.add(number));
+      cols.forEach((number) => colNumbers.add(number));
+    });
+    expect([...rowNumbers].sort((a, b) => a - b)).toEqual([10, 20, 30, 40, 50, 60]);
+    expect([...colNumbers].sort((a, b) => a - b)).toEqual([10, 20, 30, 40]);
+  });
+});

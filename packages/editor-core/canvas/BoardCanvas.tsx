@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import type { Board, PatternBlock, Point, Rect } from '../model/Board';
 import { STITCH_BY_KEY, STITCHES } from '../stitches/catalog';
 import { drawCell } from '../stitches/drawCell';
+import { strokeGrid, type GridLineStyle } from './strokeGrid';
 
 export type CanvasMode = 'draw' | 'erase' | 'select' | 'paste';
 
@@ -51,6 +52,17 @@ export function clampViewport(view: Viewport, board: Pick<Board, 'rows' | 'cols'
   const y = clamp(view.y, centerY - (board.rows - 0.5) * view.cell, centerY - 0.5 * view.cell);
   return x === view.x && y === view.y ? view : { ...view, x, y };
 }
+/**
+ * 画面の罫線。10目・10段ごとの太線は、拡大しているときは太く、縮小しているときは濃さだけで区別する。
+ * 最小の4pxまで縮小しても濃さで見分けられるので、通常の線も残してマスを数えられるようにする。
+ */
+export function boardGridStyles(cell: number): { minor: GridLineStyle; major: GridLineStyle } {
+  return {
+    minor: { color: '#c9cec7', width: 1 },
+    major: { color: '#7d8a83', width: cell >= 12 ? 2 : 1 },
+  };
+}
+
 // 複数セルを占める記号は、起点セルが表示範囲の外にあっても一部が画面へかかる。
 // 起点の探索範囲を最大記号の寸法だけ広げ、端で記号が丸ごと消えないようにする。
 const MAX_STITCH_WIDTH = Math.max(...STITCHES.map((stitch) => stitch.width));
@@ -133,20 +145,8 @@ export function BoardCanvas(props: Props) {
       context.fillStyle = row % 2 === 0 ? '#f3f4f0' : '#ffffff';
       context.fillRect(view.x + firstCol * view.cell, y, (lastCol - firstCol + 1) * view.cell, view.cell);
     }
-    context.beginPath();
-    for (let row = firstRow; row <= lastRow + 1; row++) {
-      const y = Math.round(view.y + row * view.cell) + 0.5;
-      context.moveTo(view.x + firstCol * view.cell, y);
-      context.lineTo(view.x + (lastCol + 1) * view.cell, y);
-    }
-    for (let col = firstCol; col <= lastCol + 1; col++) {
-      const x = Math.round(view.x + col * view.cell) + 0.5;
-      context.moveTo(x, view.y + firstRow * view.cell);
-      context.lineTo(x, view.y + (lastRow + 1) * view.cell);
-    }
-    context.strokeStyle = '#c9cec7';
-    context.lineWidth = 1;
-    context.stroke();
+    const grid = boardGridStyles(view.cell);
+    strokeGrid(context, { x: view.x, y: view.y, cell: view.cell, rows: board.rows, cols: board.cols, firstRow, lastRow, firstCol, lastCol }, grid.minor, grid.major);
 
     const { row: firstGlyphRow, col: firstGlyphCol } = glyphSearchStart(firstRow, firstCol);
     for (let row = firstGlyphRow; row <= lastRow; row++) {
