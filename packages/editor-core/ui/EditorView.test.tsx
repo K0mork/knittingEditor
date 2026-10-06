@@ -4,7 +4,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { EditorAnalytics } from '../analytics';
 import type { EditorPlatform } from '../platform';
-import { initializeStorage, listBlocks } from '../storage/database';
+import { deleteBlock, initializeStorage, listBlocks, saveBlock } from '../storage/database';
 import { EditorView, type EditorViewProps } from './EditorView';
 import { saveErrorMessage, useEditorController, type EditorControllerOptions } from './useEditorController';
 
@@ -97,6 +97,31 @@ describe('EditorView', () => {
     expect(button('消す').getAttribute('aria-pressed')).toBe('true');
     expect(button('描く').getAttribute('aria-pressed')).toBe('false');
     expect(container.querySelector('.gesture-hint')?.textContent).toBe('1本指：消去　2本指：移動・拡大');
+  });
+
+  it('deletes a saved block only after the user confirms', async () => {
+    const block = { id: 'confirm-block-delete', name: '削除確認ブロック', rows: 1, cols: 1, anchors: [], createdAt: Date.now() };
+    await saveBlock(block);
+    try {
+      const askConfirm = vi.fn(async () => false);
+      const { container, click } = await renderEditor({ askConfirm });
+      const deleteButton = () => Array.from(container.querySelectorAll('.block-list > div'))
+        .find((row) => row.textContent?.startsWith(block.name))
+        ?.querySelector<HTMLButtonElement>('button:last-child');
+
+      await click('ブロック');
+      await act(async () => { deleteButton()!.click(); });
+      expect(askConfirm).toHaveBeenCalledWith('ブロック「削除確認ブロック」を削除しますか？');
+      expect((await listBlocks()).some((item) => item.id === block.id)).toBe(true);
+      expect(deleteButton()).toBeDefined();
+
+      askConfirm.mockResolvedValue(true);
+      await act(async () => { deleteButton()!.click(); });
+      await waitUntil(() => deleteButton() === undefined);
+      expect((await listBlocks()).some((item) => item.id === block.id)).toBe(false);
+    } finally {
+      await deleteBlock(block.id);
+    }
   });
 
   it('hands the current chart backup to the platform', async () => {

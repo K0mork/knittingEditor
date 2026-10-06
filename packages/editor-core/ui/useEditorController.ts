@@ -198,6 +198,8 @@ export function useEditorController(options: EditorControllerOptions) {
   };
 
   const removeBlock = async (block: PatternBlock) => {
+    // 削除は元に戻せないので、編み図の削除と同じく確認する。
+    if (!(await askConfirm(`ブロック「${block.name}」を削除しますか？`))) return;
     await deleteBlock(block.id);
     await refreshBlocks();
   };
