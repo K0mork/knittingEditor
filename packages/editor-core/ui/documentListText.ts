@@ -31,6 +31,15 @@ export function formatUpdatedAt(time: number, now: number = Date.now()): string 
   return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 ${clock}`;
 }
 
+/**
+ * 次の日（端末の時刻の0時）になるまでのミリ秒。一覧を開いたまま日付が変わったときに
+ * 「今日」「昨日」を書き直すために使う。夏時間の切り替え日でも`Date`に日付を組み立てさせる。
+ */
+export function msUntilNextDay(now: number = Date.now()): number {
+  const today = new Date(now);
+  return new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1).getTime() - now;
+}
+
 export interface DocumentSummary { name: string; rows: number; cols: number; updatedAt: number }
 
 /**

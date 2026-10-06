@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { documentAccessibleName, formatUpdatedAt } from './documentListText';
+import { documentAccessibleName, formatUpdatedAt, msUntilNextDay } from './documentListText';
 
 // 端末の時刻で書くので、期待値も端末の時刻で組み立てる。
 const at = (year: number, month: number, day: number, hours = 0, minutes = 0) => new Date(year, month - 1, day, hours, minutes).getTime();
@@ -34,5 +34,13 @@ describe('documentAccessibleName', () => {
   it('starts with the chart name and reads the size and the update time', () => {
     expect(documentAccessibleName({ name: 'ケーブル模様', rows: 40, cols: 30, updatedAt: at(2026, 10, 7, 9, 0) }, now))
       .toBe('ケーブル模様、40段×30目、更新 今日 9:00');
+  });
+});
+
+describe('msUntilNextDay', () => {
+  it('counts down to the next local midnight', () => {
+    expect(msUntilNextDay(at(2026, 10, 7, 23, 59))).toBe(60 * 1000);
+    expect(msUntilNextDay(at(2026, 10, 7, 0, 0))).toBe(at(2026, 10, 8) - at(2026, 10, 7));
+    expect(msUntilNextDay(at(2026, 12, 31, 12, 0))).toBe(at(2027, 1, 1) - at(2026, 12, 31, 12, 0));
   });
 });

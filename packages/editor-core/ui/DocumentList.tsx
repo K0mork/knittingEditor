@@ -1,10 +1,36 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ThumbnailCache, thumbnailSize } from '../model/thumbnail';
 import type { ChartDocument } from '../storage/database';
-import { documentAccessibleName, formatUpdatedAt } from './documentListText';
+import { documentAccessibleName, formatUpdatedAt, msUntilNextDay } from './documentListText';
 
 /** 一覧を閉じて開き直しても作り直さないよう、縮小画像はモジュールで1つの置き場に覚える。 */
 const thumbnailCache = new ThumbnailCache();
+
+/**
+ * 縮小画像の枠の内側の大きさ（CSS px）。`base.css`の`.document-thumbnail-frame`の64pxから枠線を
+ * 除いた値。これより大きい縮小画像は縮めて表示するので、`pixelated`のままだと段や目が抜けて
+ * 見える。そのときは滑らかに縮める。
+ */
+const THUMBNAIL_FRAME_INNER_SIZE = 62;
+
+/**
+ * 日付が変わったら描き直す。一覧を開いたまま0時を過ぎても「今日」が残らないようにする。
+ * 端末のスリープやアプリの中断中はタイマーが遅れることがあるので、画面に戻ったときにも描き直す。
+ */
+function useDayChange(): void {
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const redraw = () => setTick((value) => value + 1);
+    // 0時ちょうどより少し後に起こし、タイマーの誤差で前日のまま描かないようにする。
+    const timer = setTimeout(redraw, msUntilNextDay() + 1000);
+    const onVisibilityChange = () => { if (document.visibilityState === 'visible') redraw(); };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [tick]);
+}
 
 /**
  * 編み図の縮小画像。画面に入ってから作って描く。編み図が多く盤面が大きくても、一覧を開いた
@@ -31,7 +57,8 @@ function DocumentThumbnail({ document }: { document: ChartDocument }) {
     observer.observe(canvas);
     return () => observer.disconnect();
   }, [document]);
-  return <canvas ref={canvasRef} className="document-thumbnail" width={width} height={height} aria-hidden="true" />;
+  const className = Math.max(width, height) > THUMBNAIL_FRAME_INNER_SIZE ? 'document-thumbnail downscaled' : 'document-thumbnail';
+  return <canvas ref={canvasRef} className={className} width={width} height={height} aria-hidden="true" />;
 }
 
 export interface DocumentListProps {
@@ -46,6 +73,7 @@ export interface DocumentListProps {
 /** 編み図パネルの一覧。縮小画像・名前・寸法・更新日時と、名前変更・複製・削除のボタンを並べる。 */
 export function DocumentList({ documents, activeId, onOpen, onRename, onDuplicate, onDelete }: DocumentListProps) {
   useEffect(() => { thumbnailCache.retain(documents.map((document) => document.id)); }, [documents]);
+  useDayChange();
   const now = Date.now();
   return <ul className="document-list">{documents.map((document) => {
     const active = document.id === activeId;

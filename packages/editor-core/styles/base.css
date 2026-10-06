@@ -102,6 +102,8 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 .document-thumbnail-frame { display: block; width: 64px; height: 64px; border: 1px solid var(--border); border-radius: 8px; background: #e9ece6; overflow: hidden; }
 /* 小さな盤面はセルの境目をぼかさずに拡大する。盤面の外は枠の地色で見分ける。 */
 .document-thumbnail { display: block; width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
+/* 枠より大きい縮小画像（長辺63〜96画素）は縮めて表示する。pixelatedのままだと段や目が抜けるので滑らかに縮める。 */
+.document-thumbnail.downscaled { image-rendering: auto; }
 .document-text { min-width: 0; display: grid; gap: 2px; }
 .document-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
 .document-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }

@@ -125,23 +125,41 @@ export interface ThumbnailSource {
   updatedAt: number;
 }
 
-interface CachedThumbnail { rows: number; cols: number; updatedAt: number; cells: ArrayBuffer; thumbnail: ChartThumbnail }
+/** 覚えておく縮小画像の上限。1件は最大96×96画素（約36KB）なので、上限でも数MBに収まる。 */
+export const THUMBNAIL_CACHE_LIMIT = 200;
+
+/**
+ * 覚えておく項目。セル配列（`cells`）は持たない。一覧を読み直すたびにセル配列は新しい
+ * ArrayBufferになるので、参照を持つと古いセル配列（1000×1000で1件4MB）を解放できなくなる。
+ */
+interface CachedThumbnail { rows: number; cols: number; updatedAt: number; thumbnail: ChartThumbnail }
 
 /**
  * 編み図ごとに最後に作った縮小画像を覚える。一覧を開き直したり、別の編み図を保存して一覧が
- * 再描画されたりしても、更新日時と寸法が同じなら作り直さない。
+ * 再描画されたりしても、寸法と更新日時が同じなら作り直さない。編集は自動保存で更新日時を
+ * 変えるので、更新日時が同じならセルも同じとみなす。
  */
 export class ThumbnailCache {
   private readonly entries = new Map<string, CachedThumbnail>();
 
+  constructor(private readonly limit: number = THUMBNAIL_CACHE_LIMIT) {}
+
   get(source: ThumbnailSource): ChartThumbnail {
     const cached = this.entries.get(source.id);
-    if (cached && cached.rows === source.rows && cached.cols === source.cols
-        && (cached.cells === source.cells || cached.updatedAt === source.updatedAt)) {
+    if (cached && cached.rows === source.rows && cached.cols === source.cols && cached.updatedAt === source.updatedAt) {
+      // 最近使った順に並べ直す。上限を超えたときは、いちばん長く使っていない項目から捨てる。
+      this.entries.delete(source.id);
+      this.entries.set(source.id, cached);
       return cached.thumbnail;
     }
     const thumbnail = renderThumbnail(source.rows, source.cols, new Uint32Array(source.cells, 0, Math.floor(source.cells.byteLength / 4)));
-    this.entries.set(source.id, { rows: source.rows, cols: source.cols, updatedAt: source.updatedAt, cells: source.cells, thumbnail });
+    this.entries.delete(source.id);
+    this.entries.set(source.id, { rows: source.rows, cols: source.cols, updatedAt: source.updatedAt, thumbnail });
+    while (this.entries.size > this.limit) {
+      const oldest = this.entries.keys().next().value;
+      if (oldest === undefined) break;
+      this.entries.delete(oldest);
+    }
     return thumbnail;
   }
 
@@ -150,6 +168,8 @@ export class ThumbnailCache {
     const keep = new Set(ids);
     for (const id of this.entries.keys()) if (!keep.has(id)) this.entries.delete(id);
   }
+
+  has(id: string): boolean { return this.entries.has(id); }
 
   get size(): number { return this.entries.size; }
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { STITCH_BY_KEY } from '../stitches/catalog';
 import { Board, MAX_BOARD_SIZE, packCell } from './Board';
-import { renderThumbnail, THUMBNAIL_MAX_SIDE, ThumbnailCache, thumbnailSize } from './thumbnail';
+import { renderThumbnail, THUMBNAIL_CACHE_LIMIT, THUMBNAIL_MAX_SIDE, ThumbnailCache, thumbnailSize } from './thumbnail';
 
 const id = (key: string) => STITCH_BY_KEY.get(key)!.id;
 
@@ -91,19 +91,42 @@ describe('renderThumbnail', () => {
     const thumbnail = renderThumbnail(MAX_BOARD_SIZE, MAX_BOARD_SIZE, cells);
     const elapsed = performance.now() - started;
     expect(thumbnail.pixels.length).toBe(91 * 91 * 4);
-    // 手元では数ms。遅いCIでも一覧を開く操作を止めない範囲を上限にする。
+    // 手元のNode.jsで1回およそ26ms。遅いCIでも一覧を開く操作を止めない範囲を上限にする。
     expect(elapsed).toBeLessThan(250);
   });
 });
 
+/** `root`からたどれるオブジェクトのどこかに`target`があるか。Map、配列、型付き配列の中も見る。 */
+function reaches(root: unknown, target: ArrayBuffer, seen = new Set<unknown>()): boolean {
+  if (root === target) return true;
+  if (root === null || typeof root !== 'object' || seen.has(root)) return false;
+  seen.add(root);
+  if (ArrayBuffer.isView(root)) return root.buffer === target;
+  if (root instanceof Map) return [...root.entries()].some(([key, value]) => reaches(key, target, seen) || reaches(value, target, seen));
+  return Object.values(root).some((value) => reaches(value, target, seen));
+}
+
 describe('ThumbnailCache', () => {
-  const document = (updatedAt: number, cells = new Uint32Array(4).buffer) => ({ id: 'a', rows: 2, cols: 2, cells, updatedAt });
+  const document = (updatedAt: number, cells = new Uint32Array(4).buffer, id = 'a') => ({ id, rows: 2, cols: 2, cells, updatedAt });
 
   it('reuses the thumbnail while the document is unchanged, even after it is read again', () => {
     const cache = new ThumbnailCache();
     const first = cache.get(document(1));
     // 一覧を読み直すとセル配列は別のArrayBufferになるが、更新日時が同じなら作り直さない。
     expect(cache.get(document(1))).toBe(first);
+  });
+
+  it('does not keep the cell arrays it was given', () => {
+    const cache = new ThumbnailCache();
+    const first = new Uint32Array(4).buffer;
+    const reread = new Uint32Array(4).buffer;
+    cache.get(document(1, first));
+    cache.get(document(1, reread));
+    // 一覧を読み直すたびに古いセル配列が残ると、1000×1000では1件4MBずつ解放されなくなる。
+    expect(reaches(cache, first)).toBe(false);
+    expect(reaches(cache, reread)).toBe(false);
+    // 調べ方が正しいことの確認：作った縮小画像の画素はたどれる。
+    expect(reaches(cache, cache.get(document(1)).pixels.buffer)).toBe(true);
   });
 
   it('rebuilds the thumbnail after the document is saved again', () => {
@@ -113,13 +136,39 @@ describe('ThumbnailCache', () => {
     const after = cache.get(document(2, edited.buffer));
     expect(after).not.toBe(before);
     expect(pixel(after, 0, 0)).toEqual([0, 0, 0, 255]);
+    // 更新日時が変わればセル配列が同じ参照でも作り直す。
+    edited[0] = packCell(id('knit'), 0xff_0000);
+    expect(pixel(cache.get(document(3, edited.buffer)), 0, 0)).toEqual([255, 0, 0, 255]);
+  });
+
+  it('rebuilds the thumbnail when the board is resized', () => {
+    const cache = new ThumbnailCache();
+    const before = cache.get(document(1));
+    const resized = cache.get({ ...document(1, new Uint32Array(6).buffer), cols: 3 });
+    expect(resized).not.toBe(before);
+    expect(resized.width).toBe(3);
   });
 
   it('forgets documents that are no longer listed', () => {
     const cache = new ThumbnailCache();
     cache.get(document(1));
-    cache.get({ ...document(1), id: 'b' });
+    cache.get(document(1, undefined, 'b'));
     cache.retain(['b']);
     expect(cache.size).toBe(1);
+    expect(cache.has('a')).toBe(false);
+    expect(cache.has('b')).toBe(true);
+  });
+
+  it('keeps at most the limit, dropping the least recently used document first', () => {
+    expect(THUMBNAIL_CACHE_LIMIT).toBeGreaterThan(0);
+    const cache = new ThumbnailCache(2);
+    cache.get(document(1, undefined, 'a'));
+    cache.get(document(1, undefined, 'b'));
+    cache.get(document(1, undefined, 'a'));
+    cache.get(document(1, undefined, 'c'));
+    expect(cache.size).toBe(2);
+    expect(cache.has('a')).toBe(true);
+    expect(cache.has('b')).toBe(false);
+    expect(cache.has('c')).toBe(true);
   });
 });

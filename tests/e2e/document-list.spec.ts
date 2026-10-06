@@ -31,6 +31,8 @@ test('shows each chart with a thumbnail and its update time, and refreshes both 
   await expect(item.locator('time')).toHaveText(/^更新 今日 \d{1,2}:\d{2}$/);
   await expect(item.locator('.document-thumbnail')).toHaveAttribute('aria-hidden', 'true');
   await expect(item.locator('.document-thumbnail')).toHaveJSProperty('width', 20);
+  // 枠より小さい縮小画像は、セルの境目をぼかさずに拡大する。
+  await expect(item.locator('.document-thumbnail')).toHaveCSS('image-rendering', 'pixelated');
   // 空の盤面は全面が白。
   await expect.poll(() => item.locator('.document-thumbnail').evaluate((canvas: HTMLCanvasElement) =>
     canvas.getContext('2d')!.getImageData(0, 0, 1, 1).data[3])).toBe(255);
@@ -110,9 +112,12 @@ test('fits the thumbnail of a large, tall board inside its frame without distort
     frame: frame.getBoundingClientRect().toJSON() as DOMRect,
     canvas: frame.querySelector('canvas')!.getBoundingClientRect().toJSON() as DOMRect,
     fit: getComputedStyle(frame.querySelector('canvas')!).objectFit,
+    rendering: getComputedStyle(frame.querySelector('canvas')!).imageRendering,
   }));
   // 枠からはみ出して切り取られず、枠の中で縮めて収める。
   expect(boxes.canvas.height).toBeLessThanOrEqual(boxes.frame.height);
   expect(boxes.canvas.width).toBeLessThanOrEqual(boxes.frame.width);
   expect(boxes.fit).toBe('contain');
+  // 枠より大きい縮小画像はpixelatedで縮めると段が抜けて見えるので、滑らかに縮める。
+  expect(boxes.rendering).toBe('auto');
 });

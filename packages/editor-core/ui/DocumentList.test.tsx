@@ -38,8 +38,8 @@ afterEach(() => {
 
 const knit = STITCH_BY_KEY.get('knit')!.id;
 
-function chart(id: string, name: string, updatedAt: number, cells: number[] = [0, 0, 0, 0]): ChartDocument {
-  return { id, name, rows: 2, cols: 2, cells: Uint32Array.from(cells).buffer, createdAt: 0, updatedAt };
+function chart(id: string, name: string, updatedAt: number, cells: number[] = [0, 0, 0, 0], rows = 2, cols = 2): ChartDocument {
+  return { id, name, rows, cols, cells: Uint32Array.from(cells).buffer, createdAt: 0, updatedAt };
 }
 
 function render(props: Partial<DocumentListProps> & Pick<DocumentListProps, 'documents'>) {
@@ -79,6 +79,44 @@ describe('DocumentList', () => {
 
     render({ documents: [chart('a', 'ケーブル', 2, [packCell(knit, 0x00_00ff), 0, 0, 0])] });
     expect(drawn.filter((entry) => entry.canvas === canvas).at(-1)!.data.slice(0, 4)).toEqual([0, 0, 255, 255]);
+  });
+
+  it('rewrites today as yesterday when the date changes while the list is open', () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date(2026, 9, 7, 23, 59));
+      render({ documents: [chart('a', 'ケーブル', new Date(2026, 9, 7, 23, 0).getTime())] });
+      const time = () => container!.querySelector('time')!.textContent;
+      expect(time()).toBe('更新 今日 23:00');
+      act(() => { vi.advanceTimersByTime(30 * 1000); });
+      expect(time()).toBe('更新 今日 23:00');
+      act(() => { vi.advanceTimersByTime(2 * 60 * 1000); });
+      expect(time()).toBe('更新 昨日 23:00');
+      expect(container!.querySelector('.document-open')!.getAttribute('aria-label')).toBe('ケーブル、2段×2目、更新 昨日 23:00');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('rewrites the date when the page becomes visible again after the timer was held back', () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date(2026, 9, 7, 23, 0));
+      render({ documents: [chart('a', 'ケーブル', new Date(2026, 9, 7, 22, 0).getTime())] });
+      // 中断中にタイマーが進まず、時刻だけが翌日になった状態。
+      vi.setSystemTime(new Date(2026, 9, 8, 8, 0));
+      act(() => { document.dispatchEvent(new Event('visibilitychange')); });
+      expect(container!.querySelector('time')!.textContent).toBe('更新 昨日 22:00');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('scales thumbnails down smoothly only when they are larger than the frame', () => {
+    render({ documents: [chart('a', '小さい', 1), chart('b', '枠と同じ', 1, [], 62, 10), chart('c', '大きい', 1, [], 70, 10)] });
+    const classes = [...container!.querySelectorAll('canvas')].map((canvas) => canvas.className);
+    // 枠より小さい縮小画像はセルの境目をぼかさずに拡大し、枠より大きいものは段や目が抜けないよう滑らかに縮める。
+    expect(classes).toEqual(['document-thumbnail', 'document-thumbnail', 'document-thumbnail downscaled']);
   });
 
   it('wires the open, rename, duplicate and delete buttons, and keeps the last chart from being deleted', () => {
