@@ -44,13 +44,14 @@ window.dispatchEvent(new CustomEvent('knittingEditorNativeCommand', { detail: 'u
 | 編集 | やり直す | ⇧⌘Z | `redo` | 操作メニューの「やり直す」 |
 | ヘルプ | 棒針編み図の使い方 | ⇧⌘H | `openGuide` | 「使い方」。保留中の保存を書き込んでから移る |
 
-Web側は`ios/Web/src/nativeBridge.ts`の`listenNativeCommand`で受け、`NATIVE_COMMANDS`に無い値は捨てる。`nativeCommands.ts`の`runNativeCommand`は次のときに操作を始めない。
+Web側は`ios/Web/src/nativeBridge.ts`の`listenNativeCommand`で受け、`NATIVE_COMMANDS`に無い値は捨てる。`nativeCommands.ts`の`runNativeCommand`は次のように扱う。
 
-- 出力や復元の処理中（`busy`）。
-- アプリ内ダイアログや記号の一覧（`aria-modal="true"`）を開いている間。ただし元に戻す・やり直すは、Web版のキー操作（`useHistoryShortcuts`）と同じく受け付ける。
-- 入力欄で文字を打っている間の元に戻す・やり直すは、盤面ではなく入力中の文字に効かせる（`document.execCommand`）。
+- 元に戻す・やり直すは、Web版のキー操作（`useHistoryShortcuts`）と同じ扱いにする。入力欄（`packages/editor-core/ui/hooks.ts`の`isEditableTarget`。Web版と同じ判定を共有する）にフォーカスがある間は、盤面ではなく入力中の文字に効かせる（`document.execCommand('undo')`・`('redo')`）。それ以外では、出力や復元の処理中や、アプリ内ダイアログ・記号の一覧を開いている間も盤面に効かせる。
+- ほかの操作は、出力や復元の処理中（`busy`）と、アプリ内ダイアログや記号の一覧（`aria-modal="true"`）を開いている間は始めない。
 
-標準の「取り消す」「やり直す」（UIKitの`undo:`・`redo:`）はWeb側の編集履歴に届かないため、`CommandGroup(replacing: .undoRedo)`で置き換える。選べる状態のメニュー項目にショートカットが合うと、UIKitがキーを受け取り、WebViewの`keydown`へは届かない。このため⌘Z・⇧⌘ZはWeb側のキー操作（`useHistoryShortcuts`）と二重には実行されない（`KeyboardCommandUITests`で、1回の⌘Zで1件だけ戻ることを確かめている）。項目を選べないとき（戻せる編集が無いときなど）は、キーはこれまでどおりWebViewへ届く。
+標準の「取り消す」「やり直す」（UIKitの`undo:`・`redo:`）はWeb側の編集履歴に届かないため、`CommandGroup(replacing: .undoRedo)`で置き換える。選べる状態のメニュー項目にショートカットが合うと、UIKitがキーを受け取り、WebViewの`keydown`へは届かない。このため⌘Z・⇧⌘ZはWeb側のキー操作（`useHistoryShortcuts`）と二重には実行されない（`KeyboardCommandUITests`で、1回の⌘Zで1件だけ戻ることを確かめている）。項目を選べないとき（戻せる編集が無いときなど）は、キーはWebViewの`keydown`へ届く。
+
+置き換えたことで、入力欄の文字の取り消しに使われていた標準のキー割り当ても無くなる。項目を選べないときに入力欄で⌘Zを押すと、キーは`keydown`へ届くが、`useHistoryShortcuts`は入力欄では何もしないため、文字が戻らない。そこでWebは入力欄にフォーカスがある間、`commandState`の`canUndo`・`canRedo`を盤面の履歴にかかわらず`true`にして送る（`nativeHistoryState`・`watchTextEditing`）。入力欄での⌘Z・⇧⌘Zは常にメニューを通り、`runNativeCommand`から`execCommand`で入力中の文字を取り消す・やり直す。WKWebViewで効くことは、新しい編み図のダイアログで文字を打ち、盤面に戻せる編集が無いときとあるときの両方で`KeyboardCommandUITests`が確かめている。
 
 ページに`keydown`が届かないと、Web側は物理キーボードがあることに気付けず、記号の一覧の「Escapeで閉じます。」などの案内を出さない。Web側はネイティブの操作を受けたら`noteHardwareKeyboard()`（`packages/editor-core/ui/inputEnvironment.ts`）でキーボードがあるとみなす。メニューバーを指で開いて選んだときも同じ扱いになるが、案内が1文増えるだけである。
 
@@ -62,7 +63,9 @@ Web側は`ios/Web/src/nativeBridge.ts`の`listenNativeCommand`で受け、`NATIV
 { "version": 1, "type": "commandState", "canUndo": true, "canRedo": false }
 ```
 
-Swiftは保存画面・共有シート・Document Pickerなどを表示している間は操作を送らない。新しい操作のたびにWeb側で別の出力やダイアログが重なるのを防ぐためである。
+Swiftは保存画面・共有シート・Document Pickerを表示している間（`WebViewModel.isPresentingNativeUI`）、メニューの項目をすべて選べない表示にし、操作を送らない。新しい操作のたびにWeb側で別の出力やダイアログが重なるのを防ぐためである。表示した時点で立て、キャンセル・保存の完了・共有シートの完了・下へスワイプして閉じたとき（`presentationControllerDidDismiss`）に下ろす。数え漏らしに備え、`perform`は表示中の画面があるときも送らない。
+
+メニューの項目が選べるようになるのは、`webReady`や`commandState`を受けてSwiftUIがメニューを作り直した後である。その直前に押したキーはWebViewへ落ちる。盤面の元に戻す・やり直すはWeb側のキー操作が受けるが、ほかのショートカットは何も起きない。UIテストはメニューの状態を読めないため、期待した画面が出るまでキーを送り直す（どの操作も、画面を出している間は重ねて実行されない）。
 
 ## Swift → Web
 

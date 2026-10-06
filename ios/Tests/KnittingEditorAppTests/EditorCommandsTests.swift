@@ -42,10 +42,33 @@ final class EditorCommandsTests: XCTestCase {
         XCTAssertFalse(WebViewModel.canPerform(.redo, webContentReady: true, state: undoOnly))
     }
 
+    /// 保存画面・共有シート・Document Pickerを出している間は、どの項目も選べない表示にする。
+    func testCommandsAreDisabledWhileNativeSheetIsPresented() {
+        let state = EditorCommandState(canUndo: true, canRedo: true)
+        for command in EditorCommand.allCases {
+            XCTAssertFalse(
+                WebViewModel.canPerform(command, webContentReady: true, presentingNativeUI: true, state: state),
+                command.rawValue
+            )
+        }
+    }
+
+    @MainActor
+    func testModelFollowsNativePresentation() {
+        let model = WebViewModel()
+        model.webContentDidBecomeReady()
+        XCTAssertTrue(model.canPerform(.exportPdf))
+        model.isPresentingNativeUI = true
+        XCTAssertFalse(model.canPerform(.exportPdf))
+        model.isPresentingNativeUI = false
+        XCTAssertTrue(model.canPerform(.exportPdf))
+    }
+
     @MainActor
     func testModelStartsWithoutHistory() {
         let model = WebViewModel()
         XCTAssertEqual(model.editorCommandState, EditorCommandState())
+        XCTAssertFalse(model.isPresentingNativeUI)
         XCTAssertFalse(model.canPerform(.newDocument), "編集画面が準備できるまではメニューを選べない")
     }
 

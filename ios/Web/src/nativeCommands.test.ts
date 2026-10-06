@@ -2,7 +2,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Board } from '@knitting-editor/editor-core/model/Board';
 import { defaultPngCellSize } from '@knitting-editor/editor-core/export/exporters';
 import { isNativeCommand, listenNativeCommand, NATIVE_COMMANDS, notifyNativeCommandState, type NativeCommand } from './nativeBridge';
-import { MENU_PDF_OPTIONS, nativeCommandHandlers, runNativeCommand, type NativeCommandHandlers } from './nativeCommands';
+import {
+  MENU_PDF_OPTIONS, nativeCommandHandlers, nativeHistoryState, runNativeCommand, watchTextEditing, type NativeCommandHandlers,
+} from './nativeCommands';
 
 function fakeHandlers(): NativeCommandHandlers {
   return Object.fromEntries(NATIVE_COMMANDS.map((command) => [command, vi.fn()])) as unknown as NativeCommandHandlers;
@@ -46,11 +48,12 @@ describe('native menu commands', () => {
     }
   });
 
-  it('does not start another action while exporting or restoring', () => {
+  it('does not start another action while exporting or restoring, but undo and redo pass as with the web shortcuts', () => {
     const handlers = fakeHandlers();
     for (const command of NATIVE_COMMANDS) {
-      expect(runNativeCommand(command, handlers, { busy: true })).toBe('blocked');
-      expect(handlers[command]).not.toHaveBeenCalled();
+      const history = command === 'undo' || command === 'redo';
+      expect(runNativeCommand(command, handlers, { busy: true })).toBe(history ? 'performed' : 'blocked');
+      expect(handlers[command]).toHaveBeenCalledTimes(history ? 1 : 0);
     }
   });
 
@@ -77,14 +80,44 @@ describe('native menu commands', () => {
     expect(handlers.redo).not.toHaveBeenCalled();
   });
 
-  it('treats the color and range controls as non-text controls', () => {
-    document.body.innerHTML = '<input type="color" value="#000000"><input type="range">';
+  it('uses the same editable-field rule as the web shortcuts', () => {
+    // Web版の`useHistoryShortcuts`は、入力欄（種類を問わない）・選択欄・編集可能な要素では盤面を戻さない。
+    document.body.innerHTML = '<input type="range"><select><option>1</option></select><div contenteditable="true"></div><button>決定</button>';
+    const execCommand = vi.fn(() => true);
+    Object.defineProperty(document, 'execCommand', { value: execCommand, configurable: true });
     const handlers = fakeHandlers();
-    for (const input of document.querySelectorAll('input')) {
-      input.focus();
-      expect(runNativeCommand('undo', handlers, { busy: false })).toBe('performed');
+    for (const selector of ['input', 'select']) {
+      document.querySelector<HTMLElement>(selector)!.focus();
+      expect(runNativeCommand('undo', handlers, { busy: false })).toBe('textEditing');
     }
-    expect(handlers.undo).toHaveBeenCalledTimes(2);
+    document.querySelector('button')!.focus();
+    expect(runNativeCommand('undo', handlers, { busy: true })).toBe('performed');
+    expect(handlers.undo).toHaveBeenCalledTimes(1);
+    expect(execCommand).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps undo and redo selectable in the menu while a text field has focus', async () => {
+    expect(nativeHistoryState({ canUndo: false, canRedo: false }, false)).toEqual({ canUndo: false, canRedo: false });
+    expect(nativeHistoryState({ canUndo: true, canRedo: false }, false)).toEqual({ canUndo: true, canRedo: false });
+    expect(nativeHistoryState({ canUndo: false, canRedo: false }, true)).toEqual({ canUndo: true, canRedo: true });
+
+    document.body.innerHTML = '<input aria-label="入力"><button>決定</button>';
+    const listener = vi.fn();
+    const stop = watchTextEditing(listener);
+    expect(listener).toHaveBeenLastCalledWith(false);
+
+    document.querySelector('input')!.focus();
+    expect(listener).toHaveBeenLastCalledWith(true);
+
+    // フォーカスが外れたことは、移動先が決まる次のタスクで知らせる。
+    document.querySelector('button')!.focus();
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+    expect(listener).toHaveBeenLastCalledWith(false);
+    expect(listener).toHaveBeenCalledTimes(3);
+
+    stop();
+    document.querySelector('input')!.focus();
+    expect(listener).toHaveBeenCalledTimes(3);
   });
 
   it('exports with the same defaults the save panel opens with', () => {

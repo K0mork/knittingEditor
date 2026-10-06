@@ -113,8 +113,11 @@ export interface ClipboardShortcutOptions {
   onPaste: () => void;
 }
 
-/** 入力欄の中のショートカットは、文字入力の取り消しなど入力欄自身の操作に任せる。 */
-function isEditableTarget(target: EventTarget | null): boolean {
+/**
+ * 入力欄の中のショートカットは、文字入力の取り消しなど入力欄自身の操作に任せる。
+ * iOSアプリのメニューから届く元に戻す・やり直す（`ios/Web/src/nativeCommands.ts`）も同じ判定を使う。
+ */
+export function isEditableTarget(target: EventTarget | null): boolean {
   return target instanceof HTMLElement && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName));
 }
 

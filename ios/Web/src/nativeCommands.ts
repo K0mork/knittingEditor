@@ -1,5 +1,6 @@
 import { defaultPngCellSize } from '@knitting-editor/editor-core/export/exporters';
 import type { PdfLayoutOptions } from '@knitting-editor/editor-core/export/pdfLayout';
+import { isEditableTarget } from '@knitting-editor/editor-core/ui/hooks';
 import type { EditorController } from '@knitting-editor/editor-core/ui/useEditorController';
 import type { NativeCommand } from './nativeBridge';
 
@@ -39,29 +40,60 @@ export function nativeCommandHandlers(editor: CommandEditor, actions: {
 
 export type NativeCommandOutcome = 'performed' | 'textEditing' | 'blocked';
 
-/** 文字を入力している要素。ここでの取り消しは盤面ではなく入力中の文字に効かせる。 */
-function isEditable(element: Element | null): boolean {
-  return element instanceof HTMLElement
-    && (element.isContentEditable || element.tagName === 'TEXTAREA'
-      || (element instanceof HTMLInputElement && !['button', 'checkbox', 'color', 'radio', 'range', 'submit'].includes(element.type)));
-}
-
 /**
  * ネイティブから届いた操作を実行する。
  *
- * - 元に戻す・やり直すは、入力欄で文字を打っている間は入力欄の取り消しにする。
- *   Web版のキー操作（`useHistoryShortcuts`）と同じ扱い。
- * - 出力や復元などの処理中と、ダイアログ・記号の一覧を開いている間は、ほかの操作を始めない。
- *   元に戻す・やり直すはWeb版のキー操作と同じく、処理中でなければ受け付ける。
+ * - 元に戻す・やり直すはWeb版のキー操作（`useHistoryShortcuts`）と同じ扱いにする。入力欄
+ *   （`isEditableTarget`）にフォーカスがある間は盤面ではなく入力中の文字に効かせ、
+ *   それ以外では処理中やダイアログ・記号の一覧を開いている間も受け付ける。
+ * - ほかの操作は、出力や復元などの処理中と、ダイアログ・記号の一覧を開いている間は始めない。
  */
 export function runNativeCommand(command: NativeCommand, handlers: NativeCommandHandlers, state: { busy: boolean }, doc: Document = document): NativeCommandOutcome {
   const history = command === 'undo' || command === 'redo';
-  if (history && isEditable(doc.activeElement)) {
+  if (history && isEditableTarget(doc.activeElement)) {
+    // 標準の「取り消す」をメニューで置き換えたため、入力欄の取り消しもここから行う。
     if (typeof doc.execCommand === 'function') doc.execCommand(command);
     return 'textEditing';
   }
-  if (state.busy) return 'blocked';
-  if (!history && doc.querySelector('[aria-modal="true"]')) return 'blocked';
+  if (!history && (state.busy || doc.querySelector('[aria-modal="true"]'))) return 'blocked';
   handlers[command]();
   return 'performed';
+}
+
+/**
+ * メニューの「元に戻す」「やり直す」を選べるか。
+ *
+ * 入力欄にフォーカスがある間は、盤面の履歴にかかわらず選べるようにする。選べない項目のキーは
+ * メニューを素通りしてページへ届くが、ページのキー操作は入力欄では何もしないため、
+ * ⌘Zでの文字の取り消しが効かなくなる。選べる状態にして、常に`runNativeCommand`を通す。
+ */
+export function nativeHistoryState(history: { canUndo: boolean; canRedo: boolean }, textEditing: boolean) {
+  return { canUndo: history.canUndo || textEditing, canRedo: history.canRedo || textEditing };
+}
+
+/**
+ * 入力欄にフォーカスがあるかを見張り、変わったときに知らせる。
+ * `focusout`の時点では移動先がまだ決まっていないことがあるため、次のタスクで読み直す。
+ */
+export function watchTextEditing(listener: (editing: boolean) => void, doc: Document = document): () => void {
+  let editing = isEditableTarget(doc.activeElement);
+  let timer: number | undefined;
+  const check = () => {
+    timer = undefined;
+    const next = isEditableTarget(doc.activeElement);
+    if (next === editing) return;
+    editing = next;
+    listener(next);
+  };
+  const scheduleCheck = () => {
+    if (timer === undefined) timer = window.setTimeout(check, 0);
+  };
+  doc.addEventListener('focusin', check);
+  doc.addEventListener('focusout', scheduleCheck);
+  listener(editing);
+  return () => {
+    doc.removeEventListener('focusin', check);
+    doc.removeEventListener('focusout', scheduleCheck);
+    if (timer !== undefined) window.clearTimeout(timer);
+  };
 }

@@ -4,7 +4,7 @@
   - iPadのメニューバー（iPadOS 26以降）と、⌘キーの長押しで出るショートカットの一覧に、編集画面の操作を載せた。ファイル：新しい編み図…（⌘N）、バックアップから復元…（⌘O）、この編み図をバックアップ…（⌘S）、全データをバックアップ…（⌥⌘S）、PNGで書き出す…（⇧⌘E）、PDFで書き出す…（⌘P）。編集：元に戻す（⌘Z）、やり直す（⇧⌘Z）。ヘルプ：棒針編み図の使い方（⇧⌘H）。
   - 操作の中身は画面のボタンと同じWeb側の処理で、Swiftはメニューで選ばれた操作の名前を`knittingEditorNativeCommand`イベントでWebViewへ送るだけにした。メニューから書き出すPNG・PDFは、保存・出力パネルを初めて開いたときの既定値（PNGは既定の画素数、PDFは全体を1ページ・A4縦）を使う。
   - 標準の「取り消す」「やり直す」はWeb側の編集履歴に届かないので置き換えた。元に戻す・やり直すは、Webが`commandState`メッセージで知らせる編集履歴に合わせて、画面のボタンと同じ条件で選べる。どの項目も、編集画面が準備できるまでと、使い方ページを表示している間は選べない。
-  - 出力・復元の処理中、アプリ内ダイアログや記号の一覧を開いている間、ネイティブの保存画面などを出している間は、新しい操作を始めない（元に戻す・やり直すはWeb版のキー操作と同じく、ダイアログを開いていても受け付ける）。入力欄で文字を打っている間の⌘Z・⇧⌘Zは、盤面ではなく入力中の文字を取り消す。
+  - 出力・復元の処理中、アプリ内ダイアログや記号の一覧を開いている間、ネイティブの保存画面などを出している間は、新しい操作を始めない（元に戻す・やり直すはWeb版のキー操作と同じく、処理中やダイアログを開いている間も受け付ける）。入力欄で文字を打っている間の⌘Z・⇧⌘Zは、盤面ではなく入力中の文字を取り消す。
   - メニューが⌘Zなどを受け取るとページに`keydown`が届かないため、ネイティブの操作を受けたらキーボードがあるとみなし、記号の一覧に「Escapeで閉じます。」を出す。
   - 使い方のキーは、慣習の⌘?ではiPadのSimulatorで項目が呼ばれなかったため、⇧⌘Hにした。
   - `Info.plist`に`UIApplicationSupportsIndirectInputEvents`（`YES`）を足した。トラックパッド・マウスの入力がタッチとしてではなく、ポインタの入力としてWebViewへ届く。盤面のヒントと貼り付けの案内は、最後に使われた入力（`pointerType`・`wheel`）で切り替わる（#89）。
@@ -22,3 +22,11 @@
   - 手元で確かめられなかったこと: ⌘キーの長押しで出る一覧の表示（XCUITestの`perform(withKeyModifiers:)`はキーを押し続けないため出せない）と、メニューバーそのものの表示。トラックパッド・マウスでの描画・スクロール・ピンチと、その後にヒント・貼り付けの案内がマウス向けに切り替わること（SimulatorとXCUITestから間接入力のポインタを送れない）。いずれも実機の確認（#21）で行う。
   - Simulatorのテスト一式、更新復元、Release Archive、オフラインbundle検査はPRのCIに任せた。
 - デプロイ影響: Pagesの成果物には共通コードの小さな追加（呼ばれない関数）だけが入り、Web版の動きは変わらない。iOS版は次のビルドから入る。実機ではキーボード・トラックパッドをつないだiPadで、⌘長押しの一覧、メニューバー、トラックパッドとマウスでの描画・スクロール・ピンチ、ヒントの切り替えを確かめる（#21）。
+- レビュー・最初のCIを受けた修正（同じPR内）:
+  - 入力欄の文字の取り消し: 標準の「取り消す」を置き換えたため、盤面に戻せる編集が無いと⌘ZがWebViewの`keydown`へ落ち、入力欄の文字を戻せなくなるおそれがあった。Webは入力欄にフォーカスがある間、`commandState`の`canUndo`・`canRedo`を`true`にして送り（`nativeHistoryState`・`watchTextEditing`）、入力欄での⌘Z・⇧⌘Zを常にメニュー経由で`document.execCommand('undo')`・`('redo')`へ回すようにした。WKWebViewで効くことをUIテストで確かめた。
+  - Web版との違いを揃えた: 元に戻す・やり直すは、Web版のキー操作と同じく出力・復元の処理中も受け付ける。入力欄の判定は`packages/editor-core/ui/hooks.ts`の`isEditableTarget`を書き出して共有した（Web版の判定は変えていない）。
+  - 保存画面・共有シート・Document Pickerを出している間は、メニューの項目を選べない表示にした（`WebViewModel.isPresentingNativeUI`）。キャンセル・完了・下へスワイプして閉じたときに戻す。
+  - UIテストの待機: 最初のCIで`ios (iPad (A16))`の`testRestoreShortcutOpensBackupPicker`（⌘OでDocument Pickerが出ない）と`testUndoAndRedoShortcutsStepBoardHistoryOnce`（⌘Nでダイアログが出ない）が両試行とも失敗した。起動直後、メニューの項目が`webReady`の反映前で選べず、キーがWebViewへ落ちて捨てられていたとみられる。`launchEditor()`で準備中の表示（`editorLoadingOverlay`）が消えるまで待ち、ショートカットは期待した画面・値の変化が起きるまで送り直す（`typeShortcut`。どの操作も画面を出している間は重ねて実行されない）。⌘Z・⇧⌘Zは、画面のボタンが選べる状態になってから押し、記号数が変わらないときだけ押し直す（行き過ぎたら失敗させる）。
+  - 追加・更新したテスト: `KeyboardCommandUITests.testUndoAndRedoShortcutsEditTextFieldInsteadOfBoard`（新規。新しい編み図のダイアログで文字を打ち、盤面に戻せる編集が無いとき・あるときの両方で⌘Zで戻り⇧⌘Zでやり直せ、盤面は戻らない）、`EditorCommandsTests`（保存画面などの表示中は選べない）、`ios/Web/src/nativeCommands.test.ts`（処理中の元に戻す、共通の入力欄判定、入力中のメニュー状態とフォーカスの見張り）。
+  - 修正後の検証: `npm run typecheck`（成功）、`npm test`（26ファイル160件成功）、`npm run build`（成功）、`npm run check:dist`（成功）、`npm run test:e2e`（chromium-mobile・webkit-mobile・chromium-desktopで97件成功、2件は既存のスキップ）。iOS Webの`tsc -p tsconfig.app.json --noEmit`（成功）と`vitest run --config vite.config.ts`（4ファイル17件成功）。`xcodegen generate --spec ios/project.yml`とアプリのビルド（成功）。iPad Pro 11-inch（M5）・iOS 27.0のSimulatorで、`KeyboardCommandUITests`（4件）を2回、`knittingEditorTests`全体（34件、1件は既存のスキップ）、既存の`testGuideNavigationReturnsToUsableEditor`・`testTwoFingerGestureDoesNotDrawOnBoard`・`testUndoAndRedoRestoreBoardEdits`・`testPromptDialogIgnoresBackgroundTaps`・`testBackupExportSheetDismissesBackToEditor`・`testPngAndPdfExportsReachNativeFileActions`・`testDocumentDialogRemainsUsableAfterFocusingInput`を実行し、すべて成功した。Simulatorのテスト一式、更新復元、Release Archive、オフラインbundle検査はPRのCIに任せた。
+  - 手元で確かめられなかったこと（変わらず）: ⌘S・⌘Pの割り当ては利用者の判断、トラックパッドのピンチと⌘長押しの一覧・メニューバーの表示は実機（#21）で確かめる。

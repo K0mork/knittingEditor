@@ -32,13 +32,25 @@ struct EditorCommandState: Equatable, Sendable {
 }
 
 extension WebViewModel {
-    /// 編集画面が動いているときだけ操作を受け付ける。使い方ページと読み込み中は選べない。
+    /// 編集画面が動いているときだけ操作を受け付ける。使い方ページと読み込み中、
+    /// 保存画面・共有シート・Document Pickerを出している間は選べない。
     func canPerform(_ command: EditorCommand) -> Bool {
-        Self.canPerform(command, webContentReady: webContentReady, state: editorCommandState)
+        Self.canPerform(
+            command,
+            webContentReady: webContentReady,
+            presentingNativeUI: isPresentingNativeUI,
+            state: editorCommandState
+        )
     }
 
-    nonisolated static func canPerform(_ command: EditorCommand, webContentReady: Bool, state: EditorCommandState) -> Bool {
-        guard webContentReady else { return false }
+    nonisolated static func canPerform(
+        _ command: EditorCommand,
+        webContentReady: Bool,
+        presentingNativeUI: Bool = false,
+        state: EditorCommandState
+    ) -> Bool {
+        // 保存先の選択や共有シートを出している間に、Web側で次の出力やダイアログを始めない。
+        guard webContentReady, !presentingNativeUI else { return false }
         switch command {
         case .undo: return state.canUndo
         case .redo: return state.canRedo
@@ -48,7 +60,7 @@ extension WebViewModel {
 
     func perform(_ command: EditorCommand) {
         guard canPerform(command), let webView else { return }
-        // 保存先の選択や共有シートを出している間に、Web側で次の出力やダイアログを始めない。
+        // 表示中の画面を`isPresentingNativeUI`で数え漏らしたときの備え。
         guard webView.window?.rootViewController?.presentedViewController == nil else { return }
         webView.evaluateJavaScript(command.dispatchScript, completionHandler: nil)
     }
@@ -76,6 +88,7 @@ struct EditorCommands: Commands {
             item("PDFで書き出す…", .exportPdf, "p")
         }
         // 標準の「取り消す」はUIKitの取り消し管理へ送られ、Web側の編集履歴には届かない。
+        // 入力欄の文字の取り消しも、Web側が入力中は選べる状態にして、ここから`execCommand`で行う。
         CommandGroup(replacing: .undoRedo) {
             item("元に戻す", .undo, "z")
             item("やり直す", .redo, "z", modifiers: [.command, .shift])

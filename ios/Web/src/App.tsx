@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { initializeStorage, listBlocks } from '@knitting-editor/editor-core/storage/database';
 import { base64ToBytes } from '@knitting-editor/editor-core/util/base64';
 import { EditorView } from '@knitting-editor/editor-core/ui/EditorView';
@@ -9,7 +9,7 @@ import { withTimeout } from './async';
 import {
   listenNativeBackupSelected, listenNativeCommand, listenNativeError, notifyNativeCommandState, notifyNativeReady, requestNativeBackupOpen,
 } from './nativeBridge';
-import { nativeCommandHandlers, runNativeCommand } from './nativeCommands';
+import { nativeCommandHandlers, nativeHistoryState, runNativeCommand, watchTextEditing } from './nativeCommands';
 import { iosPlatform } from './platform';
 
 declare global {
@@ -106,7 +106,10 @@ export default function App() {
   }, []);
 
   // メニューの「元に戻す」「やり直す」を、画面のボタンと同じ条件で選べるようにする。
-  const { canUndo, canRedo } = editor.session;
+  // 入力欄で文字を打っている間は、文字の取り消しのために常に選べるようにする。
+  const [textEditing, setTextEditing] = useState(false);
+  useEffect(() => watchTextEditing(setTextEditing), []);
+  const { canUndo, canRedo } = nativeHistoryState(editor.session, textEditing);
   useEffect(() => { notifyNativeCommandState({ canUndo, canRedo }); }, [canUndo, canRedo]);
 
   return <EditorView
