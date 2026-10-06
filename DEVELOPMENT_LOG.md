@@ -11,6 +11,16 @@
 - 検証（手元、Xcode 27.0、iOS 18.2 Simulator）: `xcodegen generate --spec ios/project.yml`と`build-for-testing`が成功した。iPhone 16で`testGuideNavigationReturnsToUsableEditor`を再試行なしの`-test-iterations 10`で実行し、10回すべて成功した。どの回も4回のスワイプでリンクが押せる位置に来て、タップは1回で戻り、XCUITestの自動スクロール（`Computed hit point`）は使われなかった。`SIMULATOR_UDID=<iPhone 16> ios/scripts/simulate-app-update.sh`で、種データの作成と更新後の復元の両方が成功した。CIの環境（Xcode 26.6、iOS 26.5のiPhone 17・iPad (A16)）での確認、Release Archive、iOS Webの検査はPRのCIに任せた。
 - デプロイ影響: なし。iOSのUIテストだけの変更で、Pagesは再配信されない。TestFlight／App Storeへの影響もない。
 
+## 2026-10-06 — アプリアイコンのAny・Dark・Tintedを共通SVGから生成する
+
+- 影響: #78の既存の緑・針・糸を背景と前景のSVGに書き起こし、iOS 17用のAny、透過背景のDark、RGBグレースケールのTintedを`AppIcon.appiconset`へ登録した。Webのfavicon・192px・touch iconは同じAnyから再生成した。Icon Composerとクリア専用素材は今回の方式に含まない。
+- 主なファイル: `ios/design/app-icon/`、`scripts/generate-app-icons.mjs`、`ios/App/Assets.xcassets/AppIcon.appiconset/`、`public/`、`ios/scripts/check-app-icons.mjs`、`ios/scripts/check-release-assets.sh`、`ios/docs/APP_STORE_CHECKLIST.md`。
+- テスト: `scripts/check-app-icons.test.mjs`に、登録された3外観の合格と、誤った透過・カラーのTinted・画像サイズ・外観の重複を拒否する4件を追加。リリース検査は全外観の寸法・Any/Tintedのアルファ不在・Darkの透過背景と可視前景・Tinted全画素のR=G=Bを確認する。
+- ローカル検証: `node scripts/generate-app-icons.mjs`、`node scripts/generate-web-icons.mjs`、`node ios/scripts/check-app-icons.mjs`、`ios/scripts/check-app-store-docs.sh`、`sh -n ios/scripts/check-release-assets.sh`、`npm run typecheck`、`npm test`（127件）、`npm run build`、`npm run check:dist`、`npm run test:e2e`（Chromium/WebKit、79件成功・2件skip）が成功。Node.js 26.8.1で実行（CIは24）。`xcodegen generate`、XcodeBuildMCPの`build_run_sim`（Xcode 27.0、署名なし）が成功し、生成されたアプリに対する`ios/scripts/check-release-assets.sh /tmp/knitting-app-icons-derived/Build/Products/Debug-iphonesimulator/knittingEditor.app`も成功した。
+- 目視確認: iOS 18.2のiPhone 16とiPad (10th generation) Simulatorでホーム画面の「カスタマイズ」からライト・ダーク・色合いを切り替え、針と糸を判別できることを確認してスクリーンショットを保存した。iPhoneのSpotlightで「棒針編み図」を検索し、トップヒットの針と糸を判別できることも確認した。追加検証でiPadのSpotlight検索結果も確認した。設定の小サイズはiOS 27.0のiPhone 18 Proの「アプリ」一覧で確認し、針と糸を判別できた。iOS 18.2の設定一覧の空白とiPadOS 27.0の検索最適化中にアプリが出ない状態は、その画面での成功扱いにはしていない。iOS 17ランタイムは手元に無く、iOS 17上の表示は未確認（deployment targetは17.0のまま）。
+- CI: Simulatorテスト（iPhone/iPad）、アプリ更新、unsigned Release Archive、同梱物検査はPRのCIで確認する。
+- デプロイ影響: 現時点ではnone。マージ後はWebのアイコンがPagesへ配信されるため、deploy・smokeとHTTPSでの3アイコン取得を確認する。TestFlight／App Store提出は行っていない。Issue #78のasset catalog方式の素材・外観・小サイズ・Webとの同期・検査の完了条件を満たした。PRで各検証の端末とOSを明記し、マージ時にIssueを閉じる。
+
 ## 2026-10-06 — 1000×1000盤面の実機測定を自動化し、iPhone・iPadで測る
 
 - 影響: アプリとWeb資産の内容は変えていない。#20の1000×1000盤面の保存・復元・メモリの実機測定を、手作業なしで行えるようにし、iPhone 17（iOS 27.0）とiPad Air 第5世代（iPadOS 27.0）で測った。
