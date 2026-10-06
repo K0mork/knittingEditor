@@ -19,6 +19,7 @@
     "./ui/EditorView": "./ui/EditorView.tsx",
     "./ui/useEditorController": "./ui/useEditorController.ts",
     "./ui/hooks": "./ui/hooks.ts",
+    "./ui/inputEnvironment": "./ui/inputEnvironment.ts",
     "./styles/base.css": "./styles/base.css"
   }
 }

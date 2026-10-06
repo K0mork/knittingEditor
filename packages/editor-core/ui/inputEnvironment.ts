@@ -78,6 +78,14 @@ export function getInputEnvironment(): InputEnvironment {
   return current;
 }
 
+/**
+ * 物理キーボードがあるとみなす。iOSアプリでは⌘Zなどのショートカットをメニューバーが
+ * 先に受け取り、ページの`keydown`へ届かないため、ネイティブ側の操作を受けたときに呼ぶ。
+ */
+export function noteHardwareKeyboard(): void {
+  update({ keyboard: true });
+}
+
 /** テスト用。次に読んだときに判定し直す。 */
 export function resetInputEnvironment(): void {
   current = undefined;

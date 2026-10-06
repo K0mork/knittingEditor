@@ -14,6 +14,8 @@ final class WebViewModel {
     /// 編集画面の読み込み待ちを利用者へ伝えるかどうか。使い方ページのように
     /// `webReady`を送らない同梱ページでは表示しない。
     private(set) var isPreparingEditor = true
+    /// メニューの「元に戻す」「やり直す」を選べるか。Web側の`commandState`で更新する。
+    var editorCommandState = EditorCommandState()
 
     func attach(_ webView: WKWebView) {
         if self.webView !== webView {
@@ -237,6 +239,8 @@ struct WebViewContainer: UIViewRepresentable {
             switch NativeBridgeMessage.decode(body: message.body) {
             case .success(.webReady):
                 model.webContentDidBecomeReady()
+            case let .success(.commandState(state)):
+                model.editorCommandState = state
             case .success(.openBackup):
                 DispatchQueue.main.async { [weak self] in
                     self?.presentBackupPicker()
