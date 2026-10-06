@@ -41,8 +41,10 @@ plutil -lint "$APP_PATH/PrivacyInfo.xcprivacy" >/dev/null
 INFO_PLIST="$APP_PATH/Info.plist"
 knit_type_id='com.k0mork.knitting-editor.knit'
 knit_type_name='棒針編み図バックアップ'
+# `plutil -extract`はキーパスを`.`で区切る（`UTExportedTypeDeclarations.0.UTTypeIdentifier`）。
+# そのため、`.`を含むキーそのものは引けない（失敗して空になる）。
 plist_value() {
-  plutil -extract "$1" raw -o - "$INFO_PLIST" 2>/dev/null || true
+  plutil -extract "$1" raw -o - "${2:-$INFO_PLIST}" 2>/dev/null || true
 }
 [ "$(plist_value UTExportedTypeDeclarations.0.UTTypeIdentifier)" = "$knit_type_id" ] \
   && [ "$(plist_value CFBundleDocumentTypes.0.LSItemContentTypes.0)" = "$knit_type_id" ] || {
@@ -62,8 +64,8 @@ check_knit_type_name() {
     echo "missing localized Info.plist strings: $1.lproj" >&2
     exit 1
   }
-  # 値に`.`を含むキーは`plutil -extract`で引けないので、JSONに変えて読む。
-  actual=$(plutil -convert json -o - "$strings_path" | jq -r --arg key "$knit_type_name" '.[$key] // empty')
+  # 訳のキー（種類名）には`.`が無いので、`plutil -extract`でそのまま引ける。
+  actual=$(plist_value "$knit_type_name" "$strings_path")
   [ "$actual" = "$2" ] || {
     echo "unexpected .knit type name in $1.lproj: ${actual:-<missing>}" >&2
     exit 1

@@ -26,25 +26,39 @@ final class KnittingEditorUTTypeTests: XCTestCase {
         XCTAssertEqual(documents.first?["CFBundleTypeName"] as? String, Self.typeNameKey)
     }
 
+    /// 端末やアプリの表示言語に依存しないよう、各言語の`InfoPlist.strings`をファイルとして直接読む。
+    /// `localizedString(forKey:)`は、キーが無いとキーそのものを返す。日本語の訳はキーと同じ文字列なので、
+    /// その方法ではキーが欠けていても通ってしまう。
     func testKnitTypeNameIsTranslatedIntoJapaneseAndEnglish() throws {
-        for (language, expected) in Self.localizedTypeNames {
+        for (language, expected) in Self.localizedTypeNames.sorted(by: { $0.key < $1.key }) {
             let path = try XCTUnwrap(
-                Bundle.main.path(forResource: language, ofType: "lproj"),
-                "\(language).lprojがアプリに入っていません"
+                Bundle.main.path(
+                    forResource: "InfoPlist",
+                    ofType: "strings",
+                    inDirectory: nil,
+                    forLocalization: language
+                ),
+                "\(language).lproj/InfoPlist.stringsがアプリに入っていません"
             )
-            let bundle = try XCTUnwrap(Bundle(path: path))
-            XCTAssertEqual(
-                bundle.localizedString(forKey: Self.typeNameKey, value: nil, table: "InfoPlist"),
-                expected,
-                language
+            XCTAssertTrue(
+                path.hasSuffix("/\(language).lproj/InfoPlist.strings"),
+                "\(language)の代わりに別の言語のファイルが選ばれました: \(path)"
             )
+            let data = try Data(contentsOf: URL(fileURLWithPath: path))
+            let strings = try XCTUnwrap(
+                PropertyListSerialization.propertyList(from: data, format: nil) as? [String: String],
+                "\(language).lproj/InfoPlist.stringsを読めません"
+            )
+            XCTAssertEqual(strings[Self.typeNameKey], expected, language)
         }
     }
 
     /// システムが返す種類名が、アプリの表示言語の訳になっていることを確かめる。
     /// キーが訳と合っていないと、英語の端末でもInfo.plistの日本語がそのまま出る。
+    /// 確かめられるのは、テストを実行したSimulatorの表示言語の経路だけである。どちらの経路だったかをログに出す。
     func testSystemDescribesKnitTypeInTheAppLanguage() throws {
         let language = try XCTUnwrap(Bundle.main.preferredLocalizations.first)
+        print("KnittingEditorUTTypeTests: app language = \(language)")
         let expected = try XCTUnwrap(Self.localizedTypeNames[language], "想定していない表示言語: \(language)")
         XCTAssertEqual(UTType.knittingEditorBackup.localizedDescription, expected)
     }

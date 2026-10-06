@@ -9,15 +9,20 @@
   - App Storeの「言語」には、日本語に加えて英語が出る見込みである。アプリの画面自体は日本語だけである。
 - 主なファイル: `ios/App/Info.plist`、`ios/App/InfoPlist.xcstrings`、`ios/knittingEditor.xcodeproj/project.pbxproj`、`ios/scripts/check-app-bundle.sh`、`ios/Tests/KnittingEditorAppTests/KnittingEditorUTTypeTests.swift`
 - テスト:
-  - `KnittingEditorUTTypeTests`を足した。識別子と拡張子が変わっていないこと、Info.plistの値が訳のキーと一致すること、`ja.lproj`・`en.lproj`の訳を確かめる。システムが返す`UTType.localizedDescription`がアプリの表示言語の訳になっていることも確かめる。
+  - `KnittingEditorUTTypeTests`を足した。識別子と拡張子が変わっていないこと、Info.plistの値が訳のキーと一致すること、`ja.lproj`・`en.lproj`の訳を確かめる。訳は、各言語の`InfoPlist.strings`をファイルとして直接読んで比べるので、Simulatorの表示言語に依存しない。システムが返す`UTType.localizedDescription`がアプリの表示言語の訳になっていることも確かめる。こちらは実行したSimulatorの表示言語の経路だけを確かめ、その言語をログに出す。
   - `ios/scripts/check-app-bundle.sh`に、ビルドしたアプリの種類の識別子、Info.plistの種類名、`ja.lproj`・`en.lproj`の訳の検査を足した。CIの`ios`ジョブ（Debug）と`release_archive`ジョブ（`check-release-assets.sh`経由のRelease）で実行される。
 - 検証:
   - 手元のXcodeは27.0で、CIの26.6とは異なる。XcodeGenは2.46.0で、CIと同じ版である。
   - `xcodegen generate --spec ios/project.yml`を実行した。プロジェクトの差分は、文字列カタログ、テストファイル、`knownRegions`の`en`だけだった。
   - `xcodebuild build -project ios/knittingEditor.xcodeproj -scheme knittingEditor -destination 'generic/platform=iOS Simulator' -derivedDataPath <dir> CODE_SIGNING_ALLOWED=NO`が成功した。できたアプリの`ja.lproj/InfoPlist.strings`と`en.lproj/InfoPlist.strings`に、それぞれの訳が入っていることを確かめた。
   - そのアプリに`ios/scripts/check-app-bundle.sh`を実行して通った。わざと壊したコピーでは失敗することも確かめた。壊し方は、英語の訳の書き換え、`ja.lproj`の削除、Info.plistの種類名を英語へ戻す変更、識別子の書き換えの4通りである。
-  - iPad Pro 11-inch (M5)（iOS 27.0）のSimulatorで、`-only-testing:knittingEditorTests/KnittingEditorUTTypeTests`の4件が通った。このSimulatorの表示言語は日本語なので、`localizedDescription`は日本語の経路だけを確かめた。英語の経路は、英語のSimulatorを使うCIで確かめる。
+  - iPad Pro 11-inch (M5)（iOS 27.0）のSimulatorで、`-only-testing:knittingEditorTests/KnittingEditorUTTypeTests`の4件が通った。このSimulatorの表示言語は日本語なので、`localizedDescription`は日本語の経路だけを確かめた。英語の表示は、下のFilesの確認（`-AppleLanguages (en)`）で確かめた。
   - 同じSimulatorで、Filesの「このiPad内」に置いた`.knit`を確かめた。操作には、コミットしない一時的なXCUITestを使った。「情報を見る」の「種類」には、日本語の言語設定（`-AppleLanguages (ja)`）では`棒針編み図バックアップ`が出た。英語の言語設定（`-AppleLanguages (en)`）では`Knitting Chart Backup`が出た。Filesの共有シートの見出しにも`棒針編み図バックアップ · 243 バイト`と出た。変更前のビルドでは、英語の言語設定で`Knitting Editor backup`と出ることも確かめた。スクリーンショットは手元に保存した。コミットはしない。`gh`ではPRに画像を添付できないため、PRへの添付は利用者に任せた。
   - AirDropの受信画面は確かめていない。SimulatorではAirDropを使えないため、実機での確認が要る。そのため、このPRでは#82を閉じない。残りはIssueにコメントした。
   - Simulatorのテスト一式（iPhone・iPad）、アプリ更新テスト、Release Archive、iOS Webの検査はPRのCIに任せた。Webのソースと`packages/`は変えていないので、Webの検査一式は手元で実行していない。
+- レビュー後の修正:
+  - `ios/scripts/check-app-bundle.sh`のコメント「値に`.`を含むキーは`plutil -extract`で引けない」は事実と合っていなかった。訳のキー`棒針編み図バックアップ`には`.`が無く、手元で`plutil -extract '棒針編み図バックアップ' raw`がバイナリの`.strings`から値を返した。`.`を含むキー（`a.b`）は引けないことも確かめた。そのため、`jq`でJSONに変えて読むのをやめ、Info.plistと同じ`plutil -extract`で読むようにした。コメントも、`.`がキーパスの区切りになることに直した。
+  - `testKnitTypeNameIsTranslatedIntoJapaneseAndEnglish`は、`.lproj`のバンドルから`localizedString(forKey:)`で訳を引いていた。この方法は、キーが無いとキーそのものを返す。日本語の訳はキーと同じ文字列なので、`ja.lproj`にキーが無くても通ってしまう。`Bundle.main.path(forResource: "InfoPlist", ofType: "strings", inDirectory: nil, forLocalization:)`で各言語のファイルを直接読み、キーの値を比べるようにした。Simulatorの表示言語に依存しないので、CIでも`en.lproj`の英訳を確かめられる。
+  - `testSystemDescribesKnitTypeInTheAppLanguage`は、実行したSimulatorの表示言語の経路しか確かめられない。どちらの経路だったかが分かるよう、表示言語をログに出すようにした。システムが英訳を返すこと（`localizedDescription`の英語の経路）は、CIでは確かめたと言えない。手元のSimulatorのFilesで`-AppleLanguages (en)`の表示を確かめたことが裏づけである。
+  - 検証: `xcodebuild build-for-testing -project ios/knittingEditor.xcodeproj -scheme knittingEditor -destination 'generic/platform=iOS Simulator' -derivedDataPath <dir> CODE_SIGNING_ALLOWED=NO`が成功した（Xcode 27.0）。テストのファイルを足していないので、`xcodegen generate`は実行していない。できたアプリに`check-app-bundle.sh`を実行して通った。わざと壊したコピー6通りでは、それぞれ失敗することを確かめた。壊し方は、英訳の書き換え、`ja.lproj`の訳のキーの削除、`ja.lproj`の削除、`en.lproj`の削除、Info.plistの種類名を英語へ戻す変更、識別子の書き換えである。新しいテストの読み方（`path(forResource:ofType:inDirectory:forLocalization:)`と`PropertyListSerialization`）は、同じアプリに対してmacOSのSwiftで実行し、`ja`と`en`の訳を読めることを確かめた。手元の負荷と、別の作業がSimulatorを使っていたため、Simulatorでのテストは手元で実行せず、PRのCIに任せた。
 - デプロイ影響: なし（iOSだけの変更で、Pagesへは配信しない）。次のTestFlightのビルドで、実機のFilesとAirDropの受信画面に日本語の種類名が出ることを確かめる。
