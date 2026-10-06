@@ -15,6 +15,11 @@
 - [x] 公開Privacy Policy本文を`docs/PRIVACY_POLICY.md`へ用意する。
 - [x] App Review 4.2向けのネイティブ統合説明を`docs/APP_REVIEW_NOTES.md`へ記録する。
 - [x] App Store提出メタデータの下書きを`docs/APP_STORE_METADATA.md`へ用意する。
+- [x] 輸出コンプライアンスのため、`App/Info.plist`へ`ITSAppUsesNonExemptEncryption`を`false`で入れる。
+- [x] 同梱する第三者ソフトウェアのライセンス表記を、アプリ内の「使い方」から開ける`/third-party-notices/`へ置く。
+- [ ] アカウント無しで非公開に連絡できるサポート窓口とサポートURLを用意する（#75）。
+- [ ] App Store Connectの年齢制限の質問票への回答を決める（#76）。
+- [ ] MacとApple Vision Proで配信するかを決める（#86）。
 
 ## 検証・配布
 
@@ -27,5 +32,6 @@
 - [ ] App Store ConnectのApp Privacy回答をPrivacy Manifestと照合する。
 - [ ] Privacy Policy URLをApp Store Connectへ登録し、公開状態を確認する。
 - [ ] 審査メモへ`docs/APP_REVIEW_NOTES.md`の要点を転記する。
-- [ ] App Store Connectの配信地域からEU加盟国を外す（`docs/APP_STORE_METADATA.md`の「配信地域」）。
+- [ ] App Store Connectの配信地域からEU加盟国と中国本土を外す（`docs/APP_STORE_METADATA.md`の「配信地域」）。
+- [ ] アップロードのたびに、前回より大きいビルド番号を付ける（`docs/APP_STORE_METADATA.md`の「バージョンとビルド番号」）。
 - [ ] 提出後の承認を確認するまで、App Store配布完了とは報告しない。

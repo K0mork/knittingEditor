@@ -91,6 +91,20 @@ test('serves the guide page directly with its own metadata', async ({ page }) =>
   await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
 });
 
+test('links the guide to the third-party license notices', async ({ page }) => {
+  await page.goto('/guide/');
+  await page.getByRole('link', { name: '第三者ソフトウェアのライセンス' }).click();
+  await expect(page).toHaveURL(/\/third-party-notices\/$/);
+  await expect(page).toHaveTitle('第三者ソフトウェアのライセンス｜棒針編み図エディタ');
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'noindex');
+  for (const name of ['fflate', 'idb', 'react', 'react-dom', 'scheduler']) {
+    await expect(page.getByRole('heading', { level: 2, name: new RegExp(`^${name} `) })).toBeVisible();
+  }
+  await expect(page.getByText('Permission is hereby granted').first()).toBeVisible();
+  await page.getByRole('link', { name: '使い方へ戻る' }).first().click();
+  await expect(page).toHaveURL(/\/guide\/$/);
+});
+
 test('publishes the guide in the sitemap', async ({ page }) => {
   const sitemap = await page.request.get('/sitemap.xml');
   expect(sitemap.status()).toBe(200);

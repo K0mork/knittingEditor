@@ -8,6 +8,30 @@
 - 検証: `npm run typecheck`、`npm test`（124件）、`npm run build`、`npm run check:dist`、`npm run test:e2e`（79件成功・2件skip）が成功した。iOS Webの型検査とテスト（8件）が成功し、`xcodegen generate`でプロジェクトに差分が出ないことを確かめた。iPhone 16 Simulatorでアプリをビルドし、ブロックを保存してから削除し、アプリ内のダイアログで確認が出ること、キャンセルで残り、決定で消えることを手で確かめた。iPhone・iPadのSimulator一式、アプリ更新テスト、unsigned Release ArchiveはPRのCIに任せた。ローカルにNode.js 24が無く、Node.js 26.8.1で実行した。
 - デプロイ影響: マージ後、Web版でもブロックの削除で確認が出る。`deploy`と`smoke`の成功を確認し、本番でブロックを削除するときに確認が出ることを確かめる。TestFlight／App Storeへの影響は次に提出するビルドから。
 
+## 2026-10-06 — App Store配信の抜けを埋める（暗号化の申告、ライセンス表記、配信地域、ビルド番号、ソースマップ）
+
+- 影響: App Store提出に必要なのに、どこにも書かれていなかった項目を埋めた。
+  - 暗号化の申告: `ios/App/Info.plist`に`ITSAppUsesNonExemptEncryption`を`false`で入れた。アップロードのたびにApp Store Connectで暗号化について質問されなくなる。`ios/scripts/check-release-assets.sh`が値を検査する。
+  - ライセンス表記: 同梱するReact・react-dom・scheduler・fflate（MIT）とidb（ISC）のライセンス文が、ビルドでコメントが消えて配布物に残っていなかった。`scripts/third-party-notices.mjs`のViteプラグインが、本体とPDF Workerのバンドルに実際に入ったパッケージを集め、ライセンス文から`/third-party-notices/`（`noindex`）を出力する。ライセンス文の無いパッケージが入るとビルドが失敗する。iOS版の「使い方」に「ライセンス」の節を、Web版の「使い方」のフッターにリンクを足した。
+  - ソースマップ: iOS版のビルドでソースマップを出さないようにし（`ios/Web/vite.config.ts`）、アプリに`.map`が入らないことを`ios/scripts/check-app-bundle.sh`で検査する。Web版は今までどおり出力する。
+  - 文書: `ios/docs/APP_STORE_METADATA.md`に、中国本土で配信しないこと（ICP備案が必要で個人では取得できないため）、輸出コンプライアンス、ライセンス表記、バージョンとビルド番号の付け方を書いた。`ios/docs/APP_STORE_CHECKLIST.md`に対応する項目を足した。サポート窓口（#75）、年齢制限の質問票（#76）、MacとApple Vision Proでの配信（#86）は方針を決める必要があるため、Issueにした。
+  - 共通のビルド設定に`scripts/third-party-notices.mjs`が加わったので、iOSのWebビルドの入力ハッシュ（`ios/scripts/build-web.sh`）と、CIの変更判定（`.github/workflows/ci.yml`の`changes`）に加えた。本番の`smoke`（`scripts/check-live-site.mjs`）も`/third-party-notices/`を確かめる。
+- 主なファイル: `scripts/third-party-notices.mjs`、`vite.shared.ts`、`ios/Web/vite.config.ts`、`ios/App/Info.plist`、`public/guide/index.html`、`ios/Web/public/guide/index.html`、`scripts/check-dist.mjs`、`scripts/check-live-site.mjs`、`ios/scripts/check-app-bundle.sh`、`ios/scripts/check-release-assets.sh`、`ios/scripts/build-web.sh`、`.github/workflows/ci.yml`、`ios/docs/APP_STORE_METADATA.md`、`ios/docs/APP_STORE_CHECKLIST.md`、`ios/docs/WEB_SYNC.md`、`AGENTS.md`
+- テスト: `scripts/third-party-notices.test.mjs`（パッケージのルートの判定、ライセンス文の読み取りと欠落時の失敗、HTMLの並びとエスケープ）、E2Eの`links the guide to the third-party license notices`、Swiftの`testThirdPartyNoticesLoadBundledLicenses`を追加した。`npm run check:dist`はライセンスのページと5パッケージの記載を検査する。
+- 検証: `npm run typecheck`、`npm test`（128件）、`npm run build`、`npm run check:dist`、`npm run test:e2e`（82件成功・2件skip）が成功した。iOS Webの型検査とテスト（8件）、`ios/scripts/check-app-store-docs.sh`が成功した。`xcodegen generate`でプロジェクトに差分が出ないことを確かめ、iPhone 16 Simulatorで`LocalWebSchemeHandlerTests`（17件、機内モード用の1件skip）が成功し、そのビルドに`ios/scripts/check-app-bundle.sh`と`ios/scripts/check-release-assets.sh`が成功した。ライセンスのページは幅375px（WebKit）と1280px（Chromium）で横にはみ出さないことを確かめた。iPhone・iPadのSimulator一式、アプリ更新テスト、unsigned Release ArchiveはPRのCIに任せた。ローカルにNode.js 24が無く、Node.js 26.8.1で実行した。
+- デプロイ影響: マージ後、Pagesに`/third-party-notices/`が加わり、Web版の「使い方」のフッターにリンクが出る。`smoke`が新しいページを確かめるので、`deploy`と`smoke`の成功を確認し、本番の「使い方」からリンクを開けることを確かめる。TestFlight／App Storeへの影響は次に提出するビルドから（暗号化の質問が出なくなり、ライセンス表記が入る）。
+
+## 2026-10-06 — iOS UIテストで、使い方ページ下端の戻るリンクまで自分でページを送ってから叩き、アプリ更新テストでも効かなかったタップを押し直す
+
+- 影響: アプリとWeb資産の内容は変えていない。PR #74のrun 37402923548の`ios (iPhone 17)`で、`testGuideNavigationReturnsToUsableEditor`が1回目に失敗し、再試行で通った（#95）。「棒針編み図エディタへ戻る」は使い方ページの一番下にあり、XCUITestの自動スクロールに任せたタップの位置が画面の外（y=3275）で計算されて外れ、使い方ページのまま「保存」が20秒現れなかった。
+  - タップの前に、WebViewを上へスワイプしてページを送り、リンクが押せる位置に来るまで待つ（`scrollWebViewUntilHittable`、最大12回）。届かなければリンクの位置を添えて失敗にする。
+  - タップのあと10秒たっても「保存」が出ず、使い方ページのまま（リンクが残っている）のときに限って押し直す。最後まで戻らなければ失敗にし、リンクが効かない不具合は隠さない。
+  - このPRのCI（run 37408596179）の`app_update (iPhone 17)`で、`testSeedDocumentForAppUpdateProbe`が1回目に失敗した。「編み図」のタップでパネルが開かず、「新しい編み図」が60秒現れなかった（#66と同じ型）。アプリ更新テストの2本は待ち時間が60秒で、PR #71の`openDocumentsPanel(in:)`を使っていなかった。`openDocumentsPanel`に最後の待機の`timeout`を足し、この2本でも使うようにした。
+- 主なファイル: `ios/UITests/KnittingEditorUITests/KnittingEditorUITests.swift`
+- テスト: 上記のUIテストを修正した。テスト関数の一覧は`origin/main`と同じ。
+- 検証（手元、Xcode 27.0、iOS 18.2 Simulator）: `xcodegen generate --spec ios/project.yml`と`build-for-testing`が成功した。iPhone 16で`testGuideNavigationReturnsToUsableEditor`を再試行なしの`-test-iterations 10`で実行し、10回すべて成功した。どの回も4回のスワイプでリンクが押せる位置に来て、タップは1回で戻り、XCUITestの自動スクロール（`Computed hit point`）は使われなかった。`SIMULATOR_UDID=<iPhone 16> ios/scripts/simulate-app-update.sh`で、種データの作成と更新後の復元の両方が成功した。CIの環境（Xcode 26.6、iOS 26.5のiPhone 17・iPad (A16)）での確認、Release Archive、iOS Webの検査はPRのCIに任せた。
+- デプロイ影響: なし。iOSのUIテストだけの変更で、Pagesは再配信されない。TestFlight／App Storeへの影響もない。
+
 ## 2026-10-06 — アプリアイコンのAny・Dark・Tintedを共通SVGから生成する
 
 - 影響: #78の既存の緑・針・糸を背景と前景のSVGに書き起こし、iOS 17用のAny、透過背景のDark、RGBグレースケールのTintedを`AppIcon.appiconset`へ登録した。Webのfavicon・192px・touch iconは同じAnyから再生成した。Icon Composerとクリア専用素材は今回の方式に含まない。

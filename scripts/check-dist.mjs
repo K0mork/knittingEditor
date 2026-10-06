@@ -1,7 +1,7 @@
 import { readFile, readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 
-const required = ['index.html', 'robots.txt', 'sitemap.xml', 'favicon.ico', 'icon-192.png', 'apple-touch-icon.png', 'og-image.png', 'guide/index.html'];
+const required = ['index.html', 'robots.txt', 'sitemap.xml', 'favicon.ico', 'icon-192.png', 'apple-touch-icon.png', 'og-image.png', 'guide/index.html', 'third-party-notices/index.html'];
 for (const file of required) await stat(join('dist', file));
 const assets = await readdir(join('dist', 'assets'));
 
@@ -26,6 +26,10 @@ for (const page of ['index.html', 'guide/index.html']) {
   for (const link of ['<link rel="icon" href="/favicon.ico"', '<link rel="icon" href="/icon-192.png"', '<link rel="apple-touch-icon" href="/apple-touch-icon.png"']) {
     if (!html.includes(link)) throw new Error(`${page} に ${link} がありません`);
   }
+}
+const notices = await readFile(join('dist', 'third-party-notices', 'index.html'), 'utf8');
+for (const name of ['fflate', 'idb', 'react', 'react-dom', 'scheduler']) {
+  if (!new RegExp(`<h2>${name} [^<]+</h2>`).test(notices)) throw new Error(`third-party-notices/index.html に ${name} のライセンス表記がありません`);
 }
 if (!assets.some((file) => file.startsWith('pdf.worker-') && file.endsWith('.js'))) throw new Error('PDF Workerが出力されていません');
 
