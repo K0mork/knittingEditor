@@ -32,6 +32,7 @@
 - [ ] App Store ConnectのApp Privacy回答をPrivacy Manifestと照合する。
 - [ ] Privacy Policy URLをApp Store Connectへ登録し、公開状態を確認する。
 - [ ] 審査メモへ`docs/APP_REVIEW_NOTES.md`の要点を転記する。
+- [ ] App Store Connectの「著作権」欄に「2026 K0mork」を入力し、販売元が加入者の法的氏名で表示されることを確かめる（`docs/APP_STORE_METADATA.md`の「販売元と著作権表記」）。
 - [ ] App Store Connectの配信地域からEU加盟国と中国本土を外す（`docs/APP_STORE_METADATA.md`の「配信地域」）。
 - [ ] アップロードのたびに、前回より大きいビルド番号を付ける（`docs/APP_STORE_METADATA.md`の「バージョンとビルド番号」）。
 - [ ] 提出後の承認を確認するまで、App Store配布完了とは報告しない。
