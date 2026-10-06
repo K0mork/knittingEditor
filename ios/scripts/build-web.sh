@@ -20,10 +20,10 @@ fi
 # `.git`やテスト成果物の更新でスタンプが毎回変わってスキップが効かず、
 # 走査中に消えたファイルで`shasum`が失敗してビルドフェーズごと落ちる。
 # テストとMarkdownはbundleに入らないので、変更されても作り直さない。
-# 共通の`tsconfig.base.json`・`vite.shared.ts`はビルド設定そのものなので必ず含める。
+# 共通の`tsconfig.base.json`・`vite.shared.ts`・`scripts/third-party-notices.mjs`はビルド設定そのものなので必ず含める。
 input_hash="$(
   cd "$REPO_ROOT"
-  LC_ALL=C find ./ios/Web ./ios/scripts/build-web.sh ./packages ./package.json ./package-lock.json ./tsconfig.base.json ./vite.shared.ts -type f \
+  LC_ALL=C find ./ios/Web ./ios/scripts/build-web.sh ./packages ./package.json ./package-lock.json ./tsconfig.base.json ./vite.shared.ts ./scripts/third-party-notices.mjs -type f \
     ! -path './ios/Web/dist/*' \
     ! -path './ios/Web/node_modules/*' \
     ! -path './packages/*/node_modules/*' \

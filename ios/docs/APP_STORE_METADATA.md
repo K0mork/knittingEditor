@@ -12,7 +12,7 @@
 | 主カテゴリ | グラフィック／デザイン |
 | 副カテゴリ | ライフスタイル |
 | キーワード | 編み図,棒針,編み物,ニット,手芸,パターン,オフライン,PDF,PNG |
-| 年齢制限 | 4+相当（アカウント、広告、ユーザー投稿なし） |
+| 年齢制限 | 4+相当（アカウント、広告、ユーザー投稿なし）。質問票への回答は #76 で決める |
 
 ## App名とホーム画面の表示名
 
@@ -32,7 +32,7 @@
 
 ## URLと提出メモ
 
-- サポートURL: `https://github.com/K0mork/knittingEditor/issues`（公開リポジトリが利用可能なことを提出前に確認）
+- サポートURL: `https://github.com/K0mork/knittingEditor/issues`（公開リポジトリが利用可能なことを提出前に確認）。アカウント無しで非公開に連絡できる窓口へ替える予定（#75）
 - プライバシーポリシーURL候補: `https://github.com/K0mork/knittingEditor/blob/main/ios/docs/PRIVACY_POLICY.md`（App Store Connect登録前に公開状態と表示を確認）
 - 審査メモ: [`APP_REVIEW_NOTES.md`](APP_REVIEW_NOTES.md)の4.2説明と機内モード手順を転記する。
 - スクリーンショット: iPhone縦、iPhone横、iPad全画面、iPad可変幅を実機またはTestFlightで撮影して差し替える。
@@ -43,6 +43,27 @@
 - App Store Connectの「価格および配信状況」で、EU加盟国をすべて配信対象から外す。
 - EUで配信しないため、デジタルサービス法（DSA）の事業者（trader）申告と、それに伴うEUのストアページでの連絡先の公開は求められない。
 - EUで配信する方針に変えるときは、配信地域を変える前に、trader申告と公開する連絡先を決める。
+- 中国本土のストアでも配信しない（2026-10-06に決定）。中国本土で配信するには、App Store ConnectへICP備案（ICP Filing）の番号を登録する必要があり、個人の開発者は取得できない。「価格および配信状況」で中国本土を配信対象から外す。
+
+## 輸出コンプライアンス（暗号化）
+
+- `App/Info.plist`に`ITSAppUsesNonExemptEncryption`を`false`で入れてある。アプリは通信を行わず、独自の暗号化も実装していないため、輸出規制の対象となる暗号化を使っていない。
+- この値があると、App Store Connectはビルドをアップロードするたびの暗号化の質問を省く。`scripts/check-release-assets.sh`が値を検査する。
+- 通信や暗号化を加える機能（iCloud同期、#30 など）を入れるときは、この判断を見直す。
+
+## 第三者ソフトウェアのライセンス表記
+
+- アプリにはReact、react-dom、scheduler、fflate（MIT）とidb（ISC）が入る。これらのライセンスは、配布物に著作権表示とライセンス文を含めることを条件にしている。
+- ビルド時にリポジトリのルートの`scripts/third-party-notices.mjs`が、バンドルに実際に入ったパッケージのライセンス文から`/third-party-notices/`のページを作る。アプリ内の「使い方」の「ライセンス」から開ける。ライセンス文の無いパッケージが入るとビルドが失敗する。
+- `scripts/check-app-bundle.sh`が、ページの同梱と主要なパッケージの記載を検査する。
+
+## バージョンとビルド番号
+
+- バージョン（`MARKETING_VERSION`、App Storeに表示される`1.0`など）は、リリースごとに`project.yml`で上げる。
+- ビルド番号（`CURRENT_PROJECT_VERSION`）は`project.yml`では`1`のままにする。App Store Connectは、同じバージョンの中で前回より大きいビルド番号しか受け付けない。
+- XcodeのOrganizerからアップロードするときは、配布オプションの「Manage Version and Build Number」をオンにする。Xcodeが、App Store Connectにあるビルドより大きい番号を付けてアップロードする。
+- コマンドラインでArchiveするときは、`xcodebuild archive ... CURRENT_PROJECT_VERSION=<番号>`で、前回より大きい番号を指定する。
+- アップロードしたビルド番号は、`REAL_DEVICE_RELEASE_CHECKLIST.md`のM6の証跡と`DEVELOPMENT_LOG.md`に記録する。
 
 ## 申請前確認
 
