@@ -109,8 +109,11 @@ final class KeyboardCommandUITests: XCTestCase {
     /// ⌘Oで復元するバックアップを選ぶ画面が出る。
     func testRestoreShortcutOpensBackupPicker() {
         let app = launchEditor()
-        // Document Pickerは別プロセスのUIで、閉じるボタンのidentifierが`Cancel`になる。
-        let picker = app.descendants(matching: .any).matching(identifier: "Cancel").firstMatch
+        // Document Pickerは別プロセスのUIで、閉じるボタンはidentifierが`Cancel`になる。アプリが日本語に
+        // 対応した（`InfoPlist.xcstrings`）ため、日本語の端末ではidentifierが無く、labelが「キャンセル」になる。
+        let picker = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier == %@ OR label == %@", "Cancel", "キャンセル"))
+            .firstMatch
         XCTAssertTrue(typeShortcut("o", .command, in: app, until: Self.exists, on: picker), app.debugDescription)
         add(screenshot(named: "⌘Oで開いた復元の選択画面"))
     }
