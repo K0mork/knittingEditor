@@ -165,6 +165,8 @@ struct WebViewContainer: UIViewRepresentable {
             LocalWebSchemeHandler(bundle: .main),
             forURLScheme: LocalWebSchemeHandler.scheme
         )
+        // 「使い方」の末尾に表示するバージョンとビルド番号を、同梱ページへ渡す（#84）。
+        configuration.userContentController.addUserScript(AppVersionInfo.current.userScript)
 
         // iOS 27ではゼロサイズのWKWebViewがWebKitプロセスの起動を待つことがある。
         // SwiftUIのレイアウト確定前にもローカルHTMLの読み込みを開始できるよう、
@@ -223,6 +225,8 @@ struct WebViewContainer: UIViewRepresentable {
         private weak var webView: WKWebView?
         private var pendingExportURL: URL?
         private var pendingExportDirectory: URL?
+        private var pendingExportMimeType: String?
+        private let reviewRequestTracker = ReviewRequestTracker()
         private var pickerPurpose: PickerPurpose?
 
         init(model: WebViewModel) {
@@ -313,7 +317,9 @@ struct WebViewContainer: UIViewRepresentable {
             pickerPurpose = nil
             switch outcome {
             case .finishExport:
+                let mimeType = pendingExportMimeType
                 cleanupPendingExport()
+                exportDidSucceed(mimeType: mimeType)
             case .ignore:
                 break
             case let .importBackup(url):
@@ -382,6 +388,7 @@ struct WebViewContainer: UIViewRepresentable {
             }
             pendingExportURL = temporaryURL
             pendingExportDirectory = directory
+            pendingExportMimeType = mimeType
 
             let alert = UIAlertController(title: "ファイルを保存", message: filename, preferredStyle: .alert)
             alert.addAction(UIAlertAction(title: "ファイルに保存", style: .default) { [weak self, weak presenter] _ in
@@ -397,7 +404,11 @@ struct WebViewContainer: UIViewRepresentable {
                 DispatchQueue.main.async { [weak self, weak presenter] in
                     guard let self, let presenter, let pendingExportURL = self.pendingExportURL else { return }
                     let activity = UIActivityViewController(activityItems: [pendingExportURL], applicationActivities: nil)
-                    activity.completionWithItemsHandler = { [weak self] _, _, _, _ in self?.cleanupPendingExport() }
+                    activity.completionWithItemsHandler = { [weak self] _, completed, _, _ in
+                        let mimeType = self?.pendingExportMimeType
+                        self?.cleanupPendingExport()
+                        if completed { self?.exportDidSucceed(mimeType: mimeType) }
+                    }
                     if let popover = activity.popoverPresentationController {
                         popover.sourceView = self.webView
                         popover.sourceRect = self.webView?.bounds ?? .zero
@@ -435,6 +446,13 @@ struct WebViewContainer: UIViewRepresentable {
             }
             pendingExportURL = nil
             pendingExportDirectory = nil
+            pendingExportMimeType = nil
+        }
+
+        /// 書き出しを保存・共有し終えた作業の区切りで、App Storeの評価の依頼を検討する（#84）。
+        private func exportDidSucceed(mimeType: String?) {
+            guard let mimeType else { return }
+            reviewRequestTracker.exportDidSucceed(mimeType: mimeType) { [weak self] in self?.webView?.window }
         }
 
         /// 保存画面へ提案するファイル名を組み立てる。

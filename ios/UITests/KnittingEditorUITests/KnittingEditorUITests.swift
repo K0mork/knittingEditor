@@ -63,6 +63,11 @@ final class KnittingEditorUITests: XCTestCase {
         let back = app.links["棒針編み図エディタへ戻る"]
         XCTAssertTrue(back.waitForExistence(timeout: 10), app.debugDescription)
         scrollWebViewUntilHittable(back, in: app)
+        // ページの末尾に、アプリから渡したバージョンとビルド番号が出る（#84）。
+        let version = app.webViews.firstMatch.staticTexts.matching(
+            NSPredicate(format: "label BEGINSWITH %@ AND label CONTAINS %@", "バージョン ", "（ビルド ")
+        ).firstMatch
+        XCTAssertTrue(version.waitForExistence(timeout: 10), app.debugDescription)
         back.tap()
         let save = app.buttons["保存"]
         if !save.waitForExistence(timeout: 10), back.exists {
