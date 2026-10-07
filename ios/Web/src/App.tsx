@@ -1,11 +1,15 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { initializeStorage, listBlocks } from '@knitting-editor/editor-core/storage/database';
 import { base64ToBytes } from '@knitting-editor/editor-core/util/base64';
 import { EditorView } from '@knitting-editor/editor-core/ui/EditorView';
+import { noteHardwareKeyboard } from '@knitting-editor/editor-core/ui/inputEnvironment';
 import { useEditorController } from '@knitting-editor/editor-core/ui/useEditorController';
 import { useAppDialog } from './AppDialog';
 import { withTimeout } from './async';
-import { listenNativeBackupSelected, listenNativeError, notifyNativeReady, requestNativeBackupOpen } from './nativeBridge';
+import {
+  listenNativeBackupSelected, listenNativeCommand, listenNativeError, notifyNativeCommandState, notifyNativeReady, requestNativeBackupOpen,
+} from './nativeBridge';
+import { nativeCommandHandlers, nativeHistoryState, runNativeCommand, watchTextEditing } from './nativeCommands';
 import { iosPlatform } from './platform';
 
 declare global {
@@ -57,14 +61,26 @@ export default function App() {
 
   // 使い方ページへの遷移でReactは破棄される。WKWebViewはbeforeunloadの確認を
   // 表示しないため、保留中の自動保存を完了させてから移動する。
-  const openGuide = useCallback((event: React.MouseEvent<HTMLAnchorElement>) => {
-    event.preventDefault();
-    const destination = event.currentTarget.href;
+  const navigateToGuide = useCallback((destination: string) => {
     // 保存が滞っても使い方ページを開けなくならないよう、待ち時間を区切る。
     void withTimeout(flushPendingSave(), GUIDE_NAVIGATION_SAVE_TIMEOUT_MS, '保存の完了を待てませんでした')
       .catch(() => false)
       .finally(() => window.location.assign(destination));
   }, [flushPendingSave]);
+  const openGuide = useCallback((event: React.MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    navigateToGuide(event.currentTarget.href);
+  }, [navigateToGuide]);
+
+  // メニューバーとキーボードショートカットの操作。購読は一度だけにし、最新の操作をrefで参照する。
+  const commands = nativeCommandHandlers(editor, {
+    requestRestore: () => { if (!requestNativeBackupOpen()) editor.fileInputRef.current?.click(); },
+    openGuide: () => navigateToGuide(new URL('/guide/', window.location.href).href),
+  });
+  const commandsRef = useRef(commands);
+  commandsRef.current = commands;
+  const busyRef = useRef(editor.busy);
+  busyRef.current = editor.busy;
 
   useEffect(() => {
     const removeBackupListener = listenNativeBackupSelected(({ filename, dataBase64 }) => {
@@ -75,12 +91,26 @@ export default function App() {
       }
     });
     const removeErrorListener = listenNativeError((message) => notifyRef.current(message));
+    const removeCommandListener = listenNativeCommand((command) => {
+      // ショートカットはメニューバーが先に受け取り、ページの`keydown`へ届かない。
+      // 記号の一覧の「Escapeで閉じます。」などを出せるよう、キーボードがあるとみなす。
+      noteHardwareKeyboard();
+      runNativeCommand(command, commandsRef.current, { busy: busyRef.current !== undefined });
+    });
     notifyNativeReady();
     return () => {
       removeBackupListener();
       removeErrorListener();
+      removeCommandListener();
     };
   }, []);
+
+  // メニューの「元に戻す」「やり直す」を、画面のボタンと同じ条件で選べるようにする。
+  // 入力欄で文字を打っている間は、文字の取り消しのために常に選べるようにする。
+  const [textEditing, setTextEditing] = useState(false);
+  useEffect(() => watchTextEditing(setTextEditing), []);
+  const { canUndo, canRedo } = nativeHistoryState(editor.session, textEditing);
+  useEffect(() => { notifyNativeCommandState({ canUndo, canRedo }); }, [canUndo, canRedo]);
 
   return <EditorView
     editor={editor}

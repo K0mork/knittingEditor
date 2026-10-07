@@ -8,6 +8,7 @@ enum NativeBridgeMessage: Equatable {
     case exportFile(data: Data, filename: String, mimeType: String)
     case openBackup
     case webReady
+    case commandState(EditorCommandState)
 
     enum MessageError: Error, Equatable {
         case invalidEnvelope
@@ -34,6 +35,12 @@ enum NativeBridgeMessage: Equatable {
             return .success(.openBackup)
         case "webReady":
             return .success(.webReady)
+        case "commandState":
+            guard let canUndo = dictionary["canUndo"] as? Bool,
+                  let canRedo = dictionary["canRedo"] as? Bool else {
+                return .failure(.invalidEnvelope)
+            }
+            return .success(.commandState(EditorCommandState(canUndo: canUndo, canRedo: canRedo)))
         case "exportFile":
             guard let filename = dictionary["filename"] as? String,
                   let mimeType = dictionary["mimeType"] as? String,

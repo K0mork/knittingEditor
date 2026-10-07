@@ -14,6 +14,10 @@ final class WebViewModel {
     /// 編集画面の読み込み待ちを利用者へ伝えるかどうか。使い方ページのように
     /// `webReady`を送らない同梱ページでは表示しない。
     private(set) var isPreparingEditor = true
+    /// メニューの「元に戻す」「やり直す」を選べるか。Web側の`commandState`で更新する。
+    var editorCommandState = EditorCommandState()
+    /// 保存画面・共有シート・Document Pickerを出している間は、メニューの項目を選べなくする。
+    var isPresentingNativeUI = false
     /// 編集画面を一度でも表示したかどうか。準備中の表示の色を、起動画面に続くときと
     /// アプリ内で編集画面へ戻るときとで変える。
     private(set) var hasShownEditor = false
@@ -204,7 +208,8 @@ struct WebViewContainer: UIViewRepresentable {
     }
 
     @MainActor
-    final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler, UIDocumentPickerDelegate {
+    final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler, UIDocumentPickerDelegate,
+        UIAdaptivePresentationControllerDelegate {
         static let messageHandlerName = "knittingEditor"
 
         /// `UIDocumentPickerViewController`は取り込みと書き出しの両方で
@@ -240,6 +245,7 @@ struct WebViewContainer: UIViewRepresentable {
         func detach() {
             cleanupPendingExport()
             pickerPurpose = nil
+            model.isPresentingNativeUI = false
             webView = nil
         }
 
@@ -256,6 +262,8 @@ struct WebViewContainer: UIViewRepresentable {
             switch NativeBridgeMessage.decode(body: message.body) {
             case .success(.webReady):
                 model.webContentDidBecomeReady()
+            case let .success(.commandState(state)):
+                model.editorCommandState = state
             case .success(.openBackup):
                 DispatchQueue.main.async { [weak self] in
                     self?.presentBackupPicker()
@@ -315,6 +323,7 @@ struct WebViewContainer: UIViewRepresentable {
         func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
             let outcome = Self.pickerOutcome(purpose: pickerPurpose, urls: urls)
             pickerPurpose = nil
+            model.isPresentingNativeUI = false
             switch outcome {
             case .finishExport:
                 let mimeType = pendingExportMimeType
@@ -329,7 +338,17 @@ struct WebViewContainer: UIViewRepresentable {
 
         func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
             pickerPurpose = nil
+            model.isPresentingNativeUI = false
             cleanupPendingExport()
+        }
+
+        /// 下へスワイプして閉じたときも、メニューの項目を選べる状態へ戻す。
+        func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
+            guard let picker = presentationController.presentedViewController as? UIDocumentPickerViewController else {
+                model.isPresentingNativeUI = false
+                return
+            }
+            documentPickerWasCancelled(picker)
         }
 
         private func importBackup(from url: URL) {
@@ -363,7 +382,7 @@ struct WebViewContainer: UIViewRepresentable {
             let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.knittingEditorBackup], asCopy: true)
             picker.delegate = self
             pickerPurpose = .importBackup
-            presenter.present(picker, animated: true)
+            present(picker, from: presenter)
         }
 
         private func presentExportOptions(data: Data, filename: String, mimeType: String) {
@@ -393,18 +412,27 @@ struct WebViewContainer: UIViewRepresentable {
             let alert = UIAlertController(title: "ファイルを保存", message: filename, preferredStyle: .alert)
             alert.addAction(UIAlertAction(title: "ファイルに保存", style: .default) { [weak self, weak presenter] _ in
                 DispatchQueue.main.async { [weak self, weak presenter] in
-                    guard let self, let presenter, let pendingExportURL = self.pendingExportURL else { return }
+                    guard let self else { return }
+                    guard let presenter, let pendingExportURL = self.pendingExportURL else {
+                        self.model.isPresentingNativeUI = false
+                        return
+                    }
                     let picker = UIDocumentPickerViewController(forExporting: [pendingExportURL], asCopy: true)
                     picker.delegate = self
                     self.pickerPurpose = .exportFile
-                    presenter.present(picker, animated: true)
+                    self.present(picker, from: presenter)
                 }
             })
             alert.addAction(UIAlertAction(title: "共有", style: .default) { [weak self, weak presenter] _ in
                 DispatchQueue.main.async { [weak self, weak presenter] in
-                    guard let self, let presenter, let pendingExportURL = self.pendingExportURL else { return }
+                    guard let self else { return }
+                    guard let presenter, let pendingExportURL = self.pendingExportURL else {
+                        self.model.isPresentingNativeUI = false
+                        return
+                    }
                     let activity = UIActivityViewController(activityItems: [pendingExportURL], applicationActivities: nil)
                     activity.completionWithItemsHandler = { [weak self] _, completed, _, _ in
+                        self?.model.isPresentingNativeUI = false
                         let mimeType = self?.pendingExportMimeType
                         self?.cleanupPendingExport()
                         if completed { self?.exportDidSucceed(mimeType: mimeType) }
@@ -413,15 +441,28 @@ struct WebViewContainer: UIViewRepresentable {
                         popover.sourceView = self.webView
                         popover.sourceRect = self.webView?.bounds ?? .zero
                     }
-                    presenter.present(activity, animated: true)
+                    self.present(activity, from: presenter)
                 }
             })
-            alert.addAction(UIAlertAction(title: "キャンセル", style: .cancel) { [weak self] _ in self?.cleanupPendingExport() })
+            alert.addAction(UIAlertAction(title: "キャンセル", style: .cancel) { [weak self] _ in
+                self?.model.isPresentingNativeUI = false
+                self?.cleanupPendingExport()
+            })
             if let popover = alert.popoverPresentationController {
                 popover.sourceView = webView
                 popover.sourceRect = webView?.bounds ?? .zero
             }
-            presenter.present(alert, animated: true)
+            present(alert, from: presenter)
+        }
+
+        /// 保存画面などを出し、閉じるまでメニューの項目を選べなくする。
+        /// 「ファイルに保存」「共有」を選ぶと、確認の画面から次の画面へ続けて移る。
+        private func present(_ controller: UIViewController, from presenter: UIViewController) {
+            model.isPresentingNativeUI = true
+            if controller is UIDocumentPickerViewController {
+                controller.presentationController?.delegate = self
+            }
+            presenter.present(controller, animated: true)
         }
 
         private func presenter() -> UIViewController? {

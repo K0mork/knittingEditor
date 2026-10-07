@@ -2,7 +2,7 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  detectInputEnvironment, gestureHintText, getInputEnvironment, historyTitles, pastePromptText,
+  detectInputEnvironment, gestureHintText, getInputEnvironment, historyTitles, noteHardwareKeyboard, pastePromptText,
   resetInputEnvironment, useInputEnvironment, type InputEnvironment,
 } from './inputEnvironment';
 
@@ -93,6 +93,24 @@ describe('useInputEnvironment', () => {
     await act(async () => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); });
     expect(latest().keyboard).toBe(true);
     expect(getInputEnvironment()).toBe(latest());
+
+    await act(async () => root.unmount());
+  });
+
+  it('accepts keyboard shortcuts that the app menu handled before the page', async () => {
+    mockMedia(['(pointer: coarse)']);
+    const seen: InputEnvironment[] = [];
+    function Probe() {
+      seen.push(useInputEnvironment());
+      return null;
+    }
+    const root = createRoot(document.createElement('div'));
+    await act(async () => root.render(<Probe />));
+    expect(seen[seen.length - 1]).toMatchObject({ pointer: 'touch', keyboard: false });
+
+    // iOSアプリのメニューバーが⌘Zを受け取ると、ページには`keydown`が届かない。
+    await act(async () => { noteHardwareKeyboard(); });
+    expect(seen[seen.length - 1]).toMatchObject({ pointer: 'touch', keyboard: true });
 
     await act(async () => root.unmount());
   });

@@ -18,6 +18,9 @@ struct KnittingEditorApp: App {
                     webViewModel.handleIncomingURL(url)
                 }
         }
+        .commands {
+            EditorCommands(model: webViewModel)
+        }
     }
 }
 
