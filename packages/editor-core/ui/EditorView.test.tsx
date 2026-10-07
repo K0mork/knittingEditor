@@ -4,7 +4,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { EditorAnalytics } from '../analytics';
 import { Board } from '../model/Board';
-import type { EditorPlatform } from '../platform';
+import { SAVE_RESULT_UNKNOWN, type EditorPlatform } from '../platform';
 import { deleteBlock, initializeStorage, listBlocks, saveBlock, type ChartDocument } from '../storage/database';
 import { EditorView, GESTURE_HINT_DURATION_MS, type EditorViewProps } from './EditorView';
 import { saveErrorMessage, useEditorController, type EditorControllerOptions } from './useEditorController';
@@ -39,7 +39,7 @@ async function renderEditor(
   options: Partial<EditorControllerOptions> = {},
   view: Partial<Omit<EditorViewProps, 'editor'>> = {},
 ) {
-  const platform: EditorPlatform = { saveFile: vi.fn(async () => undefined) };
+  const platform: EditorPlatform = { saveFile: vi.fn(async () => SAVE_RESULT_UNKNOWN) };
   const controllerOptions: EditorControllerOptions = {
     initialize: async () => ({ ...await initializeStorage(), blocks: await listBlocks() }),
     platform,
