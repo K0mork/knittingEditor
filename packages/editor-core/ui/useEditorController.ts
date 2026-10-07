@@ -5,6 +5,7 @@ import { renderPdf, renderPng, validatePngSize } from '../export/exporters';
 import type { PdfLayoutOptions } from '../export/pdfLayout';
 import type { PatternBlock, Rect } from '../model/Board';
 import type { EditorPlatform } from '../platform';
+import { useBackupReminder } from '../state/useBackupReminder';
 import { useEditorSession, type EditorSessionInit, type SaveTrigger } from '../state/useEditorSession';
 import { STITCHES, type StitchDefinition } from '../stitches/catalog';
 import {
@@ -56,6 +57,7 @@ export function useEditorController(options: EditorControllerOptions) {
   const [selectedStitch, setSelectedStitch] = useState('knit');
   const [stitchPickerOpen, setStitchPickerOpen] = useState(false);
   const [selectedColor, setSelectedColor] = useState('#d33c32');
+  const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const [mode, setMode] = useState<CanvasMode>('draw');
   const [selection, setSelection] = useState<Rect>();
   const [pasteBlock, setPasteBlock] = useState<PatternBlock>();
@@ -82,6 +84,8 @@ export function useEditorController(options: EditorControllerOptions) {
     board, activeDocument, changed: markChanged, commitEdit, saveNow, switchDocument: switchSessionDocument,
     refreshDocuments, refreshBlocks, applyActiveDocumentName,
   } = session;
+  const backupReminder = useBackupReminder(activeDocument);
+  const { countEdit } = backupReminder;
 
   // 指を離すたびに盤面全体を比べないよう、書き換えがあったときだけ履歴へ積む。
   const strokePendingRef = useRef(false);
@@ -95,22 +99,25 @@ export function useEditorController(options: EditorControllerOptions) {
     if (!strokePendingRef.current) return;
     strokePendingRef.current = false;
     commitEdit();
-  }, [commitEdit]);
+    countEdit();
+  }, [commitEdit, countEdit]);
   /** 1回で終わる書き換え（貼り付け、盤面設定）。すぐ1件の履歴にする。 */
   const changed = useCallback(() => {
     strokePendingRef.current = false;
     analytics.trackFirstEdit();
     markChanged();
     commitEdit();
-  }, [analytics, markChanged, commitEdit]);
+    countEdit();
+  }, [analytics, markChanged, commitEdit, countEdit]);
 
   const stepHistory = useCallback((direction: 'undo' | 'redo') => {
     const moved = direction === 'undo' ? session.undo() : session.redo();
     if (!moved) return;
+    countEdit();
     // 寸法が戻ると選択範囲が盤面の外を指しうるので、選択は解除する。
     setSelection(undefined);
     notify(direction === 'undo' ? '元に戻しました' : 'やり直しました');
-  }, [session.undo, session.redo, notify]);
+  }, [session.undo, session.redo, notify, countEdit]);
   const undo = useCallback(() => stepHistory('undo'), [stepHistory]);
   const redo = useCallback(() => stepHistory('redo'), [stepHistory]);
   useHistoryShortcuts({ onUndo: undo, onRedo: redo });
@@ -139,6 +146,14 @@ export function useEditorController(options: EditorControllerOptions) {
     setSelection(undefined);
     setStitchPickerOpen(false);
     analytics.track('stitch_selected', { stitch_key: key });
+  };
+
+  /** 使っている色の一覧から選んだとき。記号を選んだときと同じく、そのまま描けるようにする。 */
+  const selectColor = (color: string) => {
+    setSelectedColor(color);
+    setMode('draw');
+    setSelection(undefined);
+    setColorPickerOpen(false);
   };
 
   const switchDocument = useCallback(async (document: ChartDocument, saveCurrent = true) => {
@@ -263,8 +278,13 @@ export function useEditorController(options: EditorControllerOptions) {
       // 書き込めていないまま出力すると、直前の編集が欠けたバックアップになる。
       if (await saveNow() === 'failed') return;
       const blob = await exportBackup(all ? undefined : [activeDocument.id]);
-      await platform.saveFile(blob, all ? 'knitting-editor-backup.knit' : `${activeDocument.name}.knit`);
+      const { saved } = await platform.saveFile(blob, all ? 'knitting-editor-backup.knit' : `${activeDocument.name}.knit`);
       analytics.track('backup_exported', { backup_scope: all ? 'all' : 'current' });
+      // 確認ダイアログや共有シートを閉じるまで待つので、その間は処理中の表示を出さない。
+      setBusy(undefined);
+      // 取りやめたら記録しない。結果が分からないhost（ダウンロード、iOS版）では、渡した時点を書き出した日時とする。
+      if (await saved === false) return;
+      await backupReminder.recordExport(all ? undefined : [activeDocument.id]);
     } catch (error) { reportFailure('backup_export', error); }
     finally { setBusy(undefined); }
   };
@@ -298,7 +318,7 @@ export function useEditorController(options: EditorControllerOptions) {
     notify, message,
     initializationError, busy,
     selectedStitch, currentStitch, selectStitch, stitchPickerOpen, setStitchPickerOpen,
-    selectedColor, setSelectedColor,
+    selectedColor, setSelectedColor, selectColor, colorPickerOpen, setColorPickerOpen,
     mode, modeLabel: CANVAS_MODE_LABELS[mode], chooseMode,
     selection, setSelection, clearSelection, startSelecting,
     pasteBlock, copiedBlock, startPaste, copySelection, choosePasteBlock, handlePasteComplete,
@@ -308,7 +328,7 @@ export function useEditorController(options: EditorControllerOptions) {
     saveSelectionAsBlock, removeBlock,
     runPngExport, runPdfExport,
     createNewDocument, switchDocument, renameChart, duplicateChart, deleteChart,
-    backup, restore,
+    backup, restore, backupReminder,
   };
 }
 

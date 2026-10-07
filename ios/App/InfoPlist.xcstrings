@@ -1,0 +1,24 @@
+{
+  "sourceLanguage" : "ja",
+  "strings" : {
+    "棒針編み図バックアップ" : {
+      "comment" : "Filesの「情報を見る」や共有シートに出る`.knit`の種類名（UTTypeDescription・CFBundleTypeName）。",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Knitting Chart Backup"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "棒針編み図バックアップ"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

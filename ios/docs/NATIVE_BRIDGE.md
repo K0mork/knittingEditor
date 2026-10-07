@@ -80,6 +80,16 @@ Swiftは保存画面・共有シート・Document Pickerを表示している間
 
 Web側はBase64を`File`へ戻し、既存の`.knit`インポート検証を通す。gzipは圧縮前32 MiB、解凍後256 MiB、編み図500件、ブロック5000件を上限とする。
 
+## アプリ情報（Swift → Web）
+
+不具合の報告でどの版かを確かめられるよう、「使い方」の末尾にバージョンとビルド番号を表示する（#84）。Swiftは`Info.plist`の`CFBundleShortVersionString`と`CFBundleVersion`を`AppVersionInfo`で読み、`WKUserScript`（文書の読み込み開始時、メインフレームだけ）で次の値を置く。
+
+```js
+window.knittingEditorAppInfo = Object.freeze({ "build": "1", "version": "1.0" });
+```
+
+値はJSONとして埋め込み、文字列がスクリプトとして解釈されないようにする。`ios/Web/public/guide/index.html`はこの値があるときだけ「バージョン 1.0（ビルド 1）」をフッターへ`textContent`で表示し、無いとき（ブラウザで開いたときなど）は欄を隠したままにする。通信せずに表示でき、Web資産へバージョンを書き込まないので、`MARKETING_VERSION`・`CURRENT_PROJECT_VERSION`を上げるだけで表示も変わる。
+
 ## `.knit`登録
 
 `com.k0mork.knitting-editor.knit`を`public.data`準拠の独自UTTypeとして`App/Info.plist`へ登録している。Files、AirDrop、他アプリからのOpen InはSwiftUIの`onOpenURL`で受け、同じWebインポート経路へ送る。
@@ -93,6 +103,26 @@ Web側はBase64を`File`へ戻し、既存の`.knit`インポート検証を通�
 `test-fixtures/knitting-editor-v2-interop.knit.b64`をWeb側の`.knit`復元fixtureとして管理する。Swiftブリッジテストは同じファイルをテストバンドルへ同梱して読み、Base64をテストコードへ複製しない。アプリは`.knit`のgzip JSONを解釈・再シリアライズせず、そのバイト列をDocument Picker、`onOpenURL`、WebViewイベントの間で搬送する。このため、fixtureをWeb側で復元できることと、Swiftブリッジでバイト列が変わらないことを別々に検証する。
 
 Webのfixture復元、アプリWeb bundleのexport→bridge payload→import往復、Swiftのpayload保持、ready前後の配送方針を自動テストする。これはFiles／AirDropを使った実機往復の代替ではないため、実機またはTestFlightでの入出力確認は別の配布前ゲートとして残す。
+
+## App Storeの評価の依頼
+
+App Storeの評価は、StoreKitのシステムの依頼画面（`AppStore.requestReview(in:)`）だけで依頼する（App Review Guidelines 5.6.1）。独自の確認画面や、評価と引き換えの特典は出さない。判定は`ReviewRequestPolicy`（`App/ReviewRequest.swift`）にまとめ、`ReviewRequestTests`で確かめる。
+
+依頼を検討するのは、PNGまたはPDFを「ファイルに保存」で保存し終えたとき（Document Pickerの`didPickDocumentsAt`）と、共有シートで共有を終えたとき（`completionWithItemsHandler`の`completed`が真）だけである。取り消したとき、`.knit`のバックアップを書き出したとき、編集の途中、起動直後には出さない。次の条件をすべて満たすときに依頼する。
+
+| 条件 | 値 | 理由 |
+|---|---|---|
+| 初めて起動してからの時間 | 3日以上 | 初回の起動時や使い始めた直後には出さない。この版より前から使っている端末では、この版を初めて起動した日時から数える |
+| 前回の依頼のあと（初めてなら最初から）にPNG・PDFを保存・共有し終えた回数 | 3回以上 | 編み図を何度か完成させ、使い続けている人にだけ聞く |
+| 同じバージョンで依頼したか | していない | 同じ版では一度だけ |
+| 前回の依頼からの時間 | 120日以上 | 新しい版になっても続けて聞かない |
+| 画面の状態 | アプリが前面にあり、保存画面・共有シート・警告が出ていない | 保存画面が閉じ切るのを1秒待ってから確かめる |
+
+依頼を試みたら、そのバージョンと日時を記録し、書き出しの回数を0へ戻す。画面の状態の条件を満たさず出せなかったときは記録せず、次の書き出しで改めて判定する。記録は`UserDefaults`（`reviewRequest.`で始まるキー）に置き、端末の外へは送らない。
+
+システムは条件を満たしても画面を出さないことがあり、出たかどうかはアプリから分からない。同じアプリで1年に3回までしか表示されず、TestFlightでは表示されない。開発ビルド（Xcodeから実行したSimulator・実機）では毎回表示されるが、送信はされない。このため、表示の確認はSimulatorで行い、表示条件は単体テストで確かめる。Simulatorで条件を満たした状態を作るには、アプリを止めてから`reviewRequest.firstLaunchDate`を3日以上前の日時へ書き換え、PNGかPDFを3回保存する。
+
+「使い方」からApp Storeのレビューを書くページ（`https://apps.apple.com/app/id<App ID>?action=write-review`）へのリンクは、App IDが決まっていないため、まだ置かない（#84）。
 
 ## 実機確認
 

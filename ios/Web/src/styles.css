@@ -17,6 +17,14 @@
 
 html { -webkit-text-size-adjust: 100%; }
 
+/*
+ * 見出し・ラベル・ボタンを長押ししたときの文字選択と「コピー」「調べる」のメニューを出さない。
+ * Webページ特有の挙動で、編集画面では誤操作にしかならない。編み図名などを入力する欄は、
+ * 文字の選択・コピー・貼り付けができるよう元に戻す。使い方ページは読み物なので対象外。
+ */
+body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+input, textarea, [contenteditable]:not([contenteditable="false"]) { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
+
 /* iOS版のヘッダーは編み図名だけを出す。Web版の説明文・編み図名クラスは持たない。 */
 .app-header h1, .app-header p { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .app-header p { margin: 2px 0 0; font-size: .76rem; opacity: .85; }

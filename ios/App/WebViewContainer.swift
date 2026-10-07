@@ -18,6 +18,13 @@ final class WebViewModel {
     var editorCommandState = EditorCommandState()
     /// 保存画面・共有シート・Document Pickerを出している間は、メニューの項目を選べなくする。
     var isPresentingNativeUI = false
+    /// 編集画面を一度でも表示したかどうか。準備中の表示の色を、起動画面に続くときと
+    /// アプリ内で編集画面へ戻るときとで変える。
+    private(set) var hasShownEditor = false
+
+    var loadingStyle: EditorLoadingStyle {
+        hasShownEditor ? .inApp : .launch
+    }
 
     func attach(_ webView: WKWebView) {
         if self.webView !== webView {
@@ -31,6 +38,7 @@ final class WebViewModel {
     func webContentDidBecomeReady() {
         webContentReady = true
         isPreparingEditor = false
+        hasShownEditor = true
         flushPendingBackupIfReady()
     }
 
@@ -161,6 +169,8 @@ struct WebViewContainer: UIViewRepresentable {
             LocalWebSchemeHandler(bundle: .main),
             forURLScheme: LocalWebSchemeHandler.scheme
         )
+        // 「使い方」の末尾に表示するバージョンとビルド番号を、同梱ページへ渡す（#84）。
+        configuration.userContentController.addUserScript(AppVersionInfo.current.userScript)
 
         // iOS 27ではゼロサイズのWKWebViewがWebKitプロセスの起動を待つことがある。
         // SwiftUIのレイアウト確定前にもローカルHTMLの読み込みを開始できるよう、
@@ -169,10 +179,17 @@ struct WebViewContainer: UIViewRepresentable {
             frame: CGRect(origin: .zero, size: Self.initialFrameSize),
             configuration: configuration
         )
+        // リンクを長押しすると、既定ではプレビューと「Open Link」などのメニューが出て、
+        // 外部リンクのページをアプリ内で読み込もうとする。外部リンクはタップされたときだけ
+        // `decidePolicyFor`からSafariへ渡す（#81）。
+        webView.allowsLinkPreview = false
         webView.navigationDelegate = context.coordinator
         webView.allowsBackForwardNavigationGestures = false
+        // 文書が描画されるまでの間に見える色。編集画面・使い方ページの地の色にそろえ、
+        // 白や黒（ダークモードの`.systemBackground`）を挟まないようにする。
         webView.isOpaque = false
-        webView.backgroundColor = .systemBackground
+        webView.backgroundColor = AppColors.editorPageBackground
+        webView.scrollView.backgroundColor = AppColors.editorPageBackground
         model.attach(webView)
         context.coordinator.attach(webView)
         webView.load(URLRequest(url: LocalWebSchemeHandler.indexURL))
@@ -213,6 +230,8 @@ struct WebViewContainer: UIViewRepresentable {
         private weak var webView: WKWebView?
         private var pendingExportURL: URL?
         private var pendingExportDirectory: URL?
+        private var pendingExportMimeType: String?
+        private let reviewRequestTracker = ReviewRequestTracker()
         private var pickerPurpose: PickerPurpose?
 
         init(model: WebViewModel) {
@@ -307,7 +326,9 @@ struct WebViewContainer: UIViewRepresentable {
             model.isPresentingNativeUI = false
             switch outcome {
             case .finishExport:
+                let mimeType = pendingExportMimeType
                 cleanupPendingExport()
+                exportDidSucceed(mimeType: mimeType)
             case .ignore:
                 break
             case let .importBackup(url):
@@ -386,6 +407,7 @@ struct WebViewContainer: UIViewRepresentable {
             }
             pendingExportURL = temporaryURL
             pendingExportDirectory = directory
+            pendingExportMimeType = mimeType
 
             let alert = UIAlertController(title: "ファイルを保存", message: filename, preferredStyle: .alert)
             alert.addAction(UIAlertAction(title: "ファイルに保存", style: .default) { [weak self, weak presenter] _ in
@@ -409,9 +431,11 @@ struct WebViewContainer: UIViewRepresentable {
                         return
                     }
                     let activity = UIActivityViewController(activityItems: [pendingExportURL], applicationActivities: nil)
-                    activity.completionWithItemsHandler = { [weak self] _, _, _, _ in
+                    activity.completionWithItemsHandler = { [weak self] _, completed, _, _ in
                         self?.model.isPresentingNativeUI = false
+                        let mimeType = self?.pendingExportMimeType
                         self?.cleanupPendingExport()
+                        if completed { self?.exportDidSucceed(mimeType: mimeType) }
                     }
                     if let popover = activity.popoverPresentationController {
                         popover.sourceView = self.webView
@@ -463,6 +487,13 @@ struct WebViewContainer: UIViewRepresentable {
             }
             pendingExportURL = nil
             pendingExportDirectory = nil
+            pendingExportMimeType = nil
+        }
+
+        /// 書き出しを保存・共有し終えた作業の区切りで、App Storeの評価の依頼を検討する（#84）。
+        private func exportDidSucceed(mimeType: String?) {
+            guard let mimeType else { return }
+            reviewRequestTracker.exportDidSucceed(mimeType: mimeType) { [weak self] in self?.webView?.window }
         }
 
         /// 保存画面へ提案するファイル名を組み立てる。
