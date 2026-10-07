@@ -119,7 +119,11 @@ export async function duplicateDocument(id: string): Promise<ChartDocument> {
 
 export async function deleteDocument(id: string): Promise<void> {
   const db = await database();
-  await db.delete('documents', id);
+  // 最後のバックアップ日時も一緒に消し、消した編み図の記録を設定に残さない。
+  const transaction = db.transaction(['documents', 'settings'], 'readwrite');
+  await transaction.objectStore('documents').delete(id);
+  await transaction.objectStore('settings').delete(lastBackupKey(id));
+  await transaction.done;
 }
 
 export async function listBlocks(): Promise<PatternBlock[]> {
@@ -136,6 +140,35 @@ export async function getSetting<T extends SettingsRecord['value']>(key: string)
 
 export async function setSetting(key: string, value: SettingsRecord['value']): Promise<void> {
   await (await database()).put('settings', { key, value });
+}
+
+/**
+ * 最後に`.knit`を書き出した日時の設定キー。編み図ごとに1件持つ。
+ *
+ * 編み図の記録（`ChartDocument`）には入れない。入れると`.knit`へ書き出され、復元した
+ * 編み図が「書き出し済み」の日時を持ち込んでしまう。設定に置けば保存形式も`.knit`も
+ * 変わらず、記録の無い既存の編み図は「まだバックアップしていない」として読める。
+ */
+export function lastBackupKey(documentId: string): string {
+  return `lastBackupAt:${documentId}`;
+}
+
+/** 編み図を最後に`.knit`へ書き出した日時。まだ書き出していなければ`undefined`。 */
+export async function getLastBackupAt(documentId: string): Promise<number | undefined> {
+  const value = await getSetting(lastBackupKey(documentId));
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+/**
+ * `.knit`へ書き出した編み図の日時を記録する。`documentIds`を省くと、今ある全編み図を記録する。
+ * 全データの書き出しでも1回の書き込みで済むよう、1つのトランザクションにまとめる。
+ */
+export async function recordBackup(documentIds: string[] | undefined, at: number): Promise<void> {
+  const db = await database();
+  const transaction = db.transaction(['documents', 'settings'], 'readwrite');
+  const ids = documentIds ?? await transaction.objectStore('documents').getAllKeys();
+  for (const id of ids) await transaction.objectStore('settings').put({ key: lastBackupKey(id), value: at });
+  await transaction.done;
 }
 
 export async function initializeStorage(): Promise<{ documents: ChartDocument[]; activeId: string }> {

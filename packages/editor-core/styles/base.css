@@ -44,23 +44,23 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 .header-guide:hover, .header-document:hover { border-color: white; }
 .header-guide:focus-visible { outline: 3px solid rgba(255,255,255,.45); outline-offset: 2px; }
 
-.workspace { min-width: 0; min-height: 0; display: grid; grid-template: auto 1fr auto / minmax(0, 1fr); position: relative; }
+.workspace { min-width: 0; min-height: 0; display: grid; grid-template: auto auto 1fr auto / minmax(0, 1fr); position: relative; }
 .primary-tools { display: flex; gap: 7px; align-items: center; padding: 8px; background: rgba(255,254,249,.98); border-bottom: 1px solid var(--border); overflow-x: auto; z-index: 3; }
 .primary-tools button { flex: 0 0 auto; }
-.color-tool { display: flex; align-items: center; gap: 5px; font-size: .8rem; }
-.color-tool input { width: var(--tap-size); height: var(--tap-size); border: 0; padding: 2px; background: none; }
+.color-tool { display: flex; align-items: center; gap: 6px; padding: 4px 6px 4px 9px; font-size: .8rem; background: white; }
+.color-tool-swatch { display: block; width: 30px; height: 30px; border: 1px solid rgba(0, 0, 0, .2); border-radius: 7px; }
 .stitch-tool { min-width: 170px; display: flex; align-items: center; gap: 7px; padding: 4px 8px; text-align: left; background: white; }
 .stitch-tool > span:first-child { display: block; flex: 0 0 32px; width: 32px; height: 32px; color: #222; }
 .stitch-tool-name { flex: 1; white-space: nowrap; }
 .stitch-tool-chevron { color: #647269; font-size: 1.1rem; }
-.stitch-picker-backdrop { position: fixed; inset: 0; z-index: 12; display: grid; place-items: end center; padding-top: 24px; background: rgba(26, 39, 31, .32); }
-.stitch-picker { width: min(100%, 760px); max-height: min(82vh, 760px); max-height: min(82dvh, 760px); overflow: auto; padding: 14px max(14px, env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left)); border-radius: 18px 18px 0 0; background: var(--paper); box-shadow: 0 -12px 40px rgba(20, 38, 27, .24); }
-.stitch-picker-heading { position: sticky; top: -14px; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: -14px 0 8px; padding: 14px 0 9px; background: var(--paper); }
-.stitch-picker-heading > div { min-width: 0; }
-.stitch-picker-heading > button { flex: 0 0 auto; white-space: nowrap; }
-.stitch-picker-heading h2 { margin: 0; font-size: 1.15rem; }
-.stitch-picker-heading p { margin: 2px 0 0; color: #67756e; font-size: .76rem; }
-.stitch-category h3 { margin: 15px 0 7px; color: #53605a; font-size: .86rem; }
+.stitch-picker-backdrop, .color-picker-backdrop { position: fixed; inset: 0; z-index: 12; display: grid; place-items: end center; padding-top: 24px; background: rgba(26, 39, 31, .32); }
+.stitch-picker, .color-picker { width: min(100%, 760px); max-height: min(82vh, 760px); max-height: min(82dvh, 760px); overflow: auto; padding: 14px max(14px, env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left)); border-radius: 18px 18px 0 0; background: var(--paper); box-shadow: 0 -12px 40px rgba(20, 38, 27, .24); }
+.stitch-picker-heading, .color-picker-heading { position: sticky; top: -14px; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: -14px 0 8px; padding: 14px 0 9px; background: var(--paper); }
+.stitch-picker-heading > div, .color-picker-heading > div { min-width: 0; }
+.stitch-picker-heading > button, .color-picker-heading > button { flex: 0 0 auto; white-space: nowrap; }
+.stitch-picker-heading h2, .color-picker-heading h2 { margin: 0; font-size: 1.15rem; }
+.stitch-picker-heading p, .color-picker-heading p { margin: 2px 0 0; color: #67756e; font-size: .76rem; }
+.stitch-category h3, .color-picker h3 { margin: 15px 0 7px; color: #53605a; font-size: .86rem; }
 .stitch-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
 .stitch-option { min-width: 0; min-height: 104px; display: grid; grid-template-rows: 50px auto auto; place-items: center; gap: 3px; padding: 7px 4px; text-align: center; }
 .stitch-option.selected { border-color: var(--green); background: #edf7ef; box-shadow: inset 0 0 0 1px var(--green); }
@@ -69,6 +69,17 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 .stitch-option-symbol svg > * { vector-effect: non-scaling-stroke; }
 .stitch-option-name { max-width: 100%; font-size: .78rem; line-height: 1.25; overflow-wrap: anywhere; }
 .stitch-option small { color: #718078; font-size: .68rem; }
+.color-picker { width: min(100%, 480px); }
+/* 色見本はWeb版でも44px以上にする。色だけで見分けるので、押し間違えない大きさにそろえる。 */
+.used-color-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(max(44px, var(--tap-size)), 1fr)); gap: 8px; }
+.used-color { width: 100%; min-width: max(44px, var(--tap-size)); min-height: max(44px, var(--tap-size)); aspect-ratio: 1; padding: 0; border: 1px solid rgba(0, 0, 0, .2); border-radius: 10px; }
+.used-color:hover { border-color: rgba(0, 0, 0, .45); }
+.used-color.selected { box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--green); }
+.color-picker-note { margin: 0; color: #67756e; font-size: .8rem; }
+.used-color-grid + .color-picker-note { margin-top: 8px; }
+.color-picker-custom { display: flex; align-items: center; gap: 10px; min-height: max(44px, var(--tap-size)); font-size: .9rem; }
+.color-picker-custom input { flex: 0 0 auto; width: max(44px, var(--tap-size)); height: max(44px, var(--tap-size)); border: 0; padding: 2px; background: none; }
+.color-picker-custom code { color: #67756e; font-size: .8rem; }
 .canvas-wrap { min-height: 0; position: relative; overflow: hidden; }
 .board-canvas { display: block; width: 100%; height: 100%; touch-action: none; user-select: none; cursor: crosshair; }
 .board-canvas.mode-erase { cursor: cell; }
@@ -84,6 +95,16 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 .history-tools button { display: flex; align-items: center; justify-content: center; gap: 4px; min-width: var(--tap-size); padding-inline: 0; }
 .history-icon { flex: 0 0 auto; width: 1.3em; height: 1.3em; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
 .history-label { display: none; }
+/* 編集画面の段。2段目はバックアップの勧めを出すときだけ使い、出さないときは高さが0になる。 */
+.primary-tools { grid-row: 1; }
+.backup-reminder { grid-row: 2; }
+.canvas-wrap { grid-row: 3; }
+.action-bar { grid-row: 4; }
+/* `.knit`の書き出しを勧める帯。盤面には重ねない。 */
+.backup-reminder { min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 6px max(10px, env(safe-area-inset-right)) 6px max(10px, env(safe-area-inset-left)); color: #5a4313; background: #fff6df; border-bottom: 1px solid #ecd9a6; font-size: .82rem; }
+.backup-reminder p { flex: 1 1 14em; margin: 0; line-height: 1.4; }
+.backup-reminder-actions { display: flex; gap: 6px; margin-left: auto; }
+.backup-reminder-actions button { min-height: var(--compact-tap-size); padding: 4px 12px; white-space: nowrap; }
 
 .drawer { position: fixed; inset: auto 0 0 0; z-index: 10; max-height: min(72vh, 650px); max-height: min(72dvh, 650px); overflow: auto; overscroll-behavior: contain; padding: 14px max(14px, env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left)); background: var(--paper); border-radius: 18px 18px 0 0; box-shadow: 0 -12px 40px rgba(20, 38, 27, .22); }
 .drawer-heading { position: sticky; top: -14px; display: flex; align-items: center; justify-content: space-between; margin: -14px -2px 12px; padding: 14px 2px 8px; background: var(--paper); z-index: 2; }
@@ -91,12 +112,23 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 .drawer-heading > button { white-space: nowrap; }
 .drawer h3 { margin: 18px 0 8px; font-size: .9rem; color: #53605a; }
 .document-list, .block-list { display: grid; gap: 8px; margin-top: 12px; }
-.document { display: grid; grid-template-columns: 1fr auto; gap: 6px; border: 1px solid var(--border); border-radius: 12px; padding: 6px; }
+.document-list { padding: 0; margin-bottom: 0; list-style: none; }
+.document { min-width: 0; display: grid; gap: 6px; border: 1px solid var(--border); border-radius: 12px; padding: 6px; }
 .document.active { border-color: var(--green); background: #f0f8f1; }
 .document > button, .block-list div > button:first-child { text-align: left; border: 0; background: transparent; }
 .document small, .block-list small { display: block; color: #718078; }
-.document > div { display: flex; gap: 4px; align-items: center; }
-.document > div button { min-height: var(--compact-tap-size); padding: 5px 7px; font-size: .75rem; }
+/* 縮小画像と名前を1つのボタンにし、名前変更・複製・削除は下の段に同じ幅で並べる。
+   狭い画面でも名前を削らず、3つのボタンも押しやすい幅を保つ。 */
+.document-open { min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 10px; padding: 4px; }
+.document-thumbnail-frame { display: block; width: 64px; height: 64px; border: 1px solid var(--border); border-radius: 8px; background: #e9ece6; overflow: hidden; }
+/* 小さな盤面はセルの境目をぼかさずに拡大する。盤面の外は枠の地色で見分ける。 */
+.document-thumbnail { display: block; width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
+/* 枠より大きい縮小画像（長辺63〜96画素）は縮めて表示する。pixelatedのままだと段や目が抜けるので滑らかに縮める。 */
+.document-thumbnail.downscaled { image-rendering: auto; }
+.document-text { min-width: 0; display: grid; gap: 2px; }
+.document-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.document-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.document-actions button { min-width: 0; min-height: var(--compact-tap-size); padding: 5px 7px; font-size: .8rem; }
 .block-list div { display: grid; grid-template-columns: 1fr auto; gap: 6px; border: 1px solid var(--border); border-radius: 12px; padding: 5px; }
 .button-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 7px; }
 .size-inputs { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: end; }
@@ -134,10 +166,11 @@ footer { display: none; }
 @media (min-width: 760px) {
   .app-header { min-height: 74px; padding-inline: 24px; }
   .app-header h1 { font-size: 1.35rem; }
-  .workspace { grid-template: auto 1fr / minmax(0, 1fr) 96px; }
+  .workspace { grid-template: auto auto 1fr / minmax(0, 1fr) 96px; }
   .primary-tools { grid-column: 1 / 3; padding-inline: 16px; }
-  .canvas-wrap { grid-column: 1; grid-row: 2; }
-  .action-bar { grid-column: 2; grid-row: 2; display: grid; grid-template: repeat(4, auto) 1fr / minmax(0, 1fr); align-content: start; border-left: 1px solid var(--border); border-top: 0; padding: 12px 8px; }
+  .backup-reminder { grid-column: 1 / 3; padding-inline: 16px; }
+  .canvas-wrap { grid-column: 1; grid-row: 3; }
+  .action-bar { grid-column: 2; grid-row: 3; display: grid; grid-template: repeat(4, auto) 1fr / minmax(0, 1fr); align-content: start; border-left: 1px solid var(--border); border-top: 0; padding: 12px 8px; }
   .action-bar > button { min-width: 0; }
   .history-tools { flex-direction: column; margin: 6px 0 0; padding-top: 12px; border-top: 1px solid var(--border); }
   .history-tools button { padding-inline: 4px; font-size: .8rem; }
@@ -145,13 +178,13 @@ footer { display: none; }
   .drawer { inset: 74px 0 0 auto; width: 390px; max-height: none; border-radius: 18px 0 0 18px; box-shadow: -12px 0 40px rgba(20, 38, 27, .2); }
   .toast { bottom: 24px; }
   .selection-actions { bottom: 18px; }
-  .stitch-picker-backdrop { place-items: center; padding: 24px; }
-  .stitch-picker { border-radius: 18px; }
+  .stitch-picker-backdrop, .color-picker-backdrop { place-items: center; padding: 24px; }
+  .stitch-picker, .color-picker { border-radius: 18px; }
   .stitch-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 }
 
 @media (min-width: 1180px) {
-  .workspace { grid-template: auto 1fr / minmax(0, 1fr) 118px; }
+  .workspace { grid-template: auto auto 1fr / minmax(0, 1fr) 118px; }
   .action-bar { padding-inline: 12px; }
   .gesture-hint { font-size: .76rem; }
 }

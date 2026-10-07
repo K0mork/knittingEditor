@@ -84,6 +84,44 @@ require_api_declaration NSPrivacyAccessedAPICategoryDiskSpace \
   '^_f?statv?fs|NSFileSystem(Free)?Size|NSURLVolume(Available|Total)Capacity|volume(Available|Total)Capacity' ''
 require_api_declaration NSPrivacyAccessedAPICategoryActiveKeyboards '' 'activeInputModes'
 
+# `.knit`の種類名（Filesの「情報を見る」や共有シートに出る）。識別子を変えると既存の`.knit`の
+# 関連付けが切れるので固定する。名前は`App/InfoPlist.xcstrings`で日本語と英語を持つ。
+INFO_PLIST="$APP_PATH/Info.plist"
+knit_type_id='com.k0mork.knitting-editor.knit'
+knit_type_name='棒針編み図バックアップ'
+# `plutil -extract`はキーパスを`.`で区切る（`UTExportedTypeDeclarations.0.UTTypeIdentifier`）。
+# そのため、`.`を含むキーそのものは引けない（失敗して空になる）。
+plist_value() {
+  plutil -extract "$1" raw -o - "${2:-$INFO_PLIST}" 2>/dev/null || true
+}
+[ "$(plist_value UTExportedTypeDeclarations.0.UTTypeIdentifier)" = "$knit_type_id" ] \
+  && [ "$(plist_value CFBundleDocumentTypes.0.LSItemContentTypes.0)" = "$knit_type_id" ] || {
+  echo "unexpected .knit type identifier" >&2
+  exit 1
+}
+# InfoPlist.stringsでは、Info.plistの値そのものが訳のキーになる。
+for key in UTExportedTypeDeclarations.0.UTTypeDescription CFBundleDocumentTypes.0.CFBundleTypeName; do
+  [ "$(plist_value "$key")" = "$knit_type_name" ] || {
+    echo "unexpected .knit type name in Info.plist ($key): $(plist_value "$key")" >&2
+    exit 1
+  }
+done
+check_knit_type_name() {
+  strings_path="$APP_PATH/$1.lproj/InfoPlist.strings"
+  [ -f "$strings_path" ] || {
+    echo "missing localized Info.plist strings: $1.lproj" >&2
+    exit 1
+  }
+  # 訳のキー（種類名）には`.`が無いので、`plutil -extract`でそのまま引ける。
+  actual=$(plist_value "$knit_type_name" "$strings_path")
+  [ "$actual" = "$2" ] || {
+    echo "unexpected .knit type name in $1.lproj: ${actual:-<missing>}" >&2
+    exit 1
+  }
+}
+check_knit_type_name ja "$knit_type_name"
+check_knit_type_name en 'Knitting Chart Backup'
+
 # 「使い方」のサポートページとサポートのメールアドレスは、利用者が選んだときだけSafariとメールアプリで開くリンクなので除く。
 external_matches=$(find "$WEB_ROOT" -type f -exec perl -ne '
   s{https://knittingeditor\.com/support/|support\@knittingeditor\.com}{}g;

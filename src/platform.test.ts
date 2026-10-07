@@ -35,25 +35,31 @@ describe('createWebPlatform', () => {
   it('offers the generated file for sharing instead of replacing the page on iPhone', async () => {
     vi.stubGlobal('navigator', fakeNavigator(IPHONE, 5, () => true));
     const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
-    const offerShare = vi.fn();
+    let answer!: (result: boolean | undefined) => void;
+    const offerShare = vi.fn((_file: File) => new Promise<boolean | undefined>((resolve) => { answer = resolve; }));
 
-    await createWebPlatform(offerShare).saveFile(new Blob(['%PDF'], { type: 'application/pdf' }), 'chart.pdf');
+    const { saved } = await createWebPlatform(offerShare).saveFile(new Blob(['%PDF'], { type: 'application/pdf' }), 'chart.pdf');
 
     expect(offerShare).toHaveBeenCalledOnce();
-    const file = offerShare.mock.calls[0][0] as File;
+    const file = offerShare.mock.calls[0][0];
     expect([file.name, file.type]).toEqual(['chart.pdf', 'application/pdf']);
     expect(click).not.toHaveBeenCalled();
+    // 確認ダイアログで取りやめたことを、呼び出し側へ返す。
+    answer(false);
+    await expect(saved).resolves.toBe(false);
   });
 
   it('downloads the file directly elsewhere', async () => {
     vi.stubGlobal('navigator', fakeNavigator(ANDROID, 5, () => true));
     vi.stubGlobal('URL', { ...URL, createObjectURL: () => 'blob:chart', revokeObjectURL: () => {} });
     const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
-    const offerShare = vi.fn();
+    const offerShare = vi.fn(async (_file: File) => true);
 
-    await createWebPlatform(offerShare).saveFile(new Blob(['%PDF'], { type: 'application/pdf' }), 'chart.pdf');
+    const { saved } = await createWebPlatform(offerShare).saveFile(new Blob(['%PDF'], { type: 'application/pdf' }), 'chart.pdf');
 
     expect(offerShare).not.toHaveBeenCalled();
     expect(click).toHaveBeenCalledOnce();
+    // ダウンロードは保存を終えたかが分からない。
+    await expect(saved).resolves.toBeUndefined();
   });
 });

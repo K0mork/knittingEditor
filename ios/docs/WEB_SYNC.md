@@ -20,8 +20,11 @@ Web版とiOS版は同じリポジトリで管理する。以前の固定コミ�
 | `ui/useEditorController.ts` | 編集画面の状態と操作。記号・色・モード・選択範囲・貼り付け・パネル、編み図とブロックの操作、PNG/PDF出力、バックアップと復元。入力ダイアログ（`askText`・`askConfirm`）、ファイルの受け渡し（`platform`）、分析（`analytics`、省略時は送らない）を引数で受け取る。保存失敗の文言は`saveErrorMessage`にまとめる。 |
 | `ui/EditorView.tsx` | 編集画面の組み立て。見出し（`renderTitle`）、使い方リンクの処理（`onGuideClick`）、復元要求の横取り（`requestRestore`）、案内文（`backupNote`）、フッター、重ねる要素（`children`）だけを各ビルドから受け取る。 |
 | `ui/StitchPicker.tsx` | 記号ピッカー。フォーカストラップとEscapeでの閉じ方を含む。 |
+| `ui/ColorPicker.tsx` | 記号の色の選択。編み図で使っている色の一覧（`model/usedColors.ts`）と、一覧にない色を選ぶ色選択を出す。 |
 | `ui/GridControls.tsx` | 盤面設定。位置入力と確認は`askText`・`askConfirm`で受け取る。 |
+| `ui/DocumentList.tsx` | 編み図パネルの一覧。縮小画像（`model/thumbnail.ts`）、寸法、更新日時（`ui/documentListText.ts`）と、名前変更・複製・削除のボタン。縮小画像は保存せず、保存済みのセル配列から作るので、IndexedDBの記録と`.knit`の形式は変えていない。 |
 | `ui/ExportControls.tsx` | 保存・出力。PDFの推定ページ数は`export/pdfLayout.ts`をPDF Workerと共有する。 |
+| `state/backupReminder.ts`・`state/useBackupReminder.ts`・`ui/BackupReminderBar.tsx` | 最後の`.knit`書き出し日時の記録と、書き出しを勧める帯。日時は編み図ごとに設定（`lastBackupAt:<編み図ID>`）へ置き、編み図の記録と`.knit`には入れない。勧めは、最後の書き出し（無ければ作成）から7日以上たって変更があるとき、または開いてから50回編集したときに、道具列と盤面の間へ1段だけ出す。「あとで」で3日間（全編み図）出さない。Web版もブラウザのデータ消去やSafariの保存期限で端末内データが消えうるので、iOS版と同じ表示を出し、差分は設けない。帯は指・ポインタを画面に置いている間は出さない。日時は`EditorPlatform.saveFile`の`saved`が`false`（取りやめた）なら記録しない。Web版はiPhone・iPadのSafariの確認ダイアログと共有シートの結果を返し、ダウンロードは`undefined`（不明）を返す。iOS版はネイティブの保存画面・共有シートが結果をWebへ返さないので常に`undefined`を返し、書き出しを始めた日時を記録する（結果を返すのは#122）。 |
 | `ui/hooks.ts` | モーダルのフォーカス管理、ドロワーのフォーカス復帰、トースト、コピー／貼り付けのショートカット。 |
 | `styles/base.css` | 共通の見た目。環境で変える寸法はカスタムプロパティ（`--tap-size`など）で受け取る。 |
 
@@ -34,10 +37,10 @@ Web版とiOS版は同じリポジトリで管理する。以前の固定コミ�
 | `App.tsx` | `useEditorController`と`EditorView`へ差分を渡すだけにする。iOS版はネイティブブリッジ、アプリ内ダイアログ（`AppDialog.tsx`、`window.prompt`/`confirm`の代替）、ストレージ初期化タイムアウト、使い方ページ遷移前・バックグラウンド移行前の保存flushを持つ。Web版は`window.prompt`、旧データ移行つきの初期化、GA4、SEO向けの説明表示を持つ。 |
 | `analytics.ts` | Web版だけが持ち、GA4を初期化して`EditorAnalytics`を実装する。iOS版にはファイル自体が無く、分析を渡さないのでイベントも外部スクリプトも発生させない。 |
 | `main.tsx` | iOS版は`initializeAnalytics()`を呼ばない。 |
-| `styles.css` | 共通CSSへの差分だけ。iOS版はタップ領域44px、Dynamic Type、テキスト自動拡大の抑止、アプリ内ダイアログの様式。Web版はSEO向けの説明文と編み図名の表示。 |
+| `styles.css` | 共通CSSへの差分だけ。iOS版はタップ領域44px、Dynamic Type、テキスト自動拡大の抑止、長押しの文字選択とメニュー（コピー・調べる）の抑止、アプリ内ダイアログの様式。文字選択は入力欄（`input`・`textarea`と、`contenteditable="false"`でない`[contenteditable]`）だけ元に戻し、編み図名などを選択・コピー・貼り付けできるようにする。Web版はSEO向けの説明文と編み図名の表示で、文字選択は抑えない（ブラウザでは説明文や見出しを選んでコピーできるのが普通で、長押しのメニューもWebページとして自然なため）。 |
 | `platform.ts` | `EditorPlatform`の実装。Web版はダウンロード、iOS版は`WKWebView`ブリッジ経由でFiles・共有シートへ渡す。Web版でもiPhone・iPadのSafariだけは、`<a download>`のPDFが編集中のタブを置き換えるため、`ShareFileDialog.tsx`の「共有・保存」ボタンから共有シート（Web Share API）で渡す。共有シートは利用者のタップの中でしか開けないので、生成後にもう一度押してもらう。 |
 | `storage/database.ts` | Web版だけが持ち、旧Safari `localStorage`からの移行と、それを先に行う`initializeStorage`を置く。iOS版にはファイル自体が無く、共通の`initializeStorage`を直接使うので移行を含めない。 |
-| `index.html`、`public/guide/` | Web版はSEO、canonical、CNAME、サイトマップを持つ。iOS版は同梱ページとして動作し、文言をアプリ前提にする。iOS版の使い方ページは、アプリから受け取ったバージョンとビルド番号を末尾に表示する（`NATIVE_BRIDGE.md`の「アプリ情報」）。どちらの使い方ページも、ビルド時に生成する`/third-party-notices/`（`scripts/third-party-notices.mjs`）へリンクする。 |
+| `index.html`、`public/guide/` | Web版はSEO、canonical、CNAME、サイトマップを持つ。iOS版は同梱ページとして動作し、文言をアプリ前提にする。iOS版の使い方ページは、アプリから受け取ったバージョンとビルド番号を末尾に表示する（`NATIVE_BRIDGE.md`の「アプリ情報」）。どちらの使い方ページも、ビルド時に生成する`/third-party-notices/`（`scripts/third-party-notices.mjs`）へリンクする。iOS版の編集画面はviewportを`maximum-scale=1, user-scalable=no`にし、盤面の外のピンチやダブルタップで画面全体を拡大しない（文字の拡大はDynamic Typeと端末の「ズーム」で行う）。Web版は`maximum-scale=5`のままで、ブラウザの拡大を残す。iOS版の使い方ページは読み物でDynamic Typeに追従しないので、拡大と文字選択を残す。リンクの長押しプレビューは`WKWebView.allowsLinkPreview = false`で両ページとも出さない。 |
 | `vite.config.ts` | iOS版は`modulePreload`を切り、ソースマップを同梱しない。 |
 
 ## テストの置き場所
@@ -46,7 +49,7 @@ Web版とiOS版は同じリポジトリで管理する。以前の固定コミ�
 
 現在の内訳は次のとおりで、共通テストの二重管理は解消済みである。
 
-- `packages/editor-core`：盤面モデル、記号カタログ、ベクター記号、Canvas、PNG/PDF出力、PDFレイアウト計算、IndexedDBと`.knit`入出力（大盤面の保存・復元を含む）、編集セッション、編集画面、base64変換、分析バケット。
+- `packages/editor-core`：盤面モデル、記号カタログ、ベクター記号、Canvas、PNG/PDF出力、PDFレイアウト計算、IndexedDBと`.knit`入出力（大盤面の保存・復元を含む）、編集セッション、編集画面、最後のバックアップ日時と書き出しの勧め（既存データの読み出しを含む）、base64変換、分析バケット。
 - `src/`（Web固有）：旧Safari `localStorage`からの移行、GA4アナリティクス、iPhone・iPad Safariの共有シート判定と確認ダイアログ。
 - `ios/Web/src/`（iOS固有）：ネイティブブリッジ、`async`のタイムアウト、使い方ページのバージョン表示（`guideVersion.test.ts`）、ブリッジ経由の`.knit`入出力と`.knit`相互運用fixture（`backupInterchange.test.ts`、`ios/test-fixtures/`）。
 
