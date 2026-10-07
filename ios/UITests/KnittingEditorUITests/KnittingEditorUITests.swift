@@ -136,12 +136,12 @@ final class KnittingEditorUITests: XCTestCase {
         let webView = app.webViews.firstMatch
         XCTAssertTrue(webView.waitForExistence(timeout: Self.editorAppearanceTimeout))
         let heading = webView.staticTexts["棒針編み図エディタ"].firstMatch
-        let colorLabel = webView.staticTexts["色"].firstMatch
         let save = app.buttons["保存"]
         XCTAssertTrue(save.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
         XCTAssertTrue(heading.waitForExistence(timeout: 10), app.debugDescription)
-        XCTAssertTrue(colorLabel.waitForExistence(timeout: 10), app.debugDescription)
-        // ピンチは要素の内側へ寄せた2点で行うため、小さな要素（「色」）では位置を計算できない。
+        let documentName = documentNameText(below: heading, in: webView)
+        XCTAssertTrue(documentName.waitForExistence(timeout: 10), app.debugDescription)
+        // ピンチは要素の内側へ寄せた2点で行うため、小さな要素（編み図名）では位置を計算できない。
         let toolbar = webView.otherElements
             .matching(NSPredicate(format: "label BEGINSWITH %@", "編集ツール"))
             .firstMatch
@@ -157,7 +157,9 @@ final class KnittingEditorUITests: XCTestCase {
 
         for (name, element) in [
             ("見出し", heading),
-            ("ラベル", colorLabel),
+            // ツール列の「色」は、ダイアログを開くボタンになって文字が読み上げに出なくなった（#115）。
+            // 見出しの下の編み図名は、今も操作できない文字として出ている。
+            ("ラベル", documentName),
             ("リンク", app.links["使い方"]),
             // 押すと状態が変わるボタンは、長押しの後のタップが効かないことがあり、
             // 後続の操作が不安定になる。選択中のモードは押し直しても変わらない。
@@ -1206,6 +1208,23 @@ final class KnittingEditorUITests: XCTestCase {
         cancel.tap()
         assertDisappears(cancel, from: app)
         assertDisappears(fileSave, from: app)
+    }
+
+    /// 見出しの下に出る、開いている編み図の名前の文字。
+    ///
+    /// 起動時に開く編み図は先に実行したテストで変わるため、名前では探せない。読み上げの順では
+    /// 見出しの次に名前が来て、その後に「、」と画面に出ない「保存済み」が続くので、見出しの次の
+    /// 静的テキストを名前で取り直す。
+    private func documentNameText(below heading: XCUIElement, in webView: XCUIElement) -> XCUIElement {
+        let texts = webView.staticTexts.allElementsBoundByIndex
+        guard
+            let headingIndex = texts.firstIndex(where: { $0.label == heading.label }),
+            headingIndex + 1 < texts.count
+        else {
+            XCTFail("見出しの下に編み図名が無い: \(webView.debugDescription)")
+            return heading
+        }
+        return webView.staticTexts[texts[headingIndex + 1].label].firstMatch
     }
 
     /// 編集後の自動保存が端末へ書き終わるまで待つ。盤面の記号数が変わったのを確かめてから呼ぶ。
