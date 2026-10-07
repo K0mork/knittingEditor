@@ -15,6 +15,8 @@ test-results/
 # 利用分析の数値・価格・収益試算などの非公開メモ。AGENTS.mdの「Confidential Information」を参照。
 # 同期フォルダへのシンボリックリンクでも除外されるよう、末尾に`/`を付けない。
 /private
+# `private/`の旧版。`.git/info/exclude`はクローンごとの設定なので、ここでも除外する。
+/private.old
 
 # Claude Code: session worktrees (see AGENTS.md "Branches, Worktrees & Cleanup"), the lock a running
 # session writes, and personal settings. `.claude/launch.json` and `.claude/settings.json` are shared.
