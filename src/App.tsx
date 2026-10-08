@@ -31,7 +31,9 @@ export default function App() {
       </div>
       <p className="app-document-name" aria-live="polite" aria-atomic="true">{documentStatus}</p>
     </div>}
-    backupNote="端末内データはブラウザ操作で消える場合があります。定期的に保存してください。"
-    footer={<footer><span>© 2026 棒針編み図エディタ</span><a href="https://policies.google.com/privacy?hl=ja" target="_blank" rel="noreferrer">プライバシー</a></footer>}
+    // 編み図は端末内にだけ保存し、GA4で送る情報はプライバシーポリシーで公表している。編集画面のフッターは
+    // 表示しないので、データの扱いを説明するこの案内文からリンクする。
+    backupNote={<>端末内データはブラウザ操作で消える場合があります。定期的に保存してください。<br /><a href="/privacy/">プライバシーポリシー</a></>}
+    footer={<footer><span>© 2026 棒針編み図エディタ</span><a href="/privacy/">プライバシーポリシー</a></footer>}
   >{shareDialog}</EditorView>;
 }
