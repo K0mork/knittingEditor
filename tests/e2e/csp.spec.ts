@@ -15,14 +15,16 @@ for (const path of PAGES) {
     for (const directive of ["object-src 'none'", "base-uri 'self'", "form-action 'self'", "worker-src 'self'"]) {
       expect(policy).toContain(directive);
     }
-    expect(policy).not.toContain('unsafe-inline');
+    // スクリプトにはインラインと`eval`を許さない。
+    const scriptSources = /(?:^|; )script-src ([^;]*)/.exec(policy)![1];
+    expect(scriptSources).not.toContain('unsafe-inline');
     expect(policy).not.toContain('unsafe-eval');
     // 使い方などのページは`<style>`要素を、編集画面は外部CSSを使う。どちらも止められていなければ余白が0になる。
     expect(await page.evaluate(() => getComputedStyle(document.body).marginTop)).toBe('0px');
   });
 }
 
-test('shows the stitch symbols, whose SVG markup is inserted as HTML, at full size', async ({ page }) => {
+test('shows the stitch symbols, whose SVG markup sizes itself with a style attribute, at full size', async ({ page }) => {
   await page.goto('/');
   const symbol = page.locator('.stitch-tool > span:first-child svg');
   await expect(symbol).toBeVisible();

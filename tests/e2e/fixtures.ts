@@ -10,8 +10,6 @@ const CSP_CONSOLE_MESSAGE = /Content[- ]Security[- ]Policy|^CSP violation:/i;
  * すべてのE2Eテストで、Content-Security-Policyの違反を集め、テストの終わりに1件も無いことを確かめる。
  * `securitypolicyviolation`イベントと、ブラウザが出すコンソールのCSPエラーの両方を拾う。
  * 違反を起こすこと自体を確かめるテストは、確かめたあとで`cspViolations`を空にする。
- * WebKitでは`page.screenshot()`のときにPlaywrightが`<style>`を差し込み、それが違反として出る。
- * 画面写真を撮るテストを足すときは、撮る前後で`cspViolations`を分けて確かめる。
  */
 export const test = base.extend<{ cspViolations: string[] }>({
   cspViolations: [async ({ context }, use) => {

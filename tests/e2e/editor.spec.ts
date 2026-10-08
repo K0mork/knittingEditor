@@ -559,8 +559,7 @@ test('does not overwrite a renamed chart with a pending autosave', async ({ page
 
 test('keeps header actions visible when text is enlarged in landscape', async ({ page }) => {
   await page.setViewportSize({ width: 667, height: 375 });
-  // CSPがインラインの<style>を止めるので、`addStyleTag`ではなくCSSOMで文字を大きくする。
-  await page.evaluate(() => { document.documentElement.style.fontSize = '32px'; });
+  await page.addStyleTag({ content: 'html { font-size: 32px; }' });
 
   const layout = await page.locator('.app-header').evaluate((header) => {
     const headerRect = header.getBoundingClientRect();

@@ -1,11 +1,9 @@
-import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {
   applyContentSecurityPolicy,
-  contentSecurityPolicyFor,
+  CONTENT_SECURITY_POLICY,
   contentSecurityPolicyMetas,
-  findInlineCode,
-  styleHash,
+  findInlineScripts,
   verifyContentSecurityPolicy,
 } from './content-security-policy.mjs';
 
@@ -20,13 +18,12 @@ ${head}
 </html>
 `;
 
-describe('contentSecurityPolicyFor', () => {
+describe('CONTENT_SECURITY_POLICY', () => {
   it('limits scripts, connections, workers, plugins, the base URL and forms', () => {
-    const policy = contentSecurityPolicyFor(page(''));
-    expect(policy.split('; ')).toEqual([
+    expect(CONTENT_SECURITY_POLICY.split('; ')).toEqual([
       "default-src 'self'",
       "script-src 'self' https://www.googletagmanager.com",
-      "style-src 'self'",
+      "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https://*.google-analytics.com https://*.googletagmanager.com",
       "connect-src 'self' https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com",
       "worker-src 'self'",
@@ -34,39 +31,31 @@ describe('contentSecurityPolicyFor', () => {
       "base-uri 'self'",
       "form-action 'self'",
     ]);
-    expect(policy).not.toContain('unsafe-inline');
-    expect(policy).not.toContain('frame-ancestors');
-  });
-
-  it('allows each <style> element by the hash of its exact text', () => {
-    const css = '\n      body { margin: 0; }\n    ';
-    const policy = contentSecurityPolicyFor(page(`    <style>${css}</style>\n    <style>${css}</style>`));
-    const expected = `'sha256-${createHash('sha256').update(css).digest('base64')}'`;
-    expect(styleHash(css)).toBe(expected);
-    expect(policy).toContain(`style-src 'self' ${expected};`);
+    expect(CONTENT_SECURITY_POLICY).not.toContain('frame-ancestors');
   });
 });
 
-describe('findInlineCode', () => {
-  it('accepts external scripts and structured data', () => {
-    expect(findInlineCode(page('    <script type="module" crossorigin src="/assets/index.js"></script>\n    <script type="application/ld+json">{"@context":"https://schema.org"}</script>'))).toEqual([]);
+describe('findInlineScripts', () => {
+  it('accepts external scripts, structured data, <style> elements and style attributes', () => {
+    expect(findInlineScripts(page(
+      '    <script type="module" crossorigin src="/assets/index.js"></script>\n    <script type="application/ld+json">{"@context":"https://schema.org"}</script>\n    <style>p { color: red; }</style>',
+      '<p style="color: red">本文</p>',
+    ))).toEqual([]);
   });
 
-  it('reports inline scripts, style attributes and event handler attributes', () => {
-    expect(findInlineCode(page('    <script>alert(1)</script>'))).toEqual(['インラインの<script>']);
-    expect(findInlineCode(page('    <script type="module">import "/a.js";</script>'))).toEqual(['インラインの<script>']);
-    expect(findInlineCode(page('', '<p style="color: red">本文</p>'))).toEqual(['style属性']);
-    expect(findInlineCode(page('', '<img src="/a.png" onerror="alert(1)">'))).toEqual(['on*属性']);
+  it('reports inline scripts and event handler attributes', () => {
+    expect(findInlineScripts(page('    <script>alert(1)</script>'))).toEqual(['インラインの<script>']);
+    expect(findInlineScripts(page('    <script type="module">import "/a.js";</script>'))).toEqual(['インラインの<script>']);
+    expect(findInlineScripts(page('', '<img src="/a.png" onerror="alert(1)">'))).toEqual(['on*属性']);
   });
 });
 
 describe('applyContentSecurityPolicy', () => {
   it('puts the policy right after the charset so that it covers every later element', () => {
-    const html = applyContentSecurityPolicy(page('    <style>p { color: red; }</style>'));
-    const lines = html.split('\n');
+    const lines = applyContentSecurityPolicy(page('')).split('\n');
     expect(lines[3]).toBe('    <meta charset="UTF-8" />');
-    expect(lines[4]).toBe(`    <meta http-equiv="Content-Security-Policy" content="${contentSecurityPolicyFor(page('    <style>p { color: red; }</style>'))}" />`);
-    expect(contentSecurityPolicyMetas(html)).toHaveLength(1);
+    expect(lines[4]).toBe(`    <meta http-equiv="Content-Security-Policy" content="${CONTENT_SECURITY_POLICY}" />`);
+    expect(contentSecurityPolicyMetas(lines.join('\n'))).toEqual([CONTENT_SECURITY_POLICY]);
   });
 
   it('stops the build instead of shipping a page the policy would break', () => {
@@ -81,10 +70,10 @@ describe('verifyContentSecurityPolicy', () => {
     expect(verifyContentSecurityPolicy(applyContentSecurityPolicy(page('    <style>p { color: red; }</style>')))).toBeUndefined();
   });
 
-  it('reports a missing policy, a stale style hash and a misplaced policy', () => {
+  it('reports a missing, altered or misplaced policy', () => {
     expect(verifyContentSecurityPolicy(page(''))).toMatch(/0個/);
-    const built = applyContentSecurityPolicy(page('    <style>p { color: red; }</style>'));
-    expect(verifyContentSecurityPolicy(built.replace('color: red', 'color: blue'))).toMatch(/想定と違います/);
+    const built = applyContentSecurityPolicy(page(''));
+    expect(verifyContentSecurityPolicy(built.replace("object-src 'none'", 'object-src *'))).toMatch(/想定と違います/);
     const meta = built.split('\n')[4];
     const moved = built.replace(`${meta}\n`, '').replace('  </head>', `${meta}\n  </head>`);
     expect(verifyContentSecurityPolicy(moved)).toMatch(/直後にありません/);
