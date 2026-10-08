@@ -862,34 +862,53 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertTrue(app.buttons["閉じる"].isHittable, app.debugDescription)
     }
 
-    func testAccessibilityExtraExtraExtraLargeKeepsPrimaryFlowsUsable() {
+    // 文字サイズ最大のテストは、確かめる流れごとに分ける。1つのテストで起動から回転までを
+    // 続けると、CIのSimulatorでは要素が多い画面の操作1回に数十秒かかることがあり、
+    // 途中での横向きへの回転（19〜59秒）を含めて実行時間の上限や操作の時間切れに達していた（#44）。
+
+    func testAccessibilityExtraExtraExtraLargeKeepsPrimaryControlsUsable() {
+        let app = launchWithAccessibilityExtraExtraExtraLarge()
+
+        assertPrimaryControlsAreUsable(in: app)
+        openDocumentsPanel(in: app)
+        XCTAssertTrue(app.buttons["閉じる"].isHittable, app.debugDescription)
+    }
+
+    func testAccessibilityExtraExtraExtraLargeKeepsSaveActionsReachable() {
+        let app = launchWithAccessibilityExtraExtraExtraLarge()
+
+        let save = app.buttons["保存"]
+        XCTAssertTrue(save.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+        save.tap()
+        assertHittableAfterScrolling(app.buttons["PNGを保存"], in: app)
+        assertHittableAfterScrolling(app.buttons["PDFを保存"], in: app)
+        assertHittableAfterScrolling(app.buttons["この編み図"], in: app)
+    }
+
+    /// 横向きの回帰防止。ヘッダーを固定高にしていたため、最大アクセシビリティサイズでは
+    /// 「編み図」「使い方」が画面上端の外（y=-58）へ押し出されて操作できなかった。
+    /// 起動の前に横向きにして、要素の多い画面での回転を避ける。
+    func testAccessibilityExtraExtraExtraLargeKeepsLandscapeHeaderInWindow() {
+        XCUIDevice.shared.orientation = .landscapeLeft
+        let app = launchWithAccessibilityExtraExtraExtraLarge()
+        waitForLandscapeLayout(of: app)
+
+        XCTAssertTrue(app.buttons["編み図"].waitForExistence(timeout: 10), app.debugDescription)
+        assertWithinWindow(app.buttons["編み図"], in: app)
+        assertWithinWindow(app.links["使い方"], in: app)
+        assertPrimaryControlsAreUsable(in: app)
+    }
+
+    /// 文字サイズを最大（アクセシビリティXXXL）にして起動し、WebViewが出るまで待つ。
+    private func launchWithAccessibilityExtraExtraExtraLarge() -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments += [
             "-UIPreferredContentSizeCategoryName",
             "UICTContentSizeCategoryAccessibilityXXXL",
         ]
         app.launch()
-
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
-        assertPrimaryControlsAreUsable(in: app)
-
-        openDocumentsPanel(in: app)
-        XCTAssertTrue(app.buttons["閉じる"].isHittable, app.debugDescription)
-        app.buttons["閉じる"].tap()
-
-        app.buttons["保存"].tap()
-        assertHittableAfterScrolling(app.buttons["PNGを保存"], in: app)
-        assertHittableAfterScrolling(app.buttons["PDFを保存"], in: app)
-        assertHittableAfterScrolling(app.buttons["この編み図"], in: app)
-        app.buttons["閉じる"].tap()
-
-        // 横向きの回帰防止。ヘッダーを固定高にしていたため、最大アクセシビリティサイズでは
-        // 「編み図」「使い方」が画面上端の外（y=-58）へ押し出されて操作できなかった。
-        rotateToLandscape(app)
-        XCTAssertTrue(app.buttons["編み図"].waitForExistence(timeout: 10), app.debugDescription)
-        assertWithinWindow(app.buttons["編み図"], in: app)
-        assertWithinWindow(app.links["使い方"], in: app)
-        assertPrimaryControlsAreUsable(in: app)
+        return app
     }
 
     /// 要素がウィンドウの内側に収まっていることを確認する。
@@ -1018,22 +1037,43 @@ final class KnittingEditorUITests: XCTestCase {
     /// パネルが開いていない（「閉じる」もない）場合に限って押し直す。開いているのに
     /// 出なければ押し直すとパネルを閉じてしまうので、そのまま待って失敗にする。
     /// アプリ更新テストのように遅い実行では、`timeout`で最後の待機を延ばす。
+    ///
+    /// 押し直しても開かないことがあり（#44）、1回目のタップが遅れて効いて開いたパネルを
+    /// 押し直しで閉じたのか、どちらのタップも効かなかったのかを見分けられなかった。
+    /// 開かなかったときは、各タップの時刻とその前後のパネルの有無、画面写真を残す。
+    /// 「編み図」の`aria-expanded`はXCUITestの`value`に出ないため、パネルの有無は
+    /// 「閉じる」で判断する。
     @discardableResult
     private func openDocumentsPanel(
         in app: XCUIApplication,
         timeout: TimeInterval = KnittingEditorUITests.editorAppearanceTimeout
     ) -> XCUIElement {
         let documents = app.buttons["編み図"]
-        XCTAssertTrue(documents.waitForExistence(timeout: timeout), app.debugDescription)
-        documents.tap()
         let newDocument = app.buttons["新しい編み図"]
-        if !newDocument.waitForExistence(timeout: 10), !app.buttons["閉じる"].exists {
-            documents.tap()
+        let close = app.buttons["閉じる"]
+        XCTAssertTrue(documents.waitForExistence(timeout: timeout), app.debugDescription)
+        let started = Date()
+        var events: [String] = []
+        func record(_ event: String) {
+            events.append(String(format: "%.1f秒 ", Date().timeIntervalSince(started)) + event)
         }
-        XCTAssertTrue(
-            newDocument.waitForExistence(timeout: timeout),
-            "「編み図」でパネルが開かない: \(app.debugDescription)"
-        )
+
+        documents.tap()
+        record("「編み図」をタップ")
+        if !newDocument.waitForExistence(timeout: 10) {
+            let panelShown = close.exists
+            record("10秒待っても「新しい編み図」が無い（閉じる=\(panelShown)）")
+            if !panelShown {
+                documents.tap()
+                record("「編み図」を押し直した（直後の閉じる=\(close.exists)）")
+            }
+        }
+        if newDocument.waitForExistence(timeout: timeout) {
+            return newDocument
+        }
+        record("最後の待機でも「新しい編み図」が無い（閉じる=\(close.exists)）")
+        add(screenshotAttachment(named: "「編み図」でパネルが開かない"))
+        XCTFail("「編み図」でパネルが開かない 経過: \(events.joined(separator: " → ")): \(app.debugDescription)")
         return newDocument
     }
 
@@ -1043,6 +1083,11 @@ final class KnittingEditorUITests: XCTestCase {
     /// `app.windows.firstMatch`の存在確認は向きと関係なく成立し、待機になっていなかった。
     private func rotateToLandscape(_ app: XCUIApplication) {
         XCUIDevice.shared.orientation = .landscapeLeft
+        waitForLandscapeLayout(of: app)
+    }
+
+    /// WebViewが横長に配置されるまで待つ。
+    private func waitForLandscapeLayout(of app: XCUIApplication) {
         let webView = app.webViews.firstMatch
         let landscape = XCTNSPredicateExpectation(
             predicate: NSPredicate { element, _ in
