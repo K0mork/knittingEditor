@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures';
 
 const OG_IMAGE_URL = 'https://knittingeditor.com/og-image.png';
 

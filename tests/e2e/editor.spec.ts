@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -368,7 +368,9 @@ test('draws the ten-stitch major lines in the PNG at the numbered tens', async (
 
   // 盤面の中を縦・横に1本ずつたどり、太線の色（#666）の画素の位置を集める。
   const darkPixels = await page.evaluate(async (base64) => {
-    const image = await createImageBitmap(await (await fetch(`data:image/png;base64,${base64}`)).blob());
+    // CSPの`connect-src`はdata: URLへの`fetch`を許さないので、バイト列から直接Blobを作る。
+    const bytes = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
+    const image = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
     const canvas = new OffscreenCanvas(image.width, image.height);
     const context = canvas.getContext('2d')!;
     context.drawImage(image, 0, 0);
