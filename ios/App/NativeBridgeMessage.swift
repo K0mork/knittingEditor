@@ -5,7 +5,8 @@ enum NativeBridgeLimits {
 }
 
 enum NativeBridgeMessage: Equatable {
-    case exportFile(data: Data, filename: String, mimeType: String)
+    /// `requestID`はWebが結果を待つ書き出しの識別子（#122）。持たないメッセージも受け付け、結果を返さない。
+    case exportFile(data: Data, filename: String, mimeType: String, requestID: String?)
     case openBackup
     case webReady
     case commandState(EditorCommandState)
@@ -42,6 +43,10 @@ enum NativeBridgeMessage: Equatable {
             }
             return .success(.commandState(EditorCommandState(canUndo: canUndo, canRedo: canRedo)))
         case "exportFile":
+            let requestID = exportRequestID(body: body)
+            guard dictionary["id"] == nil || requestID != nil else {
+                return .failure(.invalidEnvelope)
+            }
             guard let filename = dictionary["filename"] as? String,
                   let mimeType = dictionary["mimeType"] as? String,
                   let encoded = dictionary["dataBase64"] as? String,
@@ -56,11 +61,33 @@ enum NativeBridgeMessage: Equatable {
                   ["image/png", "application/pdf", "application/gzip"].contains(mimeType) else {
                 return .failure(.invalidFile)
             }
-            return .success(.exportFile(data: data, filename: safeFilename, mimeType: mimeType))
+            return .success(.exportFile(
+                data: data,
+                filename: safeFilename,
+                mimeType: mimeType,
+                requestID: requestID
+            ))
         default:
             return .failure(.unsupportedType)
         }
     }
+
+    /// `exportFile`の要求IDを取り出す。ファイルの検証に失敗したときも、Webへ結果を返すために使う。
+    /// IDはイベントへそのまま載せるので、英数字・`-`・`_`の64文字までに限る。
+    static func exportRequestID(body: Any) -> String? {
+        guard let dictionary = body as? [String: Any],
+              dictionary["type"] as? String == "exportFile",
+              let id = dictionary["id"] as? String,
+              (1...64).contains(id.count),
+              id.unicodeScalars.allSatisfy({ requestIDCharacters.contains($0) }) else {
+            return nil
+        }
+        return id
+    }
+
+    private static let requestIDCharacters = CharacterSet(
+        charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+    )
 
     private static func sanitizedFilename(_ filename: String) -> String? {
         let trimmed = filename.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -73,5 +100,17 @@ enum NativeBridgeMessage: Equatable {
             return nil
         }
         return trimmed
+    }
+}
+
+/// 書き出しを保存・共有し終えたか、取りやめたかをWebへ返すイベント（#122）。
+enum NativeExportResult {
+    static let eventName = "knittingEditorNativeExportFinished"
+
+    static func script(requestID: String, saved: Bool) -> String? {
+        let detail: [String: Any] = ["id": requestID, "saved": saved]
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: detail, options: [.sortedKeys]),
+              let json = String(data: jsonData, encoding: .utf8) else { return nil }
+        return "window.dispatchEvent(new CustomEvent('\(eventName)',{detail:\(json)}));"
     }
 }

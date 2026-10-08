@@ -109,16 +109,7 @@ final class KeyboardCommandUITests: XCTestCase {
     /// ⌘Oで復元するバックアップを選ぶ画面が出る。
     func testRestoreShortcutOpensBackupPicker() {
         let app = launchEditor()
-        // Document Pickerは別プロセスのUIで、アプリがローカライズを持たない間は閉じるボタンの
-        // identifierが`Cancel`だった。`InfoPlist.xcstrings`（#119）でローカライズを持つと、identifierは
-        // 無くなり、labelが端末の言語の「Cancel」「キャンセル」になる。一覧の`Browse View (Picker)`も見る。
-        let picker = app.descendants(matching: .any)
-            .matching(NSPredicate(
-                format: "identifier IN %@ OR label IN %@",
-                ["Cancel", "Browse View (Picker)"],
-                ["Cancel", "キャンセル"]
-            ))
-            .firstMatch
+        let picker = SystemSheet.element(in: app)
         XCTAssertTrue(typeShortcut("o", .command, in: app, until: Self.exists, on: picker), app.debugDescription)
         add(screenshot(named: "⌘Oで開いた復元の選択画面"))
     }

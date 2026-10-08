@@ -113,6 +113,8 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 .drawer h3 { margin: 18px 0 8px; font-size: .9rem; color: #53605a; }
 .document-list, .block-list { display: grid; gap: 8px; margin-top: 12px; }
 .document-list { padding: 0; margin-bottom: 0; list-style: none; }
+.documents-note { margin: 14px 2px 0; font-size: .85rem; }
+.documents-note a { color: #285d35; }
 .document { min-width: 0; display: grid; gap: 6px; border: 1px solid var(--border); border-radius: 12px; padding: 6px; }
 .document.active { border-color: var(--green); background: #f0f8f1; }
 .document > button, .block-list div > button:first-child { text-align: left; border: 0; background: transparent; }

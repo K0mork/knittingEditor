@@ -14,7 +14,7 @@ describe('native backup interchange', () => {
     window.webkit = { messageHandlers: { knittingEditor: { postMessage } } };
 
     const backup = await exportBackup([source.id]);
-    await expect(saveBlobWithNativeBridge(backup, 'アプリ出力fixture.knit')).resolves.toBe(true);
+    await expect(saveBlobWithNativeBridge(backup, 'アプリ出力fixture.knit')).resolves.toBeDefined();
 
     const message = postMessage.mock.calls[0]?.[0] as { dataBase64?: string; mimeType?: string } | undefined;
     expect(message?.mimeType).toBe('application/gzip');

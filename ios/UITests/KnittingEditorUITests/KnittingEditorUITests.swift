@@ -711,7 +711,7 @@ final class KnittingEditorUITests: XCTestCase {
     ///
     /// iOS 27のDocument Pickerは別プロセスのUIで「キャンセル」ボタンを持たず、
     /// 閉じる操作は「<」→「×」か下スワイプである。要素は`isHittable`がfalseで直接タップできないため、
-    /// 画面座標の下スワイプで閉じる。シートの有無はidentifier `Cancel`の存在で判定する
+    /// 画面座標の下スワイプで閉じる。シートの有無は`SystemSheet`の要素で判定する
     /// （実機で表示中のみ存在し、閉じると消えることを確認済み）。
     func testBackupExportSheetDismissesBackToEditor() throws {
         if ProcessInfo.processInfo.environment["CI"] == "true" {
@@ -729,11 +729,14 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertTrue(currentDocument.waitForExistence(timeout: Self.editorAppearanceTimeout))
         currentDocument.tap()
 
-        XCTAssertTrue(app.buttons["ファイルに保存"].waitForExistence(timeout: Self.editorAppearanceTimeout))
+        let fileSave = app.buttons["ファイルに保存"]
+        XCTAssertTrue(fileSave.waitForExistence(timeout: Self.editorAppearanceTimeout))
         XCTAssertTrue(app.buttons["共有"].exists)
-        app.buttons["ファイルに保存"].tap()
+        fileSave.tap()
+        // 確認ダイアログの「キャンセル」を保存シートと取り違えないよう、ダイアログが消えてから探す。
+        assertDisappears(fileSave, from: app)
 
-        let systemSheet = app.descendants(matching: .any).matching(identifier: "Cancel").firstMatch
+        let systemSheet = SystemSheet.element(in: app)
         XCTAssertTrue(systemSheet.waitForExistence(timeout: 20), app.debugDescription)
 
         let dismissal = dismissSystemSheet(in: app)
@@ -922,14 +925,14 @@ final class KnittingEditorUITests: XCTestCase {
 
     /// 保存シートを閉じる。
     ///
-    /// iPadは「×」ボタン（label `Cancel`）を押せるが、iPhoneでは同じボタンへ到達できず
+    /// iPadは「×」ボタン（label「Cancel」「キャンセル」）を押せるが、iPhoneでは同じボタンへ到達できず
     /// `isHittable`もfalseになる。ウィンドウ状態によっても押せるかどうかが変わるため、
     /// 押してから閉じたことを確かめ、閉じていなければ画面座標の下スワイプへ落とす。
     /// 戻り値は失敗時の診断用に、どの手段まで試したかを表す。
     @discardableResult
     private func dismissSystemSheet(in app: XCUIApplication) -> String {
-        let sheet = app.descendants(matching: .any).matching(identifier: "Cancel").firstMatch
-        let closeButton = app.buttons.matching(NSPredicate(format: "label == %@", "Cancel")).firstMatch
+        let sheet = SystemSheet.element(in: app)
+        let closeButton = SystemSheet.closeButton(in: app)
         let buttonExists = closeButton.waitForExistence(timeout: 5)
         let buttonHittable = buttonExists && closeButton.isHittable
         if buttonHittable {

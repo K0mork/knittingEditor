@@ -282,7 +282,7 @@ export function useEditorController(options: EditorControllerOptions) {
       analytics.track('backup_exported', { backup_scope: all ? 'all' : 'current' });
       // 確認ダイアログや共有シートを閉じるまで待つので、その間は処理中の表示を出さない。
       setBusy(undefined);
-      // 取りやめたら記録しない。結果が分からないhost（ダウンロード、iOS版）では、渡した時点を書き出した日時とする。
+      // 取りやめたら記録しない。結果が分からないhost（ダウンロード）では、渡した時点を書き出した日時とする。
       if (await saved === false) return;
       await backupReminder.recordExport(all ? undefined : [activeDocument.id]);
     } catch (error) { reportFailure('backup_export', error); }

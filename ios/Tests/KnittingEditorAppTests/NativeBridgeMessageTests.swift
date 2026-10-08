@@ -26,7 +26,7 @@ final class NativeBridgeMessageTests: XCTestCase {
 
         XCTAssertEqual(
             message,
-            .success(.exportFile(data: fixtureData, filename: "interop.knit", mimeType: "application/gzip"))
+            .success(.exportFile(data: fixtureData, filename: "interop.knit", mimeType: "application/gzip", requestID: nil))
         )
     }
 
@@ -38,7 +38,7 @@ final class NativeBridgeMessageTests: XCTestCase {
             "mimeType": "application/gzip",
             "dataBase64": Data([1, 2, 3]).base64EncodedString(),
         ])
-        XCTAssertEqual(message, .success(.exportFile(data: Data([1, 2, 3]), filename: "chart.knit", mimeType: "application/gzip")))
+        XCTAssertEqual(message, .success(.exportFile(data: Data([1, 2, 3]), filename: "chart.knit", mimeType: "application/gzip", requestID: nil)))
     }
 
     func testDecodeRejectsPathTraversalFilename() {

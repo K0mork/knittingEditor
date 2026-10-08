@@ -208,6 +208,21 @@ describe('EditorView', () => {
     expect(blob.type).toBe('application/gzip');
   });
 
+  it('shows the host note after the chart list only when the host passes one', async () => {
+    const withNote = await renderEditor({}, { documentsNote: <a href="/privacy/">ポリシー</a> });
+    await withNote.click('編み図');
+    const note = withNote.container.querySelector('#app-drawer .documents-note');
+    expect(note?.querySelector('a')?.getAttribute('href')).toBe('/privacy/');
+    expect(note?.previousElementSibling?.classList.contains('document-list')).toBe(true);
+    await cleanup?.();
+    cleanup = undefined;
+
+    const withoutNote = await renderEditor();
+    await withoutNote.click('編み図');
+    expect(withoutNote.container.querySelector('#app-drawer .document-list')).not.toBeNull();
+    expect(withoutNote.container.querySelector('.documents-note')).toBeNull();
+  });
+
   it('lets the host take over the restore request before opening the file picker', async () => {
     const requestRestore = vi.fn(() => true);
     const { container, click } = await renderEditor({}, { requestRestore });
