@@ -46,6 +46,8 @@ describe('findInlineScripts', () => {
   it('reports inline scripts and event handler attributes', () => {
     expect(findInlineScripts(page('    <script>alert(1)</script>'))).toEqual(['インラインの<script>']);
     expect(findInlineScripts(page('    <script type="module">import "/a.js";</script>'))).toEqual(['インラインの<script>']);
+    expect(findInlineScripts(page('    <script>alert(1)</script >'))).toEqual(['インラインの<script>']);
+    expect(findInlineScripts(page('    <SCRIPT>alert(1)</SCRIPT\n>'))).toEqual(['インラインの<script>']);
     expect(findInlineScripts(page('', '<img src="/a.png" onerror="alert(1)">'))).toEqual(['on*属性']);
   });
 });

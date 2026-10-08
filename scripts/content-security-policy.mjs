@@ -27,7 +27,7 @@ export const CONTENT_SECURITY_POLICY = Object.entries(CONTENT_SECURITY_POLICY_DI
   .join('; ');
 
 const META = `<meta http-equiv="Content-Security-Policy" content="${CONTENT_SECURITY_POLICY}" />`;
-const SCRIPT_ELEMENT = /<script\b([^>]*)>[\s\S]*?<\/script>/gi;
+const SCRIPT_ELEMENT = /<script\b([^>]*)>[\s\S]*?<\/script\b[^>]*>/gi;
 const EVENT_HANDLER_ATTRIBUTE = /<[a-z][^>]*\son[a-z]+\s*=/i;
 const CHARSET_META = /<meta charset="UTF-8" \/>\n/i;
 const POLICY_META = /<meta http-equiv="Content-Security-Policy" content="([^"]*)" \/>/gi;
