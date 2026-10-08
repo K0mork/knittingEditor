@@ -1,5 +1,6 @@
 import { readFile, readdir, stat } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
+import { htmlFiles, verifyContentSecurityPolicy } from './content-security-policy.mjs';
 
 const required = ['index.html', 'robots.txt', 'sitemap.xml', 'favicon.ico', 'icon-192.png', 'apple-touch-icon.png', 'og-image.png', 'guide/index.html', 'support/index.html', 'third-party-notices/index.html'];
 for (const file of required) await stat(join('dist', file));
@@ -30,6 +31,11 @@ for (const page of ['index.html', 'guide/index.html', 'support/index.html']) {
 const notices = await readFile(join('dist', 'third-party-notices', 'index.html'), 'utf8');
 for (const name of ['fflate', 'idb', 'react', 'react-dom', 'scheduler']) {
   if (!new RegExp(`<h2>${name} [^<]+</h2>`).test(notices)) throw new Error(`third-party-notices/index.html に ${name} のライセンス表記がありません`);
+}
+// 後から足したページも含め、配信するすべてのHTMLにCSPのmetaがあることを確かめる。
+for (const file of await htmlFiles('dist')) {
+  const problem = verifyContentSecurityPolicy(await readFile(file, 'utf8'));
+  if (problem) throw new Error(`${relative('dist', file)}: ${problem}`);
 }
 if (!assets.some((file) => file.startsWith('pdf.worker-') && file.endsWith('.js'))) throw new Error('PDF Workerが出力されていません');
 

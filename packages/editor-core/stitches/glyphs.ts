@@ -180,7 +180,7 @@ export function glyphSvg(key: string): string {
     const commands = [`M ${svgPoint(primitive.start)}`, ...primitive.curves.map((curve) => `C ${svgPoint(curve.control1)} ${svgPoint(curve.control2)} ${svgPoint(curve.to)}`)];
     return `<path d="${commands.join(' ')}"/>`;
   }).join('');
-  return `<svg viewBox="0 0 ${number(definition.width)} ${number(definition.height)}" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%" fill="none" stroke="currentColor" stroke-width="${number(definition.strokeWidth)}" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">${body}</svg>`;
+  return `<svg viewBox="0 0 ${number(definition.width)} ${number(definition.height)}" preserveAspectRatio="xMidYMid meet" width="100%" height="100%" fill="none" stroke="currentColor" stroke-width="${number(definition.strokeWidth)}" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">${body}</svg>`;
 }
 
 export function drawGlyph(context: CanvasRenderingContext2D, key: string, x: number, y: number, cellSize: number, color: string): void {

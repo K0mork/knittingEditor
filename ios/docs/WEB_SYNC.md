@@ -41,7 +41,7 @@ Web版とiOS版は同じリポジトリで管理する。以前の固定コミ�
 | `platform.ts` | `EditorPlatform`の実装。Web版はダウンロード、iOS版は`WKWebView`ブリッジ経由でFiles・共有シートへ渡す。Web版でもiPhone・iPadのSafariだけは、`<a download>`のPDFが編集中のタブを置き換えるため、`ShareFileDialog.tsx`の「共有・保存」ボタンから共有シート（Web Share API）で渡す。共有シートは利用者のタップの中でしか開けないので、生成後にもう一度押してもらう。 |
 | `storage/database.ts` | Web版だけが持ち、旧Safari `localStorage`からの移行と、それを先に行う`initializeStorage`を置く。iOS版にはファイル自体が無く、共通の`initializeStorage`を直接使うので移行を含めない。 |
 | `index.html`、`public/guide/` | Web版はSEO、canonical、CNAME、サイトマップを持つ。iOS版は同梱ページとして動作し、文言をアプリ前提にする。iOS版の使い方ページは、アプリから受け取ったバージョンとビルド番号を末尾に表示する（`NATIVE_BRIDGE.md`の「アプリ情報」）。どちらの使い方ページも、ビルド時に生成する`/third-party-notices/`（`scripts/third-party-notices.mjs`）へリンクする。iOS版の編集画面はviewportを`maximum-scale=1, user-scalable=no`にし、盤面の外のピンチやダブルタップで画面全体を拡大しない（文字の拡大はDynamic Typeと端末の「ズーム」で行う）。Web版は`maximum-scale=5`のままで、ブラウザの拡大を残す。iOS版の使い方ページは読み物でDynamic Typeに追従しないので、拡大と文字選択を残す。リンクの長押しプレビューは`WKWebView.allowsLinkPreview = false`で両ページとも出さない。 |
-| `vite.config.ts` | iOS版は`modulePreload`を切り、ソースマップを同梱しない。 |
+| `vite.config.ts` | iOS版は`modulePreload`を切り、ソースマップを同梱しない。Web版は本番ビルドの出力するすべてのHTMLへContent-Security-Policyのmetaを入れる（`scripts/content-security-policy.mjs`、`npm run check:dist`が検査）。iOS版には入れない。iOS版は`knitting-local:`スキームで同梱ファイルだけを配信し、アクセス解析も外部への通信も無いうえ、使い方ページがアプリ情報の表示にインラインのスクリプトを使っており、`WKWebView`での動作をSimulatorと実機で確かめる必要があるため、入れるときは別のIssueで扱う。どちらのビルドでも、記号SVG（`stitches/glyphs.ts`）は`style`属性を使わず`width`・`height`属性で大きさを決め、`style-src`に`'unsafe-inline'`が無くても表示できるようにしている。 |
 
 ## テストの置き場所
 

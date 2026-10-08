@@ -11,6 +11,13 @@ describe('glyph regression coverage', () => {
     }
   });
 
+  it('sizes the picker SVG with attributes, because the Web CSP blocks inline style attributes', () => {
+    for (const stitch of STITCHES) {
+      expect(glyphSvg(stitch.key), stitch.key).not.toMatch(/\sstyle\s*=/);
+    }
+    expect(glyphSvg('knit')).toMatch(/^<svg [^>]*\bwidth="100%" height="100%"/);
+  });
+
   it('keeps PDF drawing commands for every exportable stitch', () => {
     for (const stitch of STITCHES.filter((item) => item.key !== 'erase')) {
       expect(glyphPdfCommands(stitch.key), stitch.key).toBeDefined();
