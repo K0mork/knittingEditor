@@ -26,6 +26,7 @@ test('serves crawlable content before JavaScript runs', async ({ page }) => {
   expect(html).toContain('<h1>無料で使える棒針編み図エディタ</h1>');
   expect(html).toContain('<p>登録不要で、スマホ・PCから使える無料の棒針編み図作成サイトです。26種類の編み目記号や色の編集、パターンブロック、PNG・PDF出力、端末内自動保存に対応しています。</p>');
   expect(html).toContain('<a href="/guide/">棒針編み図エディタの使い方</a>');
+  expect(html).toContain('<a href="/privacy/">プライバシーポリシー</a>');
 });
 
 test('exposes search and sharing metadata on the editor page', async ({ page }) => {
@@ -121,13 +122,53 @@ test('serves the support page with a private contact and links it from the guide
   await expect(page).toHaveURL(/\/guide\/$/);
 });
 
-test('publishes the guide and the support page in the sitemap', async ({ page }) => {
+test('serves the privacy policy directly and after a reload', async ({ page }) => {
+  const response = await page.goto('/privacy/');
+  expect(response?.status()).toBe(200);
+  await expect(page).toHaveTitle('プライバシーポリシー｜棒針編み図エディタ');
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://knittingeditor.com/privacy/');
+  await expect(page.locator('meta[property="og:url"]')).toHaveAttribute('content', 'https://knittingeditor.com/privacy/');
+  await expect(page.locator('meta[property="og:type"]')).toHaveAttribute('content', 'article');
+  await expectLargeImageCard(page);
+  await expectAppIconLinks(page);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('プライバシーポリシー');
+  // 外部送信の公表事項（送信される情報、送信先、利用目的）と、Googleのポリシー・止める方法へのリンク。
+  await expect(page.getByRole('heading', { level: 2, name: '外部送信（Google アナリティクス）について' })).toBeVisible();
+  for (const term of ['送信先', '送信される情報', '利用目的']) await expect(page.getByRole('term').filter({ hasText: term })).toBeVisible();
+  await expect(page.getByText('Google LLC（Google アナリティクス）')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Google アナリティクス オプトアウト アドオン' })).toHaveAttribute('href', 'https://tools.google.com/dlpage/gaoptout?hl=ja');
+  await expect(page.getByRole('link', { name: 'Google プライバシー ポリシー' })).toHaveAttribute('href', 'https://policies.google.com/privacy?hl=ja');
+  await page.reload();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('プライバシーポリシー');
+  await page.getByRole('link', { name: 'サポート・お問い合わせ' }).click();
+  await expect(page).toHaveURL(/\/support\/$/);
+});
+
+test('links the privacy policy from the chart panel, the guide and the support page', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
+  await page.getByRole('button', { name: '編み図', exact: true }).click();
+  const link = page.locator('#app-drawer').getByRole('link', { name: 'プライバシーポリシー（アクセス解析について）' });
+  // スマホの幅でも、編み図が1件ならパネルを開いただけで見える位置にある。
+  await expect(link).toBeInViewport();
+  await link.click();
+  await expect(page).toHaveURL(/\/privacy\/$/);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('プライバシーポリシー');
+  for (const path of ['/guide/', '/support/']) {
+    await page.goto(path);
+    await page.getByRole('link', { name: 'プライバシーポリシー' }).click();
+    await expect(page).toHaveURL(/\/privacy\/$/);
+  }
+});
+
+test('publishes the guide, the support page and the privacy policy in the sitemap', async ({ page }) => {
   const sitemap = await page.request.get('/sitemap.xml');
   expect(sitemap.status()).toBe(200);
   const xml = await sitemap.text();
   expect(xml).toContain('<loc>https://knittingeditor.com/</loc>');
   expect(xml).toContain('<loc>https://knittingeditor.com/guide/</loc>');
   expect(xml).toContain('<loc>https://knittingeditor.com/support/</loc>');
+  expect(xml).toContain('<loc>https://knittingeditor.com/privacy/</loc>');
 });
 
 test('serves the app icon as the favicon and touch icons', async ({ page }) => {
