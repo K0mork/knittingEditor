@@ -32,6 +32,7 @@ export default function App() {
       <p className="app-document-name" aria-live="polite" aria-atomic="true">{documentStatus}</p>
     </div>}
     backupNote="端末内データはブラウザ操作で消える場合があります。定期的に保存してください。"
+    documentsNote={<a href="/privacy/">プライバシーポリシー（アクセス解析について）</a>}
     footer={<footer><span>© 2026 棒針編み図エディタ</span><a href="/privacy/">プライバシーポリシー</a></footer>}
   >{shareDialog}</EditorView>;
 }

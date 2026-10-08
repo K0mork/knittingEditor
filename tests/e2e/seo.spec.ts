@@ -144,7 +144,16 @@ test('serves the privacy policy directly and after a reload', async ({ page }) =
   await expect(page).toHaveURL(/\/support\/$/);
 });
 
-test('links the privacy policy from the guide and the support page', async ({ page }) => {
+test('links the privacy policy from the chart panel, the guide and the support page', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
+  await page.getByRole('button', { name: '編み図', exact: true }).click();
+  const link = page.locator('#app-drawer').getByRole('link', { name: 'プライバシーポリシー（アクセス解析について）' });
+  // スマホの幅でも、編み図が1件ならパネルを開いただけで見える位置にある。
+  await expect(link).toBeInViewport();
+  await link.click();
+  await expect(page).toHaveURL(/\/privacy\/$/);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('プライバシーポリシー');
   for (const path of ['/guide/', '/support/']) {
     await page.goto(path);
     await page.getByRole('link', { name: 'プライバシーポリシー' }).click();

@@ -18,7 +18,7 @@ Web版とiOS版は同じリポジトリで管理する。以前の固定コミ�
 |---|---|
 | `state/useEditorSession.ts` | 編み図の読み込み、自動保存、即時保存、編み図切り替え、`beforeunload`確認。保存経路はここ1本にまとめ、自動保存も即時保存も同じ世代番号の確認を通す。保存後は結果の1件だけを一覧へ反映し、全件を読み直さない。書き切れていないときは盤面を差し替えず、`switchDocument`が中止理由（`switched`／`pending`／`failed`）を返す。`failed`は`onSaveError`が通知するので、呼び出し側は`pending`のときだけ自前で通知する。 |
 | `ui/useEditorController.ts` | 編集画面の状態と操作。記号・色・モード・選択範囲・貼り付け・パネル、編み図とブロックの操作、PNG/PDF出力、バックアップと復元。入力ダイアログ（`askText`・`askConfirm`）、ファイルの受け渡し（`platform`）、分析（`analytics`、省略時は送らない）を引数で受け取る。保存失敗の文言は`saveErrorMessage`にまとめる。 |
-| `ui/EditorView.tsx` | 編集画面の組み立て。見出し（`renderTitle`）、使い方リンクの処理（`onGuideClick`）、復元要求の横取り（`requestRestore`）、案内文（`backupNote`）、フッター、重ねる要素（`children`）だけを各ビルドから受け取る。 |
+| `ui/EditorView.tsx` | 編集画面の組み立て。見出し（`renderTitle`）、使い方リンクの処理（`onGuideClick`）、復元要求の横取り（`requestRestore`）、案内文（`backupNote`）、「編み図」パネルの一覧の後ろの案内（`documentsNote`、省略時は出さない）、フッター、重ねる要素（`children`）だけを各ビルドから受け取る。 |
 | `ui/StitchPicker.tsx` | 記号ピッカー。フォーカストラップとEscapeでの閉じ方を含む。 |
 | `ui/ColorPicker.tsx` | 記号の色の選択。編み図で使っている色の一覧（`model/usedColors.ts`）と、一覧にない色を選ぶ色選択を出す。 |
 | `ui/GridControls.tsx` | 盤面設定。位置入力と確認は`askText`・`askConfirm`で受け取る。 |
@@ -34,7 +34,7 @@ Web版とiOS版は同じリポジトリで管理する。以前の固定コミ�
 
 | ファイル | 差分の理由 |
 |---|---|
-| `App.tsx` | `useEditorController`と`EditorView`へ差分を渡すだけにする。iOS版はネイティブブリッジ、アプリ内ダイアログ（`AppDialog.tsx`、`window.prompt`/`confirm`の代替）、ストレージ初期化タイムアウト、使い方ページ遷移前・バックグラウンド移行前の保存flushを持つ。Web版は`window.prompt`、旧データ移行つきの初期化、GA4、SEO向けの説明表示を持つ。 |
+| `App.tsx` | `useEditorController`と`EditorView`へ差分を渡すだけにする。iOS版はネイティブブリッジ、アプリ内ダイアログ（`AppDialog.tsx`、`window.prompt`/`confirm`の代替）、ストレージ初期化タイムアウト、使い方ページ遷移前・バックグラウンド移行前の保存flushを持つ。Web版は`window.prompt`、旧データ移行つきの初期化、GA4、SEO向けの説明表示を持ち、`documentsNote`でプライバシーポリシー（`/privacy/`）へのリンクを渡す。iOS版はアクセス解析を送らないので`documentsNote`を渡さず、何も表示しない。 |
 | `analytics.ts` | Web版だけが持ち、GA4を初期化して`EditorAnalytics`を実装する。iOS版にはファイル自体が無く、分析を渡さないのでイベントも外部スクリプトも発生させない。 |
 | `main.tsx` | iOS版は`initializeAnalytics()`を呼ばない。 |
 | `styles.css` | 共通CSSへの差分だけ。iOS版はタップ領域44px、Dynamic Type、テキスト自動拡大の抑止、長押しの文字選択とメニュー（コピー・調べる）の抑止、アプリ内ダイアログの様式。文字選択は入力欄（`input`・`textarea`と、`contenteditable="false"`でない`[contenteditable]`）だけ元に戻し、編み図名などを選択・コピー・貼り付けできるようにする。Web版はSEO向けの説明文と編み図名の表示で、文字選択は抑えない（ブラウザでは説明文や見出しを選んでコピーできるのが普通で、長押しのメニューもWebページとして自然なため）。 |
