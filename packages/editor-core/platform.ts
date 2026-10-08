@@ -15,7 +15,7 @@ export interface EditorPlatform {
 export interface SaveFileOutcome {
   /**
    * 利用者が保存・共有を終えたら`true`、取りやめたら`false`。
-   * hostが結果を返さないとき（ダウンロード、iOS版のネイティブ画面）は`undefined`。
+   * hostが結果を返さないとき（ダウンロード）は`undefined`。iOS版はネイティブの保存画面・共有シートの結果を返す（#122）。
    * 確認ダイアログや共有シートを閉じるまで解決しないので、処理中の表示はこれを待たずに消す。
    */
   saved: Promise<boolean | undefined>;

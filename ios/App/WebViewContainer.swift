@@ -96,6 +96,12 @@ final class WebViewModel {
         )
     }
 
+    /// 書き出しを保存・共有し終えたか、取りやめたかをWebへ返す（#122）。
+    func reportExportFinished(requestID: String, saved: Bool) {
+        guard let webView, let script = NativeExportResult.script(requestID: requestID, saved: saved) else { return }
+        webView.evaluateJavaScript(script, completionHandler: nil)
+    }
+
     func flushPendingSave() {
         guard webContentReady, let webView else { return }
         Task { @MainActor [weak webView] in
@@ -226,16 +232,30 @@ struct WebViewContainer: UIViewRepresentable {
             case ignore
         }
 
+        /// 保存画面・共有シートへ渡している書き出し。一時ファイルは編み図名で一意なディレクトリに置く。
+        struct PendingExport {
+            let url: URL
+            let directory: URL
+            let mimeType: String
+            /// Webが結果を待っている要求のID。別の文書へ移ったら、返す先が無いので`nil`にする。
+            var requestID: String?
+        }
+
         private let model: WebViewModel
         private weak var webView: WKWebView?
-        private var pendingExportURL: URL?
-        private var pendingExportDirectory: URL?
-        private var pendingExportMimeType: String?
-        private let reviewRequestTracker = ReviewRequestTracker()
-        private var pickerPurpose: PickerPurpose?
+        private(set) var pendingExport: PendingExport?
+        private let reviewRequestTracker: ReviewRequestTracker
+        /// テストでは保存画面を出さずに用途を設定し、閉じたときの扱いを確かめる。
+        var pickerPurpose: PickerPurpose?
+        /// 書き出しの結果をWebへ返す。テストでは差し替えて、返した結果を確かめる。
+        var reportExportResult: (_ requestID: String, _ saved: Bool) -> Void
 
-        init(model: WebViewModel) {
+        init(model: WebViewModel, reviewRequestTracker: ReviewRequestTracker? = nil) {
             self.model = model
+            self.reviewRequestTracker = reviewRequestTracker ?? ReviewRequestTracker()
+            reportExportResult = { [weak model] requestID, saved in
+                model?.reportExportFinished(requestID: requestID, saved: saved)
+            }
         }
 
         func attach(_ webView: WKWebView) {
@@ -243,7 +263,9 @@ struct WebViewContainer: UIViewRepresentable {
         }
 
         func detach() {
-            cleanupPendingExport()
+            // WebViewごと破棄されるので、結果を返す先が無い。
+            pendingExport?.requestID = nil
+            finishPendingExport(saved: false)
             pickerPurpose = nil
             model.isPresentingNativeUI = false
             webView = nil
@@ -268,12 +290,16 @@ struct WebViewContainer: UIViewRepresentable {
                 DispatchQueue.main.async { [weak self] in
                     self?.presentBackupPicker()
                 }
-            case let .success(.exportFile(data, filename, mimeType)):
+            case let .success(.exportFile(data, filename, mimeType, requestID)):
                 DispatchQueue.main.async { [weak self] in
-                    self?.presentExportOptions(data: data, filename: filename, mimeType: mimeType)
+                    self?.presentExportOptions(data: data, filename: filename, mimeType: mimeType, requestID: requestID)
                 }
             case let .failure(error):
                 model.presentError(bridgeErrorMessage(error))
+                // 検証できなかった書き出しも、Webが結果を待ち続けないよう取りやめとして返す。
+                if let requestID = NativeBridgeMessage.exportRequestID(body: message.body) {
+                    reportExportResult(requestID, false)
+                }
             }
         }
 
@@ -302,6 +328,8 @@ struct WebViewContainer: UIViewRepresentable {
 
         func webView(_ webView: WKWebView, didCommit navigation: WKNavigation?) {
             model.webContentDidStartNavigation(to: webView.url)
+            // 要求を送った文書はもう無い。新しい文書へ古いIDの結果を送らない。
+            pendingExport?.requestID = nil
         }
 
         func webView(
@@ -326,9 +354,7 @@ struct WebViewContainer: UIViewRepresentable {
             model.isPresentingNativeUI = false
             switch outcome {
             case .finishExport:
-                let mimeType = pendingExportMimeType
-                cleanupPendingExport()
-                exportDidSucceed(mimeType: mimeType)
+                finishPendingExport(saved: true)
             case .ignore:
                 break
             case let .importBackup(url):
@@ -339,7 +365,7 @@ struct WebViewContainer: UIViewRepresentable {
         func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
             pickerPurpose = nil
             model.isPresentingNativeUI = false
-            cleanupPendingExport()
+            finishPendingExport(saved: false)
         }
 
         /// 下へスワイプして閉じたときも、メニューの項目を選べる状態へ戻す。
@@ -385,36 +411,27 @@ struct WebViewContainer: UIViewRepresentable {
             present(picker, from: presenter)
         }
 
-        private func presentExportOptions(data: Data, filename: String, mimeType: String) {
-            cleanupPendingExport()
+        private func presentExportOptions(data: Data, filename: String, mimeType: String, requestID: String?) {
+            // 前の書き出しが残っていれば、保存されないまま置き換わるので取りやめとして返す。
+            finishPendingExport(saved: false)
             guard let presenter = presenter() else {
                 model.presentError("保存画面を表示できませんでした")
+                if let requestID { reportExportResult(requestID, false) }
                 return
             }
-            // 保存画面には一時ファイルの名前がそのまま出る。UUIDを名前にすると
-            // 利用者に意味のない名前を提案してしまうため、編み図名のファイル名を
-            // 一意なディレクトリの中へ置く。
-            let directory = FileManager.default.temporaryDirectory
-                .appendingPathComponent(UUID().uuidString, isDirectory: true)
-            let temporaryURL = Self.exportFileURL(in: directory, filename: filename, mimeType: mimeType)
-            do {
-                try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-                try data.write(to: temporaryURL, options: [.atomic])
-            } catch {
-                try? FileManager.default.removeItem(at: directory)
+            guard preparePendingExport(data: data, filename: filename, mimeType: mimeType, requestID: requestID) else {
                 model.presentError("出力ファイルを準備できませんでした")
+                if let requestID { reportExportResult(requestID, false) }
                 return
             }
-            pendingExportURL = temporaryURL
-            pendingExportDirectory = directory
-            pendingExportMimeType = mimeType
 
             let alert = UIAlertController(title: "ファイルを保存", message: filename, preferredStyle: .alert)
             alert.addAction(UIAlertAction(title: "ファイルに保存", style: .default) { [weak self, weak presenter] _ in
                 DispatchQueue.main.async { [weak self, weak presenter] in
                     guard let self else { return }
-                    guard let presenter, let pendingExportURL = self.pendingExportURL else {
+                    guard let presenter, let pendingExportURL = self.pendingExport?.url else {
                         self.model.isPresentingNativeUI = false
+                        self.finishPendingExport(saved: false)
                         return
                     }
                     let picker = UIDocumentPickerViewController(forExporting: [pendingExportURL], asCopy: true)
@@ -426,16 +443,14 @@ struct WebViewContainer: UIViewRepresentable {
             alert.addAction(UIAlertAction(title: "共有", style: .default) { [weak self, weak presenter] _ in
                 DispatchQueue.main.async { [weak self, weak presenter] in
                     guard let self else { return }
-                    guard let presenter, let pendingExportURL = self.pendingExportURL else {
+                    guard let presenter, let pendingExportURL = self.pendingExport?.url else {
                         self.model.isPresentingNativeUI = false
+                        self.finishPendingExport(saved: false)
                         return
                     }
                     let activity = UIActivityViewController(activityItems: [pendingExportURL], applicationActivities: nil)
                     activity.completionWithItemsHandler = { [weak self] _, completed, _, _ in
-                        self?.model.isPresentingNativeUI = false
-                        let mimeType = self?.pendingExportMimeType
-                        self?.cleanupPendingExport()
-                        if completed { self?.exportDidSucceed(mimeType: mimeType) }
+                        self?.finishSharing(completed: completed)
                     }
                     if let popover = activity.popoverPresentationController {
                         popover.sourceView = self.webView
@@ -445,14 +460,45 @@ struct WebViewContainer: UIViewRepresentable {
                 }
             })
             alert.addAction(UIAlertAction(title: "キャンセル", style: .cancel) { [weak self] _ in
-                self?.model.isPresentingNativeUI = false
-                self?.cleanupPendingExport()
+                self?.cancelExportOptions()
             })
             if let popover = alert.popoverPresentationController {
                 popover.sourceView = webView
                 popover.sourceRect = webView?.bounds ?? .zero
             }
             present(alert, from: presenter)
+        }
+
+        /// 書き出すデータを一時ファイルへ書き、保存画面・共有シートへ渡せるようにする。
+        @discardableResult
+        func preparePendingExport(data: Data, filename: String, mimeType: String, requestID: String?) -> Bool {
+            // 保存画面には一時ファイルの名前がそのまま出る。UUIDを名前にすると
+            // 利用者に意味のない名前を提案してしまうため、編み図名のファイル名を
+            // 一意なディレクトリの中へ置く。
+            let directory = FileManager.default.temporaryDirectory
+                .appendingPathComponent(UUID().uuidString, isDirectory: true)
+            let temporaryURL = Self.exportFileURL(in: directory, filename: filename, mimeType: mimeType)
+            do {
+                try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+                try data.write(to: temporaryURL, options: [.atomic])
+            } catch {
+                try? FileManager.default.removeItem(at: directory)
+                return false
+            }
+            pendingExport = PendingExport(url: temporaryURL, directory: directory, mimeType: mimeType, requestID: requestID)
+            return true
+        }
+
+        /// 確認アラートの「キャンセル」。
+        func cancelExportOptions() {
+            model.isPresentingNativeUI = false
+            finishPendingExport(saved: false)
+        }
+
+        /// 共有シートを閉じたとき。共有を終えたら`completed`が真、取り消したら偽になる。
+        func finishSharing(completed: Bool) {
+            model.isPresentingNativeUI = false
+            finishPendingExport(saved: completed)
         }
 
         /// 保存画面などを出し、閉じるまでメニューの項目を選べなくする。
@@ -479,21 +525,17 @@ struct WebViewContainer: UIViewRepresentable {
             }
         }
 
-        private func cleanupPendingExport() {
-            if let pendingExportDirectory {
-                try? FileManager.default.removeItem(at: pendingExportDirectory)
-            } else if let pendingExportURL {
-                try? FileManager.default.removeItem(at: pendingExportURL)
+        /// 書き出しを終え、一時ファイルを消して結果をWebへ返す（#122）。
+        /// 保存・共有を終えたときだけ`saved`を真にし、Webはそのときだけ最後のバックアップ日時を記録する。
+        private func finishPendingExport(saved: Bool) {
+            guard let pendingExport else { return }
+            self.pendingExport = nil
+            try? FileManager.default.removeItem(at: pendingExport.directory)
+            if let requestID = pendingExport.requestID { reportExportResult(requestID, saved) }
+            // 書き出しを保存・共有し終えた作業の区切りで、App Storeの評価の依頼を検討する（#84）。
+            if saved {
+                reviewRequestTracker.exportDidSucceed(mimeType: pendingExport.mimeType) { [weak self] in self?.webView?.window }
             }
-            pendingExportURL = nil
-            pendingExportDirectory = nil
-            pendingExportMimeType = nil
-        }
-
-        /// 書き出しを保存・共有し終えた作業の区切りで、App Storeの評価の依頼を検討する（#84）。
-        private func exportDidSucceed(mimeType: String?) {
-            guard let mimeType else { return }
-            reviewRequestTracker.exportDidSucceed(mimeType: mimeType) { [weak self] in self?.webView?.window }
         }
 
         /// 保存画面へ提案するファイル名を組み立てる。
