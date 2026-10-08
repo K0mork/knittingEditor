@@ -21,6 +21,7 @@
 		79639A7ABA8D77F463DE6AEF /* knitting-editor-v2-interop.knit.b64 in Resources */ = {isa = PBXBuildFile; fileRef = 81817C83F1B327D22010A448 /* knitting-editor-v2-interop.knit.b64 */; };
 		80BB0B545C49794374C7C699 /* KnittingEditorApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79CFD1A36C16A062BF1E7D49 /* KnittingEditorApp.swift */; };
 		904BFF04951D603EA988ED53 /* EditorCommandsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D93AD700CD9A6DD09B7954FA /* EditorCommandsTests.swift */; };
+		9BCB379FF177248F24C7D0B1 /* SystemSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCA87F990F25B6FB20DE7FDF /* SystemSheet.swift */; };
 		A86536A01BCEF6CFFA6086E9 /* ReviewRequestTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DEBB9093EE26F31F21EBE11 /* ReviewRequestTests.swift */; };
 		C5FA6A020534C03488B4AF1D /* EditorCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BE0512F4A649A8674295FF1 /* EditorCommands.swift */; };
 		CF285C11B3A112C566D556C3 /* NativeBridgeMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DA6B84D7E98986674AF1841 /* NativeBridgeMessage.swift */; };
@@ -74,6 +75,7 @@
 		C0EFAC03FE6BC45A5DA5823E /* ReviewRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewRequest.swift; sourceTree = "<group>"; };
 		CAFE539ADB212ECD98B46BDB /* NativeBridgeMessageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeBridgeMessageTests.swift; sourceTree = "<group>"; };
 		D93AD700CD9A6DD09B7954FA /* EditorCommandsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorCommandsTests.swift; sourceTree = "<group>"; };
+		DCA87F990F25B6FB20DE7FDF /* SystemSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemSheet.swift; sourceTree = "<group>"; };
 		E4FB5A4B7A1BE555D1AC9899 /* AppAppearanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppAppearanceTests.swift; sourceTree = "<group>"; };
 		F2454BC6D34F2448DF141412 /* LocalWebSchemeHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalWebSchemeHandler.swift; sourceTree = "<group>"; };
 		F41441F8FD8454433D85E51C /* Web */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Web; path = AppResources/Web; sourceTree = SOURCE_ROOT; };
@@ -108,6 +110,7 @@
 			children = (
 				53DD446B472E9C0F9AFA3887 /* KeyboardCommandUITests.swift */,
 				049604E8F16625AD6FE9AA3F /* KnittingEditorUITests.swift */,
+				DCA87F990F25B6FB20DE7FDF /* SystemSheet.swift */,
 			);
 			path = KnittingEditorUITests;
 			sourceTree = "<group>";
@@ -326,6 +329,7 @@
 			files = (
 				FB30A9460946E8C504C37373 /* KeyboardCommandUITests.swift in Sources */,
 				72A7C34CF22FD0138A1E8FE7 /* KnittingEditorUITests.swift in Sources */,
+				9BCB379FF177248F24C7D0B1 /* SystemSheet.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
