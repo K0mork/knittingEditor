@@ -1,6 +1,6 @@
 import { expect, test, type Page } from './fixtures';
 
-const PAGES = ['/', '/guide/', '/support/', '/third-party-notices/'];
+const PAGES = ['/', '/guide/', '/support/', '/privacy/', '/third-party-notices/'];
 
 async function policyOf(page: Page) {
   const metas = page.locator('meta[http-equiv="Content-Security-Policy"]');
