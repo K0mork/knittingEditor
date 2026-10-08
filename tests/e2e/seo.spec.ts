@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from './fixtures';
 
 const OG_IMAGE_URL = 'https://knittingeditor.com/og-image.png';
@@ -27,6 +28,26 @@ test('serves crawlable content before JavaScript runs', async ({ page }) => {
   expect(html).toContain('<p>登録不要で、スマホ・PCから使える無料の棒針編み図作成サイトです。26種類の編み目記号や色の編集、パターンブロック、PNG・PDF出力、端末内自動保存に対応しています。</p>');
   expect(html).toContain('<a href="/guide/">棒針編み図エディタの使い方</a>');
   expect(html).toContain('<a href="/privacy/">プライバシーポリシー</a>');
+});
+
+test('serves the site description linked from the head as plain text', async ({ page }) => {
+  const html = await (await page.request.get('/')).text();
+  expect(html).toContain('<link rel="describedby" href="/llms.txt" type="text/plain"');
+  await page.goto('/');
+  await expect(page.locator('head link[rel="describedby"]')).toHaveAttribute('href', '/llms.txt');
+
+  const response = await page.request.get('/llms.txt');
+  expect(response.status()).toBe(200);
+  expect(response.headers()['content-type']).toMatch(/^text\/plain/);
+  const text = await response.text();
+  expect(text).toBe(readFileSync(new URL('../../public/llms.txt', import.meta.url), 'utf8'));
+
+  const links = [...text.matchAll(/\]\((https:\/\/[^)]+)\)/g)].map((match) => new URL(match[1]));
+  expect(links.length).toBeGreaterThan(0);
+  for (const link of links) {
+    expect(link.origin).toBe('https://knittingeditor.com');
+    expect((await page.request.get(link.pathname)).status()).toBe(200);
+  }
 });
 
 test('exposes search and sharing metadata on the editor page', async ({ page }) => {
