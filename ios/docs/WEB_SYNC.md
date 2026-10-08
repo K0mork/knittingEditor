@@ -34,7 +34,7 @@ Web版とiOS版は同じリポジトリで管理する。以前の固定コミ�
 
 | ファイル | 差分の理由 |
 |---|---|
-| `App.tsx` | `useEditorController`と`EditorView`へ差分を渡すだけにする。iOS版はネイティブブリッジ、アプリ内ダイアログ（`AppDialog.tsx`、`window.prompt`/`confirm`の代替）、ストレージ初期化タイムアウト、使い方ページ遷移前・バックグラウンド移行前の保存flushを持つ。Web版は`window.prompt`、旧データ移行つきの初期化、GA4、SEO向けの説明表示を持ち、保存パネルの案内文（`backupNote`）からプライバシーポリシー（`/privacy/`）へリンクする。 |
+| `App.tsx` | `useEditorController`と`EditorView`へ差分を渡すだけにする。iOS版はネイティブブリッジ、アプリ内ダイアログ（`AppDialog.tsx`、`window.prompt`/`confirm`の代替）、ストレージ初期化タイムアウト、使い方ページ遷移前・バックグラウンド移行前の保存flushを持つ。Web版は`window.prompt`、旧データ移行つきの初期化、GA4、SEO向けの説明表示を持つ。 |
 | `analytics.ts` | Web版だけが持ち、GA4を初期化して`EditorAnalytics`を実装する。iOS版にはファイル自体が無く、分析を渡さないのでイベントも外部スクリプトも発生させない。 |
 | `main.tsx` | iOS版は`initializeAnalytics()`を呼ばない。 |
 | `styles.css` | 共通CSSへの差分だけ。iOS版はタップ領域44px、Dynamic Type、テキスト自動拡大の抑止、長押しの文字選択とメニュー（コピー・調べる）の抑止、アプリ内ダイアログの様式。文字選択は入力欄（`input`・`textarea`と、`contenteditable="false"`でない`[contenteditable]`）だけ元に戻し、編み図名などを選択・コピー・貼り付けできるようにする。Web版はSEO向けの説明文と編み図名の表示で、文字選択は抑えない（ブラウザでは説明文や見出しを選んでコピーできるのが普通で、長押しのメニューもWebページとして自然なため）。 |

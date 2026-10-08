@@ -133,6 +133,7 @@ test('serves the privacy policy directly and after a reload', async ({ page }) =
   await expectAppIconLinks(page);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('プライバシーポリシー');
   // 外部送信の公表事項（送信される情報、送信先、利用目的）と、Googleのポリシー・止める方法へのリンク。
+  await expect(page.getByRole('heading', { level: 2, name: '外部送信（Google アナリティクス）について' })).toBeVisible();
   for (const term of ['送信先', '送信される情報', '利用目的']) await expect(page.getByRole('term').filter({ hasText: term })).toBeVisible();
   await expect(page.getByText('Google LLC（Google アナリティクス）')).toBeVisible();
   await expect(page.getByRole('link', { name: 'Google アナリティクス オプトアウト アドオン' })).toHaveAttribute('href', 'https://tools.google.com/dlpage/gaoptout?hl=ja');
@@ -143,13 +144,7 @@ test('serves the privacy policy directly and after a reload', async ({ page }) =
   await expect(page).toHaveURL(/\/support\/$/);
 });
 
-test('links the privacy policy from the editor, the guide and the support page', async ({ page }) => {
-  await page.goto('/');
-  await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
-  await page.getByRole('button', { name: '保存', exact: true }).click();
-  await page.locator('#app-drawer').getByRole('link', { name: 'プライバシーポリシー' }).click();
-  await expect(page).toHaveURL(/\/privacy\/$/);
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('プライバシーポリシー');
+test('links the privacy policy from the guide and the support page', async ({ page }) => {
   for (const path of ['/guide/', '/support/']) {
     await page.goto(path);
     await page.getByRole('link', { name: 'プライバシーポリシー' }).click();
