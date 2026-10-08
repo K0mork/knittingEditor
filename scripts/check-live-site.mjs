@@ -30,6 +30,7 @@ const files = [
   { path: '/og-image.png', type: 'image/png' },
   { path: '/robots.txt', type: 'text/plain' },
   { path: '/sitemap.xml', type: 'application/xml' },
+  { path: '/llms.txt', type: 'text/plain', distFile: 'llms.txt' },
   { path: '/CNAME', text: 'knittingeditor.com' },
 ];
 

@@ -2,7 +2,7 @@ import { readFile, readdir, stat } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import { htmlFiles, verifyContentSecurityPolicy } from './content-security-policy.mjs';
 
-const required = ['index.html', 'robots.txt', 'sitemap.xml', 'favicon.ico', 'icon-192.png', 'apple-touch-icon.png', 'og-image.png', 'guide/index.html', 'support/index.html', 'privacy/index.html', 'third-party-notices/index.html'];
+const required = ['index.html', 'robots.txt', 'sitemap.xml', 'llms.txt', 'favicon.ico', 'icon-192.png', 'apple-touch-icon.png', 'og-image.png', 'guide/index.html', 'support/index.html', 'privacy/index.html', 'third-party-notices/index.html'];
 for (const file of required) await stat(join('dist', file));
 const assets = await readdir(join('dist', 'assets'));
 
