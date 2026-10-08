@@ -10,6 +10,7 @@ M3では、編集機能をWeb資産に残し、ファイル操作だけをiOSネ
 {
   "version": 1,
   "type": "exportFile",
+  "id": "export-mg0x1a2b-k3j9f0a1-1",
   "filename": "chart.png",
   "mimeType": "image/png",
   "dataBase64": "..."
@@ -21,6 +22,8 @@ M3では、編集機能をWeb資産に残し、ファイル操作だけをiOSネ
 WebViewがReactのバックアップイベント購読まで完了したら、`{"version":1,"type":"webReady"}`を送る。Swift側はこの通知前に受け取ったOpen URLのバックアップを保持し、通知後に一度だけWebViewへ配送する。これにより、起動直後やアプリ更新直後のイベント取りこぼしを防ぐ。
 
 Swiftはファイル種別、ファイル名、Base64、128 MiBの上限を検証し、失敗時は`knittingEditorNativeError`イベントを発生させる。出力は一時ファイルを介して「ファイルに保存」または共有シートへ渡す。
+
+`id`は書き出しの結果を返す先の要求ID（#122）で、英数字・`-`・`_`の1〜64文字に限る。`id`が無い`exportFile`も受け付け（`version: 1`のまま後方互換）、結果を返さない。形の合わない`id`は`knittingEditorNativeError`で拒否する。結果は「書き出しの結果（Swift → Web）」の節を参照。
 
 `UIDocumentPickerViewController`は取り込みと書き出しのどちらでも`documentPicker(_:didPickDocumentsAt:)`を呼ぶため、Coordinatorは提示時の用途を保持し、書き出し完了のURLを取り込みとして扱わない。書き出しの一時ファイルは完了・キャンセルのどちらでも削除する。
 
@@ -79,6 +82,28 @@ Swiftは保存画面・共有シート・Document Pickerを表示している間
 ```
 
 Web側はBase64を`File`へ戻し、既存の`.knit`インポート検証を通す。gzipは圧縮前32 MiB、解凍後256 MiB、編み図500件、ブロック5000件を上限とする。
+
+## 書き出しの結果（Swift → Web）
+
+`exportFile`に`id`があれば、Swiftは書き出しを終えたときに次のCustomEventを1回だけ送る（#122）。
+
+```js
+window.dispatchEvent(new CustomEvent('knittingEditorNativeExportFinished', { detail: { id: 'export-…', saved: true } }));
+```
+
+| 終わり方 | `saved` |
+|---|---|
+| 「ファイルに保存」で保存を終えた（`documentPicker(_:didPickDocumentsAt:)`） | `true` |
+| 共有シートで共有を終えた（`completionWithItemsHandler`の`completed`が真） | `true` |
+| 確認アラートの「キャンセル」 | `false` |
+| 保存画面のキャンセル・下へスワイプして閉じた（`documentPickerWasCancelled(_:)`） | `false` |
+| 共有シートを取り消した・閉じた（`completed`が偽） | `false` |
+| 保存画面を出せない、一時ファイルを用意できない、メッセージを検証できない | `false`（`knittingEditorNativeError`も送る） |
+| 結果の前に次の`exportFile`が届いた | 前の要求へ`false` |
+
+Web側（`ios/Web/src/nativeBridge.ts`の`saveBlobWithNativeBridge`）は要求IDごとに結果を待ち、`iosPlatform.saveFile`が`SaveFileOutcome.saved`として返す。共有の編集画面は`saved`が`false`のときだけ最後のバックアップ日時を記録しない。このため「最後のバックアップ」は、保存・共有を終えた日時になり、取りやめたときは変わらず、書き出しを勧める帯も残る。PNG・PDFも同じ経路で結果を返すが、使い道はない（評価の依頼はSwift側で判定する）。
+
+要求を送った文書が別の文書に置き換わったとき（使い方ページへ移った、同梱ページを読み直した）は、待っていたWebの処理ごと消えている。Swiftは`didCommit`で要求IDを捨て、新しい文書へ古い結果を送らない（一時ファイルは保存画面を閉じたときに消す）。Webは知らないIDの結果を捨て、`saved`が真偽値でない結果は不明（`undefined`）として扱う。不明のときは、Web版のダウンロードと同じく渡した時点を書き出した日時とする。
 
 ## アプリ情報（Swift → Web）
 

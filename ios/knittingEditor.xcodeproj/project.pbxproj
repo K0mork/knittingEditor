@@ -13,6 +13,7 @@
 		2E279AF776F175B3F77DA1A5 /* Web in Resources */ = {isa = PBXBuildFile; fileRef = F41441F8FD8454433D85E51C /* Web */; };
 		2FCD8CF8C453498C67AE9973 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 2B93317921D588395EEBC3EE /* InfoPlist.xcstrings */; };
 		3169FE3B0B8F832ABA6E5440 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 105A34342230A6B324A75809 /* PrivacyInfo.xcprivacy */; };
+		35AE20F80146A380EBA04F4E /* NativeExportResultTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9402DFD62B28E439CE5D3569 /* NativeExportResultTests.swift */; };
 		399AE0908FE88F56457A7A54 /* WebViewContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E643EAB3D8627886E3EDCB9 /* WebViewContainer.swift */; };
 		4C2C861608AD1B104C9DB85F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 594A6F94A2E8CE6BB9AB667E /* Assets.xcassets */; };
 		59A9148D359B433D6C65D747 /* ReviewRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0EFAC03FE6BC45A5DA5823E /* ReviewRequest.swift */; };
@@ -65,6 +66,7 @@
 		81817C83F1B327D22010A448 /* knitting-editor-v2-interop.knit.b64 */ = {isa = PBXFileReference; path = "knitting-editor-v2-interop.knit.b64"; sourceTree = "<group>"; };
 		8552AECC9B947C62C1E8D5EA /* KnittingEditorUTTypeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnittingEditorUTTypeTests.swift; sourceTree = "<group>"; };
 		8D40BDC62512CFC6F6D66BE6 /* knittingEditorUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = knittingEditorUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		9402DFD62B28E439CE5D3569 /* NativeExportResultTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeExportResultTests.swift; sourceTree = "<group>"; };
 		98B454AC8083B55FA185DB3A /* AppVersionInfoTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppVersionInfoTests.swift; sourceTree = "<group>"; };
 		9E89D10B53EB561502464406 /* KnittingEditorUTType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnittingEditorUTType.swift; sourceTree = "<group>"; };
 		AB4206F13C4AE5996A13AB4F /* AppVersionInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppVersionInfo.swift; sourceTree = "<group>"; };
@@ -95,6 +97,7 @@
 				8552AECC9B947C62C1E8D5EA /* KnittingEditorUTTypeTests.swift */,
 				02EEF60A275DC7E5B3AFEC1E /* LocalWebSchemeHandlerTests.swift */,
 				CAFE539ADB212ECD98B46BDB /* NativeBridgeMessageTests.swift */,
+				9402DFD62B28E439CE5D3569 /* NativeExportResultTests.swift */,
 				0DEBB9093EE26F31F21EBE11 /* ReviewRequestTests.swift */,
 			);
 			path = KnittingEditorAppTests;
@@ -351,6 +354,7 @@
 				E0EFF7BEEF040AF9BD12FE82 /* KnittingEditorUTTypeTests.swift in Sources */,
 				D7C5FF536E7363BAD27BC269 /* LocalWebSchemeHandlerTests.swift in Sources */,
 				D3CA49E4EE8BA3B56DA80D0E /* NativeBridgeMessageTests.swift in Sources */,
+				35AE20F80146A380EBA04F4E /* NativeExportResultTests.swift in Sources */,
 				A86536A01BCEF6CFFA6086E9 /* ReviewRequestTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

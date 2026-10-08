@@ -3,9 +3,12 @@ import { downloadBlob } from '@knitting-editor/editor-core/export/exporters';
 import { saveBlobWithNativeBridge } from './nativeBridge';
 
 export const iosPlatform: EditorPlatform = {
-  // ネイティブの保存画面・共有シートは、利用者が保存したか取りやめたかをWebへ返さない（#122）。結果が分からないので、渡した時点を書き出した日時とする。
+  // ネイティブの保存画面・共有シートは、保存・共有を終えたか取りやめたかを返す（#122）。
+  // ブリッジが無い（ブラウザで開いた）ときはダウンロードし、結果は分からない。
   saveFile: async (blob, filename) => {
-    if (!(await saveBlobWithNativeBridge(blob, filename))) downloadBlob(blob, filename);
+    const outcome = await saveBlobWithNativeBridge(blob, filename);
+    if (outcome) return outcome;
+    downloadBlob(blob, filename);
     return SAVE_RESULT_UNKNOWN;
   },
 };

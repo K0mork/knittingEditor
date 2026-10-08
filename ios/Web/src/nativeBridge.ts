@@ -1,3 +1,4 @@
+import type { SaveFileOutcome } from '@knitting-editor/editor-core/platform';
 import { bytesToBase64 } from '@knitting-editor/editor-core/util/base64';
 
 export interface NativeBackupDetail {
@@ -8,6 +9,8 @@ export interface NativeBackupDetail {
 interface NativeBridgeMessage {
   version: 1;
   type: 'exportFile' | 'openBackup' | 'webReady' | 'commandState';
+  /** `exportFile`の要求ID。ネイティブ側は書き出しを終えたら`knittingEditorNativeExportFinished`で返す。 */
+  id?: string;
   filename?: string;
   mimeType?: string;
   dataBase64?: string;
@@ -55,20 +58,66 @@ function post(message: NativeBridgeMessage): boolean {
   }
 }
 
-export async function saveBlobWithNativeBridge(blob: Blob, filename: string): Promise<boolean> {
+export const NATIVE_EXPORT_FINISHED_EVENT = 'knittingEditorNativeExportFinished';
+
+/** 結果を待っている書き出し。ページを読み直すと、待っていた処理ごと消える。 */
+const pendingExports = new Map<string, (saved: boolean | undefined) => void>();
+let exportSequence = 0;
+
+function nextExportRequestId(): string {
+  exportSequence += 1;
+  // 読み直したページの番号と重ならないよう、時刻と乱数を添える。Swift側は英数字・`-`・`_`の64文字までを受け付ける。
+  return `export-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}-${exportSequence}`;
+}
+
+function settleExport(id: string, saved: boolean | undefined) {
+  const resolve = pendingExports.get(id);
+  if (!resolve) return;
+  pendingExports.delete(id);
+  resolve(saved);
+}
+
+let listeningExportFinished = false;
+
+function listenExportFinished() {
+  if (listeningExportFinished) return;
+  listeningExportFinished = true;
+  window.addEventListener(NATIVE_EXPORT_FINISHED_EVENT, (event) => {
+    const detail = (event as CustomEvent<unknown>).detail;
+    if (!detail || typeof detail !== 'object') return;
+    const { id, saved } = detail as { id?: unknown; saved?: unknown };
+    if (typeof id !== 'string') return;
+    settleExport(id, typeof saved === 'boolean' ? saved : undefined);
+  });
+}
+
+/**
+ * ネイティブの保存画面・共有シートへファイルを渡す。受け口が無い、または送れなかったときは`undefined`を返す。
+ *
+ * `saved`は、保存・共有を終えたら`true`、保存画面・共有シート・確認アラートを取りやめたら`false`になる（#122）。
+ * 前の書き出しの結果を待っている間に次を送ると、ネイティブ側は前の書き出しを取りやめとして返す。
+ */
+export async function saveBlobWithNativeBridge(blob: Blob, filename: string): Promise<SaveFileOutcome | undefined> {
   // 受け口が無いときはBlobを読み出さずに返し、呼び出し側のダウンロードへ任せる。
-  if (!nativeHandler()) return false;
+  if (!nativeHandler()) return undefined;
+  listenExportFinished();
+  const id = nextExportRequestId();
+  const saved = new Promise<boolean | undefined>((resolve) => pendingExports.set(id, resolve));
   try {
-    return post({
+    const posted = post({
       version: 1,
       type: 'exportFile',
+      id,
       filename,
       mimeType: blob.type || 'application/octet-stream',
       dataBase64: bytesToBase64(new Uint8Array(await blob.arrayBuffer())),
     });
+    if (posted) return { saved };
   } catch {
-    return false;
+    // 送れなかったときは下で待ちを片付け、ダウンロードへ任せる。
   }
+  settleExport(id, undefined);
+  return undefined;
 }
 
 export function requestNativeBackupOpen(): boolean {
