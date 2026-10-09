@@ -15,7 +15,7 @@
 }
 
 /* iPhone・iPadのSafariで、生成したPNG・PDFを共有シートへ渡す確認ダイアログ。iOS版はネイティブの共有シートを直接開く。 */
-.share-dialog-backdrop { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left)); background: rgba(26, 39, 31, .38); }
+.share-dialog-backdrop { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left)); background: var(--backdrop); }
 .share-dialog { width: min(100%, 420px); padding: 20px; border: 1px solid var(--border); border-radius: 18px; background: var(--paper); box-shadow: var(--shadow); }
 .share-dialog h2 { margin: 0 0 8px; font-size: 1.05rem; line-height: 1.5; overflow-wrap: anywhere; }
 .share-dialog p { margin: 0 0 16px; font-size: .9rem; line-height: 1.6; }

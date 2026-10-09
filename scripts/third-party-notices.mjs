@@ -61,6 +61,7 @@ export function renderNoticesHtml(notices) {
         color: #26322c;
         background: #f3f0e8;
         line-height: 1.8;
+        color-scheme: light dark;
       }
       * { box-sizing: border-box; }
       body { margin: 0; }
@@ -79,6 +80,12 @@ export function renderNoticesHtml(notices) {
         line-height: 1.6;
         white-space: pre-wrap;
         overflow-wrap: anywhere;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root { color: #e2e8e3; background: #171c19; }
+        footer { border-top-color: #3c4741; }
+        a { color: #8fcb9b; }
+        pre { background: #212824; border-color: #3c4741; }
       }
     </style>
   </head>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { STITCHES } from '../stitches/catalog';
-import { clampViewport, glyphSearchStart, LABEL_SIZE } from './BoardCanvas';
+import { clampViewport, glyphSearchStart, LABEL_SIZE, LIGHT_CANVAS_CHROME, readCanvasChrome } from './BoardCanvas';
 
 describe('glyphSearchStart', () => {
   it('includes off-screen anchors whose multi-cell glyph overlaps the viewport', () => {
@@ -70,5 +70,21 @@ describe('clampViewport', () => {
   it('does not move the board before the canvas has a size', () => {
     const view = { x: 10_000, y: -10_000, cell: 20 };
     expect(clampViewport(view, board, { width: 0, height: 0 })).toBe(view);
+  });
+});
+
+describe('readCanvasChrome', () => {
+  it('falls back to the light colors when the stylesheet defines no canvas colors', () => {
+    expect(readCanvasChrome(document.createElement('div'))).toEqual(LIGHT_CANVAS_CHROME);
+  });
+
+  it('reads the surround, the number band and the numbers from the stylesheet variables', () => {
+    const element = document.createElement('div');
+    element.style.setProperty('--canvas-surround', '#1c221f');
+    element.style.setProperty('--canvas-label-band', 'rgba(28, 34, 31, .96)');
+    element.style.setProperty('--canvas-label', '#b6c2ba');
+    document.body.append(element);
+    expect(readCanvasChrome(element)).toEqual({ surround: '#1c221f', labelBand: 'rgba(28, 34, 31, .96)', label: '#b6c2ba' });
+    element.remove();
   });
 });

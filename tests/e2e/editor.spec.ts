@@ -733,3 +733,36 @@ test('keeps the chosen board background after reload and exports it to PNG', asy
   expect(pixels.ground).toEqual([0x1e, 0x1e, 0x1e]);
   expect(pixels.band).toEqual([255, 255, 255]);
 });
+
+test('follows the dark appearance around the board but keeps the chart ground', async ({ page }) => {
+  /** 盤面のCanvasの、CSS座標(x, y)の画素。 */
+  const canvasPixel = (x: number, y: number) => page.getByLabel('編み図編集盤面').evaluate((canvas: HTMLCanvasElement, [cssX, cssY]) => {
+    const ratio = canvas.width / canvas.clientWidth;
+    return Array.from(canvas.getContext('2d')!.getImageData(Math.round(cssX * ratio), Math.round(cssY * ratio), 1, 1).data.slice(0, 3));
+  }, [x, y]);
+  const pageBackground = () => page.evaluate(() => getComputedStyle(document.documentElement).backgroundColor);
+  // 盤面は左上の番号の帯（28px）から8px内側で始まり、1マス30px。上から2段目・左端のマスの中央と、帯の左上の角を見る。
+  const groundPoint = [36 + 15, 36 + 30 + 15] as const;
+  const bandPoint = [4, 4] as const;
+  /** 番号の帯は半透明で重ねるので、ブラウザによって各色が1ずれる。 */
+  const near = (actual: number[], expected: number[]) => actual.every((value, index) => Math.abs(value - expected[index]) <= 2);
+
+  await page.emulateMedia({ colorScheme: 'light' });
+  await expect.poll(pageBackground).toBe('rgb(243, 240, 232)');
+  await expect.poll(async () => near(await canvasPixel(...bandPoint), [247, 244, 237])).toBe(true);
+  await expect.poll(() => canvasPixel(...groundPoint)).toEqual([255, 255, 255]);
+
+  // 開いたまま外観を切り替えても、盤面の外側と番号の帯は描き直され、盤面の地は白のまま。
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await expect.poll(pageBackground).toBe('rgb(23, 28, 25)');
+  await expect.poll(async () => near(await canvasPixel(...bandPoint), [28, 34, 31])).toBe(true);
+  await expect.poll(() => canvasPixel(...groundPoint)).toEqual([255, 255, 255]);
+
+  await page.getByRole('button', { name: '盤面' }).click();
+  const panelBackground = await page.locator('.drawer').evaluate((element) => getComputedStyle(element).backgroundColor);
+  expect(panelBackground).toBe('rgb(33, 40, 36)');
+  await page.getByRole('button', { name: '閉じる' }).click();
+
+  await page.goto('/guide/');
+  await expect.poll(pageBackground).toBe('rgb(23, 28, 25)');
+});
