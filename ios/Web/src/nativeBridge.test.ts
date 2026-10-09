@@ -41,6 +41,35 @@ describe('native bridge', () => {
     expect(postMessage.mock.calls[0][0].id).toMatch(/^[A-Za-z0-9_-]{1,64}$/);
   });
 
+  describe.each([
+    ['png', 'image/png'], ['pdf', 'application/pdf'], ['knit', 'application/gzip'],
+  ])('safe %s export filenames', (extension, mimeType) => {
+    it.each([
+      ['春/秋', '春_秋'],
+      ['試作..完成', '試作_完成'],
+      ['試作\\修正版', '試作_修正版'],
+      ['試作...完成', '試作_完成'],
+      ['試作\u0000\n\u007f\u0085\u200b完成', '試作_____完成'],
+      ['春の編み図', '春の編み図'],
+      ['春'.repeat(178 - extension.length) + '.秋', '春'.repeat(178 - extension.length) + '_'],
+      ['春'.repeat(177), '春'.repeat(180 - extension.length - 1)],
+      ['🧶'.repeat(177), '🧶'.repeat(180 - extension.length - 1)],
+      ['か\u3099'.repeat(177), 'か\u3099'.repeat(180 - extension.length - 1)],
+      ['春'.repeat(180 - extension.length - 1), '春'.repeat(180 - extension.length - 1)],
+    ])('converts %s only in the native envelope', async (name, expectedStem) => {
+      const postMessage = vi.fn();
+      window.webkit = { messageHandlers: { knittingEditor: { postMessage } } };
+      const blob = new Blob(['unchanged document data'], { type: mimeType });
+      const outcome = await saveBlobWithNativeBridge(blob, `${name}.${extension}`);
+      const message = postMessage.mock.calls[0][0];
+      expect(message.filename).toBe(`${expectedStem}.${extension}`);
+      expect(message.mimeType).toBe(mimeType);
+      expect(atob(message.dataBase64)).toBe('unchanged document data');
+      finishNativeExport({ id: message.id, saved: true });
+      await expect(outcome!.saved).resolves.toBe(true);
+    });
+  });
+
   it('resolves the export outcome when native code reports that the file was saved or shared', async () => {
     const { outcome, id } = await startNativeExport();
     expect(await settled(outcome!.saved)).toBe('pending');

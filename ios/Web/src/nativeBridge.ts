@@ -91,6 +91,25 @@ function listenExportFinished() {
   });
 }
 
+/** 編み図名やファイル内容は変えず、Swiftのファイル名検査に通る出力名を作る。 */
+function safeExportFilename(filename: string): string {
+  // FoundationのcontrolCharactersはCcに加えてCf（不可視の書式制御文字）も含む。
+  const safe = filename.replace(/[\/\\\p{Cc}\p{Cf}]/gu, '_').replace(/\.{2,}/g, '_').trim();
+  const extension = safe.match(/\.(png|pdf|knit)$/i)?.[0] ?? '';
+  const stem = safe.slice(0, safe.length - extension.length) || 'chart';
+  // SwiftのString.countと同様に、結合文字や絵文字を途中で分割しない。
+  const segments = new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(stem);
+  let truncated = '';
+  let count = 0;
+  for (const { segment } of segments) {
+    if (count >= 180 - extension.length) break;
+    truncated += segment;
+    count += 1;
+  }
+  // 切り詰めた末尾の点と拡張子の点が、新たな`..`にならないようにする。
+  return truncated.replace(/\.+$/, '_') + extension;
+}
+
 /**
  * ネイティブの保存画面・共有シートへファイルを渡す。受け口が無い、または送れなかったときは`undefined`を返す。
  *
@@ -108,7 +127,7 @@ export async function saveBlobWithNativeBridge(blob: Blob, filename: string): Pr
       version: 1,
       type: 'exportFile',
       id,
-      filename,
+      filename: safeExportFilename(filename),
       mimeType: blob.type || 'application/octet-stream',
       dataBase64: bytesToBase64(new Uint8Array(await blob.arrayBuffer())),
     });

@@ -775,6 +775,41 @@ final class KnittingEditorUITests: XCTestCase {
         cancelExportAlert(in: app)
     }
 
+    func testSlashDocumentNameReachesAllNativeExportActions() {
+        assertAllNativeExportActions(documentName: "春/秋")
+    }
+
+    func testRepeatedDotsDocumentNameReachesAllNativeExportActions() {
+        assertAllNativeExportActions(documentName: "試作..完成")
+    }
+
+    func testBackslashDocumentNameReachesAllNativeExportActions() {
+        assertAllNativeExportActions(documentName: "試作\\修正版")
+    }
+
+    func testLongDocumentNameReachesAllNativeExportActions() {
+        assertAllNativeExportActions(documentName: String(repeating: "春", count: 177))
+    }
+
+    private func assertAllNativeExportActions(documentName name: String) {
+        XCUIDevice.shared.orientation = .portrait
+        let app = XCUIApplication()
+        app.launch()
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
+        createDocument(named: name, in: app)
+        app.buttons["保存"].tap()
+        for format in ["PNGを保存", "PDFを保存", "この編み図"] {
+            let export = app.buttons[format]
+            XCTAssertTrue(export.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+            export.tap()
+            XCTAssertTrue(app.buttons["ファイルに保存"].waitForExistence(timeout: Self.editorAppearanceTimeout), "\(name): \(format): \(app.debugDescription)")
+            XCTAssertTrue(app.buttons["共有"].exists)
+            cancelExportAlert(in: app)
+        }
+        app.buttons["閉じる"].tap()
+        waitForDocumentSave(named: name, in: app.webViews.firstMatch)
+    }
+
     func testPrimaryControlsRemainUsableInPortraitAndLandscape() {
         let app = XCUIApplication()
         app.launch()
