@@ -121,7 +121,9 @@ window.knittingEditorAppInfo = Object.freeze({ "build": "1", "version": "1.0" })
 
 `com.k0mork.knitting-editor.knit`を`public.data`準拠の独自UTTypeとして`App/Info.plist`へ登録している。Files、AirDrop、他アプリからのOpen InはSwiftUIの`onOpenURL`で受け、同じWebインポート経路へ送る。
 
-`LSSupportsOpeningDocumentsInPlace`は無効のため、受け取った`.knit`は`Documents/Inbox`への複製となる。読み込み後に複製を削除して端末内へ蓄積させない。削除対象は`Documents/Inbox`配下とDocument Pickerが一時領域へ作る複製に限り、利用者の原本は削除しない。
+`LSSupportsOpeningDocumentsInPlace`を有効にしている（#149）。無効のままだと、Filesで`.knit`をタップしてもFilesのプレビューが開くだけで、アプリは起動しない（Simulatorで有効・無効を比べて確かめた）。有効にすると、Filesでタップした`.knit`は複製されず、利用者の原本のURLが`onOpenURL`へ届く。`WebViewModel.readIncomingBackup`は、読む間だけ`startAccessingSecurityScopedResource()`でアクセス権を得て、`NSFileCoordinator`（`.withoutChanges`）で他のアプリやiCloudの書き込みと調整して読む。iCloud Driveの原本は読む前にダウンロードを待つことがあるため、読み取りはメインスレッドの外で行う。原本へは書き戻さず、削除もしない。`.knit`は端末内へ復元するためのバックアップで、その場で編集するファイルではないので、タップするたびに新しい「（復元）」の編み図が増える（共有メニューから開いたときと同じ）。
+
+AirDropや他のアプリの共有から受け取った`.knit`は、`Documents/Inbox`への複製となる。読み込み後に複製を削除して端末内へ蓄積させない。削除対象は`Documents/Inbox`配下とDocument Pickerが一時領域へ作る複製に限り、利用者の原本は削除しない。
 
 編集画面以外（使い方ページ）を表示している間はバックアップイベントの購読者が存在しないため、`didCommit`で配送を保留し、編集画面が再び`webReady`を送ってから配送する。
 
