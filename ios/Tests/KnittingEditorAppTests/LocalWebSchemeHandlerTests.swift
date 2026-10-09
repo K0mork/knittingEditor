@@ -83,7 +83,7 @@ final class LocalWebSchemeHandlerTests: XCTestCase {
         )
         XCTAssertFalse(
             WebViewModel.isImportedCopy(documents.appendingPathComponent("chart.knit"), documentsDirectory: documents),
-            "in-place編集を有効化しても利用者の原本を削除しない"
+            "「ファイル」アプリから開いた利用者の原本は削除しない"
         )
         XCTAssertFalse(
             WebViewModel.isImportedCopy(URL(fileURLWithPath: "/private/var/mobile/InboxOther/chart.knit"), documentsDirectory: documents)
@@ -91,6 +91,35 @@ final class LocalWebSchemeHandlerTests: XCTestCase {
         XCTAssertFalse(
             WebViewModel.isImportedCopy(URL(string: "knitting-local://bundle/chart.knit")!, documentsDirectory: documents)
         )
+    }
+
+    func testIncomingBackupIsReadWithoutChangingTheOriginal() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let original = directory.appendingPathComponent("chart.knit")
+        let bytes = Data([0x1f, 0x8b, 0x08, 0x00, 0x01, 0x02])
+        try bytes.write(to: original)
+
+        XCTAssertEqual(try WebViewModel.readIncomingBackup(at: original), bytes)
+        XCTAssertEqual(try Data(contentsOf: original), bytes, "「ファイル」アプリの原本は読むだけで、書き換えない")
+    }
+
+    func testIncomingBackupOverTheLimitIsRejected() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let large = directory.appendingPathComponent("large.knit")
+        XCTAssertTrue(FileManager.default.createFile(atPath: large.path, contents: nil))
+        let handle = try FileHandle(forWritingTo: large)
+        try handle.truncate(atOffset: UInt64(NativeBridgeLimits.maxFileBytes + 1))
+        try handle.close()
+
+        XCTAssertThrowsError(try WebViewModel.readIncomingBackup(at: large)) { error in
+            guard case WebViewModel.IncomingBackupError.tooLarge = error else {
+                return XCTFail("上限を超えたときは大きすぎるとして断る: \(error)")
+            }
+        }
     }
 
     func testEditorWebViewStartsWithNonZeroFrame() {

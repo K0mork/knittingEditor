@@ -65,17 +65,42 @@ final class WebViewModel {
             presentError("対応していないファイル形式です")
             return
         }
-        do {
-            let data = try Data(contentsOf: url, options: [.mappedIfSafe])
-            guard data.count <= NativeBridgeLimits.maxFileBytes else {
+        // iCloud Driveの原本は読む前にダウンロードされることがあるので、画面を止めないよう別のスレッドで読む。
+        Task { @MainActor in
+            let result = await Task.detached { Result { try Self.readIncomingBackup(at: url) } }.value
+            switch result {
+            case .success(let data):
+                deliverBackup(data, filename: url.lastPathComponent)
+                Self.removeImportedCopy(at: url)
+            case .failure(IncomingBackupError.tooLarge):
                 presentError("バックアップが大きすぎます")
-                return
+            case .failure:
+                presentError("バックアップを読み込めませんでした")
             }
-            deliverBackup(data, filename: url.lastPathComponent)
-            Self.removeImportedCopy(at: url)
-        } catch {
-            presentError("バックアップを読み込めませんでした")
         }
+    }
+
+    enum IncomingBackupError: Error {
+        case tooLarge
+    }
+
+    /// 受け取った`.knit`のバイト列を読む。「ファイル」アプリでタップしたときは、複製ではなく利用者の
+    /// 原本のURLが届く（`LSSupportsOpeningDocumentsInPlace`、#149）。読む間だけアクセス権を得て、
+    /// 他のアプリやiCloudの書き込みと重ならないよう`NSFileCoordinator`で調整して読む。原本には書き戻さない。
+    nonisolated static func readIncomingBackup(at url: URL) throws -> Data {
+        let accessing = url.startAccessingSecurityScopedResource()
+        defer { if accessing { url.stopAccessingSecurityScopedResource() } }
+        var coordinationError: NSError?
+        var result: Result<Data, Error> = .failure(CocoaError(.fileReadUnknown))
+        NSFileCoordinator().coordinate(readingItemAt: url, options: [.withoutChanges], error: &coordinationError) { readingURL in
+            result = Result {
+                let data = try Data(contentsOf: readingURL, options: [.mappedIfSafe])
+                guard data.count <= NativeBridgeLimits.maxFileBytes else { throw IncomingBackupError.tooLarge }
+                return data
+            }
+        }
+        if let coordinationError { throw coordinationError }
+        return try result.get()
     }
 
     /// WebViewが準備できていない間は保留し、`webReady`到着後に一度だけ配送する。
@@ -123,9 +148,8 @@ final class WebViewModel {
         }
     }
 
-    /// `LSSupportsOpeningDocumentsInPlace`が無効なため、Files・AirDrop・他アプリからの
-    /// `.knit`は`Documents/Inbox`へ複製される。読み込み後に消さないと端末内へ蓄積する。
-    /// 将来in-place編集を有効化しても利用者の原本を消さないよう、複製だけを対象にする。
+    /// AirDropや他のアプリの共有から受け取った`.knit`は`Documents/Inbox`へ複製される。読み込み後に
+    /// 消さないと端末内へ蓄積する。「ファイル」アプリから開いたときは原本のURLが届くので、複製だけを消す。
     nonisolated static func isImportedCopy(_ url: URL, documentsDirectory: URL) -> Bool {
         guard url.isFileURL else { return false }
         let inbox = documentsDirectory.appendingPathComponent("Inbox", isDirectory: true)
