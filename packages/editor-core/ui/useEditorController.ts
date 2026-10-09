@@ -289,7 +289,7 @@ export function useEditorController(options: EditorControllerOptions) {
     const snapshot = document.id === activeDocument?.id ? session.activeSnapshot() : undefined;
     const copy = await duplicateDocument(document.id, snapshot?.id === document.id ? snapshot : undefined);
     session.updateDocument(copy);
-    notify('編み図を複製しました。');
+    notify('編み図を複製しました');
   });
 
   const deleteChart = (document: ChartDocument) => runManagementOperation('chart_delete', '編み図の削除', async () => {

@@ -82,7 +82,7 @@ describe('duplicateChart', () => {
     expect(copy.cols).toBe(6);
     expect(copy.backgroundColor).toBe('#808080');
     expect(new Uint32Array(copy.cells)).toEqual(new Uint32Array(snapshot.cells));
-    expect(editor.message).toBe('編み図を複製しました。');
+    expect(editor.message).toBe('編み図を複製しました');
     expect(editor.session.activeDocument?.id).toBe(source.id);
     if (saving) await act(async () => { release(); expect(await saving).toBe('pending'); });
     vi.restoreAllMocks();
