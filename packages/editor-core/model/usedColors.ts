@@ -1,4 +1,5 @@
-import { cellColor, colorHex } from './Board';
+import { cellColor, cellStitchId, colorHex } from './Board';
+import { STITCH_BY_ID } from '../stitches/catalog';
 
 /** 色の一覧に出す上限。スマホ幅で4段ほどに収まり、糸の色数としても十分に多い。 */
 export const USED_COLOR_LIMIT = 24;
@@ -22,7 +23,7 @@ export interface UsedColorSummary {
 /**
  * 盤面のセル配列から、記号に使っている色を数える。
  *
- * セルには記号の起点にだけ値が入るので、空のマス（0）を飛ばして色の部分を数えるだけでよい。
+ * セルには記号の起点にだけ値が入る。空のマス（0）と、保存色を使わず白で塗るセルは数えない。
  * 1000×1000の盤面でも配列を1回なめるだけで済むが、呼び出し側は盤面が変わったとき
  * （`revision`）だけ呼び直し、描画のたびには呼ばない。
  */
@@ -34,6 +35,7 @@ export function collectUsedColors(cells: Uint32Array, limit = USED_COLOR_LIMIT):
   for (let index = 0; index < cells.length; index++) {
     const value = cells[index];
     if (!value) continue;
+    if (STITCH_BY_ID.get(cellStitchId(value))?.renderKind === 'whiteout') continue;
     const color = cellColor(value);
     if (color === runColor) { runCount += 1; continue; }
     if (runColor >= 0) counts.set(runColor, (counts.get(runColor) ?? 0) + runCount);
