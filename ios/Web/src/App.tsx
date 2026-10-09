@@ -6,6 +6,7 @@ import { noteHardwareKeyboard } from '@knitting-editor/editor-core/ui/inputEnvir
 import { useEditorController } from '@knitting-editor/editor-core/ui/useEditorController';
 import { useAppDialog } from './AppDialog';
 import { withTimeout } from './async';
+import { useNotifyWhenEditorShown } from './editorReady';
 import {
   listenNativeBackupSelected, listenNativeCommand, listenNativeError, notifyNativeCommandState, notifyNativeReady, requestNativeBackupOpen,
 } from './nativeBridge';
@@ -97,13 +98,17 @@ export default function App() {
       noteHardwareKeyboard();
       runNativeCommand(command, commandsRef.current, { busy: busyRef.current !== undefined });
     });
-    notifyNativeReady();
     return () => {
       removeBackupListener();
       removeErrorListener();
       removeCommandListener();
     };
   }, []);
+
+  // 準備中の表示（ネイティブ）は、端末内データを読み込んで盤面を描いてから消す。読み込みに失敗したときは、
+  // 理由を出してから消す。`.knit`の受け渡しとメニューの操作も、この`webReady`のあとに始まる。
+  // 上の購読は最初の描画で済んでいるので、`webReady`より前に購読が終わっている。
+  useNotifyWhenEditorShown(editor.session.board !== undefined || editor.initializationError !== undefined, notifyNativeReady);
 
   // メニューの「元に戻す」「やり直す」を、画面のボタンと同じ条件で選べるようにする。
   // 入力欄で文字を打っている間は、文字の取り消しのために常に選べるようにする。

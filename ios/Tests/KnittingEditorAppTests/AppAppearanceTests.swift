@@ -1,3 +1,4 @@
+import SwiftUI
 import UIKit
 import XCTest
 @testable import knittingEditor
@@ -85,6 +86,12 @@ final class AppAppearanceTests: XCTestCase {
             }
         }
         return found
+    }
+
+    /// 準備中の表示は0.2秒でふわっと消し、「視差効果を減らす」がオンなら動かさずに消す（#117）。
+    func testLoadingOverlayFadesOutUnlessReduceMotionIsOn() {
+        XCTAssertEqual(EditorLoadingStyle.dismissAnimation(reduceMotion: false), .easeOut(duration: 0.2))
+        XCTAssertNil(EditorLoadingStyle.dismissAnimation(reduceMotion: true))
     }
 
     @MainActor

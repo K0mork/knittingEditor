@@ -51,7 +51,7 @@ Web版とiOS版は同じリポジトリで管理する。以前の固定コミ�
 
 - `packages/editor-core`：盤面モデル、記号カタログ、ベクター記号、Canvas、PNG/PDF出力、PDFレイアウト計算、IndexedDBと`.knit`入出力（大盤面の保存・復元を含む）、編集セッション、編集画面、最後のバックアップ日時と書き出しの勧め（既存データの読み出しを含む）、base64変換、分析バケット。
 - `src/`（Web固有）：旧Safari `localStorage`からの移行、GA4アナリティクス、iPhone・iPad Safariの共有シート判定と確認ダイアログ。
-- `ios/Web/src/`（iOS固有）：ネイティブブリッジ、`async`のタイムアウト、使い方ページのバージョン表示（`guideVersion.test.ts`）、ブリッジ経由の`.knit`入出力と`.knit`相互運用fixture（`backupInterchange.test.ts`、`ios/test-fixtures/`）。
+- `ios/Web/src/`（iOS固有）：ネイティブブリッジ、`webReady`を編集画面が画面に出てから送ること（`editorReady.test.ts`）、`async`のタイムアウト、使い方ページのバージョン表示（`guideVersion.test.ts`）、ブリッジ経由の`.knit`入出力と`.knit`相互運用fixture（`backupInterchange.test.ts`、`ios/test-fixtures/`）。
 
 共通コードのテストを`.tsx`で書く場合も、両ビルドのVitest設定が`*.test.tsx`を拾う。
 

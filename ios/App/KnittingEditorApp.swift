@@ -36,18 +36,25 @@ struct ContentView: View {
 
             if model.isPreparingEditor {
                 let style = model.loadingStyle
-                Color(uiColor: style.backgroundColor)
-                    .ignoresSafeArea()
-                VStack(spacing: 12) {
-                    ProgressView()
-                        .tint(Color(uiColor: style.foregroundColor))
-                    Text("編み図を準備しています…")
-                        .font(.body)
-                        .foregroundStyle(Color(uiColor: style.foregroundColor))
+                ZStack {
+                    Color(uiColor: style.backgroundColor)
+                        .ignoresSafeArea()
+                    VStack(spacing: 12) {
+                        ProgressView()
+                            .tint(Color(uiColor: style.foregroundColor))
+                        Text("編み図を準備しています…")
+                            .font(.body)
+                            .foregroundStyle(Color(uiColor: style.foregroundColor))
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("編み図を準備しています")
+                    .accessibilityIdentifier("editorLoadingOverlay")
                 }
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel("編み図を準備しています")
-                .accessibilityIdentifier("editorLoadingOverlay")
+                // 出すときはすぐ覆い、消すときだけ編集画面へふわっとつなぐ（#117）。動きは
+                // `WebViewModel.webContentDidBecomeReady`の`withAnimation`で付ける。
+                .transition(.asymmetric(insertion: .identity, removal: .opacity))
+                // `ZStack`は取り除く途中の要素を後ろへ回すので、重ね順を固定してWebViewの上で消す。
+                .zIndex(1)
             }
         }
     }
@@ -92,6 +99,13 @@ enum EditorLoadingStyle: Equatable {
         case .launch: return AppColors.launchBackground
         case .inApp: return AppColors.editorPageBackground
         }
+    }
+
+    /// 準備中の表示を消すときの動き。「視差効果を減らす」がオンのときは動かさずに消す。
+    static let dismissDuration: TimeInterval = 0.2
+
+    static func dismissAnimation(reduceMotion: Bool) -> Animation? {
+        reduceMotion ? nil : .easeOut(duration: dismissDuration)
     }
 
     var foregroundColor: UIColor {
