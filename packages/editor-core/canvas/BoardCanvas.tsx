@@ -80,6 +80,22 @@ export function glyphSearchStart(firstRow: number, firstCol: number): Point {
   };
 }
 
+/** マスの外側と段・目番号の帯の色。端末の外観で変わるので、共通CSSの変数から読む。 */
+export interface CanvasChrome { surround: string; labelBand: string; label: string }
+
+export const LIGHT_CANVAS_CHROME: CanvasChrome = { surround: '#f7f4ed', labelBand: 'rgba(247,244,237,.96)', label: '#53605a' };
+
+/** 共通CSS（`--canvas-*`）の色を読む。変数が無いとき（テストなど）は明るい配色の色を使う。 */
+export function readCanvasChrome(element: Element = document.documentElement): CanvasChrome {
+  const style = getComputedStyle(element);
+  const read = (name: string, fallback: string) => style.getPropertyValue(name).trim() || fallback;
+  return {
+    surround: read('--canvas-surround', LIGHT_CANVAS_CHROME.surround),
+    labelBand: read('--canvas-label-band', LIGHT_CANVAS_CHROME.labelBand),
+    label: read('--canvas-label', LIGHT_CANVAS_CHROME.label),
+  };
+}
+
 function rasterLine(from: Point, to: Point): Point[] {
   const points: Point[] = [];
   let x0 = from.col, y0 = from.row;
@@ -112,6 +128,8 @@ export function BoardCanvas(props: Props) {
   const pendingTapRef = useRef<Point | undefined>(undefined);
   const propsRef = useRef(props);
   propsRef.current = props;
+  // 描くたびに計算済みスタイルを読まないよう、外観が変わったときだけ読み直す。
+  const chromeRef = useRef<CanvasChrome>(LIGHT_CANVAS_CHROME);
 
   const requestDraw = () => {
     cancelAnimationFrame(frameRef.current);
@@ -132,7 +150,8 @@ export function BoardCanvas(props: Props) {
     }
     context.setTransform(ratio, 0, 0, ratio, 0, 0);
     context.clearRect(0, 0, width, height);
-    context.fillStyle = '#f7f4ed';
+    const chrome = chromeRef.current;
+    context.fillStyle = chrome.surround;
     context.fillRect(0, 0, width, height);
 
     const { board, selection, pasteBlock, mode, background = DEFAULT_BACKGROUND_COLOR } = propsRef.current;
@@ -178,10 +197,10 @@ export function BoardCanvas(props: Props) {
       context.strokeRect(x, y, rectWidth, rectHeight);
     }
 
-    context.fillStyle = 'rgba(247,244,237,.96)';
+    context.fillStyle = chrome.labelBand;
     context.fillRect(0, 0, width, LABEL_SIZE);
     context.fillRect(0, 0, LABEL_SIZE, height);
-    context.fillStyle = '#53605a';
+    context.fillStyle = chrome.label;
     context.font = '11px system-ui';
     context.textAlign = 'center';
     context.textBaseline = 'middle';
@@ -198,8 +217,15 @@ export function BoardCanvas(props: Props) {
     if (!canvas) return;
     const observer = new ResizeObserver(requestDraw);
     observer.observe(canvas);
-    requestDraw();
-    return () => { observer.disconnect(); cancelAnimationFrame(frameRef.current); };
+    const scheme = window.matchMedia?.('(prefers-color-scheme: dark)');
+    const updateChrome = () => { chromeRef.current = readCanvasChrome(); requestDraw(); };
+    updateChrome();
+    scheme?.addEventListener?.('change', updateChrome);
+    return () => {
+      observer.disconnect();
+      scheme?.removeEventListener?.('change', updateChrome);
+      cancelAnimationFrame(frameRef.current);
+    };
   }, []);
 
   useEffect(requestDraw, [props.board, props.background, props.revision, props.selection, props.mode, props.pasteBlock]);

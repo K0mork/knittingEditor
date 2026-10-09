@@ -3,7 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#3d7a4a" />
+    <meta name="theme-color" content="#3d7a4a" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1f4228" media="(prefers-color-scheme: dark)" />
     <meta name="description" content="棒針編み図エディタ（Web版・iPhone/iPadアプリ）のサポート窓口です。アカウント不要のメールで、非公開で問い合わせできます。よくある質問も掲載しています。" />
     <meta property="og:title" content="サポート｜棒針編み図エディタ" />
     <meta property="og:description" content="棒針編み図エディタ（Web版・iPhone/iPadアプリ）のサポート窓口です。アカウント不要のメールで、非公開で問い合わせできます。よくある質問も掲載しています。" />
@@ -28,6 +29,7 @@
         color: #26322c;
         background: #f3f0e8;
         line-height: 1.8;
+        color-scheme: light dark;
       }
       * { box-sizing: border-box; }
       body { margin: 0; }
@@ -45,6 +47,12 @@
         padding: 14px 16px;
         border-left: 4px solid #3d7a4a;
         background: #fffef9;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root { color: #e2e8e3; background: #171c19; }
+        footer { border-top-color: #3c4741; }
+        a { color: #8fcb9b; }
+        .note { border-left-color: #7dbb88; background: #212824; }
       }
     </style>
   </head>

@@ -2,13 +2,14 @@ import UIKit
 import XCTest
 @testable import knittingEditor
 
-/// 起動画面・準備中の表示・編集画面の色がそろっていることを確かめる（#79）。
+/// 起動画面・準備中の表示・編集画面の色が、ライト・ダークのそれぞれでそろっていることを確かめる（#79、#116）。
 final class AppAppearanceTests: XCTestCase {
-    /// 編集画面のCSSは明るい配色だけを持つ。端末がダークモードでもアプリを明るい配色に固定し、
-    /// 準備中の表示やシステムのダイアログだけが暗くならないようにする。
-    func testAppIsFixedToLightAppearance() {
-        let style = Bundle.main.object(forInfoDictionaryKey: "UIUserInterfaceStyle") as? String
-        XCTAssertEqual(style, "Light")
+    private let light = UITraitCollection(userInterfaceStyle: .light)
+    private let dark = UITraitCollection(userInterfaceStyle: .dark)
+
+    /// 編集画面のCSSはライト用とダーク用の配色を持つので、アプリは端末の外観に従う。
+    func testAppFollowsSystemAppearance() {
+        XCTAssertNil(Bundle.main.object(forInfoDictionaryKey: "UIUserInterfaceStyle"))
     }
 
     func testLaunchScreenUsesLaunchBackgroundAsset() throws {
@@ -18,39 +19,52 @@ final class AppAppearanceTests: XCTestCase {
         XCTAssertEqual(rgba(AppColors.launchBackground), rgba(asset))
     }
 
-    /// 起動直後の準備中の表示は起動画面と同じ色で、ダークモードでも変わらない。
+    /// 起動直後の準備中の表示は、ライト・ダークのどちらでも起動画面と同じ色にする。
     func testLaunchLoadingStyleMatchesLaunchScreenInBothAppearances() {
         let style = EditorLoadingStyle.launch
-        let light = UITraitCollection(userInterfaceStyle: .light)
-        let dark = UITraitCollection(userInterfaceStyle: .dark)
         XCTAssertEqual(rgba(style.backgroundColor, traits: light), rgba(AppColors.launchBackground, traits: light))
-        XCTAssertEqual(rgba(style.backgroundColor, traits: dark), rgba(AppColors.launchBackground, traits: light))
+        XCTAssertEqual(rgba(style.backgroundColor, traits: dark), rgba(AppColors.launchBackground, traits: dark))
+        XCTAssertEqual(rgba(AppColors.launchBackground, traits: light), [0x34, 0x6F, 0x42, 0xFF])
+        XCTAssertEqual(rgba(AppColors.launchBackground, traits: dark), [0x1F, 0x42, 0x28, 0xFF])
     }
 
-    /// 編集画面へ戻るときの準備中の表示と`WKWebView`の背景は、編集画面の地の色（`#f3f0e8`）にする。
+    /// 編集画面へ戻るときの準備中の表示と`WKWebView`の背景は、編集画面の地の色にする。
     func testInAppLoadingStyleMatchesEditorPageBackground() {
-        XCTAssertEqual(rgba(AppColors.editorPageBackground), [0xF3, 0xF0, 0xE8, 0xFF])
-        XCTAssertEqual(rgba(EditorLoadingStyle.inApp.backgroundColor), rgba(AppColors.editorPageBackground))
-    }
-
-    /// 準備中の表示の文字は、WCAGのAA（通常の文字で4.5:1）を満たす。
-    func testLoadingTextContrastMeetsWCAGAA() {
-        for style in [EditorLoadingStyle.launch, .inApp] {
-            let ratio = contrastRatio(style.foregroundColor, style.backgroundColor)
-            XCTAssertGreaterThanOrEqual(ratio, 4.5, "\(style): \(ratio)")
+        XCTAssertEqual(rgba(AppColors.editorPageBackground, traits: light), [0xF3, 0xF0, 0xE8, 0xFF])
+        XCTAssertEqual(rgba(AppColors.editorPageBackground, traits: dark), [0x17, 0x1C, 0x19, 0xFF])
+        for traits in [light, dark] {
+            XCTAssertEqual(rgba(EditorLoadingStyle.inApp.backgroundColor, traits: traits), rgba(AppColors.editorPageBackground, traits: traits))
         }
     }
 
-    /// Swift側の地の色が、同梱した編集画面のCSSの色とずれていないことを確かめる。
+    /// 準備中の表示の文字は、ライト・ダークのどちらでもWCAGのAA（通常の文字で4.5:1）を満たす。
+    func testLoadingTextContrastMeetsWCAGAA() {
+        for style in [EditorLoadingStyle.launch, .inApp] {
+            for traits in [light, dark] {
+                let ratio = contrastRatio(style.foregroundColor, style.backgroundColor, traits: traits)
+                XCTAssertGreaterThanOrEqual(ratio, 4.5, "\(style) \(traits.userInterfaceStyle.rawValue): \(ratio)")
+            }
+        }
+    }
+
+    /// Swift側の地の色が、同梱した編集画面のCSSのライト用・ダーク用の色とずれていないことを確かめる。
     func testEditorPageBackgroundMatchesBundledStylesheet() throws {
         let assets = try XCTUnwrap(Bundle.main.resourceURL?.appendingPathComponent("Web/assets", isDirectory: true))
         let stylesheets = try FileManager.default.contentsOfDirectory(at: assets, includingPropertiesForKeys: nil)
             .filter { $0.pathExtension == "css" }
         XCTAssertFalse(stylesheets.isEmpty, "同梱のCSSが見つからない")
         let css = try stylesheets.map { try String(contentsOf: $0, encoding: .utf8) }.joined().lowercased()
-        let declared = try XCTUnwrap(rootBackgroundHex(in: css), "同梱のCSSの`:root`に地の色の宣言が見つからない")
-        let expected = rgba(AppColors.editorPageBackground).prefix(3).map { String(format: "%02x", $0) }.joined()
-        XCTAssertEqual(declared, expected, "編集画面のCSSの地の色が変わったら`AppColors.editorPageBackground`もそろえる")
+        let darkBlocks = try NSRegularExpression(pattern: #"@media\s*\(\s*prefers-color-scheme\s*:\s*dark\s*\)\s*\{\s*:root\s*\{[^}]*\}\s*\}"#)
+        let fullRange = NSRange(css.startIndex..., in: css)
+        let darkCSS = darkBlocks.matches(in: css, range: fullRange)
+            .compactMap { Range($0.range, in: css).map { String(css[$0]) } }
+            .joined()
+        let lightCSS = darkBlocks.stringByReplacingMatches(in: css, range: fullRange, withTemplate: "")
+        for (traits, source) in [(light, lightCSS), (dark, darkCSS)] {
+            let declared = try XCTUnwrap(rootBackgroundHex(in: source), "同梱のCSSの`:root`に地の色の宣言が見つからない（\(traits.userInterfaceStyle.rawValue)）")
+            let expected = rgba(AppColors.editorPageBackground, traits: traits).prefix(3).map { String(format: "%02x", $0) }.joined()
+            XCTAssertEqual(declared, expected, "編集画面のCSSの地の色が変わったら`AppColors.editorPageBackground`もそろえる")
+        }
     }
 
     /// `:root`の`background`（または`background-color`）に書かれた最後の色を、6桁の16進数で返す。
@@ -87,14 +101,14 @@ final class AppAppearanceTests: XCTestCase {
         XCTAssertEqual(model.loadingStyle, .inApp, "使い方ページから戻るときは起動画面の色を挟まない")
     }
 
-    private func contrastRatio(_ first: UIColor, _ second: UIColor) -> Double {
-        let lighter = max(relativeLuminance(first), relativeLuminance(second))
-        let darker = min(relativeLuminance(first), relativeLuminance(second))
+    private func contrastRatio(_ first: UIColor, _ second: UIColor, traits: UITraitCollection) -> Double {
+        let lighter = max(relativeLuminance(first, traits: traits), relativeLuminance(second, traits: traits))
+        let darker = min(relativeLuminance(first, traits: traits), relativeLuminance(second, traits: traits))
         return (lighter + 0.05) / (darker + 0.05)
     }
 
-    private func relativeLuminance(_ color: UIColor) -> Double {
-        let channels = rgba(color).prefix(3).map { value -> Double in
+    private func relativeLuminance(_ color: UIColor, traits: UITraitCollection) -> Double {
+        let channels = rgba(color, traits: traits).prefix(3).map { value -> Double in
             let c = Double(value) / 255
             return c <= 0.03928 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4)
         }

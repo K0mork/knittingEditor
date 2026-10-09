@@ -3,7 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#3d7a4a" />
+    <meta name="theme-color" content="#3d7a4a" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1f4228" media="(prefers-color-scheme: dark)" />
     <meta name="description" content="棒針編み図エディタ（Web版）のプライバシーポリシーです。編み図は端末の中だけに保存し、サーバーへ送りません。アクセス解析（Google アナリティクス 4）で送る情報、送信先、利用目的と、送信を止める方法を説明します。" />
     <meta property="og:title" content="プライバシーポリシー｜棒針編み図エディタ" />
     <meta property="og:description" content="棒針編み図エディタ（Web版）のプライバシーポリシーです。編み図は端末の中だけに保存し、サーバーへ送りません。アクセス解析（Google アナリティクス 4）で送る情報、送信先、利用目的と、送信を止める方法を説明します。" />
@@ -28,6 +29,7 @@
         color: #26322c;
         background: #f3f0e8;
         line-height: 1.8;
+        color-scheme: light dark;
       }
       * { box-sizing: border-box; }
       body { margin: 0; }
@@ -53,6 +55,16 @@
       th, td { padding: 8px 10px; border: 1px solid #d5dbd3; text-align: left; vertical-align: top; }
       th { background: #e8ece4; }
       td code { white-space: nowrap; }
+      @media (prefers-color-scheme: dark) {
+        :root { color: #e2e8e3; background: #171c19; }
+        footer { border-top-color: #3c4741; }
+        a { color: #8fcb9b; }
+        .note { border-left-color: #7dbb88; background: #212824; }
+        dd { border-left-color: #3c4741; }
+        table { background: #212824; }
+        th, td { border-color: #3c4741; }
+        th { background: #29312c; }
+      }
     </style>
   </head>
   <body>
