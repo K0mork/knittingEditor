@@ -789,9 +789,35 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertTrue(app.buttons["閉じる"].isHittable, app.debugDescription)
     }
 
+    /// 「新しい編み図」を押すと、名前の入力欄をタップし直さなくても入力できる（#148）。
+    /// WKWebViewはタップの処理の中でフォーカスした入力欄にしかキーボードを出さないので、
+    /// 次のフレームでフォーカスしていた以前の作りでは、入力欄にフォーカスが入らなかった。
+    func testNewDocumentDialogFocusesNameInputWithoutTapping() {
+        let app = XCUIApplication()
+        app.launch()
+        // 実機は端末の向きのまま始まる。横向きではキーボードがダイアログのボタンを覆う（#151）ので、縦向きで確かめる。
+        XCUIDevice.shared.orientation = .portrait
+
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
+        openDocumentsPanel(in: app).tap()
+
+        let nameField = app.textFields["入力"]
+        XCTAssertTrue(nameField.waitForExistence(timeout: 10))
+        let focused = XCTNSPredicateExpectation(predicate: NSPredicate(format: "hasKeyboardFocus == true"), object: nameField)
+        XCTAssertEqual(XCTWaiter.wait(for: [focused], timeout: 10), .completed, "入力欄にフォーカスが入らない: \(app.debugDescription)")
+        // CIのiPad Simulatorはハードウェアキーボード接続状態になり、画面のキーボードを出さないことがある。
+        // iPhoneでは画面のキーボードが出ることまで確かめる。
+        if UIDevice.current.userInterfaceIdiom == .phone {
+            XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5), "キーボードが出ない: \(app.debugDescription)")
+        }
+        app.buttons["キャンセル"].tap()
+    }
+
     func testDocumentDialogRemainsUsableAfterFocusingInput() {
         let app = XCUIApplication()
         app.launch()
+        // 実機は端末の向きのまま始まる。横向きではキーボードがダイアログのボタンを覆う（#151）ので、縦向きで確かめる。
+        XCUIDevice.shared.orientation = .portrait
 
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
         openDocumentsPanel(in: app).tap()
