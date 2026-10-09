@@ -7,6 +7,17 @@ struct KnittingEditorApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @State private var webViewModel = WebViewModel()
 
+    init() {
+        // 「ファイル」アプリでタップした`.knit`を開けるよう`LSSupportsOpeningDocumentsInPlace`を有効にすると、
+        // iPadOS 26は書類を扱うアプリとして、メニューに書類の「新規」「開く」（⌘N・⌘O）を足す。これが
+        // 「新しい編み図…」「バックアップから復元…」の⌘N・⌘Oより先に効くので、書類の項目を足させない（#149）。
+        if #available(iOS 26.0, *) {
+            let configuration = UIMainMenuSystem.Configuration()
+            configuration.documentPreference = .removed
+            UIMainMenuSystem.shared.setBuildConfiguration(configuration)
+        }
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView(model: webViewModel)
