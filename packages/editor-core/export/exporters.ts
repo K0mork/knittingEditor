@@ -15,7 +15,7 @@ export const PNG_PREFERRED_CELL_SIZE = 24;
 /**
  * 既定の1セル画素数を返す。
  *
- * 盤面が大きいと`PNG_PREFERRED_CELL_SIZE`では安全上限を超えるため、
+ * 盤面が大きいと`PNG_PREFERRED_CELL_SIZE`では上限を超えるため、
  * その盤面で有効な最大値まで落とす。20×20なら24pxで528×528pxになる。
  */
 export function defaultPngCellSize(board: Board, preferred: number = PNG_PREFERRED_CELL_SIZE): number {
@@ -59,8 +59,8 @@ export function validatePngSize(board: Board, cellSize: number): { width: number
   const { rowLabelWidth, colLabelHeight } = pngLabelLayout(board, cellSize);
   const width = board.cols * cellSize + rowLabelWidth * 2;
   const height = board.rows * cellSize + colLabelHeight * 2;
-  if (width > PNG_MAX_SIDE || height > PNG_MAX_SIDE) return { width, height, valid: false, reason: `一辺が安全上限${PNG_MAX_SIDE}pxを超えます` };
-  if (width * height > PNG_MAX_PIXELS) return { width, height, valid: false, reason: '画像のメモリ使用量が安全上限を超えます' };
+  if (width > PNG_MAX_SIDE || height > PNG_MAX_SIDE) return { width, height, valid: false, reason: `一辺が上限${PNG_MAX_SIDE}pxを超えます` };
+  if (width * height > PNG_MAX_PIXELS) return { width, height, valid: false, reason: '画像のメモリ使用量が上限を超えます' };
   return { width, height, valid: true };
 }
 
