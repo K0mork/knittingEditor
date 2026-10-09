@@ -1,7 +1,8 @@
 import 'fake-indexeddb/auto';
 import { describe, expect, it, vi } from 'vitest';
 import { saveBlobWithNativeBridge } from './nativeBridge';
-import { createDocument, exportBackup, importBackup } from '@knitting-editor/editor-core/storage/database';
+import { Board } from '@knitting-editor/editor-core/model/Board';
+import { createDocument, exportBackup, importBackup, saveDocument } from '@knitting-editor/editor-core/storage/database';
 import { base64ToBytes } from '@knitting-editor/editor-core/util/base64';
 import interopFixtureBase64 from '../../test-fixtures/knitting-editor-v2-interop.knit.b64?raw';
 
@@ -10,6 +11,7 @@ import interopFixtureBase64 from '../../test-fixtures/knitting-editor-v2-interop
 describe('native backup interchange', () => {
   it('round-trips an app export through the native bridge payload', async () => {
     const source = await createDocument('アプリ出力fixture', 2, 3);
+    await saveDocument({ ...source, backgroundColor: '#1e1e1e' }, new Board(2, 3));
     const postMessage = vi.fn();
     window.webkit = { messageHandlers: { knittingEditor: { postMessage } } };
 
@@ -21,6 +23,7 @@ describe('native backup interchange', () => {
     const bridgedBytes = base64ToBytes(message?.dataBase64 ?? '');
     const restored = await importBackup(new Blob([bridgedBytes.buffer as ArrayBuffer], { type: 'application/gzip' }));
     expect(restored.documents[0].name).toBe('アプリ出力fixture（復元）');
+    expect(restored.documents[0].backgroundColor).toBe('#1e1e1e');
 
     delete window.webkit;
   });
@@ -32,5 +35,7 @@ describe('native backup interchange', () => {
     expect(result.count).toBe(1);
     expect(result.documents[0].name).toBe('相互運用fixture（復元）');
     expect(Array.from(new Uint32Array(result.documents[0].cells))).toEqual([1, 2, 3, 4, 5, 6]);
+    // 背景色を加える前のfixtureには地の色が無く、白い地の編み図として読む。
+    expect(result.documents[0]).not.toHaveProperty('backgroundColor');
   });
 });

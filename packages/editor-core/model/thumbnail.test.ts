@@ -35,6 +35,16 @@ describe('renderThumbnail', () => {
     expect(pixel(thumbnail, 2, 1)).toEqual([0x12, 0x34, 0x56, 255]);
   });
 
+  it('paints empty cells with the ground color, but keeps the white-out stitch white', () => {
+    const board = new Board(1, 3);
+    board.place(0, 0, 'knit', '#ffffff');
+    board.place(0, 1, 'erase', '#000000');
+    const thumbnail = renderThumbnail(board.rows, board.cols, board.cells, '#1e1e1e');
+    expect(pixel(thumbnail, 0, 0)).toEqual([255, 255, 255, 255]);
+    expect(pixel(thumbnail, 1, 0)).toEqual([255, 255, 255, 255]);
+    expect(pixel(thumbnail, 2, 0)).toEqual([0x1e, 0x1e, 0x1e, 255]);
+  });
+
   it('fills every cell that a multi-cell stitch covers', () => {
     const board = new Board(1, 3);
     board.place(0, 1, 'right_up_two_one', '#0000ff');
@@ -139,6 +149,14 @@ describe('ThumbnailCache', () => {
     // 更新日時が変わればセル配列が同じ参照でも作り直す。
     edited[0] = packCell(id('knit'), 0xff_0000);
     expect(pixel(cache.get(document(3, edited.buffer)), 0, 0)).toEqual([255, 0, 0, 255]);
+  });
+
+  it('rebuilds the thumbnail when the ground color changes', () => {
+    const cache = new ThumbnailCache();
+    const white = cache.get(document(1));
+    const gray = cache.get({ ...document(1), backgroundColor: '#808080' });
+    expect(gray).not.toBe(white);
+    expect(pixel(gray, 0, 0)).toEqual([0x80, 0x80, 0x80, 255]);
   });
 
   it('rebuilds the thumbnail when the board is resized', () => {

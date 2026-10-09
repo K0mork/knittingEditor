@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { Board } from '../model/Board';
-import { defaultPngCellSize, PNG_CELL_SIZE_RANGE, PNG_PREFERRED_CELL_SIZE, pngLabelLayout, validatePngSize } from './exporters';
+import { Board, parseColor } from '../model/Board';
+import { defaultPngCellSize, PNG_CELL_SIZE_RANGE, PNG_PREFERRED_CELL_SIZE, pngGridStyles, pngLabelLayout, validatePngSize } from './exporters';
 
 describe('defaultPngCellSize', () => {
   it('uses the preferred cell size for ordinary boards', () => {
@@ -24,6 +24,18 @@ describe('defaultPngCellSize', () => {
       expect(size).toBeGreaterThanOrEqual(PNG_CELL_SIZE_RANGE.min);
       expect(size).toBeLessThanOrEqual(PNG_CELL_SIZE_RANGE.max);
     }
+  });
+});
+
+describe('pngGridStyles', () => {
+  it('keeps the previous gray lines on the default white ground', () => {
+    expect(pngGridStyles(24)).toEqual({ minor: { color: '#bbbbbb', width: 1 }, major: { color: '#666666', width: 2 } });
+  });
+
+  it('draws lines lighter than a dark ground', () => {
+    const { minor, major } = pngGridStyles(24, '#1e1e1e');
+    expect(parseColor(minor.color)).toBeGreaterThan(0x1e_1e1e);
+    expect(parseColor(major.color)).toBeGreaterThan(parseColor(minor.color));
   });
 });
 

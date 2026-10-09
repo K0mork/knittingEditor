@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { Board, PatternBlock, Point, Rect } from '../model/Board';
+import { boardSurface, DEFAULT_BACKGROUND_COLOR } from '../model/boardColors';
 import { STITCH_BY_KEY, STITCHES } from '../stitches/catalog';
 import { drawCell } from '../stitches/drawCell';
 import { strokeGrid, type GridLineStyle } from './strokeGrid';
@@ -13,6 +14,8 @@ export const CANVAS_MODE_LABELS: Record<CanvasMode, string> = {
 
 interface Props {
   board: Board;
+  /** 盤面の地の色（`#rrggbb`）。縞と罫線の色もここから作る。 */
+  background?: string;
   revision: number;
   stitchKey: string;
   color: string;
@@ -55,11 +58,13 @@ export function clampViewport(view: Viewport, board: Pick<Board, 'rows' | 'cols'
 /**
  * 画面の罫線。10目・10段ごとの太線は、拡大しているときは太く、縮小しているときは濃さだけで区別する。
  * 最小の4pxまで縮小しても濃さで見分けられるので、通常の線も残してマスを数えられるようにする。
+ * 線の色は地の色から作り、暗い地では地より明るい線にする。
  */
-export function boardGridStyles(cell: number): { minor: GridLineStyle; major: GridLineStyle } {
+export function boardGridStyles(cell: number, background: string = DEFAULT_BACKGROUND_COLOR): { minor: GridLineStyle; major: GridLineStyle } {
+  const surface = boardSurface(background, 'screen');
   return {
-    minor: { color: '#c9cec7', width: 1 },
-    major: { color: '#7d8a83', width: cell >= 12 ? 2 : 1 },
+    minor: { color: surface.minorLine, width: 1 },
+    major: { color: surface.majorLine, width: cell >= 12 ? 2 : 1 },
   };
 }
 
@@ -130,7 +135,8 @@ export function BoardCanvas(props: Props) {
     context.fillStyle = '#f7f4ed';
     context.fillRect(0, 0, width, height);
 
-    const { board, selection, pasteBlock, mode } = propsRef.current;
+    const { board, selection, pasteBlock, mode, background = DEFAULT_BACKGROUND_COLOR } = propsRef.current;
+    const surface = boardSurface(background, 'screen');
     // 画面の大きさ（回転・可変ウィンドウ）や段数・列数、編み図が変わると、
     // 今の位置が範囲の外になることがあるので、描くたびに範囲へ戻す。
     viewportRef.current = clampViewport(viewportRef.current, board, { width, height });
@@ -142,10 +148,10 @@ export function BoardCanvas(props: Props) {
 
     for (let row = firstRow; row <= lastRow; row++) {
       const y = view.y + row * view.cell;
-      context.fillStyle = row % 2 === 0 ? '#f3f4f0' : '#ffffff';
+      context.fillStyle = row % 2 === 0 ? surface.stripe : surface.background;
       context.fillRect(view.x + firstCol * view.cell, y, (lastCol - firstCol + 1) * view.cell, view.cell);
     }
-    const grid = boardGridStyles(view.cell);
+    const grid = boardGridStyles(view.cell, background);
     strokeGrid(context, { x: view.x, y: view.y, cell: view.cell, rows: board.rows, cols: board.cols, firstRow, lastRow, firstCol, lastCol }, grid.minor, grid.major);
 
     const { row: firstGlyphRow, col: firstGlyphCol } = glyphSearchStart(firstRow, firstCol);
@@ -196,7 +202,7 @@ export function BoardCanvas(props: Props) {
     return () => { observer.disconnect(); cancelAnimationFrame(frameRef.current); };
   }, []);
 
-  useEffect(requestDraw, [props.board, props.revision, props.selection, props.mode, props.pasteBlock]);
+  useEffect(requestDraw, [props.board, props.background, props.revision, props.selection, props.mode, props.pasteBlock]);
 
   /** 移動・拡大の結果を範囲に収めて反映する。 */
   const setViewport = (next: Viewport) => {

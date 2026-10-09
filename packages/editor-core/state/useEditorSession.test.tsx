@@ -205,4 +205,49 @@ describe('useEditorSession', () => {
     await view.unmount();
   });
 
+  it('saves a new ground with the chart without adding it to the undo history', async () => {
+    const view = await renderSession();
+    expect(view.session.backgroundColor).toBe('#ffffff');
+    await act(async () => { view.session.setBackgroundColor('#1E1E1E'); });
+    expect(view.session.backgroundColor).toBe('#1e1e1e');
+    expect(view.session.dirty).toBe(true);
+    expect(view.session.canUndo).toBe(false);
+    await view.flush(500);
+
+    expect(mocks.saveDocument).toHaveBeenCalledTimes(1);
+    expect(mocks.saveDocument.mock.calls[0][0]).toMatchObject({ id: 'a', backgroundColor: '#1e1e1e' });
+    expect(view.session.dirty).toBe(false);
+    // 同じ色を選び直しても保存しない。
+    await act(async () => { view.session.setBackgroundColor('#1e1e1e'); });
+    expect(view.session.dirty).toBe(false);
+    await view.unmount();
+  });
+
+  it('keeps a ground chosen while an earlier save is still being written', async () => {
+    let release!: () => void;
+    mocks.saveDocument.mockImplementationOnce((document: ChartDocument) => new Promise((resolve) => {
+      release = () => resolve({ ...document, updatedAt: 50 });
+    }));
+    const view = await renderSession();
+    await act(async () => { view.session.setBackgroundColor('#808080'); });
+    await act(async () => { void view.session.saveNow(); await Promise.resolve(); });
+    await act(async () => { view.session.setBackgroundColor('#1e1e1e'); });
+    await act(async () => { release(); await Promise.resolve(); });
+
+    // 書き込み前の記録（グレー）で上書きされず、あとで選んだ黒が残って保存される。
+    expect(view.session.backgroundColor).toBe('#1e1e1e');
+    expect(view.session.dirty).toBe(true);
+    await view.flush(500);
+    expect(mocks.saveDocument.mock.calls.at(-1)?.[0]).toMatchObject({ backgroundColor: '#1e1e1e' });
+    await view.unmount();
+  });
+
+  it('loads the ground of the chart it switches to', async () => {
+    const view = await renderSession();
+    await act(async () => { await view.session.switchDocument({ ...chart('b', 20), backgroundColor: '#808080' }); });
+    expect(view.session.backgroundColor).toBe('#808080');
+    await act(async () => { await view.session.switchDocument(chart('a', 10)); });
+    expect(view.session.backgroundColor).toBe('#ffffff');
+    await view.unmount();
+  });
 });

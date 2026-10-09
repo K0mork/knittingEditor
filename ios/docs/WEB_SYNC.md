@@ -21,8 +21,8 @@ Web版とiOS版は同じリポジトリで管理する。以前の固定コミ�
 | `ui/EditorView.tsx` | 編集画面の組み立て。見出し（`renderTitle`）、使い方リンクの処理（`onGuideClick`）、復元要求の横取り（`requestRestore`）、案内文（`backupNote`）、「編み図」パネルの一覧の後ろの案内（`documentsNote`、省略時は出さない）、フッター、重ねる要素（`children`）だけを各ビルドから受け取る。 |
 | `ui/StitchPicker.tsx` | 記号ピッカー。フォーカストラップとEscapeでの閉じ方を含む。 |
 | `ui/ColorPicker.tsx` | 記号の色の選択。編み図で使っている色の一覧（`model/usedColors.ts`）と、一覧にない色を選ぶ色選択を出す。 |
-| `ui/GridControls.tsx` | 盤面設定。位置入力と確認は`askText`・`askConfirm`で受け取る。 |
-| `ui/DocumentList.tsx` | 編み図パネルの一覧。縮小画像（`model/thumbnail.ts`）、寸法、更新日時（`ui/documentListText.ts`）と、名前変更・複製・削除のボタン。縮小画像は保存せず、保存済みのセル配列から作るので、IndexedDBの記録と`.knit`の形式は変えていない。 |
+| `ui/GridControls.tsx` | 盤面設定。位置入力と確認は`askText`・`askConfirm`で受け取る。盤面の地の色（背景色）も選ぶ。白・グレー・黒のボタンと色選択で、色は編み図ごとに記録（`ChartDocument.backgroundColor`）と`.knit`へ入る。縞と罫線の色は地の色から作る（`model/boardColors.ts`）。 |
+| `ui/DocumentList.tsx` | 編み図パネルの一覧。縮小画像（`model/thumbnail.ts`）、寸法、更新日時（`ui/documentListText.ts`）と、名前変更・複製・削除のボタン。縮小画像は保存せず、保存済みのセル配列と地の色から作る。 |
 | `ui/ExportControls.tsx` | 保存・出力。PDFの推定ページ数は`export/pdfLayout.ts`をPDF Workerと共有する。 |
 | `state/backupReminder.ts`・`state/useBackupReminder.ts`・`ui/BackupReminderBar.tsx` | 最後の`.knit`書き出し日時の記録と、書き出しを勧める帯。日時は編み図ごとに設定（`lastBackupAt:<編み図ID>`）へ置き、編み図の記録と`.knit`には入れない。勧めは、最後の書き出し（無ければ作成）から7日以上たって変更があるとき、または開いてから50回編集したときに、道具列と盤面の間へ1段だけ出す。「あとで」で3日間（全編み図）出さない。Web版もブラウザのデータ消去やSafariの保存期限で端末内データが消えうるので、iOS版と同じ表示を出し、差分は設けない。帯は指・ポインタを画面に置いている間は出さない。日時は`EditorPlatform.saveFile`の`saved`が`false`（取りやめた）なら記録しない。Web版はiPhone・iPadのSafariの確認ダイアログと共有シートの結果を返し、ダウンロードは`undefined`（不明）を返す。iOS版はネイティブの保存画面・共有シート・確認アラートの結果を`knittingEditorNativeExportFinished`で受け取って返し（#122、`ios/docs/NATIVE_BRIDGE.md`）、保存・共有を終えた日時だけを記録する。 |
 | `ui/hooks.ts` | モーダルのフォーカス管理、ドロワーのフォーカス復帰、トースト、コピー／貼り付けのショートカット。 |

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Board, type PatternBlock } from '../model/Board';
 import { BoardHistory } from '../model/BoardHistory';
+import { backgroundColorOf } from '../model/boardColors';
 import { errorMessage } from '../util/errors';
 import { boardFromDocument, listBlocks, listDocuments, saveDocument, setSetting, type ChartDocument } from '../storage/database';
 
@@ -43,6 +44,8 @@ export interface EditorSession {
   documents: ChartDocument[];
   activeDocument: ChartDocument | undefined;
   board: Board | undefined;
+  /** 開いている編み図の地の色（`#rrggbb`）。 */
+  backgroundColor: string;
   blocks: PatternBlock[];
   revision: number;
   dirty: boolean;
@@ -62,6 +65,8 @@ export interface EditorSession {
   refreshDocuments: () => Promise<void>;
   refreshBlocks: () => Promise<void>;
   applyActiveDocumentName: (name: string) => void;
+  /** 地の色を変える。盤面の編集と同じく自動保存するが、元に戻す履歴には積まない。 */
+  setBackgroundColor: (color: string) => void;
 }
 
 /** 保存済み1件だけを一覧へ反映する。`listDocuments`と同じ更新日時の降順を保つ。 */
@@ -83,6 +88,7 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
   const [documents, setDocuments] = useState<ChartDocument[]>([]);
   const [activeDocument, setActiveDocument] = useState<ChartDocument>();
   const [board, setBoard] = useState<Board>();
+  const [backgroundColor, setBackgroundColorState] = useState(() => backgroundColorOf({}));
   const [blocks, setBlocks] = useState<PatternBlock[]>([]);
   const [revision, setRevision] = useState(0);
   const [dirty, setDirty] = useState(false);
@@ -92,6 +98,9 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
   // 保存はイベントハンドラからも呼ばれる。再描画を待たずに最新値を読むためrefでも持つ。
   const activeDocumentRef = useRef<ChartDocument | undefined>(undefined);
   const boardRef = useRef<Board | undefined>(undefined);
+  // 地の色は編み図の記録ではなくここを正とする。書き込み中に色を変えても、書き込み前の記録で
+  // 上書きされて古い色へ戻らないようにするため。保存するときに記録へ入れる。
+  const backgroundRef = useRef(backgroundColor);
   const dirtyRef = useRef(false);
   const editGenerationRef = useRef(0);
   // 履歴は開いている編み図ごとに持ち、端末へは保存しない。切り替えると捨てる。
@@ -114,7 +123,7 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
     const generation = editGenerationRef.current;
     let saved: ChartDocument;
     try {
-      saved = await saveDocument(document, target);
+      saved = await saveDocument({ ...document, backgroundColor: backgroundRef.current }, target);
     } catch (error) {
       optionsRef.current.onSaveError(error, trigger);
       return 'failed';
@@ -138,10 +147,12 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
       const document = initialized.documents.find((item) => item.id === initialized.activeId) ?? initialized.documents[0];
       activeDocumentRef.current = document;
       boardRef.current = boardFromDocument(document);
+      backgroundRef.current = backgroundColorOf(document);
       resetHistory(boardRef.current);
       setDocuments(initialized.documents);
       setActiveDocument(document);
       setBoard(boardRef.current);
+      setBackgroundColorState(backgroundRef.current);
       setBlocks(initialized.blocks);
       optionsRef.current.onInitialized?.(initialized);
     })().catch((error) => {
@@ -204,10 +215,12 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
     const nextBoard = boardFromDocument(document);
     activeDocumentRef.current = document;
     boardRef.current = nextBoard;
+    backgroundRef.current = backgroundColorOf(document);
     resetHistory(nextBoard);
     dirtyRef.current = false;
     setActiveDocument(document);
     setBoard(nextBoard);
+    setBackgroundColorState(backgroundRef.current);
     setRevision((value) => value + 1);
     setDirty(false);
     await setSetting('activeDocumentId', document.id);
@@ -226,8 +239,17 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
     });
   }, []);
 
+  const setBackgroundColor = useCallback((color: string) => {
+    const next = backgroundColorOf({ backgroundColor: color });
+    if (next === backgroundRef.current) return;
+    backgroundRef.current = next;
+    setBackgroundColorState(next);
+    changed();
+  }, [changed]);
+
   return {
-    documents, activeDocument, board, blocks, revision, dirty,
+    documents, activeDocument, board, backgroundColor, blocks, revision, dirty,
     changed, commitEdit, canUndo, canRedo, undo, redo, saveNow, switchDocument, refreshDocuments, refreshBlocks, applyActiveDocumentName,
+    setBackgroundColor,
   };
 }

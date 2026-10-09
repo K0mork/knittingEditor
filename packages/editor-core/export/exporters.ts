@@ -1,4 +1,5 @@
 import type { Board } from '../model/Board';
+import { boardSurface, DEFAULT_BACKGROUND_COLOR } from '../model/boardColors';
 import { drawCell } from '../stitches/drawCell';
 import { strokeGrid, type GridLineStyle } from '../canvas/strokeGrid';
 import type { PdfLayoutOptions } from './pdfLayout';
@@ -63,15 +64,22 @@ export function validatePngSize(board: Board, cellSize: number): { width: number
   return { width, height, valid: true };
 }
 
-/** PNGの罫線。10目・10段ごとの太線は、セルが小さいときは1pxにして記号の邪魔にならないようにする。 */
-export function pngGridStyles(cellSize: number): { minor: GridLineStyle; major: GridLineStyle } {
+/**
+ * PNGの罫線。10目・10段ごとの太線は、セルが小さいときは1pxにして記号の邪魔にならないようにする。
+ * 線の色は地の色から作る。
+ */
+export function pngGridStyles(cellSize: number, background: string = DEFAULT_BACKGROUND_COLOR): { minor: GridLineStyle; major: GridLineStyle } {
+  const surface = boardSurface(background, 'png');
   return {
-    minor: { color: '#bbbbbb', width: 1 },
-    major: { color: '#666666', width: cellSize >= 12 ? 2 : 1 },
+    minor: { color: surface.minorLine, width: 1 },
+    major: { color: surface.majorLine, width: cellSize >= 12 ? 2 : 1 },
   };
 }
 
-export async function renderPng(board: Board, cellSize: number): Promise<Blob> {
+/**
+ * 盤面をPNGにする。地の色（`background`）は盤面のマスにだけ塗り、段・目番号の帯は白い紙のままにする。
+ */
+export async function renderPng(board: Board, cellSize: number, background: string = DEFAULT_BACKGROUND_COLOR): Promise<Blob> {
   const size = validatePngSize(board, cellSize);
   if (!size.valid) throw new Error(`${size.reason}。PDF保存を利用してください。`);
   const canvas = document.createElement('canvas');
@@ -105,11 +113,12 @@ export async function renderPng(board: Board, cellSize: number): Promise<Blob> {
     context.fillText(String(number), left / 2, y);
     context.fillText(String(number), right + left / 2, y);
   }
+  const surface = boardSurface(background, 'png');
   for (let row = 0; row < board.rows; row++) {
-    context.fillStyle = row % 2 === 0 ? '#f3f4f0' : '#fff';
+    context.fillStyle = row % 2 === 0 ? surface.stripe : surface.background;
     context.fillRect(left, top + row * cellSize, board.cols * cellSize, cellSize);
   }
-  const grid = pngGridStyles(cellSize);
+  const grid = pngGridStyles(cellSize, background);
   strokeGrid(
     context,
     { x: left, y: top, cell: cellSize, rows: board.rows, cols: board.cols, firstRow: 0, lastRow: board.rows - 1, firstCol: 0, lastCol: board.cols - 1 },
@@ -125,7 +134,7 @@ export async function renderPng(board: Board, cellSize: number): Promise<Blob> {
   return new Promise((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('PNG生成に失敗しました')), 'image/png'));
 }
 
-export async function renderPdf(board: Board, options: PdfLayoutOptions): Promise<Blob> {
+export async function renderPdf(board: Board, options: PdfLayoutOptions, background: string = DEFAULT_BACKGROUND_COLOR): Promise<Blob> {
   const worker = new Worker(new URL('./pdf.worker.ts', import.meta.url), { type: 'module' });
   const cells = board.cells.buffer.slice(0);
   return new Promise((resolve, reject) => {
@@ -135,7 +144,7 @@ export async function renderPdf(board: Board, options: PdfLayoutOptions): Promis
       else reject(new Error(event.data.error ?? 'PDF生成に失敗しました'));
     };
     worker.onerror = (event) => { worker.terminate(); reject(new Error(event.message)); };
-    worker.postMessage({ rows: board.rows, cols: board.cols, cells, ...options }, [cells]);
+    worker.postMessage({ rows: board.rows, cols: board.cols, cells, background, ...options }, [cells]);
   });
 }
 

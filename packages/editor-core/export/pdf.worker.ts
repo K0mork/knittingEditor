@@ -2,7 +2,8 @@
 import { Zlib, strToU8, zlibSync } from 'fflate';
 import { STITCH_BY_ID, STITCHES } from '../stitches/catalog';
 import { GLYPH_CELL, glyphPdfCommands } from '../stitches/glyphs';
-import { cellColor, cellStitchId } from '../model/Board';
+import { cellColor, cellStitchId, parseColor } from '../model/Board';
+import { boardSurface, DEFAULT_BACKGROUND_COLOR } from '../model/boardColors';
 import { PDF_LABEL_FONT_SIZE, PDF_LABEL_GAP, pdfLabelWidth, pdfPageLayout, type PdfLayoutOptions, type PdfTile } from './pdfLayout';
 import { errorMessage } from '../util/errors';
 import { labelStride, showsLabel } from './labels';
@@ -12,6 +13,8 @@ export interface PdfRequest extends PdfLayoutOptions {
   rows: number;
   cols: number;
   cells: ArrayBuffer;
+  /** 盤面の地の色（`#rrggbb`）。省略すると白。 */
+  background?: string;
 }
 
 type PdfObject = Uint8Array;
@@ -78,14 +81,28 @@ function tileLabels(tile: PdfTile, request: PdfRequest, originX: number, originY
   return commands;
 }
 
-/** 通常の罫線と、10目・10段ごとの太線の太さ（pt）と濃さ。 */
-const PDF_MINOR_GRID = '0.35 w 0.78 G';
-const PDF_MAJOR_GRID_GRAY = 0.4;
+/** 通常の罫線と、10目・10段ごとの太線の太さ（pt）。色は地の色から作る（`boardSurface`）。 */
+const PDF_MINOR_GRID_WIDTH = 0.35;
 const PDF_MAJOR_GRID_MAX_WIDTH = 0.9;
+
+/** `#rrggbb`をPDFの色の値（0〜1を3つ）にする。 */
+function pdfRgb(color: string): string {
+  const value = parseColor(color);
+  return [16, 8, 0].map((shift) => (((value >> shift) & 255) / 255).toFixed(3)).join(' ');
+}
 
 /** 太線の太さ。盤面を1ページに縮めてセルが小さいときは、記号を潰さないよう細くする。 */
 export function pdfMajorGridWidth(cellSize: number): number {
   return Math.min(PDF_MAJOR_GRID_MAX_WIDTH, Math.max(0.35, cellSize * 0.07));
+}
+
+/**
+ * 盤面のマスへ地の色を塗る。白い紙と同じ白い地では塗らない。段・目番号の帯は紙のままにする。
+ */
+function tileBackground(tile: PdfTile, request: PdfRequest, originX: number, originY: number, cellSize: number): string {
+  const background = request.background ?? DEFAULT_BACKGROUND_COLOR;
+  if (parseColor(background) === 0xff_ffff) return '';
+  return `${pdfRgb(background)} rg ${originX.toFixed(3)} ${originY.toFixed(3)} ${(tile.cols * cellSize).toFixed(3)} ${(tile.rows * cellSize).toFixed(3)} re f\n`;
 }
 
 /**
@@ -102,12 +119,13 @@ function tileGrid(tile: PdfTile, request: PdfRequest, originX: number, originY: 
   // PDFの座標は下が0なので、上から`line`本目の横線は`tile.rows - line`段ぶん上にある。
   const rowLine = (line: number) => { const y = (originY + (tile.rows - line) * cellSize).toFixed(3); return `${left} ${y} m ${right} ${y} l `; };
   const colLine = (line: number) => { const x = (originX + line * cellSize).toFixed(3); return `${x} ${bottom} m ${x} ${top} l `; };
-  let minor = `${PDF_MINOR_GRID} `;
+  const surface = boardSurface(request.background ?? DEFAULT_BACKGROUND_COLOR, 'pdf');
+  let minor = `${PDF_MINOR_GRID_WIDTH} w ${pdfRgb(surface.minorLine)} RG `;
   for (let line = 0; line <= tile.rows; line++) if (!majorRows.has(line)) minor += rowLine(line);
   for (let line = 0; line <= tile.cols; line++) if (!majorCols.has(line)) minor += colLine(line);
   let commands = `${minor}S\n`;
   if (majorRows.size || majorCols.size) {
-    let major = `${pdfMajorGridWidth(cellSize).toFixed(3)} w ${PDF_MAJOR_GRID_GRAY} G `;
+    let major = `${pdfMajorGridWidth(cellSize).toFixed(3)} w ${pdfRgb(surface.majorLine)} RG `;
     for (const line of majorRows) major += rowLine(line);
     for (const line of majorCols) major += colLine(line);
     commands += `${major}S\n`;
@@ -140,6 +158,7 @@ export function buildPdf(request: PdfRequest): Uint8Array {
     const originX = margin + rowLabelWidth;
     const originY = pageHeight - margin - colLabelHeight - tile.rows * cellSize;
     function* pageCommands(): Generator<string> {
+      yield tileBackground(tile, request, originX, originY, cellSize);
       yield tileGrid(tile, request, originX, originY, cellSize);
       yield tileLabels(tile, request, originX, originY, cellSize);
       for (let localRow = 0; localRow < tile.rows; localRow++) {
