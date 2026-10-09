@@ -37,7 +37,11 @@ final class WebViewModel {
 
     func webContentDidBecomeReady() {
         webContentReady = true
-        isPreparingEditor = false
+        // WebViewからの通知は表示の外で届くので、表示側の`.animation`では消える動きが付かない。
+        // ここで動きを付けて、準備中の表示から編集画面へふわっとつなぐ（#117）。
+        withAnimation(EditorLoadingStyle.dismissAnimation(reduceMotion: UIAccessibility.isReduceMotionEnabled)) {
+            isPreparingEditor = false
+        }
         hasShownEditor = true
         flushPendingBackupIfReady()
     }
