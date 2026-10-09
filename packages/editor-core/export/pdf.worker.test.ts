@@ -43,6 +43,30 @@ function majorGrid(page: string): { width: number; horizontal: number[]; vertica
 const gridPages = (pdf: Uint8Array) => decodedStreams(pdf).filter((stream) => stream.includes('0.35 w 0.780 0.780 0.780 RG'));
 
 describe('PDF worker', () => {
+  it.each(STITCHES.filter((stitch) => stitch.width > 1 || stitch.height > 1).flatMap((stitch) =>
+    [-1, 0].map((rowOffset) => ({ stitch, key: stitch.key, rowOffset })),
+  ))('draws overlapping $key (row offset $rowOffset) on every intersecting tile within a board clip', ({ stitch, rowOffset }) => {
+    const input: PdfRequest = { ...request(60, 70, false), layout: 'tiled' };
+    const layout = pdfPageLayout(input.rows, input.cols, input);
+    // 幅の広い記号は重なり列より前、2段の記号は重なり段から置く。
+    const row = layout.stepRows + rowOffset;
+    const col = stitch.width > 1 ? layout.stepCols - 1 : layout.stepCols;
+    new Uint32Array(input.cells)[row * input.cols + col] = packCell(stitch.id, 0x123456);
+    const pages = gridPages(buildPdf(input));
+    layout.tiles.forEach((tile, index) => {
+      const overlaps = row < tile.row + tile.rows && row + stitch.height > tile.row && col < tile.col + tile.cols && col + stitch.width > tile.col;
+      expect(pages[index].includes(`/S${stitch.id} Do`)).toBe(overlaps);
+      const originX = layout.margin + layout.rowLabelWidth;
+      const originY = layout.pageHeight - layout.margin - layout.colLabelHeight - tile.rows * layout.cellSize;
+      const clip = `q ${originX.toFixed(3)} ${originY.toFixed(3)} ${(tile.cols * layout.cellSize).toFixed(3)} ${(tile.rows * layout.cellSize).toFixed(3)} re W n`;
+      expect(pages[index]).toContain(clip);
+      if (overlaps) {
+        expect(pages[index].indexOf(clip)).toBeLessThan(pages[index].indexOf(`/S${stitch.id} Do`));
+        expect(pages[index]).toMatch(/Do Q\nQ\n0 g BT/);
+      }
+    });
+  });
+
   it('writes a syntactically structured PDF', () => {
     const pdf = buildPdf(request(20, 20, true));
     const text = new TextDecoder().decode(pdf);

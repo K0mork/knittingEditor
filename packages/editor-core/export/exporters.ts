@@ -134,6 +134,8 @@ export async function renderPng(board: Board, cellSize: number, background: stri
   return new Promise((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('PNG生成に失敗しました')), 'image/png'));
 }
 
+const PDF_WORKER_ERROR = 'PDFを生成できませんでした。ページを再読み込みして、もう一度お試しください。';
+
 export async function renderPdf(board: Board, options: PdfLayoutOptions, background: string = DEFAULT_BACKGROUND_COLOR): Promise<Blob> {
   const worker = new Worker(new URL('./pdf.worker.ts', import.meta.url), { type: 'module' });
   const cells = board.cells.buffer.slice(0);
@@ -141,9 +143,9 @@ export async function renderPdf(board: Board, options: PdfLayoutOptions, backgro
     worker.onmessage = (event: MessageEvent<{ ok: boolean; pdf?: ArrayBuffer; error?: string }>) => {
       worker.terminate();
       if (event.data.ok && event.data.pdf) resolve(new Blob([event.data.pdf], { type: 'application/pdf' }));
-      else reject(new Error(event.data.error ?? 'PDF生成に失敗しました'));
+      else reject(new Error(event.data.error?.trim() || PDF_WORKER_ERROR));
     };
-    worker.onerror = (event) => { worker.terminate(); reject(new Error(event.message)); };
+    worker.onerror = (event) => { worker.terminate(); reject(new Error(event.message?.trim() || PDF_WORKER_ERROR)); };
     worker.postMessage({ rows: board.rows, cols: board.cols, cells, background, ...options }, [cells]);
   });
 }
