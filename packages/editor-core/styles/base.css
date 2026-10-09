@@ -23,8 +23,11 @@
   /* 入力欄や道具のボタンのように、紙より一段明るい面。 */
   --field: #ffffff;
   --border: #d5dbd3;
+  /* ボタンと入力欄の枠。文字以外の部分も地と3:1以上の差にする（#144）。区切り線やカードの枠は--borderのまま。 */
+  --control-border: #818b84;
   --shadow: 0 8px 28px rgba(34, 56, 42, .13);
-  --muted: #67756e;
+  /* 補足の文字。選択中の項目の薄い緑（--selected）や地（#f3f0e8）の上でも4.5:1以上にする（#144）。 */
+  --muted: #626f69;
   --label: #53605a;
   --ink: #202622;
   --selected: #edf7ef;
@@ -34,10 +37,11 @@
   /* 補足の文字。iOS版の準備中の表示（`AppColors.editorSecondaryText`）と同じ色。 */
   --hint-text: #526059;
   --header-start: #346f42;
-  --header-end: #55945e;
+  /* ヘッダーの右側。白い文字と4.5:1以上になる明るさにする（#144）。 */
+  --header-end: #43824d;
   --toast: #283c30;
   --danger: #9b2929;
-  --danger-border: #d8aaaa;
+  --danger-border: #c27676;
   --warning: #9b5b18;
   --notice-text: #5a4313;
   --notice: #fff6df;
@@ -69,6 +73,9 @@
     --paper: #212824;
     --field: #29312c;
     --border: #3c4741;
+    --control-border: #7a867f;
+    /* 緑で塗ったボタンの形が、暗い地と3:1以上の差になる明るさ。白い文字とも4.5:1以上ある。 */
+    --green: #428150;
     --shadow: 0 8px 28px rgba(0, 0, 0, .45);
     --muted: #a5b2aa;
     --label: #b6c2ba;
@@ -82,7 +89,7 @@
     --header-end: #2d5a36;
     --toast: #34503e;
     --danger: #f2a0a0;
-    --danger-border: #7a3d3d;
+    --danger-border: #b06464;
     --warning: #eeb36a;
     --notice-text: #f1dca6;
     --notice: #352c1a;
@@ -99,7 +106,7 @@
 html, body, #root { width: 100%; height: 100%; margin: 0; overflow: hidden; }
 .visually-hidden { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
 button, input, select { font: inherit; }
-button { min-width: var(--tap-min-width); min-height: var(--tap-size); border: 1px solid var(--border); border-radius: 10px; background: var(--paper); color: inherit; padding: 8px 13px; cursor: pointer; }
+button { min-width: var(--tap-min-width); min-height: var(--tap-size); border: 1px solid var(--control-border); border-radius: 10px; background: var(--paper); color: inherit; padding: 8px 13px; cursor: pointer; }
 button:hover { border-color: var(--accent); }
 button:focus-visible, input:focus-visible, select:focus-visible, [tabindex="-1"]:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 button.primary, button.active { color: white; background: var(--green); border-color: var(--green); }
@@ -112,7 +119,7 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 .app-header h1 { font-size: 1.1rem; margin: 0; letter-spacing: .02em; }
 .app-header h1 { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .header-actions { min-width: 0; display: flex; align-items: center; flex: 0 1 auto; gap: 7px; }
-.header-guide, .header-document { min-height: var(--tap-size); font-size: min(1rem, 20px); display: inline-flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,.55); border-radius: 10px; padding: 8px 13px; color: white; background: rgba(255,255,255,.12); text-decoration: none; }
+.header-guide, .header-document { min-height: var(--tap-size); font-size: min(1rem, 20px); display: inline-flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,.75); border-radius: 10px; padding: 8px 13px; color: white; background: rgba(0,0,0,.1); text-decoration: none; }
 .header-guide:hover, .header-document:hover { border-color: white; }
 .header-guide:focus-visible { outline: 3px solid rgba(255,255,255,.45); outline-offset: 2px; }
 
@@ -207,7 +214,7 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 .button-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 7px; }
 .size-inputs { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: end; }
 .size-inputs label, .export-controls label { display: grid; gap: 4px; font-size: .8rem; color: var(--label); }
-.size-inputs input, .export-controls select { min-height: var(--field-size); width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: 5px 8px; color: inherit; background: var(--field); }
+.size-inputs input, .export-controls select { min-height: var(--field-size); width: 100%; border: 1px solid var(--control-border); border-radius: 8px; padding: 5px 8px; color: inherit; background: var(--field); }
 .grid-controls > .danger { width: 100%; margin-top: 20px; }
 .background-presets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
 .background-preset { display: flex; align-items: center; justify-content: center; gap: 8px; }

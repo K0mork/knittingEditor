@@ -6,8 +6,8 @@
 /* Web版のヘッダーはSEO向けの説明文と現在の編み図名を並べる。iOS版にはない。 */
 .app-heading-row { min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 10px; }
 .app-tagline, .app-document-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.app-tagline { margin: 0; font-size: .72rem; opacity: .9; }
-.app-document-name { margin: 2px 0 0; font-size: .76rem; opacity: .85; }
+.app-tagline { margin: 0; font-size: .72rem; }
+.app-document-name { margin: 2px 0 0; font-size: .76rem; }
 
 @media (max-width: 420px) {
   .app-tagline { font-size: .66rem; }

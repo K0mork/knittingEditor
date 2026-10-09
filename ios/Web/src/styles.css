@@ -27,7 +27,7 @@ input, textarea, [contenteditable]:not([contenteditable="false"]) { -webkit-user
 
 /* iOS版のヘッダーは編み図名だけを出す。Web版の説明文・編み図名クラスは持たない。 */
 .app-header h1, .app-header p { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.app-header p { margin: 2px 0 0; font-size: .76rem; opacity: .85; }
+.app-header p { margin: 2px 0 0; font-size: .76rem; }
 
 .export-controls input[type="range"] { min-height: var(--tap-size); }
 
@@ -35,7 +35,7 @@ input, textarea, [contenteditable]:not([contenteditable="false"]) { -webkit-user
 .app-dialog-backdrop { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; overflow: auto; padding: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left)); background: var(--backdrop); }
 .app-dialog { width: min(100%, 420px); max-height: min(90vh, 560px); max-height: min(90dvh, 560px); overflow: auto; padding: 20px; border: 1px solid var(--border); border-radius: 18px; background: var(--paper); box-shadow: var(--shadow); }
 .app-dialog h2 { margin: 0 0 14px; font-size: 1.05rem; line-height: 1.5; }
-.app-dialog input { width: 100%; min-height: var(--tap-size); margin-bottom: 14px; border: 1px solid var(--border); border-radius: 9px; padding: 8px 10px; color: inherit; background: var(--field); }
+.app-dialog input { width: 100%; min-height: var(--tap-size); margin-bottom: 14px; border: 1px solid var(--control-border); border-radius: 9px; padding: 8px 10px; color: inherit; background: var(--field); }
 .app-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; }
 .app-dialog-actions button { white-space: nowrap; }
 
