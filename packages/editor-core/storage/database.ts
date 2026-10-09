@@ -114,8 +114,8 @@ export async function renameDocument(id: string, name: string): Promise<void> {
   await db.put('documents', { ...document, name, updatedAt: Date.now() });
 }
 
-export async function duplicateDocument(id: string): Promise<ChartDocument> {
-  const source = await (await database()).get('documents', id);
+export async function duplicateDocument(id: string, snapshot?: ChartDocument): Promise<ChartDocument> {
+  const source = snapshot ?? await (await database()).get('documents', id);
   if (!source) throw new Error('編み図が見つかりません');
   const now = Date.now();
   const copy: ChartDocument = {

@@ -62,6 +62,9 @@ export interface EditorSession {
   saveNow: (trigger?: SaveTrigger) => Promise<SaveOutcome>;
   /** 切り替え前に保留中の変更を書き込む。書き切れないときは盤面を差し替えず理由を返す。 */
   switchDocument: (document: ChartDocument, saveCurrent?: boolean) => Promise<SwitchOutcome>;
+  /** 現在の盤面を独立したセル配列へコピーする。保存済み記録には依存しない。 */
+  activeSnapshot: () => ChartDocument | undefined;
+  updateDocument: (document: ChartDocument) => void;
   refreshDocuments: () => Promise<void>;
   refreshBlocks: () => Promise<void>;
   applyActiveDocumentName: (name: string) => void;
@@ -228,6 +231,17 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
     return 'switched';
   }, [saveNow, resetHistory]);
 
+  const activeSnapshot = useCallback(() => {
+    const document = activeDocumentRef.current;
+    const target = boardRef.current;
+    if (!document || !target) return undefined;
+    return { ...document, rows: target.rows, cols: target.cols,
+      cells: target.cells.slice().buffer as ArrayBuffer, backgroundColor: backgroundRef.current };
+  }, []);
+  const updateDocument = useCallback((document: ChartDocument) => {
+    setDocuments((current) => mergeSavedDocument(current, document));
+  }, []);
+
   const refreshDocuments = useCallback(async () => setDocuments(await listDocuments()), []);
   const refreshBlocks = useCallback(async () => setBlocks(await listBlocks()), []);
 
@@ -251,6 +265,6 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
   return {
     documents, activeDocument, board, backgroundColor, blocks, revision, dirty,
     changed, commitEdit, canUndo, canRedo, undo, redo, saveNow, switchDocument, refreshDocuments, refreshBlocks, applyActiveDocumentName,
-    setBackgroundColor,
+    setBackgroundColor, activeSnapshot, updateDocument,
   };
 }

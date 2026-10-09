@@ -259,9 +259,15 @@ export function useEditorController(options: EditorControllerOptions) {
   };
 
   const duplicateChart = async (document: ChartDocument) => {
-    await duplicateDocument(document.id);
-    await refreshDocuments();
+    try {
+      // 保存の成否や書き込み中の編集に依存せず、押した時点の盤面を独立した配列へコピーする。
+      const snapshot = document.id === activeDocument?.id ? session.activeSnapshot() : undefined;
+      const copy = await duplicateDocument(document.id, snapshot?.id === document.id ? snapshot : undefined);
+      session.updateDocument(copy);
+      notify('編み図を複製しました。');
+    } catch { notify('編み図の複製に失敗しました。もう一度お試しください。'); }
   };
+
 
   const deleteChart = async (document: ChartDocument) => {
     if (!(await askConfirm(`「${document.name}」を削除しますか？`))) return;
