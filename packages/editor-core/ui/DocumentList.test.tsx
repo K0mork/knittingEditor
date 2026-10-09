@@ -124,11 +124,43 @@ describe('DocumentList', () => {
     const handlers = render({ documents: [only] });
     const button = (name: string) => container!.querySelector<HTMLButtonElement>(`button[aria-label="${name}"]`)!;
     act(() => container!.querySelector<HTMLButtonElement>('.document-open')!.click());
-    act(() => button('名前変更').click());
-    act(() => button('複製').click());
+    act(() => button('ひとつだけの名称を変更').click());
+    act(() => button('ひとつだけを複製').click());
     expect(handlers.onOpen).toHaveBeenCalledWith(only);
     expect(handlers.onRename).toHaveBeenCalledWith(only);
     expect(handlers.onDuplicate).toHaveBeenCalledWith(only);
-    expect(button('削除').disabled).toBe(true);
+    expect(button('ひとつだけを削除').disabled).toBe(true);
+  });
+
+  it('names each action button with its visible text and the chart it acts on', () => {
+    const documents = [chart('a', 'ケーブル', 1), chart('b', '地模様', 1)];
+    const handlers = render({ documents });
+    const actions = (index: number) => [...container!.querySelectorAll('li.document')[index].querySelectorAll<HTMLButtonElement>('.document-actions button')]
+      .map((button) => ({ text: button.textContent, name: button.getAttribute('aria-label') }));
+    expect(actions(0)).toEqual([
+      { text: '名称', name: 'ケーブルの名称を変更' },
+      { text: '複製', name: 'ケーブルを複製' },
+      { text: '削除', name: 'ケーブルを削除' },
+    ]);
+    expect(actions(1)).toEqual([
+      { text: '名称', name: '地模様の名称を変更' },
+      { text: '複製', name: '地模様を複製' },
+      { text: '削除', name: '地模様を削除' },
+    ]);
+    // 表示の文字を読み上げ名に含め、音声コントロールで表示どおりに呼んでも押せるようにする。
+    for (const { text, name } of [...actions(0), ...actions(1)]) expect(name).toContain(text);
+
+    const button = (name: string) => container!.querySelector<HTMLButtonElement>(`button[aria-label="${name}"]`)!;
+    act(() => button('地模様の名称を変更').click());
+    act(() => button('ケーブルを複製').click());
+    act(() => button('地模様を削除').click());
+    expect(handlers.onRename).toHaveBeenCalledWith(documents[1]);
+    expect(handlers.onDuplicate).toHaveBeenCalledWith(documents[0]);
+    expect(handlers.onDelete).toHaveBeenCalledWith(documents[1]);
+
+    // 名前を変えると、ボタンの読み上げ名も新しい名前になる。
+    render({ documents: [chart('a', 'ケーブル', 1), chart('b', '縄編み', 2)] });
+    expect(actions(1).map(({ name }) => name)).toEqual(['縄編みの名称を変更', '縄編みを複製', '縄編みを削除']);
+    expect(container!.querySelector('button[aria-label^="地模様"]')).toBeNull();
   });
 });

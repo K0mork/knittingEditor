@@ -544,7 +544,7 @@ test('does not overwrite a renamed chart with a pending autosave', async ({ page
 
   await page.getByRole('button', { name: '編み図' }).click();
   page.once('dialog', async (dialog) => dialog.accept('名称変更後'));
-  await page.getByRole('button', { name: '名前変更' }).click();
+  await page.getByRole('button', { name: '新しい編み図の名称を変更', exact: true }).click();
   await page.waitForTimeout(700);
 
   const names = await page.evaluate(async () => {
@@ -611,7 +611,7 @@ test('describes the board and the current mode for assistive technology', async 
 for (const action of ['switch', 'restore'] as const) {
   test(`preserves unsaved edits when ${action} cannot save`, async ({ page }) => {
     await page.getByRole('button', { name: '編み図', exact: true }).click();
-    await page.getByRole('button', { name: '複製', exact: true }).click();
+    await page.getByRole('button', { name: '新しい編み図を複製', exact: true }).click();
     await expect(page.locator('.document')).toHaveCount(2);
     await page.getByRole('button', { name: '閉じる', exact: true }).click();
     await page.evaluate(() => {
@@ -647,7 +647,7 @@ for (const action of ['switch', 'restore'] as const) {
 
 test('explains why a switch is blocked by an edit that lands during the save', async ({ page }) => {
   await page.getByRole('button', { name: '編み図', exact: true }).click();
-  await page.getByRole('button', { name: '複製', exact: true }).click();
+  await page.getByRole('button', { name: '新しい編み図を複製', exact: true }).click();
   await expect(page.locator('.document')).toHaveCount(2);
   await page.getByRole('button', { name: '閉じる', exact: true }).click();
 
