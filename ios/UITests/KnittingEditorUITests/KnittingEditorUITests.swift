@@ -751,6 +751,42 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertEqual(app.state, .runningForeground, "\(dismissal): \(app.debugDescription)")
     }
 
+    /// 共有先が見えることと、閉じた直後の最初のタップが編集画面へ届くことを確かめる。
+    func testShareSheetsDismissBackToEditor() {
+        let app = XCUIApplication()
+        app.launch()
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
+        for orientation in [UIDeviceOrientation.portrait, .landscapeLeft] {
+            if orientation == .landscapeLeft { rotateToLandscape(app) }
+            for export in ["PNGを保存", "PDFを保存", "この編み図"] {
+                app.buttons["保存"].tap()
+                let button = app.buttons[export]
+                assertHittableAfterScrolling(button, in: app)
+                button.tap()
+                let share = app.buttons["共有"]
+                XCTAssertTrue(share.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+                share.tap()
+                let copy = app.buttons.matching(NSPredicate(format: "label IN %@", ["Copy", "コピー"])).firstMatch
+                XCTAssertTrue(copy.waitForExistence(timeout: 20), app.debugDescription)
+                add(screenshotAttachment(named: "共有-\(export)-\(orientation.rawValue)"))
+                if UIDevice.current.userInterfaceIdiom == .pad {
+                    // ポップオーバー外のタップで閉じる。編集操作のタップとは別に行う。
+                    app.windows.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.02, dy: 0.1)).tap()
+                } else {
+                    let close = app.buttons.matching(NSPredicate(format: "label IN %@", ["Close", "閉じる", "Cancel", "キャンセル"])).firstMatch
+                    XCTAssertTrue(close.waitForExistence(timeout: 10), app.debugDescription)
+                    close.tap()
+                }
+                assertDisappears(copy, from: app)
+                app.buttons["閉じる"].tap()
+                assertDisappears(app.buttons["この編み図"], from: app)
+                app.buttons["盤面"].tap()
+                XCTAssertTrue(app.buttons["上に段"].waitForExistence(timeout: 10), app.debugDescription)
+                app.buttons["閉じる"].tap()
+            }
+        }
+    }
+
     func testPngAndPdfExportsReachNativeFileActions() {
         let app = XCUIApplication()
         app.launch()

@@ -1,0 +1,8 @@
+# 2026-10-10 — iPadの共有位置と共有失敗の通知を修正
+
+- 影響: iPadのPNG・PDF・個別`.knit`の共有シートを、表示中のビュー中央の1×1矩形に配置する。共有結果にcompleted・cancelled・errorを追加し、エラー時は「共有に失敗しました。もう一度共有を試してください。」と通知する。キャンセルは通知せず、キャンセル・エラーではバックアップ日時と評価依頼の成功実績を記録しない。結果の重複通知は無視する。#158、#191の修正。Closes #191を予定し、#158のClosesは各OS・可変幅の手動確認後に判断する。
+- 主なファイル: `ios/App/WebViewContainer.swift`、`ios/App/NativeBridgeMessage.swift`、`ios/Web/src/nativeBridge.ts`。
+- テスト: Swiftの共有完了・キャンセル・エラー、重複完了、一時ファイル削除、中央矩形。iOS WebのVitestで実際の編集画面から共有結果を受け、通知とバックアップ日時を検証。ブリッジの重複・未知IDのエラー通知抑止。XCUITest `testShareSheetsDismissBackToEditor`で縦横のPNG・PDF・個別`.knit`の共有先の表示と、閉じた後の最初のタップからの操作を検証する。
+- 検証: `npm ci`成功。`npm run typecheck`成功。`npm test`成功（37ファイル、259テスト）。`npm run build`成功。`npm run check:dist`成功。`(cd ios/Web && ../../node_modules/.bin/tsc -p tsconfig.app.json --noEmit)`成功。`(cd ios/Web && ../../node_modules/.bin/vitest run --config vite.config.ts)`成功（9ファイル、38テスト）。`xcrun swiftc -parse ios/App/WebViewContainer.swift ios/App/NativeBridgeMessage.swift ios/Tests/KnittingEditorAppTests/NativeExportResultTests.swift ios/UITests/KnittingEditorUITests/KnittingEditorUITests.swift`成功。`git diff --check`成功。Sandboxではブラウザ・Simulatorを起動できないため、`npm run test:e2e`（Chromium/WebKit）、Swiftの型検査・単体テスト・XCUITest、iOSビルドは未実行で検証担当に委ねる。XcodeGen、iPhone/iPad Simulator、更新復元、unsigned Release Archive、オフライン同梱物検査はPR CIに委ねる。iOS 18.2・26・27、iPad全画面・Split View等の可変幅・縦横の手動確認と共有先選択、閉じた後の編集操作および画面写真は未確認。
+- コミット: `git add`と`git commit -m 'fix: anchor iPad share sheets and report sharing failures'`はGit管理領域の`index.lock`作成が`Operation not permitted`で拒否され、未コミット。
+- デプロイ影響: Pagesはなし。iOSアプリへの同梱時に反映する。配布後はPNG・PDF・個別`.knit`の共有、閉じた後の操作、バックアップ日時を確認する。
