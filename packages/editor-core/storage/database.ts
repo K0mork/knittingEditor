@@ -90,8 +90,16 @@ export async function createDocument(name = '新しい編み図', rows = 20, col
     cells: board.cells.slice().buffer as ArrayBuffer, createdAt: now, updatedAt: now,
   };
   const db = await database();
-  await db.put('documents', document);
-  await setSetting('activeDocumentId', document.id);
+  const transaction = db.transaction(['documents', 'settings'], 'readwrite');
+  try {
+    await transaction.objectStore('documents').put(document);
+    await transaction.objectStore('settings').put({ key: 'activeDocumentId', value: document.id });
+    await transaction.done;
+  } catch (error) {
+    try { transaction.abort(); } catch { /* すでに中止されたトランザクション。 */ }
+    await transaction.done.catch(() => undefined);
+    throw error;
+  }
   return document;
 }
 
@@ -107,15 +115,17 @@ export async function saveDocument(
   return saved;
 }
 
-export async function renameDocument(id: string, name: string): Promise<void> {
+export async function renameDocument(id: string, name: string): Promise<ChartDocument> {
   const db = await database();
   const document = await db.get('documents', id);
   if (!document) throw new Error('編み図が見つかりません');
-  await db.put('documents', { ...document, name, updatedAt: Date.now() });
+  const renamed = { ...document, name, updatedAt: Date.now() };
+  await db.put('documents', renamed);
+  return renamed;
 }
 
-export async function duplicateDocument(id: string): Promise<ChartDocument> {
-  const source = await (await database()).get('documents', id);
+export async function duplicateDocument(id: string, snapshot?: ChartDocument): Promise<ChartDocument> {
+  const source = snapshot ?? await (await database()).get('documents', id);
   if (!source) throw new Error('編み図が見つかりません');
   const now = Date.now();
   const copy: ChartDocument = {
@@ -126,13 +136,20 @@ export async function duplicateDocument(id: string): Promise<ChartDocument> {
   return copy;
 }
 
-export async function deleteDocument(id: string): Promise<void> {
+export async function deleteDocument(id: string, nextActiveId?: string): Promise<void> {
   const db = await database();
   // 最後のバックアップ日時も一緒に消し、消した編み図の記録を設定に残さない。
   const transaction = db.transaction(['documents', 'settings'], 'readwrite');
-  await transaction.objectStore('documents').delete(id);
-  await transaction.objectStore('settings').delete(lastBackupKey(id));
-  await transaction.done;
+  try {
+    await transaction.objectStore('documents').delete(id);
+    await transaction.objectStore('settings').delete(lastBackupKey(id));
+    if (nextActiveId) await transaction.objectStore('settings').put({ key: 'activeDocumentId', value: nextActiveId });
+    await transaction.done;
+  } catch (error) {
+    try { transaction.abort(); } catch { /* すでに中止されたトランザクション。 */ }
+    await transaction.done.catch(() => undefined);
+    throw error;
+  }
 }
 
 export async function listBlocks(): Promise<PatternBlock[]> {
