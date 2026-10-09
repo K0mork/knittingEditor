@@ -128,6 +128,41 @@ final class KnittingEditorUITests: XCTestCase {
         )
     }
 
+    /// 大きな文字で番号帯を確認し、消去モードのピンチが記号を消さないことを確認する。
+    func testCanvasLabelsWithLargeTextAndErasePinch() {
+        let app = XCUIApplication()
+        app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        app.launch()
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
+        createDocument(named: "番号帯確認", in: app)
+        let canvas = app.webViews.firstMatch.otherElements
+            .matching(NSPredicate(format: "label CONTAINS %@", "編み図編集盤面")).firstMatch
+        XCTAssertTrue(canvas.waitForExistence(timeout: Self.editorAppearanceTimeout))
+        canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        waitForStitchCount(1, on: canvas, in: app)
+        app.webViews.firstMatch.buttons["消す"].tap()
+        canvas.pinch(withScale: 0.2, velocity: -1.0)
+        waitForStitchCount(1, on: canvas, in: app)
+        let small = XCTAttachment(screenshot: canvas.screenshot())
+        small.name = "大きな文字・縮小した盤面の番号"
+        small.lifetime = .keepAlways
+        add(small)
+        canvas.pinch(withScale: 5.0, velocity: 1.0)
+        waitForStitchCount(1, on: canvas, in: app)
+        let large = XCTAttachment(screenshot: canvas.screenshot())
+        large.name = "大きな文字・拡大した盤面の番号"
+        large.lifetime = .keepAlways
+        add(large)
+        app.webViews.firstMatch.buttons["範囲"].tap()
+        let start = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.4, dy: 0.4))
+        let end = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.6, dy: 0.6))
+        start.press(forDuration: 0.1, thenDragTo: end)
+        let selectionBefore = canvas.label
+        XCTAssertFalse(selectionBefore.contains("選択範囲なし"))
+        canvas.pinch(withScale: 0.5, velocity: -1.0)
+        XCTAssertEqual(canvas.label, selectionBefore)
+    }
+
     /// 盤面の外では、WKWebView由来のWebページ特有の挙動を出さない（#81）。
     ///
     /// 対策前は、見出しやツールバーのピンチで画面全体が拡大され（「保存」が約2倍になって

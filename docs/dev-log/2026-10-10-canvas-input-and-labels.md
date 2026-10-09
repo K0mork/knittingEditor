@@ -1,0 +1,7 @@
+# 2026-10-10 — 番号帯の入力除外、2本指操作の取消、番号表示の調整
+
+- 影響: #175、#176、#183に対応。番号帯から描画・消去・選択・貼り付けを開始せず、帯の終点をセルに変換しない。タッチ中の描画・消去はpacked配列の一時盤面へ表示し、1本指で離したときに確定する。2本目が触れたら一時盤面を捨て、元の選択範囲を戻す。番号を測定して2・5・10などの倍数へ間引き、左上の角へ掛かる番号は描かない。ルート文字サイズに合わせて番号と帯を広げる。PNG・PDFの規則は変更しない。完了PRの参照: Closes #175、Closes #176、Closes #183。
+- 主なファイル: `packages/editor-core/canvas/BoardCanvas.tsx`、同ディレクトリの単体テスト、`tests/e2e/canvas-input-and-labels.spec.ts`、`ios/UITests/KnittingEditorUITests/KnittingEditorUITests.swift`。
+- テスト: Vitestで移動後と拡大した帯の当たり判定、4pxの間引きと番号位置、1本目の微動後の描画・消去の取消、選択の復元、1本指操作、帯からの開始・帯での終点を追加。Playwrightで各モードの帯入力、微動後の2本指操作、大きな文字で最小・最大倍率の画面添付を追加。XCUITestで大きな文字での消去・選択とピンチ、画面添付を追加。
+- 検証: `npm ci`成功。`npm run typecheck`成功。`npm test`成功（38ファイル、274件）。`npm run build`成功。`npm run check:dist`成功。`(cd ios/Web && ../../node_modules/.bin/tsc -p tsconfig.app.json --noEmit)`成功。`(cd ios/Web && ../../node_modules/.bin/vitest run --config vite.config.ts)`成功（8ファイル、34件）。`npx playwright test tests/e2e/canvas-input-and-labels.spec.ts --list`成功（24ケースの検出のみ）。`git diff --check`成功。最初の`npm test`は親チェックアウトのnode_modules/.vite-tempへの書込みがEPERMで失敗し、作業コピー内に依存をインストール後に成功した。PlaywrightのブラウザとiOS Simulatorはこの環境では起動できないため未実行。検証担当にChromium/WebKit全E2Eと狭幅・デスクトップの画面確認、iPhone/iPadのXCUITestとDynamic Typeの通常・最大サイズの比較を依頼する。iOSビルド、Simulator全体、更新復元、Release Archive、同梱物検査はPR CIに任せる。
+- デプロイ影響: 共通CanvasがPagesとiOS同梱Webに反映される。配信後は番号帯の各モード、1本目が先に動くピンチ、4px倍率と大きな文字の番号表示を確認する。現時点では未デプロイ。

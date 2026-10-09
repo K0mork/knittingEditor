@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { STITCHES } from '../stitches/catalog';
-import { clampViewport, glyphSearchStart, LABEL_SIZE, LIGHT_CANVAS_CHROME, readCanvasChrome } from './BoardCanvas';
+import { canvasCellAt, canvasLabelMetrics, canvasLabels, clampViewport, glyphSearchStart, LABEL_SIZE, LIGHT_CANVAS_CHROME, readCanvasChrome } from './BoardCanvas';
 
 describe('glyphSearchStart', () => {
   it('includes off-screen anchors whose multi-cell glyph overlaps the viewport', () => {
@@ -86,5 +86,30 @@ describe('readCanvasChrome', () => {
     document.body.append(element);
     expect(readCanvasChrome(element)).toEqual({ surround: '#1c221f', labelBand: 'rgba(28, 34, 31, .96)', label: '#b6c2ba' });
     element.remove();
+  });
+});
+
+describe('screen label layout and hit testing', () => {
+  it('excludes both bands after scrolling and at enlarged text sizes', () => {
+    const view = { x: -24, y: -24, cell: 30 };
+    expect(canvasCellAt({ x: 50, y: 12 }, view)).toBeUndefined();
+    expect(canvasCellAt({ x: 12, y: 50 }, view)).toBeUndefined();
+    expect(canvasCellAt({ x: 50, y: 50 }, view)).toEqual({ row: 2, col: 2 });
+    expect(canvasCellAt({ x: 50, y: 50 }, view, 56)).toBeUndefined();
+  });
+
+  it('scales the font and band with the root font and leaves room for wide numbers', () => {
+    expect(canvasLabelMetrics(32)).toEqual({ fontSize: 22, band: 56 });
+    expect(canvasLabelMetrics(16, 40).band).toBe(48);
+  });
+
+  it('thins four-pixel cells and keeps all label extents outside the corner', () => {
+    const labels = canvasLabels(1000, 0, 999, -20, 4, 28, 28, 700);
+    expect(labels.length).toBeGreaterThan(0);
+    labels.forEach((label, index) => {
+      expect(label.number % 10).toBe(0);
+      expect(label.position - 14).toBeGreaterThanOrEqual(28);
+      if (index) expect(label.position - labels[index - 1].position).toBeGreaterThanOrEqual(32);
+    });
   });
 });
