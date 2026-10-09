@@ -30,7 +30,10 @@ struct ContentView: View {
     var body: some View {
         ZStack {
             WebViewContainer(model: model)
-                .ignoresSafeArea(.container, edges: .bottom)
+                // 地の色を左右と下の端まで広げ、横向きで左右に黒い帯を出さない（#146）。
+                // ボタンなどは、Web側が`env(safe-area-inset-*)`の余白でセーフエリアの内側に置く。
+                // 上の端は、ステータスバーの文字の色と合わせるため広げない。
+                .ignoresSafeArea(.container, edges: [.horizontal, .bottom])
                 .accessibilityLabel("棒針編み図エディタ")
                 .accessibilityIdentifier("knittingEditorWebView")
 

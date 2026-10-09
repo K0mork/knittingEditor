@@ -64,7 +64,9 @@ export function renderNoticesHtml(notices) {
         color-scheme: light dark;
       }
       * { box-sizing: border-box; }
-      body { margin: 0; }
+      /* アプリのWebViewは画面の端まで広げている（#146）。横向きでDynamic Islandや角に文字がかからないよう、
+         左右のセーフエリアの分だけ内側に寄せる。 */
+      body { margin: 0; padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); }
       header, main, footer { width: min(880px, calc(100% - 32px)); margin-inline: auto; }
       header { padding: 28px 0 12px; }
       main { padding: 8px 0 48px; }
