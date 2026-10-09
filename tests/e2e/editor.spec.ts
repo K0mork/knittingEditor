@@ -640,7 +640,7 @@ for (const action of ['switch', 'restore'] as const) {
     }
     await expect(page.locator('.app-document-name')).toContainText('新しい編み図');
     await expect(page.locator('.app-document-name')).not.toContainText('コピー');
-    await expect(page.locator('.app-document-name')).toContainText('保存中');
+    await expect(page.locator('.app-document-name')).toContainText('保存失敗');
     await expect(page.locator('.toast')).toContainText('保存');
   });
 }

@@ -3,7 +3,7 @@ import { Board, type PatternBlock } from '../model/Board';
 import { BoardHistory } from '../model/BoardHistory';
 import { backgroundColorOf } from '../model/boardColors';
 import { errorMessage } from '../util/errors';
-import { boardFromDocument, listBlocks, listDocuments, saveDocument, setSetting, type ChartDocument } from '../storage/database';
+import { boardFromDocument, listBlocks, listDocuments, recordBackup, saveDocument, setSetting, type ChartDocument } from '../storage/database';
 
 export const AUTOSAVE_DELAY_MS = 400;
 
@@ -49,9 +49,18 @@ export interface EditorSession {
   blocks: PatternBlock[];
   revision: number;
   dirty: boolean;
+  /** 最後の書き込みが失敗したか。次の書き込みが成功するまで`true`のまま。 */
   saveFailed: boolean;
+  /** 開いている編み図と編集の世代。書き出し中に盤面が変わったかを比べるのに使う。 */
   backupGeneration: () => string;
+  /** 保存の成否によらず、開いている編み図の今の盤面を写した記録を返す。`updatedAt`は写した時刻。 */
   backupSnapshot: () => ChartDocument | undefined;
+  /**
+   * 書き出した世代の日時を記録する直前に呼ぶ。世代が変わっていれば`undefined`を返す。
+   * 変わっていなければ、記録する日時の下限（その世代までを保存した更新日時）を返し、
+   * 後からこの世代を保存したときも記録した日時を保存の更新日時へ進める。
+   */
+  markBackupExported: (generation: string) => number | undefined;
   /** 盤面を編集したときに呼ぶ。自動保存の待ち時間を測り直す。履歴には積まない。 */
   changed: () => void;
   /** ここまでの編集を元に戻す単位として1件にまとめる。なぞり描きは指を離したときに呼ぶ。 */
@@ -107,6 +116,10 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
   const backgroundRef = useRef(backgroundColor);
   const dirtyRef = useRef(false);
   const editGenerationRef = useRef(0);
+  // 書き出して日時を記録した世代（`編み図ID:編集世代`）。保存は書き出しを待たないので、
+  // 書き出した盤面が後から保存されると更新日時が記録より新しくなり、次に開いたとき
+  // 「バックアップの後に変更があります」と誤って出る。その保存の日時で記録を進める。
+  const exportedGenerationRef = useRef<string | undefined>(undefined);
   // 履歴は開いている編み図ごとに持ち、端末へは保存しない。切り替えると捨てる。
   const historyRef = useRef<BoardHistory | undefined>(undefined);
   const [canUndo, setCanUndo] = useState(false);
@@ -133,6 +146,11 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
       optionsRef.current.onSaveError(error, trigger);
       return 'failed';
     }
+    setSaveFailed(false);
+    if (exportedGenerationRef.current === `${documentId}:${generation}`) {
+      // 記録に失敗しても保存の失敗ではない。次に開いたとき勧めが出るだけになる。
+      void recordBackup([documentId], saved.updatedAt).catch(() => undefined);
+    }
     // 書き込んだ1件だけを一覧へ反映する。全件取得だと編集していない編み図の
     // セル配列まで読み直すことになり、保存済みの編み図が増えるほど重くなる。
     setDocuments((current) => mergeSavedDocument(current, saved));
@@ -143,7 +161,6 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
     if (editGenerationRef.current !== generation) return 'pending';
     dirtyRef.current = false;
     setDirty(false);
-    setSaveFailed(false);
     return 'saved';
   }, []);
 
@@ -253,16 +270,26 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
     changed();
   }, [changed]);
 
+  const backupGeneration = useCallback(() => `${activeDocumentRef.current?.id}:${editGenerationRef.current}`, []);
+
+  const backupSnapshot = useCallback((): ChartDocument | undefined => {
+    const document = activeDocumentRef.current;
+    const target = boardRef.current;
+    if (!document || !target) return undefined;
+    return { ...document, backgroundColor: backgroundRef.current, rows: target.rows, cols: target.cols,
+      cells: target.cells.slice().buffer as ArrayBuffer, updatedAt: Date.now() };
+  }, []);
+
+  const markBackupExported = useCallback((generation: string) => {
+    if (backupGeneration() !== generation) return undefined;
+    exportedGenerationRef.current = generation;
+    // 書き出しを待つ間にこの世代の保存が済んでいれば、記録はその更新日時より前にしない。
+    return activeDocumentRef.current?.updatedAt ?? 0;
+  }, [backupGeneration]);
+
   return {
     documents, activeDocument, board, backgroundColor, blocks, revision, dirty, saveFailed,
-    backupGeneration: () => `${activeDocumentRef.current?.id}:${editGenerationRef.current}`,
-    backupSnapshot: () => {
-      const document = activeDocumentRef.current;
-      const target = boardRef.current;
-      if (!document || !target) return undefined;
-      return { ...document, backgroundColor: backgroundRef.current, rows: target.rows, cols: target.cols,
-        cells: target.cells.slice().buffer as ArrayBuffer, updatedAt: Date.now() };
-    },
+    backupGeneration, backupSnapshot, markBackupExported,
     changed, commitEdit, canUndo, canRedo, undo, redo, saveNow, switchDocument, refreshDocuments, refreshBlocks, applyActiveDocumentName,
     setBackgroundColor,
   };

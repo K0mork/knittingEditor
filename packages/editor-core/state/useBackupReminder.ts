@@ -25,6 +25,8 @@ export interface BackupReminder {
   loaded: boolean;
   /** 勧めを出すときの種類。出さないときは`undefined`。 */
   kind: BackupReminderKind | undefined;
+  /** 保存の失敗を帯で伝えるか。勧めと同じく、手を止めたときだけ切り替わる。 */
+  saveFailureShown: boolean;
   /** 盤面を1回編集したときに呼ぶ。指を離して手を止めてから`BACKUP_REMINDER_IDLE_MS`後に勧めへ反映する。 */
   countEdit: () => void;
   /** `.knit`を書き出したあとに呼ぶ。`documentIds`を省くと全編み図を書き出したとみなす。 */
@@ -40,13 +42,18 @@ export interface BackupReminder {
  * 書き出したとき、「あとで」を押したときだけ変わる。編集中に帯が出て盤面がずれないよう、
  * 編集回数と時刻はこの時点で取り込み、描画のたびには読まない。
  */
-export function useBackupReminder(activeDocument: ChartDocument | undefined): BackupReminder {
+export function useBackupReminder(activeDocument: ChartDocument | undefined, saveFailing = false): BackupReminder {
   const [opened, setOpened] = useState<OpenedDocumentStatus>();
   const [snoozedUntil, setSnoozedUntil] = useState<number | null>();
   // 編集回数は手を止めるまで`editsRef`にだけ数え、止めたら`edits`へ移す。
   const editsRef = useRef(0);
   // `edits`へまだ移していない編集があるか。指を離したときに待ち時間を数え直すかを決める。
   const pendingRef = useRef(false);
+  // 保存の失敗・回復をまだ帯へ反映していないか。帯の出し入れで盤面がずれるので、勧めと同じく手を止めてから反映する。
+  const saveFailingRef = useRef(saveFailing);
+  saveFailingRef.current = saveFailing;
+  const noticePendingRef = useRef(false);
+  const [saveFailureShown, setSaveFailureShown] = useState(false);
   const idleTimerRef = useRef<number | undefined>(undefined);
   // 画面に置かれている指・ポインタ。1つでもある間は待ち時間を数えない。
   const pointersRef = useRef(new Set<number>());
@@ -73,11 +80,13 @@ export function useBackupReminder(activeDocument: ChartDocument | undefined): Ba
   /** 手を止めてから`BACKUP_REMINDER_IDLE_MS`後に編集回数を取り込む。指を置いている間は待たない。 */
   const scheduleIdleCheck = useCallback(() => {
     clearIdleTimer();
-    if (!pendingRef.current || pointersRef.current.size > 0) return;
+    if ((!pendingRef.current && !noticePendingRef.current) || pointersRef.current.size > 0) return;
     idleTimerRef.current = window.setTimeout(() => {
       idleTimerRef.current = undefined;
       pendingRef.current = false;
+      noticePendingRef.current = false;
       setEdits(editsRef.current);
+      setSaveFailureShown(saveFailingRef.current);
       setCheckedAt(Date.now());
     }, BACKUP_REMINDER_IDLE_MS);
   }, [clearIdleTimer]);
@@ -87,7 +96,14 @@ export function useBackupReminder(activeDocument: ChartDocument | undefined): Ba
     pendingRef.current = false;
     editsRef.current = 0;
     setEdits(0);
-  }, [clearIdleTimer]);
+    // 保存の失敗の反映待ちは編集回数と別なので、待ち時間を数え直して残す。
+    scheduleIdleCheck();
+  }, [clearIdleTimer, scheduleIdleCheck]);
+
+  useEffect(() => {
+    noticePendingRef.current = saveFailing !== saveFailureShown;
+    if (noticePendingRef.current) scheduleIdleCheck();
+  }, [saveFailing, saveFailureShown, scheduleIdleCheck]);
 
   useEffect(() => {
     // 盤面は指を置いたまま描き続けるので、指を置いた時点で待ち時間を止め、離してから数え直す。
@@ -173,5 +189,5 @@ export function useBackupReminder(activeDocument: ChartDocument | undefined): Ba
     : undefined;
 
   const loaded = current !== undefined && snoozedUntil !== undefined;
-  return { lastBackupAt: current?.lastBackupAt, loaded, kind, countEdit, recordExport, snooze };
+  return { lastBackupAt: current?.lastBackupAt, loaded, kind, saveFailureShown, countEdit, recordExport, snooze };
 }

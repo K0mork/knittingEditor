@@ -87,7 +87,6 @@ export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, 
     </header>
 
     <main className="workspace">
-      {session.saveFailed && dirty && <div role="alert">端末内への保存に失敗しています。「保存」から.knitのバックアップを書き出してください。</div>}
       <section className="primary-tools" aria-label="編集ツール">
         <button className="color-tool" aria-label={`記号の色を選ぶ（現在：${describeColor(parseColor(editor.selectedColor))} ${editor.selectedColor}）`} aria-haspopup="dialog" aria-expanded={editor.colorPickerOpen} onClick={() => editor.setColorPickerOpen(true)}>
           <span>色</span>
@@ -122,8 +121,12 @@ export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, 
         <button onClick={editor.clearSelection}>解除</button>
       </div>}
 
+      {/* 保存の失敗は勧めと同じ段に出し、勧めより優先する。どちらも手を止めたときだけ出し入れする。 */}
+      {editor.backupReminder.saveFailureShown && <section className="backup-reminder" aria-label="保存の失敗">
+        <p role="alert">端末内への保存に失敗しています。「保存」から.knitのバックアップを書き出してください。</p>
+      </section>}
       {/* ドロワーや処理中の表示と重なるときは出さない。 */}
-      {editor.backupReminder.kind && !panel && !editor.busy && <BackupReminderBar kind={editor.backupReminder.kind}
+      {!editor.backupReminder.saveFailureShown && editor.backupReminder.kind && !panel && !editor.busy && <BackupReminderBar kind={editor.backupReminder.kind}
         lastBackupAt={editor.backupReminder.lastBackupAt} onBackup={() => void editor.backup(false)} onSnooze={editor.backupReminder.snooze} />}
 
       <section className="canvas-wrap">

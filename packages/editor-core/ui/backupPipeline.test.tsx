@@ -99,3 +99,69 @@ it('does not record a cancelled or failed file handoff', async () => {
     expect(view.current.message).toContain('handoff failed');
   } finally { await view.close(); }
 });
+
+/** 書き出した盤面を後から保存しても、次に開いたとき「バックアップの後に変更があります」と判定されないこと。 */
+async function expectBackupCoversStoredBoard(id: string) {
+  await vi.waitFor(async () => {
+    const stored = (await storage.listDocuments()).find((item) => item.id === id)!;
+    expect(await storage.getLastBackupAt(id)).toBeGreaterThanOrEqual(stored.updatedAt);
+  });
+}
+
+const tick = () => new Promise((resolve) => setTimeout(resolve, 5));
+
+it('advances the backup date when the exported unsaved board is saved afterwards', async () => {
+  const view = await editor();
+  try {
+    await act(async () => {
+      view.current.session.board!.place(0, 0, 'knit', '#123456', false);
+      view.current.changed();
+    });
+    await act(async () => { await view.current.backup(false); });
+    expect(view.current.session.dirty).toBe(true);
+    await act(async () => { await tick(); expect(await view.current.session.saveNow()).toBe('saved'); });
+    await expectBackupCoversStoredBoard(view.source.id);
+  } finally { await view.close(); }
+});
+
+it('records no earlier than a save of the exported board that finished during sharing', async () => {
+  let finish!: (value: boolean) => void;
+  const saved = new Promise<boolean>((resolve) => { finish = resolve; });
+  const view = await editor(vi.fn(async (_blob: Blob, _name: string) => ({ saved })));
+  try {
+    await act(async () => {
+      view.current.session.board!.place(0, 0, 'knit', '#123456', false);
+      view.current.changed();
+    });
+    let exporting!: Promise<void>;
+    await act(async () => {
+      exporting = view.current.backup(false);
+      while (!view.saveFile.mock.calls.length) await tick();
+    });
+    await act(async () => { await tick(); expect(await view.current.session.saveNow()).toBe('saved'); });
+    await act(async () => { finish(true); await exporting; });
+    await expectBackupCoversStoredBoard(view.source.id);
+  } finally { await view.close(); }
+});
+
+it('clears the save failure once a write succeeds even if newer edits remain', async () => {
+  const view = await editor();
+  try {
+    const failing = vi.spyOn(storage, 'saveDocument').mockRejectedValueOnce(new DOMException('full', 'QuotaExceededError'));
+    await act(async () => {
+      view.current.session.board!.place(0, 0, 'knit', '#123456', false);
+      view.current.changed();
+      expect(await view.current.session.saveNow()).toBe('failed');
+    });
+    expect(view.current.session.saveFailed).toBe(true);
+    await act(async () => {
+      const saving = view.current.session.saveNow();
+      view.current.session.board!.place(1, 1, 'purl', '#123456', false);
+      view.current.changed();
+      expect(await saving).toBe('pending');
+    });
+    expect(failing).toHaveBeenCalledTimes(2);
+    expect(view.current.session.saveFailed).toBe(false);
+    expect(view.current.session.dirty).toBe(true);
+  } finally { await view.close(); }
+});
