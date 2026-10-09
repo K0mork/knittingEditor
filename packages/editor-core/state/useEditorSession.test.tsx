@@ -194,6 +194,41 @@ describe('useEditorSession', () => {
     await view.unmount();
   });
 
+  it('flushes latest edits after waiting for an in-flight autosave', async () => {
+    const view = await renderSession();
+    const target = view.session.board!;
+    let release!: () => void;
+    mocks.saveDocument.mockImplementationOnce((document: ChartDocument, board: Board) => {
+      const saved = { ...document, cells: board.cells.slice().buffer, updatedAt: 50 };
+      return new Promise((resolve) => { release = () => resolve(saved); });
+    });
+    await act(async () => {
+      target.place(0, 0, 'knit', '#123456');
+      view.session.changed();
+    });
+    let autosaving!: Promise<unknown>;
+    await act(async () => { autosaving = view.session.saveNow('autosave'); });
+    await act(async () => {
+      target.place(1, 1, 'purl', '#123456');
+      view.session.changed();
+    });
+    let flushing!: Promise<unknown>;
+    await act(async () => { flushing = view.session.saveNow('background'); });
+    expect(mocks.saveDocument).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      release();
+      expect(await autosaving).toBe('pending');
+      expect(await flushing).toBe('saved');
+    });
+    expect(mocks.saveDocument).toHaveBeenCalledTimes(2);
+    const saved = view.session.documents.find((document) => document.id === 'a')!;
+    expect(new Uint32Array(saved.cells)[0]).toBe(target.valueAt(0, 0));
+    expect(new Uint32Array(saved.cells)[5]).toBe(target.valueAt(1, 1));
+    expect(target.valueAt(1, 1)).not.toBe(0);
+    expect(view.session.dirty).toBe(false);
+    await view.unmount();
+  });
+
   it('reports a failed save once and leaves the chart unsaved', async () => {
     mocks.saveDocument.mockRejectedValue(new Error('書き込みに失敗'));
     const view = await renderSession();

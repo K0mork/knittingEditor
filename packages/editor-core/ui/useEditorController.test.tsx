@@ -126,6 +126,7 @@ describe('management failures', () => {
     vi.spyOn(database, method).mockRejectedValueOnce(quota);
     await act(async () => { await expect(action()).resolves.toBeUndefined(); });
     expect(editor.message).toBe(`${label}に失敗しました。もう一度お試しください。`);
+    expect(editor.session.documents).toHaveLength(before.length);
     expect(editor.session.documents).toEqual(expect.arrayContaining(before));
     expect(await database.listDocuments()).toEqual(before);
     expect(editor.session.activeDocument?.id).toBe(source.id);
@@ -167,6 +168,7 @@ describe('management failures', () => {
     });
     expect(editor.message).toContain('に失敗しました');
     expect(await database.listDocuments()).toEqual(before);
+    expect(editor.session.documents).toHaveLength(before.length);
     expect(editor.session.documents).toEqual(expect.arrayContaining(before));
     expect(editor.session.activeDocument?.id).toBe(source.id);
     expect(await database.getSetting('activeDocumentId')).toBe(source.id);

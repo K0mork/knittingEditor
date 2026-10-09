@@ -220,10 +220,17 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
 
   const saveNow = useCallback(async (trigger: SaveTrigger = 'manual'): Promise<SaveOutcome> => {
     const document = activeDocumentRef.current;
+    if (savingRef.current) {
+      const outcome = await savingRef.current;
+      if (outcome === 'failed') return outcome;
+      // 保存を待つ間に別の編み図へ移っていたら、その盤面は保存しない。
+      if (activeDocumentRef.current?.id !== document?.id) return 'pending';
+      if (!dirtyRef.current) return outcome;
+    }
+    const latestDocument = activeDocumentRef.current;
     const target = boardRef.current;
-    if (savingRef.current) return savingRef.current;
-    if (!dirtyRef.current || !document || !target) return 'idle';
-    return persist(document, target, trigger);
+    if (!dirtyRef.current || !latestDocument || !target) return 'idle';
+    return persist(latestDocument, target, trigger);
   }, [persist]);
 
   const switchDocument = useCallback(async (document: ChartDocument, saveCurrent = true, remember = true): Promise<SwitchOutcome> => {
