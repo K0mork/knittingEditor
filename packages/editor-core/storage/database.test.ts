@@ -5,7 +5,7 @@ import { Board, packCell } from '../model/Board';
 import { STITCH_BY_KEY, STITCH_CATALOG_VERSION } from '../stitches/catalog';
 import {
   BACKUP_LIMITS, boardFromDocument, createDocument, exportBackup, importBackup, initializeStorage,
-  listDocuments, saveDocument, setSetting,
+  listDocuments, saveDocument, setSetting, UNREADABLE_BACKUP_MESSAGE,
 } from './database';
 
 function backupBlob(payload: unknown): Blob {
@@ -55,7 +55,7 @@ describe('backup validation', () => {
       format: 'knitting-editor', version: 2, stitchCatalogVersion: 3,
       documents: Array.from({ length: BACKUP_LIMITS.maxDocuments + 1 }, (_, index) => documentPayload(`編み図${index}`)),
       blocks: [],
-    }))).rejects.toThrow('安全上限');
+    }))).rejects.toThrow('上限を超えています');
   });
 
   it('rejects a backup that exceeds the block count limit', async () => {
@@ -66,7 +66,7 @@ describe('backup validation', () => {
       blocks: Array.from({ length: BACKUP_LIMITS.maxBlocks + 1 }, (_, index) => ({
         name: `ブロック${index}`, rows: 1, cols: 1, anchors: [{ row: 0, col: 0, value: packedKnit }],
       })),
-    }))).rejects.toThrow('安全上限');
+    }))).rejects.toThrow('上限を超えています');
   });
 
   it('rejects a compressed file larger than the safe limit before decompressing', async () => {
@@ -187,4 +187,43 @@ describe('background color', () => {
     expect(restored.documents[1].backgroundColor).toBe('#1e1e1e');
     expect(restored.documents[2]).not.toHaveProperty('backgroundColor');
   });
+});
+
+/** 壊れたファイルや`.knit`以外のファイルでは、ライブラリやブラウザの英語のエラーをそのまま見せない。 */
+describe('unreadable backups', () => {
+  const japanese = /^[^A-Za-z]*(\.knit[^A-Za-z]*)?$/;
+
+  it('explains in Japanese that a file which is not gzip cannot be read', async () => {
+    const random = new Uint8Array(4096).map((_, index) => (index * 97 + 13) & 0xff);
+    await expect(importBackup(new Blob([random]))).rejects.toThrow(UNREADABLE_BACKUP_MESSAGE);
+    await expect(importBackup(new Blob(['{"format":"knitting-editor"}']))).rejects.toThrow(UNREADABLE_BACKUP_MESSAGE);
+    expect(UNREADABLE_BACKUP_MESSAGE).toMatch(japanese);
+  });
+
+  it('explains in Japanese that a gzip file without valid JSON cannot be read', async () => {
+    await expect(importBackup(new Blob([gzipSync(strToU8('{"format": '))]))).rejects.toThrow(UNREADABLE_BACKUP_MESSAGE);
+  });
+
+  it('rejects JSON that is not an object without a browser error', async () => {
+    for (const value of ['null', '42', '"text"', '[]']) {
+      await expect(importBackup(new Blob([gzipSync(strToU8(value))]))).rejects.toThrow('対応していないバックアップ形式です');
+    }
+  });
+
+  it('reports broken cell data in Japanese when the base64 cannot be decoded', async () => {
+    await expect(importBackup(backupBlob({
+      format: 'knitting-editor', version: 2, stitchCatalogVersion: STITCH_CATALOG_VERSION,
+      documents: [{ name: '壊れたbase64', rows: 1, cols: 1, cells: '***' }], blocks: [],
+    }))).rejects.toThrow('盤面データが破損しています');
+  });
+
+  it('keeps the reason when the decompressed data exceeds the limit', async () => {
+    // 1MiBのゼロを圧縮したgzipを、上限を超える数だけつなげる（gzipは複数をつなげて1つにできる）。
+    // 256MiBを一度に圧縮するより速い。
+    const member = gzipSync(new Uint8Array(1024 * 1024), { level: 1 });
+    const count = BACKUP_LIMITS.maxDecompressedBytes / (1024 * 1024) + 1;
+    const huge = new Uint8Array(member.byteLength * count);
+    for (let index = 0; index < count; index++) huge.set(member, index * member.byteLength);
+    await expect(importBackup(new Blob([huge]))).rejects.toThrow('解凍後のバックアップが大きすぎます');
+  }, 20_000);
 });

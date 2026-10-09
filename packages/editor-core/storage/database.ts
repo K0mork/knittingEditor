@@ -272,13 +272,22 @@ function restoreBlock(value: unknown, now: number): PatternBlock {
   };
 }
 
+/** 大きさの上限を超えたバックアップ。理由をそのまま利用者へ伝える。 */
+class BackupLimitError extends Error {}
+
+/**
+ * 壊れたファイルや`.knit`以外のファイルを復元しようとしたときの理由。解凍やJSONの読み取りで出る
+ * ライブラリ・ブラウザのエラーは英語なので、利用者にはこちらを見せる。
+ */
+export const UNREADABLE_BACKUP_MESSAGE = 'バックアップを読み込めませんでした。ファイルが壊れているか、.knitのバックアップではありません';
+
 function gunzipWithLimit(data: Uint8Array): Uint8Array {
-  if (data.byteLength > BACKUP_LIMITS.maxCompressedBytes) throw new Error('バックアップファイルが大きすぎます');
+  if (data.byteLength > BACKUP_LIMITS.maxCompressedBytes) throw new BackupLimitError('バックアップファイルが大きすぎます');
   const chunks: Uint8Array[] = [];
   let total = 0;
   const gunzip = new Gunzip((chunk) => {
     total += chunk.byteLength;
-    if (total > BACKUP_LIMITS.maxDecompressedBytes) throw new Error('解凍後のバックアップが大きすぎます');
+    if (total > BACKUP_LIMITS.maxDecompressedBytes) throw new BackupLimitError('解凍後のバックアップが大きすぎます');
     chunks.push(chunk.slice());
   });
   gunzip.push(data, true);
@@ -289,6 +298,22 @@ function gunzipWithLimit(data: Uint8Array): Uint8Array {
     offset += chunk.byteLength;
   }
   return result;
+}
+
+/** `.knit`を解凍してJSONとして読む。上限を超えたとき以外の失敗は、`UNREADABLE_BACKUP_MESSAGE`にする。 */
+function readBackupPayload(data: Uint8Array): unknown {
+  let text: string;
+  try {
+    text = strFromU8(gunzipWithLimit(data));
+  } catch (error) {
+    if (error instanceof BackupLimitError) throw error;
+    throw new Error(UNREADABLE_BACKUP_MESSAGE);
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(UNREADABLE_BACKUP_MESSAGE);
+  }
 }
 
 export async function exportBackup(documentIds?: string[]): Promise<Blob> {
@@ -303,7 +328,9 @@ export async function exportBackup(documentIds?: string[]): Promise<Blob> {
 }
 
 export async function importBackup(file: Blob): Promise<ImportBackupResult> {
-  const payload = JSON.parse(strFromU8(gunzipWithLimit(new Uint8Array(await file.arrayBuffer())))) as BackupPayload;
+  const parsed = readBackupPayload(new Uint8Array(await file.arrayBuffer()));
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('対応していないバックアップ形式です');
+  const payload = parsed as BackupPayload;
   if (payload.format !== 'knitting-editor' || payload.version !== 2 || !Array.isArray(payload.documents)) {
     throw new Error('対応していないバックアップ形式です');
   }
@@ -312,7 +339,7 @@ export async function importBackup(file: Blob): Promise<ImportBackupResult> {
   }
   const blocks = payload.blocks ?? [];
   if (payload.documents.length > BACKUP_LIMITS.maxDocuments || blocks.length > BACKUP_LIMITS.maxBlocks) {
-    throw new Error('バックアップ内の件数が安全上限を超えています');
+    throw new Error('バックアップ内の件数が上限を超えています');
   }
   if ((payload.stitchCatalogVersion ?? 1) > STITCH_CATALOG_VERSION) {
     throw new Error('新しい記号カタログで作成されたバックアップです。アプリを更新してください');
@@ -324,7 +351,12 @@ export async function importBackup(file: Blob): Promise<ImportBackupResult> {
     }
     Board.validateSize(item.rows, item.cols);
     if (typeof item.cells !== 'string') throw new Error('盤面データが破損しています');
-    const bytes = base64ToBytes(item.cells);
+    let bytes: Uint8Array<ArrayBuffer>;
+    try {
+      bytes = base64ToBytes(item.cells);
+    } catch {
+      throw new Error('盤面データが破損しています');
+    }
     if (bytes.byteLength !== item.rows * item.cols * Uint32Array.BYTES_PER_ELEMENT) throw new Error('盤面データが破損しています');
     validatePackedCells(item.rows, item.cols, bytes);
     // 地の色が壊れていても編み図は捨てず、白い地として復元する。
@@ -338,7 +370,7 @@ export async function importBackup(file: Blob): Promise<ImportBackupResult> {
   });
   const restoredBlocks = blocks.map((block) => restoreBlock(block, now));
   const anchorCount = restoredBlocks.reduce((total, block) => total + block.anchors.length, 0);
-  if (anchorCount > BACKUP_LIMITS.maxBlockAnchors) throw new Error('バックアップ内の記号数が安全上限を超えています');
+  if (anchorCount > BACKUP_LIMITS.maxBlockAnchors) throw new Error('バックアップ内の記号数が上限を超えています');
   const db = await database();
   const transaction = db.transaction(['documents', 'blocks'], 'readwrite');
   for (const document of restoredDocuments) await transaction.objectStore('documents').put(document);
