@@ -168,12 +168,13 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
 
   useEffect(() => {
     const handler = (event: BeforeUnloadEvent) => {
-      if (!dirty) return;
+      // 即時保存の完了直後は、Reactの再描画より先にページを離れることがある。
+      if (!dirtyRef.current) return;
       event.preventDefault();
     };
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
-  }, [dirty]);
+  }, []);
 
   const changed = useCallback(() => {
     editGenerationRef.current += 1;

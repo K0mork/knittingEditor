@@ -19,7 +19,7 @@ export interface EditorViewProps {
    * `documentStatus`は編み図名と保存状態で、`aria-live`の要素の中へ置く。
    */
   renderTitle: (documentStatus: ReactNode) => ReactNode;
-  /** 使い方ページへのリンクを押したとき。iOS版は移動前に保留中の保存を書き込む。 */
+  /** 使い方ページへのリンクを押したとき。両ホストで移動前に保留中の保存を確認する。 */
   onGuideClick?: MouseEventHandler<HTMLAnchorElement>;
   /** 復元ボタン。`true`を返すと処理済みとみなし、ファイル選択を開かない。 */
   requestRestore?: () => boolean;

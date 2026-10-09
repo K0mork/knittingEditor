@@ -101,6 +101,21 @@ describe('useEditorSession', () => {
     await view.unmount();
   });
 
+  it('does not warn on leaving immediately after saving, before React renders', async () => {
+    const view = await renderSession();
+    await act(async () => { view.session.changed(); });
+    const unsaved = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(unsaved);
+    expect(unsaved.defaultPrevented).toBe(true);
+    await act(async () => {
+      expect(await view.session.saveNow()).toBe('saved');
+      const saved = new Event('beforeunload', { cancelable: true });
+      window.dispatchEvent(saved);
+      expect(saved.defaultPrevented).toBe(false);
+    });
+    await view.unmount();
+  });
+
   it('updates the chart list from the save result instead of reloading every chart', async () => {
     const view = await renderSession();
     await act(async () => { view.session.changed(); });

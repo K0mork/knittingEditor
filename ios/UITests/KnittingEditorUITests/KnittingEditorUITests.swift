@@ -43,6 +43,13 @@ final class KnittingEditorUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
+        createDocument(named: "使い方保存確認", in: app)
+        let canvas = app.webViews.firstMatch.otherElements
+            .matching(NSPredicate(format: "label CONTAINS %@", "記号0個"))
+            .firstMatch
+        XCTAssertTrue(canvas.waitForExistence(timeout: 10), app.debugDescription)
+        canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        waitForStitchCount(1, on: canvas, in: app)
         let guideLink = app.links["使い方"]
         XCTAssertTrue(guideLink.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
         guideLink.tap()
@@ -76,6 +83,10 @@ final class KnittingEditorUITests: XCTestCase {
         }
         XCTAssertTrue(save.waitForExistence(timeout: 20), "使い方ページから編集画面へ戻れない: \(app.debugDescription)")
         XCTAssertFalse(app.otherElements["editorLoadingOverlay"].exists, app.debugDescription)
+        let restoredCanvas = app.webViews.firstMatch.otherElements
+            .matching(NSPredicate(format: "label CONTAINS %@", "記号1個"))
+            .firstMatch
+        XCTAssertTrue(restoredCanvas.waitForExistence(timeout: 10), "使い方から戻るとセルが消えた: \(app.debugDescription)")
     }
 
     /// 2本指ジェスチャで盤面へ記号が入らないことを確認する。
