@@ -40,7 +40,7 @@ window.dispatchEvent(new CustomEvent('knittingEditorNativeCommand', { detail: 'u
 | メニュー | 項目 | キー | `detail` | Web側の処理 |
 |---|---|---|---|---|
 | ファイル | 新しい編み図… | ⌘N | `newDocument` | 「編み図」パネルの「新しい編み図」 |
-| ファイル | バックアップから復元… | ⌘O | `restoreBackup` | 「復元」。`openBackup`でDocument Pickerを開く |
+| ファイル | 開く…（iPadOSが足す項目） | ⌘O | `restoreBackup` | 「復元」。`openBackup`でDocument Pickerを開く |
 | ファイル | この編み図をバックアップ… | ⌘S | `exportBackup` | 「この編み図」の`.knit`書き出し |
 | ファイル | 全データをバックアップ… | ⌥⌘S | `exportAllBackup` | 「全データ」の`.knit`書き出し |
 | ファイル | PNGで書き出す… | ⇧⌘E | `exportPng` | 「PNGを保存」。画素数は保存・出力パネルを初めて開いたときの既定値 |
@@ -48,6 +48,8 @@ window.dispatchEvent(new CustomEvent('knittingEditorNativeCommand', { detail: 'u
 | 編集 | 元に戻す | ⌘Z | `undo` | 操作メニューの「元に戻す」 |
 | 編集 | やり直す | ⇧⌘Z | `redo` | 操作メニューの「やり直す」 |
 | ヘルプ | 棒針編み図の使い方 | ⇧⌘H | `openGuide` | 「使い方」。保留中の保存を書き込んでから移る |
+
+⌘Oの「開く…」はアプリの項目ではない。`LSSupportsOpeningDocumentsInPlace`を有効にすると（「`.knit`登録」の節）、iPadOSが「ファイル」メニューの先頭に「開く…」（⌘O、`open:`）と「最近使った項目を開く」を足し、外すことも名前を変えることもできない。`EditorCommands`に同じ⌘Oの項目を置くと、その項目を含むグループがまるごとメニューから外れ、⌘Nの「新しい編み図…」も効かなくなった（iOS 26.5のSimulator、#149）。そこで復元の項目は置かず、`AppDelegate`（`UIApplicationDelegateAdaptor`）が`open:`を受けて`restoreBackup`を送る。選べるかどうかは他の項目と同じ`canPerform`に従う。
 
 Web側は`ios/Web/src/nativeBridge.ts`の`listenNativeCommand`で受け、`NATIVE_COMMANDS`に無い値は捨てる。`nativeCommands.ts`の`runNativeCommand`は次のように扱う。
 
