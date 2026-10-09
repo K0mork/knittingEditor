@@ -10,7 +10,7 @@ import { useEditorSession, type EditorSessionInit, type SaveTrigger } from '../s
 import { STITCHES, type StitchDefinition } from '../stitches/catalog';
 import {
   createDocument, deleteBlock, deleteDocument, duplicateDocument, exportBackup, importBackup,
-  listDocuments, renameDocument, saveBlock, type ChartDocument,
+  renameDocument, saveBlock, type ChartDocument,
 } from '../storage/database';
 import { errorMessage } from '../util/errors';
 import { useClipboardShortcuts, useHistoryShortcuts, useNotifier, usePanelFocus } from './hooks';
@@ -156,8 +156,14 @@ export function useEditorController(options: EditorControllerOptions) {
     setColorPickerOpen(false);
   };
 
-  const switchDocument = useCallback(async (document: ChartDocument, saveCurrent = true) => {
-    const outcome = await switchSessionDocument(document, saveCurrent);
+  const switchDocument = useCallback(async (document: ChartDocument, saveCurrent = true, remember = true) => {
+    if (document.id === activeDocument?.id) { setPanel(undefined); return; }
+    let outcome;
+    try { outcome = await switchSessionDocument(document, saveCurrent, remember); }
+    catch {
+      notify('編み図を開けませんでした。もう一度お試しください。');
+      return;
+    }
     // failedは`onSaveError`が通知済み。pendingは通知が出ないので、ここで理由を伝える。
     // 黙って何も起きないと、切り替えを押したつもりの利用者が変化に気づけない。
     if (outcome === 'pending') notify(PENDING_SWITCH_MESSAGE);
@@ -165,7 +171,7 @@ export function useEditorController(options: EditorControllerOptions) {
     setSelection(undefined);
     setMode('draw');
     setPanel(undefined);
-  }, [switchSessionDocument, notify]);
+  }, [switchSessionDocument, activeDocument?.id, notify]);
 
   const startPaste = useCallback((block: PatternBlock) => {
     setCopiedBlock(block);
@@ -199,25 +205,43 @@ export function useEditorController(options: EditorControllerOptions) {
     onPaste: pasteCopiedBlock,
   });
 
-  const saveSelectionAsBlock = async () => {
+  const runManagementOperation = async (operation: string, label: string, action: () => Promise<void>) => {
+    try { await action(); }
+    catch {
+      analytics.track('operation_failed', { operation_name: operation });
+      notify(`${label}に失敗しました。もう一度お試しください。`);
+    }
+  };
+
+  // 書き込み中の自動保存を待つ。次の編集が残る場合は、管理操作を始めない。
+  const saveBeforeManagement = async (label: string) => {
+    const outcome = await saveNow();
+    if (outcome === 'failed' || outcome === 'pending') {
+      notify(`${label}できませんでした。変更を保存してから、もう一度お試しください。`);
+      return false;
+    }
+    return true;
+  };
+
+  const saveSelectionAsBlock = () => runManagementOperation('block_save', 'ブロックの保存', async () => {
     if (!board || !selection) return;
     const name = (await askText('ブロック名を入力してください', '新しいパターン'))?.trim();
     if (!name) return;
     const block = board.createBlock(selection, name);
     await saveBlock(block);
-    await refreshBlocks();
+    session.updateBlock(block);
     setSelection(undefined);
     setMode('draw');
     analytics.track('block_saved', { board_size_bucket: boardSizeBucket(block.rows, block.cols) });
     notify('ブロックを保存しました');
-  };
+  });
 
-  const removeBlock = async (block: PatternBlock) => {
+  const removeBlock = (block: PatternBlock) => runManagementOperation('block_delete', 'ブロックの削除', async () => {
     // 削除は元に戻せないので、編み図の削除と同じく確認する。
     if (!(await askConfirm(`ブロック「${block.name}」を削除しますか？`))) return;
     await deleteBlock(block.id);
-    await refreshBlocks();
-  };
+    session.removeBlock(block.id);
+  });
 
   const runPngExport = async (cellSize: number) => {
     if (!board || !activeDocument) return;
@@ -241,41 +265,44 @@ export function useEditorController(options: EditorControllerOptions) {
     finally { setBusy(undefined); }
   };
 
-  const createNewDocument = async () => {
+  const createNewDocument = () => runManagementOperation('chart_create', '編み図の作成', async () => {
     const name = (await askText('編み図名を入力してください', '新しい編み図'))?.trim();
-    if (!name) return;
+    if (!name || !(await saveBeforeManagement('編み図を作成'))) return;
     const document = await createDocument(name);
-    await refreshDocuments();
-    await switchDocument(document);
+    session.updateDocument(document);
+    // 作成と開く編み図の設定は、同じトランザクションで保存済み。
+    await switchDocument(document, false, false);
     analytics.track('chart_created');
-  };
+  });
 
-  const renameChart = async (document: ChartDocument) => {
+  const renameChart = (document: ChartDocument) => runManagementOperation('chart_rename', '編み図の名前変更', async () => {
     const name = (await askText('新しい名前', document.name))?.trim();
     if (!name) return;
-    await renameDocument(document.id, name);
-    await refreshDocuments();
+    if (document.id === activeDocument?.id && !(await saveBeforeManagement('編み図の名前を変更'))) return;
+    const renamed = await renameDocument(document.id, name);
+    session.updateDocument(renamed);
     if (document.id === activeDocument?.id) applyActiveDocumentName(name);
-  };
+  });
 
-  const duplicateChart = async (document: ChartDocument) => {
-    try {
-      // 保存の成否や書き込み中の編集に依存せず、押した時点の盤面を独立した配列へコピーする。
-      const snapshot = document.id === activeDocument?.id ? session.activeSnapshot() : undefined;
-      const copy = await duplicateDocument(document.id, snapshot?.id === document.id ? snapshot : undefined);
-      session.updateDocument(copy);
-      notify('編み図を複製しました。');
-    } catch { notify('編み図の複製に失敗しました。もう一度お試しください。'); }
-  };
+  const duplicateChart = (document: ChartDocument) => runManagementOperation('chart_duplicate', '編み図の複製', async () => {
+    // 保存の成否や書き込み中の編集に依存せず、押した時点の盤面を独立した配列へコピーする。
+    const snapshot = document.id === activeDocument?.id ? session.activeSnapshot() : undefined;
+    const copy = await duplicateDocument(document.id, snapshot?.id === document.id ? snapshot : undefined);
+    session.updateDocument(copy);
+    notify('編み図を複製しました。');
+  });
 
-
-  const deleteChart = async (document: ChartDocument) => {
+  const deleteChart = (document: ChartDocument) => runManagementOperation('chart_delete', '編み図の削除', async () => {
     if (!(await askConfirm(`「${document.name}」を削除しますか？`))) return;
-    await deleteDocument(document.id);
-    const remaining = await listDocuments();
-    if (document.id === activeDocument?.id) await switchDocument(remaining[0], false);
-    await refreshDocuments();
-  };
+    const remaining = session.documents.filter((item) => item.id !== document.id);
+    if (!remaining.length) return;
+    const active = document.id === activeDocument?.id;
+    if (active && !(await saveBeforeManagement('編み図を削除'))) return;
+    // 削除が失敗したら、開いている編み図も一覧も変えない。
+    await deleteDocument(document.id, active ? remaining[0].id : undefined);
+    session.removeDocument(document.id);
+    if (active) await switchDocument(remaining[0], false, false);
+  });
 
   const backup = async (all: boolean) => {
     if (!activeDocument) return;

@@ -60,11 +60,17 @@ export interface EditorSession {
   redo: () => boolean;
   /** 保留中の変更をすぐ書き込む。バックアップ前やバックグラウンド移行前に使う。 */
   saveNow: (trigger?: SaveTrigger) => Promise<SaveOutcome>;
-  /** 切り替え前に保留中の変更を書き込む。書き切れないときは盤面を差し替えず理由を返す。 */
-  switchDocument: (document: ChartDocument, saveCurrent?: boolean) => Promise<SwitchOutcome>;
+  /**
+   * 同じIDは盤面と履歴を維持する。それ以外は切り替え前に変更を書き込む。
+   * `remember=false`は、作成・削除と一緒に開く編み図の設定を保存した場合に使う。
+   */
+  switchDocument: (document: ChartDocument, saveCurrent?: boolean, remember?: boolean) => Promise<SwitchOutcome>;
   /** 現在の盤面を独立したセル配列へコピーする。保存済み記録には依存しない。 */
   activeSnapshot: () => ChartDocument | undefined;
   updateDocument: (document: ChartDocument) => void;
+  removeDocument: (id: string) => void;
+  updateBlock: (block: PatternBlock) => void;
+  removeBlock: (id: string) => void;
   refreshDocuments: () => Promise<void>;
   refreshBlocks: () => Promise<void>;
   applyActiveDocumentName: (name: string) => void;
@@ -106,6 +112,7 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
   const backgroundRef = useRef(backgroundColor);
   const dirtyRef = useRef(false);
   const editGenerationRef = useRef(0);
+  const savingRef = useRef<Promise<SaveOutcome> | undefined>(undefined);
   // 履歴は開いている編み図ごとに持ち、端末へは保存しない。切り替えると捨てる。
   const historyRef = useRef<BoardHistory | undefined>(undefined);
   const [canUndo, setCanUndo] = useState(false);
@@ -121,7 +128,7 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
     syncHistory();
   }, [syncHistory]);
 
-  const persist = useCallback(async (document: ChartDocument, target: Board, trigger: SaveTrigger): Promise<SaveOutcome> => {
+  const writeDocument = useCallback(async (document: ChartDocument, target: Board, trigger: SaveTrigger): Promise<SaveOutcome> => {
     const documentId = document.id;
     const generation = editGenerationRef.current;
     let saved: ChartDocument;
@@ -143,6 +150,15 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
     setDirty(false);
     return 'saved';
   }, []);
+
+  const persist = useCallback((document: ChartDocument, target: Board, trigger: SaveTrigger): Promise<SaveOutcome> => {
+    if (savingRef.current) return savingRef.current;
+    const saving = writeDocument(document, target, trigger);
+    savingRef.current = saving;
+    const clear = () => { if (savingRef.current === saving) savingRef.current = undefined; };
+    void saving.then(clear, clear);
+    return saving;
+  }, [writeDocument]);
 
   useEffect(() => {
     void (async () => {
@@ -205,11 +221,12 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
   const saveNow = useCallback(async (trigger: SaveTrigger = 'manual'): Promise<SaveOutcome> => {
     const document = activeDocumentRef.current;
     const target = boardRef.current;
+    if (savingRef.current) return savingRef.current;
     if (!dirtyRef.current || !document || !target) return 'idle';
     return persist(document, target, trigger);
   }, [persist]);
 
-  const switchDocument = useCallback(async (document: ChartDocument, saveCurrent = true): Promise<SwitchOutcome> => {
+  const switchDocument = useCallback(async (document: ChartDocument, saveCurrent = true, remember = true): Promise<SwitchOutcome> => {
     if (document.id === activeDocumentRef.current?.id) return 'switched';
     if (saveCurrent) {
       // 書き切れていないまま盤面を差し替えると、直前の編集がどこにも残らない。
@@ -217,6 +234,7 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
       if (outcome === 'failed' || outcome === 'pending') return outcome;
     }
     const nextBoard = boardFromDocument(document);
+    if (remember) await setSetting('activeDocumentId', document.id);
     activeDocumentRef.current = document;
     boardRef.current = nextBoard;
     backgroundRef.current = backgroundColorOf(document);
@@ -227,7 +245,6 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
     setBackgroundColorState(backgroundRef.current);
     setRevision((value) => value + 1);
     setDirty(false);
-    await setSetting('activeDocumentId', document.id);
     return 'switched';
   }, [saveNow, resetHistory]);
 
@@ -240,6 +257,15 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
   }, []);
   const updateDocument = useCallback((document: ChartDocument) => {
     setDocuments((current) => mergeSavedDocument(current, document));
+  }, []);
+  const removeDocument = useCallback((id: string) => {
+    setDocuments((current) => current.filter((document) => document.id !== id));
+  }, []);
+  const updateBlock = useCallback((block: PatternBlock) => {
+    setBlocks((current) => [block, ...current.filter((item) => item.id !== block.id)].sort((a, b) => b.createdAt - a.createdAt));
+  }, []);
+  const removeBlock = useCallback((id: string) => {
+    setBlocks((current) => current.filter((block) => block.id !== id));
   }, []);
 
   const refreshDocuments = useCallback(async () => setDocuments(await listDocuments()), []);
@@ -265,6 +291,6 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
   return {
     documents, activeDocument, board, backgroundColor, blocks, revision, dirty,
     changed, commitEdit, canUndo, canRedo, undo, redo, saveNow, switchDocument, refreshDocuments, refreshBlocks, applyActiveDocumentName,
-    setBackgroundColor, activeSnapshot, updateDocument,
+    setBackgroundColor, activeSnapshot, updateDocument, removeDocument, updateBlock, removeBlock,
   };
 }

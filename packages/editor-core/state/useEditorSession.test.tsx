@@ -133,6 +133,18 @@ describe('useEditorSession', () => {
     await view.unmount();
   });
 
+  it('keeps the board and history if the active setting cannot be written', async () => {
+    const view = await renderSession();
+    const target = view.session.board;
+    mocks.setSetting.mockRejectedValueOnce(new Error('quota'));
+    await act(async () => {
+      await expect(view.session.switchDocument(chart('b', 20))).rejects.toThrow('quota');
+    });
+    expect(view.session.activeDocument?.id).toBe('a');
+    expect(view.session.board).toBe(target);
+    await view.unmount();
+  });
+
   it('autosaves the edited chart and clears the unsaved marker', async () => {
     const view = await renderSession();
     expect(view.session.activeDocument?.id).toBe('a');
