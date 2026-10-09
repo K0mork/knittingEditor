@@ -784,9 +784,37 @@ final class KnittingEditorUITests: XCTestCase {
 
         rotateToLandscape(app)
         assertPrimaryControlsAreUsable(in: app)
+        // 横向きでも、WebViewが画面の幅いっぱいに広がり、左右に黒い帯が出ない（#146）。
+        let window = app.windows.firstMatch.frame
+        let webView = app.webViews.firstMatch.frame
+        XCTAssertEqual(webView.minX, window.minX, accuracy: 1, "WebViewの左に帯がある: \(webView) / \(window)")
+        XCTAssertEqual(webView.maxX, window.maxX, accuracy: 1, "WebViewの右に帯がある: \(webView) / \(window)")
 
         openDocumentsPanel(in: app)
         XCTAssertTrue(app.buttons["閉じる"].isHittable, app.debugDescription)
+    }
+
+    /// 横向きでキーボードを出しても、名前の入力ダイアログの「キャンセル」「決定」が押せる（#151）。
+    func testNameDialogButtonsStayAboveKeyboardInLandscape() {
+        let app = XCUIApplication()
+        app.launch()
+
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
+        rotateToLandscape(app)
+        openDocumentsPanel(in: app).tap()
+
+        let nameField = app.textFields["入力"]
+        XCTAssertTrue(nameField.waitForExistence(timeout: 10))
+        nameField.tap()
+        // CIのiPad Simulatorはハードウェアキーボード接続状態になり、画面のキーボードを出さないことがある。
+        // iPhoneでは必ず出して確かめる。
+        let keyboardShown = app.keyboards.firstMatch.waitForExistence(timeout: 5)
+        if UIDevice.current.userInterfaceIdiom == .phone {
+            XCTAssertTrue(keyboardShown, "キーボードが出ない: \(app.debugDescription)")
+        }
+        XCTAssertTrue(app.buttons["キャンセル"].isHittable, "キーボード表示=\(keyboardShown): \(app.debugDescription)")
+        XCTAssertTrue(app.buttons["決定"].isHittable, "キーボード表示=\(keyboardShown): \(app.debugDescription)")
+        app.buttons["キャンセル"].tap()
     }
 
     /// 「新しい編み図」を押すと、名前の入力欄をタップし直さなくても入力できる（#148）。
@@ -795,7 +823,7 @@ final class KnittingEditorUITests: XCTestCase {
     func testNewDocumentDialogFocusesNameInputWithoutTapping() {
         let app = XCUIApplication()
         app.launch()
-        // 実機は端末の向きのまま始まる。横向きではキーボードがダイアログのボタンを覆う（#151）ので、縦向きで確かめる。
+        // 実機は端末の向きのまま始まるので、縦向きにしてから確かめる。横向きは`testNameDialogButtonsStayAboveKeyboardInLandscape`で確かめる。
         XCUIDevice.shared.orientation = .portrait
 
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
@@ -816,7 +844,7 @@ final class KnittingEditorUITests: XCTestCase {
     func testDocumentDialogRemainsUsableAfterFocusingInput() {
         let app = XCUIApplication()
         app.launch()
-        // 実機は端末の向きのまま始まる。横向きではキーボードがダイアログのボタンを覆う（#151）ので、縦向きで確かめる。
+        // 実機は端末の向きのまま始まるので、縦向きにしてから確かめる。横向きは`testNameDialogButtonsStayAboveKeyboardInLandscape`で確かめる。
         XCUIDevice.shared.orientation = .portrait
 
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))

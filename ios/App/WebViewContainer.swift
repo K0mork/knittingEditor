@@ -195,6 +195,9 @@ struct WebViewContainer: UIViewRepresentable {
         webView.allowsLinkPreview = false
         webView.navigationDelegate = context.coordinator
         webView.allowsBackForwardNavigationGestures = false
+        // 編集画面は`viewport-fit=cover`で端まで描き、セーフエリアの余白をCSSの`env(safe-area-inset-*)`で付ける
+        // （#146）。スクロールビューの自動の余白も残すと、下の端の余白が二重になって操作メニューが浮く。
+        webView.scrollView.contentInsetAdjustmentBehavior = .never
         // 文書が描画されるまでの間に見える色。編集画面・使い方ページの地の色にそろえ、
         // 白や黒（ダークモードの`.systemBackground`）を挟まないようにする。
         webView.isOpaque = false
