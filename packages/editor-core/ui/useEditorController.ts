@@ -225,7 +225,7 @@ export function useEditorController(options: EditorControllerOptions) {
     if (!validation.valid) { notify(`${validation.reason}。PDF保存をおすすめします。`); return; }
     setBusy('PNGを生成中');
     try {
-      await platform.saveFile(await renderPng(board, cellSize), `${activeDocument.name}.png`);
+      await platform.saveFile(await renderPng(board, cellSize, session.backgroundColor), `${activeDocument.name}.png`);
       analytics.track('chart_exported', { export_format: 'png', board_size_bucket: boardSizeBucket(board.rows, board.cols) });
     } catch (error) { reportFailure('png_export', error); }
     finally { setBusy(undefined); }
@@ -235,7 +235,7 @@ export function useEditorController(options: EditorControllerOptions) {
     if (!board || !activeDocument) return;
     setBusy('PDFを生成中');
     try {
-      await platform.saveFile(await renderPdf(board, pdfOptions), `${activeDocument.name}.pdf`);
+      await platform.saveFile(await renderPdf(board, pdfOptions, session.backgroundColor), `${activeDocument.name}.pdf`);
       analytics.track('chart_exported', { export_format: 'pdf', pdf_layout: pdfOptions.layout, board_size_bucket: boardSizeBucket(board.rows, board.cols) });
     } catch (error) { reportFailure('pdf_export', error); }
     finally { setBusy(undefined); }

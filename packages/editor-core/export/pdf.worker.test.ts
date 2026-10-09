@@ -29,7 +29,7 @@ function decodedStreams(pdf: Uint8Array): string[] {
 
 /** ページの命令から、通常の罫線を除いた太線の横線のy座標と縦線のx座標を取り出す。 */
 function majorGrid(page: string): { width: number; horizontal: number[]; vertical: number[] } {
-  const match = page.match(/^([\d.]+) w 0\.4 G (.*)S$/m);
+  const match = page.match(/^([\d.]+) w 0\.400 0\.400 0\.400 RG (.*)S$/m);
   if (!match) return { width: 0, horizontal: [], vertical: [] };
   const horizontal: number[] = [];
   const vertical: number[] = [];
@@ -40,7 +40,7 @@ function majorGrid(page: string): { width: number; horizontal: number[]; vertica
   return { width: Number(match[1]), horizontal, vertical };
 }
 
-const gridPages = (pdf: Uint8Array) => decodedStreams(pdf).filter((stream) => stream.includes('0.35 w 0.78 G'));
+const gridPages = (pdf: Uint8Array) => decodedStreams(pdf).filter((stream) => stream.includes('0.35 w 0.780 0.780 0.780 RG'));
 
 describe('PDF worker', () => {
   it('writes a syntactically structured PDF', () => {
@@ -109,6 +109,26 @@ describe('PDF worker', () => {
     expect(commands).toContain('(1000) Tj');
     expect(commands).toContain('(50) Tj');
     expect(commands).not.toContain('(49) Tj');
+  });
+
+  it('leaves the page white on the default ground and fills the board on a chosen ground', () => {
+    const fill = /^([\d.]+ [\d.]+ [\d.]+) rg ([\d.]+) ([\d.]+) ([\d.]+) ([\d.]+) re f$/m;
+    const [white] = gridPages(buildPdf(request(3, 4, false)));
+    expect(white).not.toMatch(fill);
+
+    const input = { ...request(3, 4, false), background: '#1e1e1e' };
+    const { pageHeight, margin, rowLabelWidth, colLabelHeight, cellSize } = pdfPageLayout(3, 4, input);
+    const page = decodedStreams(buildPdf(input)).find((stream) => stream.includes(' RG ') && stream.includes(' re f'))!;
+    const match = page.match(fill)!;
+    expect(match[1]).toBe('0.118 0.118 0.118');
+    expect(Number(match[2])).toBeCloseTo(margin + rowLabelWidth, 2);
+    expect(Number(match[3])).toBeCloseTo(pageHeight - margin - colLabelHeight - 3 * cellSize, 2);
+    expect(Number(match[4])).toBeCloseTo(4 * cellSize, 2);
+    expect(Number(match[5])).toBeCloseTo(3 * cellSize, 2);
+    // 地を塗ってから罫線を引き、罫線は暗い地より明るくする。
+    expect(page.indexOf(match[0])).toBeLessThan(page.indexOf(' RG '));
+    const lineGray = Number(page.match(/0\.35 w ([\d.]+) [\d.]+ [\d.]+ RG/)![1]);
+    expect(lineGray).toBeGreaterThan(0.118);
   });
 
   it('draws major lines at the numbered tens of a single-page chart', () => {

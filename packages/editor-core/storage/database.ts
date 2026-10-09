@@ -1,6 +1,7 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 import { Gunzip, gzipSync, strFromU8, strToU8 } from 'fflate';
 import { Board, cellStitchId, MAX_BOARD_SIZE, packCell, type BlockAnchor, type PatternBlock } from '../model/Board';
+import { normalizeBackgroundColor } from '../model/boardColors';
 import { STITCH_BY_ID, STITCH_CATALOG_VERSION, type StitchDefinition } from '../stitches/catalog';
 import { base64ToBytes, bytesToBase64 } from '../util/base64';
 
@@ -10,6 +11,11 @@ export interface ChartDocument {
   rows: number;
   cols: number;
   cells: ArrayBuffer;
+  /**
+   * 盤面の地の色（`#rrggbb`）。選んでいない編み図には無く、白として描く（`backgroundColorOf`）。
+   * `.knit`にもそのまま入る。この項目を知らない古い版で読み込んでも、白い地で表示されるだけになる。
+   */
+  backgroundColor?: string;
   createdAt: number;
   updatedAt: number;
 }
@@ -89,7 +95,10 @@ export async function createDocument(name = '新しい編み図', rows = 20, col
   return document;
 }
 
-export async function saveDocument(document: Pick<ChartDocument, 'id' | 'name' | 'createdAt'>, board: Board): Promise<ChartDocument> {
+export async function saveDocument(
+  document: Pick<ChartDocument, 'id' | 'name' | 'createdAt'> & Partial<Pick<ChartDocument, 'backgroundColor'>>,
+  board: Board,
+): Promise<ChartDocument> {
   const saved: ChartDocument = {
     ...document, rows: board.rows, cols: board.cols,
     cells: board.cells.slice().buffer as ArrayBuffer, updatedAt: Date.now(),
@@ -318,8 +327,12 @@ export async function importBackup(file: Blob): Promise<ImportBackupResult> {
     const bytes = base64ToBytes(item.cells);
     if (bytes.byteLength !== item.rows * item.cols * Uint32Array.BYTES_PER_ELEMENT) throw new Error('盤面データが破損しています');
     validatePackedCells(item.rows, item.cols, bytes);
+    // 地の色が壊れていても編み図は捨てず、白い地として復元する。
+    const { backgroundColor: rawBackground, ...rest } = item;
+    const backgroundColor = normalizeBackgroundColor(rawBackground);
     return {
-      ...item, id: crypto.randomUUID(), name: `${item.name}（復元）`, cells: bytes.slice().buffer as ArrayBuffer,
+      ...rest, ...(backgroundColor ? { backgroundColor } : {}),
+      id: crypto.randomUUID(), name: `${item.name}（復元）`, cells: bytes.slice().buffer as ArrayBuffer,
       createdAt: now, updatedAt: now,
     };
   });

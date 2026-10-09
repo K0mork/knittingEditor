@@ -686,3 +686,50 @@ test('explains why a switch is blocked by an edit that lands during the save', a
   await expect(page.locator('.app-document-name')).not.toContainText('コピー');
   await expect(page.locator('.drawer')).toBeVisible();
 });
+
+test('keeps the chosen board background after reload and exports it to PNG', async ({ page }) => {
+  // iPhone相当の設定では共有シートへ渡すので、PNGをダウンロードとして受け取れるよう共有APIを外す。
+  await page.addInitScript(() => Object.defineProperty(Navigator.prototype, 'canShare', { value: undefined, configurable: true }));
+  await page.reload();
+  await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
+  /** 盤面のCanvasの、CSS座標(x, y)の画素。 */
+  const canvasPixel = (x: number, y: number) => page.getByLabel('編み図編集盤面').evaluate((canvas: HTMLCanvasElement, [cssX, cssY]) => {
+    const ratio = canvas.width / canvas.clientWidth;
+    return Array.from(canvas.getContext('2d')!.getImageData(Math.round(cssX * ratio), Math.round(cssY * ratio), 1, 1).data.slice(0, 3));
+  }, [x, y]);
+  // 盤面は左上の番号の帯（28px）から8px内側で始まり、1マス30px。上から2段目・左端のマスの中央を見る。
+  const groundPoint = [36 + 15, 36 + 30 + 15] as const;
+  await expect.poll(() => canvasPixel(...groundPoint)).toEqual([255, 255, 255]);
+
+  await page.getByRole('button', { name: '盤面' }).click();
+  await expect(page.getByRole('button', { name: '白', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: '黒', exact: true }).click();
+  await expect(page.getByRole('button', { name: '黒', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: '閉じる' }).click();
+  await expect.poll(() => canvasPixel(...groundPoint)).toEqual([0x1e, 0x1e, 0x1e]);
+
+  await expect(page.getByText('（保存中…）')).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
+  await expect.poll(() => canvasPixel(...groundPoint)).toEqual([0x1e, 0x1e, 0x1e]);
+  await page.getByRole('button', { name: '盤面' }).click();
+  await expect(page.getByRole('button', { name: '黒', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: '閉じる' }).click();
+
+  await page.getByRole('button', { name: '保存' }).click();
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'PNGを保存' }).click();
+  const png = readFileSync((await (await download).path())!);
+  const pixels = await page.evaluate(async (base64) => {
+    const bytes = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
+    const image = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+    const canvas = new OffscreenCanvas(image.width, image.height);
+    const context = canvas.getContext('2d')!;
+    context.drawImage(image, 0, 0);
+    const at = (x: number, y: number) => Array.from(context.getImageData(x, y, 1, 1).data.slice(0, 3));
+    // 20段×20目は1セル24pxで、四辺の番号の帯も24px。上から2段目・左端のマスの中央と、左上の帯。
+    return { ground: at(36, 24 + 24 + 12), band: at(4, 4) };
+  }, png.toString('base64'));
+  expect(pixels.ground).toEqual([0x1e, 0x1e, 0x1e]);
+  expect(pixels.band).toEqual([255, 255, 255]);
+});

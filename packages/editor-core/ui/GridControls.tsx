@@ -1,9 +1,14 @@
 import { useEffect, useState } from 'react';
 import type { Board } from '../model/Board';
+import { BACKGROUND_PRESETS } from '../model/boardColors';
 import { errorMessage } from '../util/errors';
 
 export interface GridControlsProps {
   board: Board;
+  /** 盤面の地の色（`#rrggbb`）。 */
+  backgroundColor: string;
+  /** 地の色を変えたとき。色選択はつまみを動かすたびに呼ぶ。 */
+  onBackgroundColorChange: (color: string) => void;
   /** 盤面を書き換えたあとに呼ぶ。自動保存の起点。 */
   changed: () => void;
   /** 位置入力。Web版は`window.prompt`、iOS版はアプリ内ダイアログを渡す。 */
@@ -13,7 +18,7 @@ export interface GridControlsProps {
 }
 
 /** 盤面設定パネル。Web版とiOS版で共通。 */
-export function GridControls({ board, changed, askText, askConfirm, notify }: GridControlsProps) {
+export function GridControls({ board, backgroundColor, onBackgroundColorChange, changed, askText, askConfirm, notify }: GridControlsProps) {
   const [rows, setRows] = useState(board.rows);
   const [cols, setCols] = useState(board.cols);
   useEffect(() => { setRows(board.rows); setCols(board.cols); }, [board.rows, board.cols]);
@@ -42,6 +47,18 @@ export function GridControls({ board, changed, askText, askConfirm, notify }: Gr
 
   return <div className="grid-controls">
     <div className="size-inputs"><label>段数<input type="number" min="1" max="1000" value={rows} onChange={(event) => setRows(Number(event.target.value))} /></label><label>列数<input type="number" min="1" max="1000" value={cols} onChange={(event) => setCols(Number(event.target.value))} /></label><button className="primary" onClick={resize}>変更</button></div>
+    <h3 id="background-color-title">背景色</h3>
+    <div className="background-presets" role="group" aria-labelledby="background-color-title">
+      {BACKGROUND_PRESETS.map((preset) => <button key={preset.color} className="background-preset" aria-pressed={backgroundColor === preset.color}
+        onClick={() => onBackgroundColorChange(preset.color)}>
+        <span className="background-swatch" aria-hidden="true" style={{ backgroundColor: preset.color }} />{preset.label}
+      </button>)}
+    </div>
+    <label className="color-picker-custom background-custom">
+      <input type="color" value={backgroundColor} onChange={(event) => onBackgroundColorChange(event.target.value)} />
+      <span>ほかの色を選ぶ</span>
+      <code aria-hidden="true">{backgroundColor}</code>
+    </label>
     <h3>追加</h3><div className="button-grid"><button onClick={() => mutateStructure(() => board.resize(board.rows + 1, board.cols, 1, 0))}>上に段</button><button onClick={() => mutateStructure(() => board.resize(board.rows + 1, board.cols))}>下に段</button><button onClick={() => mutateStructure(() => board.resize(board.rows, board.cols + 1, 0, 1))}>左に列</button><button onClick={() => mutateStructure(() => board.resize(board.rows, board.cols + 1))}>右に列</button></div>
     <h3>削除</h3><div className="button-grid"><button onClick={() => mutateStructure(() => board.resize(board.rows - 1, board.cols, -1, 0))}>上の段</button><button onClick={() => mutateStructure(() => board.resize(board.rows - 1, board.cols))}>下の段</button><button onClick={() => mutateStructure(() => board.resize(board.rows, board.cols - 1, 0, -1))}>左の列</button><button onClick={() => mutateStructure(() => board.resize(board.rows, board.cols - 1))}>右の列</button></div>
     <h3>指定位置</h3><div className="button-grid"><button onClick={() => void promptIndex('row', 'insert')}>段を挿入</button><button onClick={() => void promptIndex('col', 'insert')}>列を挿入</button><button onClick={() => void promptIndex('row', 'remove')}>段を削除</button><button onClick={() => void promptIndex('col', 'remove')}>列を削除</button></div>

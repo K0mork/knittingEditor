@@ -1,12 +1,13 @@
 import { STITCHES } from '../stitches/catalog';
-import { cellColor, cellStitchId } from './Board';
+import { cellColor, cellStitchId, parseColor } from './Board';
+import { backgroundColorOf, DEFAULT_BACKGROUND_COLOR } from './boardColors';
 
 /**
  * 編み図一覧の縮小画像。ReactにもDOMにも依存しない。
  *
  * 一覧では記号を読ませるのではなく、どの編み図かを見分けられればよいので、各セルを記号の色で
- * 塗ったモザイクにする。記号が複数のセルにまたがるときは、占めるセルすべてを塗る。空きのセルと
- * 「白くする」は白。盤面が`THUMBNAIL_MAX_SIDE`を超えるときは、`step`×`step`セルを1画素に
+ * 塗ったモザイクにする。記号が複数のセルにまたがるときは、占めるセルすべてを塗る。空きのセルは
+ * 盤面の地の色、「白くする」は白。盤面が`THUMBNAIL_MAX_SIDE`を超えるときは、`step`×`step`セルを1画素に
  * まとめ、色を面積で平均する。1000×1000でも盤面を1回なめるだけで済み、記号の描画もしない。
  *
  * 保存はしない。IndexedDBの記録にも`.knit`にも縮小画像を持たせず、一覧を開いたときに保存済みの
@@ -56,7 +57,7 @@ function stitches(): StitchTable {
  * 記号IDだけを持つ旧形式のセル（色の無い値）は`boardFromDocument`と同じく黒の記号として読む。
  * 未知の記号と盤面からはみ出す記号は、`Board`が読み込むときと同じく描かない。
  */
-export function renderThumbnail(rows: number, cols: number, cells: Uint32Array): ChartThumbnail {
+export function renderThumbnail(rows: number, cols: number, cells: Uint32Array, background: string = DEFAULT_BACKGROUND_COLOR): ChartThumbnail {
   const { width, height, step } = thumbnailSize(rows, cols);
   const table = stitches();
   const red = new Uint32Array(width * height);
@@ -96,6 +97,8 @@ export function renderThumbnail(rows: number, cols: number, cells: Uint32Array):
       }
     }
   }
+  const ground = parseColor(background);
+  const groundChannels = [(ground >>> 16) & 0xff, (ground >>> 8) & 0xff, ground & 0xff];
   const pixels = new Uint8ClampedArray(width * height * 4);
   for (let py = 0; py < height; py++) {
     // 端の画素は盤面の残りだけを受け持つので、面積はstep×stepより小さいことがある。
@@ -106,11 +109,11 @@ export function renderThumbnail(rows: number, cols: number, cells: Uint32Array):
       // 壊れたデータで記号が重なっていても、面積を超えて数えない。
       const filled = Math.min(covered[pixel], area);
       const scale = covered[pixel] > 0 ? filled / covered[pixel] : 0;
-      const empty = (area - filled) * 255;
+      const empty = area - filled;
       const offset = pixel * 4;
-      pixels[offset] = Math.round((red[pixel] * scale + empty) / area);
-      pixels[offset + 1] = Math.round((green[pixel] * scale + empty) / area);
-      pixels[offset + 2] = Math.round((blue[pixel] * scale + empty) / area);
+      pixels[offset] = Math.round((red[pixel] * scale + empty * groundChannels[0]) / area);
+      pixels[offset + 1] = Math.round((green[pixel] * scale + empty * groundChannels[1]) / area);
+      pixels[offset + 2] = Math.round((blue[pixel] * scale + empty * groundChannels[2]) / area);
       pixels[offset + 3] = 255;
     }
   }
@@ -122,6 +125,7 @@ export interface ThumbnailSource {
   rows: number;
   cols: number;
   cells: ArrayBuffer;
+  backgroundColor?: string;
   updatedAt: number;
 }
 
@@ -132,7 +136,7 @@ export const THUMBNAIL_CACHE_LIMIT = 200;
  * 覚えておく項目。セル配列（`cells`）は持たない。一覧を読み直すたびにセル配列は新しい
  * ArrayBufferになるので、参照を持つと古いセル配列（1000×1000で1件4MB）を解放できなくなる。
  */
-interface CachedThumbnail { rows: number; cols: number; updatedAt: number; thumbnail: ChartThumbnail }
+interface CachedThumbnail { rows: number; cols: number; background: string; updatedAt: number; thumbnail: ChartThumbnail }
 
 /**
  * 編み図ごとに最後に作った縮小画像を覚える。一覧を開き直したり、別の編み図を保存して一覧が
@@ -145,16 +149,17 @@ export class ThumbnailCache {
   constructor(private readonly limit: number = THUMBNAIL_CACHE_LIMIT) {}
 
   get(source: ThumbnailSource): ChartThumbnail {
+    const background = backgroundColorOf(source);
     const cached = this.entries.get(source.id);
-    if (cached && cached.rows === source.rows && cached.cols === source.cols && cached.updatedAt === source.updatedAt) {
+    if (cached && cached.rows === source.rows && cached.cols === source.cols && cached.background === background && cached.updatedAt === source.updatedAt) {
       // 最近使った順に並べ直す。上限を超えたときは、いちばん長く使っていない項目から捨てる。
       this.entries.delete(source.id);
       this.entries.set(source.id, cached);
       return cached.thumbnail;
     }
-    const thumbnail = renderThumbnail(source.rows, source.cols, new Uint32Array(source.cells, 0, Math.floor(source.cells.byteLength / 4)));
+    const thumbnail = renderThumbnail(source.rows, source.cols, new Uint32Array(source.cells, 0, Math.floor(source.cells.byteLength / 4)), background);
     this.entries.delete(source.id);
-    this.entries.set(source.id, { rows: source.rows, cols: source.cols, updatedAt: source.updatedAt, thumbnail });
+    this.entries.set(source.id, { rows: source.rows, cols: source.cols, background, updatedAt: source.updatedAt, thumbnail });
     while (this.entries.size > this.limit) {
       const oldest = this.entries.keys().next().value;
       if (oldest === undefined) break;

@@ -153,3 +153,38 @@ describe('document persistence', () => {
     expect(restored.valueAt(999, 999)).toBe(board.valueAt(999, 999));
   });
 });
+
+describe('background color', () => {
+  it('saves the chosen ground with the chart and leaves new charts without one', async () => {
+    const created = await createDocument('地の色', 1, 1);
+    expect(created).not.toHaveProperty('backgroundColor');
+    await saveDocument({ ...created, backgroundColor: '#1e1e1e' }, new Board(1, 1));
+    const saved = (await listDocuments()).find((item) => item.id === created.id);
+    expect(saved?.backgroundColor).toBe('#1e1e1e');
+  });
+
+  it('round-trips the ground through a .knit backup', async () => {
+    const created = await createDocument('地の色の書き出し', 1, 1);
+    await saveDocument({ ...created, backgroundColor: '#808080' }, new Board(1, 1));
+    const backup = await exportBackup([created.id]);
+    const payload = JSON.parse(strFromU8(gunzipSync(new Uint8Array(await backup.arrayBuffer())))) as { documents: Array<{ backgroundColor?: string }> };
+    expect(payload.documents[0].backgroundColor).toBe('#808080');
+    const restored = await importBackup(backup);
+    expect(restored.documents[0].backgroundColor).toBe('#808080');
+  });
+
+  it('restores a chart with a broken ground as a white-ground chart', async () => {
+    const restored = await importBackup(backupBlob({
+      format: 'knitting-editor', version: 2, stitchCatalogVersion: STITCH_CATALOG_VERSION,
+      documents: [
+        { ...documentPayload('壊れた地の色'), backgroundColor: 'url(javascript:alert(1))' },
+        { ...documentPayload('大文字の地の色'), backgroundColor: '#1E1E1E' },
+        documentPayload('地の色なし'),
+      ],
+      blocks: [],
+    }));
+    expect(restored.documents[0]).not.toHaveProperty('backgroundColor');
+    expect(restored.documents[1].backgroundColor).toBe('#1e1e1e');
+    expect(restored.documents[2]).not.toHaveProperty('backgroundColor');
+  });
+});

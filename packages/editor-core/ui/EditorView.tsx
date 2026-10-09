@@ -125,7 +125,7 @@ export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, 
         lastBackupAt={editor.backupReminder.lastBackupAt} onBackup={() => void editor.backup(false)} onSnooze={editor.backupReminder.snooze} />}
 
       <section className="canvas-wrap">
-        <BoardCanvas board={board} revision={session.revision} stitchKey={editor.selectedStitch} color={editor.selectedColor} mode={mode}
+        <BoardCanvas board={board} background={session.backgroundColor} revision={session.revision} stitchKey={editor.selectedStitch} color={editor.selectedColor} mode={mode}
           selection={selection} pasteBlock={editor.pasteBlock} onChange={editor.strokeChanged} onEditEnd={editor.commitStroke} onSelectionChange={editor.setSelection} onPasteComplete={editor.handlePasteComplete} />
         <GestureHint mode={mode} />
       </section>
@@ -151,7 +151,7 @@ export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, 
           onDuplicate={(document) => void editor.duplicateChart(document)} onDelete={(document) => void editor.deleteChart(document)} />
         {documentsNote && <p className="documents-note">{documentsNote}</p>}
       </>}
-      {panel === 'grid' && <GridControls board={board} changed={editor.changed} askText={editor.askText} askConfirm={editor.askConfirm} notify={editor.notify} />}
+      {panel === 'grid' && <GridControls board={board} backgroundColor={session.backgroundColor} onBackgroundColorChange={session.setBackgroundColor} changed={editor.changed} askText={editor.askText} askConfirm={editor.askConfirm} notify={editor.notify} />}
       {panel === 'blocks' && <>
         {selection && <><button className="primary" onClick={editor.copySelection}>保存せずコピーして貼付</button><button onClick={() => void editor.saveSelectionAsBlock()}>選択範囲をブロック保存</button></>}
         {!selection && <button onClick={editor.startSelecting}>盤面で範囲を選択</button>}
