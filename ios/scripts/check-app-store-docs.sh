@@ -62,9 +62,11 @@ metadata_value_is_nonempty "サブタイトル" "$METADATA"
 metadata_value_is_nonempty "主カテゴリ" "$METADATA"
 metadata_value_is_nonempty "副カテゴリ" "$METADATA"
 metadata_value_is_nonempty "キーワード" "$METADATA"
+metadata_value_is_nonempty "プロモーションテキスト" "$METADATA"
 metadata_value_within_limit "App名" 30
 metadata_value_within_limit "サブタイトル" 30
 metadata_value_within_limit "キーワード" 100
+metadata_value_within_limit "プロモーションテキスト" 170
 
 # ホーム画面の表示名は、全角7文字以上だと文字サイズを大きくしたiPhoneで切れる（APP_STORE_METADATA.mdの実測）。
 # 文書の値とInfo.plistの値がずれないよう、両方を照合する。plutilの無いLinuxでも動くようperlで読む。
