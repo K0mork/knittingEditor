@@ -16,7 +16,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('../storage/database', async () => {
   const { Board: BoardClass } = await import('../model/Board');
   return {
-    boardFromDocument: (document: ChartDocument) => new BoardClass(document.rows, document.cols),
+    boardFromDocument: (document: ChartDocument) => new BoardClass(document.rows, document.cols, new Uint32Array(document.cells.slice(0))),
     listBlocks: async () => [],
     listDocuments: mocks.listDocuments,
     saveDocument: mocks.saveDocument,
@@ -70,7 +70,7 @@ beforeEach(() => {
   mocks.listDocuments.mockResolvedValue([]);
   mocks.setSetting.mockResolvedValue(undefined);
   mocks.saveDocument.mockImplementation(async (document: ChartDocument, board: Board) => ({
-    ...document, rows: board.rows, cols: board.cols, updatedAt: Date.now(),
+    ...document, rows: board.rows, cols: board.cols, cells: board.cells.slice().buffer, updatedAt: Date.now(),
   }));
 });
 
@@ -88,6 +88,51 @@ describe('mergeSavedDocument', () => {
 });
 
 describe('useEditorSession', () => {
+  it.each(['before autosave', 'during pending save'])('keeps edits and history on same-ID selection %s', async (timing) => {
+    const view = await renderSession();
+    const stale = view.session.documents.find((document) => document.id === 'a')!;
+    const target = view.session.board!;
+    await act(async () => {
+      target.resize(5, 6);
+      target.place(0, 0, 'knit', '#123456');
+      view.session.changed();
+      view.session.commitEdit();
+      view.session.setBackgroundColor('#808080');
+    });
+    let release!: () => void;
+    let saving: Promise<unknown> | undefined;
+    if (timing === 'during pending save') {
+      mocks.saveDocument.mockImplementationOnce((document: ChartDocument, board: Board) => {
+        const saved = { ...document, rows: board.rows, cols: board.cols, cells: board.cells.slice().buffer, updatedAt: 50 };
+        return new Promise((resolve) => { release = () => resolve(saved); });
+      });
+      await act(async () => { saving = view.session.saveNow(); });
+      await act(async () => {
+        target.place(1, 1, 'purl', '#123456');
+        view.session.changed();
+        view.session.commitEdit();
+      });
+    }
+    await act(async () => { expect(await view.session.switchDocument(stale)).toBe('switched'); });
+    expect(view.session.board).toBe(target);
+    expect(target.rows).toBe(5);
+    expect(target.cols).toBe(6);
+    expect(target.valueAt(0, 0)).not.toBe(0);
+    expect(view.session.backgroundColor).toBe('#808080');
+    expect(view.session.canUndo).toBe(true);
+    expect(view.session.dirty).toBe(true);
+    if (saving) await act(async () => { release(); expect(await saving).toBe('pending'); });
+    await view.flush(500);
+    expect(view.session.dirty).toBe(false);
+    const saved = view.session.documents.find((document) => document.id === 'a')!;
+    expect(saved.rows).toBe(5);
+    expect(saved.cols).toBe(6);
+    expect(new Uint32Array(saved.cells)[0]).toBe(target.valueAt(0, 0));
+    expect(saved.backgroundColor).toBe('#808080');
+    if (saving) expect(new Uint32Array(saved.cells)[7]).toBe(target.valueAt(1, 1));
+    await view.unmount();
+  });
+
   it('autosaves the edited chart and clears the unsaved marker', async () => {
     const view = await renderSession();
     expect(view.session.activeDocument?.id).toBe('a');

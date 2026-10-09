@@ -207,6 +207,7 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
   }, [persist]);
 
   const switchDocument = useCallback(async (document: ChartDocument, saveCurrent = true): Promise<SwitchOutcome> => {
+    if (document.id === activeDocumentRef.current?.id) return 'switched';
     if (saveCurrent) {
       // 書き切れていないまま盤面を差し替えると、直前の編集がどこにも残らない。
       const outcome = await saveNow();
