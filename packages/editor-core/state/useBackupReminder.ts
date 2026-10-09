@@ -28,7 +28,7 @@ export interface BackupReminder {
   /** 盤面を1回編集したときに呼ぶ。指を離して手を止めてから`BACKUP_REMINDER_IDLE_MS`後に勧めへ反映する。 */
   countEdit: () => void;
   /** `.knit`を書き出したあとに呼ぶ。`documentIds`を省くと全編み図を書き出したとみなす。 */
-  recordExport: (documentIds?: string[]) => Promise<void>;
+  recordExport: (documentIds?: string[], at?: number, isCurrent?: () => boolean) => Promise<void>;
   /** 「あとで」。`BACKUP_REMINDER_SNOOZE_MS`のあいだ全編み図で勧めない。 */
   snooze: () => void;
 }
@@ -143,12 +143,11 @@ export function useBackupReminder(activeDocument: ChartDocument | undefined): Ba
     scheduleIdleCheck();
   }, [scheduleIdleCheck]);
 
-  const recordExport = useCallback(async (documentIds?: string[]) => {
-    const at = Date.now();
+  const recordExport = useCallback(async (documentIds?: string[], at = Date.now(), isCurrent: () => boolean = () => true) => {
     // 書き出したファイルはもう利用者の手元にあるので、記録に失敗しても書き出しの失敗とはしない。
     try { await recordBackup(documentIds, at); } catch { return; }
     const currentId = activeDocumentRef.current?.id;
-    if (!currentId || (documentIds && !documentIds.includes(currentId))) return;
+    if (!isCurrent() || !currentId || (documentIds && !documentIds.includes(currentId))) return;
     setOpened({ documentId: currentId, lastBackupAt: at, changedBeforeOpen: false });
     resetEdits();
     setCheckedAt(at);

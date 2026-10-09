@@ -49,6 +49,9 @@ export interface EditorSession {
   blocks: PatternBlock[];
   revision: number;
   dirty: boolean;
+  saveFailed: boolean;
+  backupGeneration: () => string;
+  backupSnapshot: () => ChartDocument | undefined;
   /** 盤面を編集したときに呼ぶ。自動保存の待ち時間を測り直す。履歴には積まない。 */
   changed: () => void;
   /** ここまでの編集を元に戻す単位として1件にまとめる。なぞり描きは指を離したときに呼ぶ。 */
@@ -92,6 +95,7 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
   const [blocks, setBlocks] = useState<PatternBlock[]>([]);
   const [revision, setRevision] = useState(0);
   const [dirty, setDirty] = useState(false);
+  const [saveFailed, setSaveFailed] = useState(false);
 
   const optionsRef = useRef(options);
   optionsRef.current = options;
@@ -125,6 +129,7 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
     try {
       saved = await saveDocument({ ...document, backgroundColor: backgroundRef.current }, target);
     } catch (error) {
+      setSaveFailed(true);
       optionsRef.current.onSaveError(error, trigger);
       return 'failed';
     }
@@ -138,6 +143,7 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
     if (editGenerationRef.current !== generation) return 'pending';
     dirtyRef.current = false;
     setDirty(false);
+    setSaveFailed(false);
     return 'saved';
   }, []);
 
@@ -248,7 +254,15 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
   }, [changed]);
 
   return {
-    documents, activeDocument, board, backgroundColor, blocks, revision, dirty,
+    documents, activeDocument, board, backgroundColor, blocks, revision, dirty, saveFailed,
+    backupGeneration: () => `${activeDocumentRef.current?.id}:${editGenerationRef.current}`,
+    backupSnapshot: () => {
+      const document = activeDocumentRef.current;
+      const target = boardRef.current;
+      if (!document || !target) return undefined;
+      return { ...document, backgroundColor: backgroundRef.current, rows: target.rows, cols: target.cols,
+        cells: target.cells.slice().buffer as ArrayBuffer, updatedAt: Date.now() };
+    },
     changed, commitEdit, canUndo, canRedo, undo, redo, saveNow, switchDocument, refreshDocuments, refreshBlocks, applyActiveDocumentName,
     setBackgroundColor,
   };

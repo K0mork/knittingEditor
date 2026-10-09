@@ -73,7 +73,8 @@ export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, 
   if (editor.initializationError) return <main className="loading" role="alert">編み図を読み込めませんでした：{editor.initializationError}<button onClick={() => window.location.reload()}>再読み込み</button></main>;
   if (!board || !activeDocument) return <main className="loading">編み図を読み込んでいます…</main>;
 
-  const documentStatus = <>{activeDocument.name}<span aria-hidden="true">{dirty ? '（保存中…）' : ''}</span><span className="visually-hidden">、{dirty ? '保存中' : '保存済み'}</span></>;
+  const saveStatus = dirty ? (session.saveFailed ? '保存失敗' : '保存中') : '保存済み';
+  const documentStatus = <>{activeDocument.name}<span aria-hidden="true">{dirty ? (session.saveFailed ? '（保存失敗）' : '（保存中…）') : ''}</span><span className="visually-hidden">、{saveStatus}</span></>;
   const modeButton = (target: CanvasMode, label: string, onClick: () => void) => <button key={target} className={mode === target ? 'active' : ''} aria-pressed={mode === target} onClick={onClick}>{label}</button>;
 
   return <div className="app-shell">
@@ -86,6 +87,7 @@ export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, 
     </header>
 
     <main className="workspace">
+      {session.saveFailed && dirty && <div role="alert">端末内への保存に失敗しています。「保存」から.knitのバックアップを書き出してください。</div>}
       <section className="primary-tools" aria-label="編集ツール">
         <button className="color-tool" aria-label={`記号の色を選ぶ（現在：${describeColor(parseColor(editor.selectedColor))} ${editor.selectedColor}）`} aria-haspopup="dialog" aria-expanded={editor.colorPickerOpen} onClick={() => editor.setColorPickerOpen(true)}>
           <span>色</span>
