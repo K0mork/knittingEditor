@@ -448,6 +448,8 @@ async function storedPackedCells(page: Page): Promise<number[]> {
   });
 }
 
+// 盤面の初期表示は左上に見出し28pxと余白8px（計36px）を置き、1マス30pxで描く。
+// 初期盤面は20×20マスで、記号は2行目（y = 36 + 30 + 15 = 81）に置く。
 async function drawRealContent(page: Page) {
   const box = (await page.getByLabel('編み図編集盤面').boundingBox())!;
   for (const [name, color, col] of [['表目', '#c83264', 1], ['右上2目一度', '#2468ac', 2], ['白くする', '#abcdef', 4]] as const) {
@@ -530,7 +532,7 @@ test('exports real symbol pixels and restores a full backup block for pasting', 
   await page.getByRole('button', { name: 'ブロック', exact: true }).click();
   page.once('dialog', (dialog) => dialog.accept('記号入りブロック'));
   await page.getByRole('button', { name: '選択範囲をブロック保存' }).click();
-  await expect(page.getByText('記号入りブロック', { exact: true })).toBeVisible();
+  await expect(page.locator('.block-list').getByRole('button', { name: /^記号入りブロック\s/ })).toBeVisible();
   await page.getByRole('button', { name: '閉じる', exact: true }).click();
   await page.getByRole('button', { name: '保存', exact: true }).click();
   const backupDownload = page.waitForEvent('download');

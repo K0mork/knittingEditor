@@ -3,15 +3,19 @@
 - 影響: #194（Closes #194）。空の盤面だけでは検出できなかったコピー貼り付け・PNG・全データバックアップの退行を検証する。製品コードと利用者の挙動は変更しない。
 - 主なファイル: `tests/e2e/editor.spec.ts`、`packages/editor-core/export/exporters.test.ts`、`packages/editor-core/storage/database.test.ts`、`ios/Web/src/backupInterchange.test.ts`。
 - テスト: 色付きの表目・2マス記号・白くするセルを画面で配置し、別の位置への繰り返し貼り付け、元のセルの保持、元に戻すをセル配列全体で検証。PNGの実画素と復元ブロックの貼り付けをE2Eに追加。VitestではCanvasスタブで実際のdrawCell・drawGlyphを通し、色・位置・2マスの線・白い塗りと空盤面との差を検証。共通とiOS Webで、名前・寸法・色・2マス記号を持つブロックの全体バックアップ往復、新ID、既存データ保持、個別バックアップのブロック除外を検証。
-- 検証:
-- `npm ci`：成功。
-- `npm run typecheck`：成功。
-- `npm test`：成功（37ファイル、261件）。
-- `npm run build`：成功。
-- `npm run check:dist`：成功。
-- `(cd ios/Web && ../../node_modules/.bin/tsc -p tsconfig.app.json --noEmit)`：成功。
-- `(cd ios/Web && ../../node_modules/.bin/vitest run --config vite.config.ts)`：成功（8ファイル、34件）。
-- `npx playwright test --list`：初回はヘルパー名の重複で失敗。重複を修正し、再実行成功（171件の一覧）。ブラウザ実行はしていません。
-- `git diff --check`：成功。
-- 未実行: `npm run test:e2e`のChromium・WebKit実行はsandboxでブラウザを起動できないため検証担当に任せる。コピー内容を空にする、drawCell呼び出しを省く、全体バックアップからブロックを落とす変更に対する失敗確認も検証担当に依頼する。iOSのビルド、iPhone/iPad Simulator、アプリ更新、unsigned Release Archive、オフライン同梱物検査はPR CIに任せる。
-- デプロイ影響: none。テストのみの変更のため、追加の配信後確認は不要。
+- 検証（Node v24.21.0）:
+  - `npm run typecheck`：成功。
+  - `npm test`：成功（37ファイル、261件）。
+  - `npm run build`：成功。
+  - `npm run check:dist`：成功。
+  - `(cd ios/Web && ../../node_modules/.bin/tsc -p tsconfig.app.json --noEmit)`：成功。
+  - `(cd ios/Web && ../../node_modules/.bin/vitest run --config vite.config.ts)`：成功（8ファイル、34件）。
+  - `npx playwright test tests/e2e/editor.spec.ts -g "copies colored symbols|exports real symbol pixels" --repeat-each 2`：chromium-mobile、webkit-mobile、chromium-desktopの3プロジェクトで2テスト×2回、計12件成功。
+  - 変異試験（製品コードを一時的に壊して実行し、毎回元に戻した）:
+    - コピー内容を空にする（`useEditorController.ts`の`startPaste`へ渡すアンカーを空にする）：Playwrightのコピーのテストが3プロジェクトとも1回目の貼り付け後のセル比較で失敗した。
+    - `renderPng`でdrawCellを呼ばない：Vitest `draws colored single and multi-cell glyphs and whiteout on a dark ground`が失敗した。PlaywrightのPNG・バックアップのテストも3プロジェクトとも記号の画素の検査で失敗した。
+    - 全体バックアップからブロックを落とす（`database.ts`の`exportBackup`で`blocks`を常に空にする）：Vitest `round-trips normal blocks only in full backups without overwriting originals`、iOS Web `round-trips an app export through the native bridge payload`、PlaywrightのPNG・バックアップのテスト（3プロジェクトとも復元後のブロック数の検査）が失敗した。
+  - 変異試験は、ブロック保存後の確認を「ブロック名＋空白」で始まるボタンの検索へ替えた状態で、表目の線の検査を原点と線の有無だけに緩める前に行った。緩めた後は、drawCellを呼ばない変更でVitestの対象テストが失敗することを改めて確かめた。上記の型検査、Vitest、ビルド、配信物検査、iOS Web、Playwright 12件は最終の状態で実行した。
+  - `git diff --check`：成功。
+- 未実行: `npm run test:e2e`の全件はPRのCIに任せる。iOSのビルド、iPhone/iPad Simulator、アプリ更新、unsigned Release Archive、オフライン同梱物検査はPRのCIに任せる。
+- デプロイ影響: なし。テストのみの変更のため、配信後の確認は不要。
