@@ -5,7 +5,7 @@
 //   終了コード2: 止める（理由を標準エラーへ出し、Claudeに返す）
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { isAbsolute, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const SEPARATORS = new Set(['&&', '||', ';', '|', '&', '(', ')', '{', '}']);
@@ -14,54 +14,105 @@ const GIT_OPTIONS_WITH_VALUE = new Set(['-C', '-c', '--git-dir', '--work-tree', 
 const ALWAYS_BLOCKED = new Set(['am', 'cherry-pick', 'clean', 'commit', 'merge', 'rebase', 'reset', 'restore', 'revert']);
 const READ_ONLY_STASH = new Set(['list', 'show']);
 
-/** シェルのコマンド文字列を、区切り記号で分けた単語列の並びにする（引用符だけを解釈する簡易版）。 */
-export function splitSegments(command) {
-  const segments = [[]];
+/** 引用符・エスケープと区切りを読む。展開を含む単語は実行せず、不明として扱う。 */
+function shellSegments(command) {
+  const segments = [];
+  let words = [];
+  let dynamic = [];
   let word = '';
   let inWord = false;
+  let expanded = false;
   let quote = null;
+  let substitutionDepth = 0;
+  let backtick = false;
   const pushWord = () => {
-    if (inWord) segments[segments.length - 1].push(word);
+    if (inWord) {
+      words.push(word);
+      dynamic.push(expanded || quote !== null);
+    }
     word = '';
     inWord = false;
+    expanded = false;
   };
-  const pushSeparator = () => {
+  const pushSegment = (separator) => {
     pushWord();
-    if (segments[segments.length - 1].length > 0) segments.push([]);
+    segments.push({ words, dynamic, separator });
+    words = [];
+    dynamic = [];
   };
   for (let i = 0; i < command.length; i += 1) {
     const char = command[i];
-    if (quote) {
-      if (char === quote) quote = null;
-      else if (char === '\\' && quote === '"' && i + 1 < command.length) word += command[(i += 1)];
-      else word += char;
+    if (substitutionDepth || backtick) {
+      word += char;
+      if (char === '\\') word += command[++i] ?? '';
+      else if (backtick && char === '`') backtick = false;
+      else if (!backtick && char === '(') substitutionDepth += 1;
+      else if (!backtick && char === ')') substitutionDepth -= 1;
       continue;
     }
-    if (char === '"' || char === "'") {
+    if (char === '\\' && quote !== "'" && i + 1 < command.length) {
+      word += command[++i];
+      inWord = true;
+    } else if (char === quote) {
+      quote = null;
+    } else if (!quote && (char === '"' || char === "'")) {
       quote = char;
       inWord = true;
-    } else if (char === '\\' && i + 1 < command.length) {
-      word += command[(i += 1)];
+    } else if (quote !== "'" && (char === '$' || char === '`')) {
+      expanded = true;
       inWord = true;
+      word += char;
+      if (char === '`') backtick = true;
+      else if (command[i + 1] === '(') {
+        substitutionDepth = 1;
+        word += command[++i];
+      } else if (command[i + 1] === '{') {
+        const end = command.indexOf('}', i + 2);
+        word += command.slice(i + 1, end < 0 ? command.length : end + 1);
+        i = end < 0 ? command.length : end;
+      }
+    } else if (quote) {
+      word += char;
     } else if (char === '\n') {
-      pushSeparator();
+      pushSegment(';');
     } else if (/\s/.test(char)) {
       pushWord();
     } else {
       const pair = command.slice(i, i + 2);
       if (pair === '&&' || pair === '||') {
-        pushSeparator();
+        pushSegment(pair);
         i += 1;
       } else if (SEPARATORS.has(char)) {
-        pushSeparator();
+        pushSegment(char);
       } else {
+        // Glob・チルダ展開の結果やcdのディレクトリスタックは静的には分からない。
+        if ('~*?['.includes(char)) expanded = true;
         word += char;
         inWord = true;
       }
     }
   }
-  pushWord();
-  return segments.filter((segment) => segment.length > 0);
+  if (substitutionDepth || backtick) expanded = true;
+  pushSegment(null);
+  return segments;
+}
+
+/** 既存の単語列API。ディレクトリ追跡では区切り情報も使う。 */
+export function splitSegments(command) {
+  return shellSegments(command).map(({ words }) => words).filter((words) => words.length > 0);
+}
+
+// 対応範囲: リテラルのcd（-L/-P/--）、&&、;、改行、括弧のsubshell、波括弧。
+// cdは成功した場合の場所を追う。||、pipeline/background、展開を含む/省略したcd先は
+// 不明とし、mainの可能性がある破壊的操作を止める。シェル展開やcdは実行しない。
+// 既知の絶対cd先やgit -Cで場所が確定したら判定を再開する。完全なシェル解析ではない。
+function changeDirectory(cwd, words, dynamic, start) {
+  let index = start + 1;
+  while (words[index] === '-L' || words[index] === '-P') index += 1;
+  if (words[index] === '--') index += 1;
+  const target = words[index];
+  if (!target || target === '-' || target.startsWith('-') || dynamic[index] || index + 1 !== words.length) return null;
+  return isAbsolute(target) ? resolve(target) : cwd === null ? null : resolve(cwd, target);
 }
 
 /** 単語列の先頭の環境変数の代入と`env`などを飛ばし、実行されるコマンドの位置を返す。 */
@@ -75,23 +126,42 @@ function commandStart(words) {
 
 /**
  * コマンド文字列に含まれるgitと`gh pr checkout`の呼び出しを取り出す。
- * `dir`は`git -C`で指定した場所（無ければnull）。
+ * cwdを渡すと`dir`はcdとgit -Cを反映した絶対パス（不明ならnull）。
+ * cwdを省略した既存APIではgit -Cの指定を返す。
  */
-export function findInvocations(command) {
+export function findInvocations(command, cwd) {
   const invocations = [];
-  for (const words of splitSegments(command)) {
+  let directory = cwd ?? null;
+  const stack = [];
+  for (const { words, dynamic, separator } of shellSegments(command)) {
+    const effectiveDirectory = directory;
+    const parentDirectory = separator === ')' ? (stack.length ? stack.pop() : null) : null;
+    if (separator === '(') stack.push(directory);
+    else if (separator === ')') directory = parentDirectory;
+    else if (separator === '||' || separator === '|' || separator === '&') directory = null;
     const start = commandStart(words);
     const program = words[start];
+    if (program === 'cd') {
+      directory = changeDirectory(effectiveDirectory, words, dynamic, start);
+      if (separator === ')') directory = parentDirectory;
+      else if (separator === '||' || separator === '|' || separator === '&') directory = null;
+      continue;
+    }
     if (program === 'gh' && words[start + 1] === 'pr' && words[start + 2] === 'checkout') {
-      invocations.push({ program: 'gh', dir: null, subcommand: 'pr checkout', args: words.slice(start + 3) });
+      invocations.push({ program: 'gh', dir: cwd === undefined ? null : effectiveDirectory, subcommand: 'pr checkout', args: words.slice(start + 3) });
       continue;
     }
     if (program !== 'git' && !program?.endsWith('/git')) continue;
     let index = start + 1;
-    let dir = null;
+    let dir = cwd === undefined ? null : effectiveDirectory;
     while (index < words.length && words[index].startsWith('-')) {
       const option = words[index];
-      if (option === '-C') dir = dir ? resolve(dir, words[index + 1] ?? '') : (words[index + 1] ?? null);
+      if (option === '-C') {
+        const target = words[index + 1];
+        dir = !target || dynamic[index + 1] ? null
+          : isAbsolute(target) ? resolve(target)
+            : dir ? resolve(dir, target) : cwd === undefined ? target : null;
+      }
       index += GIT_OPTIONS_WITH_VALUE.has(option) ? 2 : 1;
     }
     if (index >= words.length) continue;
@@ -147,9 +217,9 @@ export function blockedReasons(input, isMain = isMainCheckout) {
   const cwd = input?.cwd ?? process.cwd();
   if (typeof command !== 'string') return [];
   const reasons = [];
-  for (const invocation of findInvocations(command)) {
+  for (const invocation of findInvocations(command, cwd)) {
     const reason = violationOf(invocation);
-    if (reason && isMain(invocation.dir ? resolve(cwd, invocation.dir) : cwd)) reasons.push(reason);
+    if (reason && (invocation.dir === null || isMain(invocation.dir))) reasons.push(reason);
   }
   return reasons;
 }

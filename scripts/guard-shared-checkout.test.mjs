@@ -79,6 +79,56 @@ describe('blockedReasons', () => {
     expect(reasonsAt(ROOT, 'git -C .claude/worktrees/feature commit -m x')).toEqual([]);
   });
 
+  it.each(['&&', ';', '\n'])('tracks cd in both directions across %s', (separator) => {
+    expect(reasonsAt(WORKTREE, `cd /repo ${separator} git reset --hard`)).toHaveLength(1);
+    expect(reasonsAt(ROOT, `cd .claude/worktrees/feature ${separator} git commit -m x`)).toEqual([]);
+  });
+
+  it('resolves successive relative cd and git -C from the effective directory', () => {
+    expect(reasonsAt(WORKTREE, 'cd ../../.. && git reset --hard')).toHaveLength(1);
+    expect(reasonsAt(ROOT, 'cd .claude && cd worktrees/feature; git commit -m x')).toEqual([]);
+    expect(reasonsAt(ROOT, 'cd .claude/worktrees/feature && git -C ../../.. reset --hard')).toHaveLength(1);
+    expect(reasonsAt(WORKTREE, 'cd /repo && git -C .claude -C worktrees/feature commit -m x')).toEqual([]);
+    expect(reasonsAt(ROOT, 'git -C .claude/worktrees/feature status; git reset --hard')).toHaveLength(1);
+  });
+
+  it('restores parent directories after nested subshells', () => {
+    expect(reasonsAt(WORKTREE, '(cd /repo); git commit -m x')).toEqual([]);
+    expect(reasonsAt(ROOT, '(cd .claude/worktrees/feature); git reset --hard')).toHaveLength(1);
+    expect(reasonsAt(WORKTREE, '(cd /repo && git reset --hard); git commit -m x')).toHaveLength(1);
+    expect(reasonsAt(ROOT, '(cd .claude/worktrees/feature && git commit -m x); git reset --hard')).toHaveLength(1);
+    expect(reasonsAt(WORKTREE, '(cd /repo; (cd .claude/worktrees/feature; git commit -m x); git reset --hard); git commit -m x')).toHaveLength(1);
+    expect(reasonsAt(WORKTREE, '{ cd /repo; git status; }; git reset --hard')).toHaveLength(1);
+  });
+
+  it('handles quoted, escaped and option-prefixed literal cd targets', () => {
+    expect(reasonsAt(WORKTREE, 'cd -- "/repo" && gh pr checkout 54')).toHaveLength(1);
+    expect(reasonsAt(ROOT, 'command cd -P .claude/worktrees/feature && git commit -m x')).toEqual([]);
+    expect(reasonsAt(ROOT, "cd '.claude/worktrees/feature' && git reset --hard")).toEqual([]);
+    expect(reasonsAt(WORKTREE, 'echo "cd /repo && git reset --hard"; git commit -m x')).toEqual([]);
+    expect(reasonsAt(ROOT, 'cd /worktree\\ with\\ spaces && git commit -m x')).toEqual([]);
+  });
+
+  it.each(['${TARGET}', '$TARGET', '"$TARGET"', '$(pwd)', '`pwd`', '~', '/repo/*', '-', '', 'one two'])('blocks destructive operations after an unknown cd target: %s', (target) => {
+    expect(reasonsAt(WORKTREE, `cd ${target} && git reset --hard`)).toHaveLength(1);
+    expect(reasonsAt(WORKTREE, `cd ${target} && git status`)).toEqual([]);
+    expect(reasonsAt(WORKTREE, `cd ${target} && gh pr checkout 54`)).toHaveLength(1);
+  });
+
+  it('can recover a known directory from absolute cd or git -C', () => {
+    expect(reasonsAt(WORKTREE, 'cd "$TARGET" && cd /repo && git reset --hard')).toHaveLength(1);
+    expect(reasonsAt(ROOT, 'cd "$TARGET" && git -C /repo/.claude/worktrees/feature commit -m x')).toEqual([]);
+    expect(reasonsAt(WORKTREE, 'git -C "$TARGET" reset --hard')).toHaveLength(1);
+    expect(reasonsAt(WORKTREE, 'git -C ${TARGET} reset --hard')).toHaveLength(1);
+    expect(reasonsAt(WORKTREE, '(cd "$TARGET" && git status); git commit -m x')).toEqual([]);
+  });
+
+  it('treats conditional failure, pipeline and background directories conservatively', () => {
+    expect(reasonsAt(ROOT, 'cd .claude/worktrees/feature || git reset --hard')).toHaveLength(1);
+    expect(reasonsAt(ROOT, 'cd .claude/worktrees/feature | cat; git reset --hard')).toHaveLength(1);
+    expect(reasonsAt(ROOT, 'cd .claude/worktrees/feature & git reset --hard')).toHaveLength(1);
+  });
+
   it('allows the cleanup steps in the main checkout', () => {
     expect(reasonsAt(ROOT, 'git switch main && git pull --ff-only && git worktree remove .claude/worktrees/x && git branch -d x')).toEqual([]);
   });
