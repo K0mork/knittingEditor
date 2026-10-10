@@ -7,13 +7,29 @@ test.beforeEach(async ({ page }) => {
   await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
 });
 
-/** 自動保存の400msタイマーだけを延ばし、以前の固定待機より遅くする。 */
+/** `packages/editor-core/state/useEditorSession.ts`の`AUTOSAVE_DELAY_MS`と同じ値にする。 */
+const AUTOSAVE_DELAY_MS = 400;
+
+type AutosaveDelayWindow = Window & { delayedAutosaveCount?: number };
+
+/** 自動保存のタイマーだけを延ばし、以前の固定待機より遅くする。延ばした回数を数える。 */
 async function delayAutosave(page: Page, delay: number) {
-  await page.evaluate((delay) => {
+  await page.evaluate(({ autosaveDelay, delay }) => {
+    const target = window as AutosaveDelayWindow;
     const original = window.setTimeout.bind(window);
-    window.setTimeout = ((handler: TimerHandler, timeout?: number, ...args: unknown[]) =>
-      original(handler, timeout === 400 ? delay : timeout, ...args)) as typeof window.setTimeout;
-  }, delay);
+    target.delayedAutosaveCount = 0;
+    window.setTimeout = ((handler: TimerHandler, timeout?: number, ...args: unknown[]) => {
+      if (timeout !== autosaveDelay) return original(handler, timeout, ...args);
+      target.delayedAutosaveCount! += 1;
+      return original(handler, delay, ...args);
+    }) as typeof window.setTimeout;
+  }, { autosaveDelay: AUTOSAVE_DELAY_MS, delay });
+}
+
+/** 自動保存のタイマーを実際に延ばしたことを確かめる。値が変わって何も遅らせていない場合に失敗させる。 */
+async function expectAutosaveDelayed(page: Page) {
+  const count = await page.evaluate(() => (window as AutosaveDelayWindow).delayedAutosaveCount ?? 0);
+  expect(count, '延ばした自動保存のタイマー').toBeGreaterThan(0);
 }
 
 /** 操作後の盤面が示す記号数まで待ち、途中の保存を完了とみなさない。 */
@@ -38,6 +54,9 @@ for (const saveDelay of [0, 1_400]) {
     await page.mouse.move(box!.x + 180, box!.y + 75, { steps: 8 });
     await page.mouse.up();
     await waitForDrawnStitches(page);
+    if (saveDelay) {
+      await expectAutosaveDelayed(page);
+    }
     const storedBefore = await storedCells(page);
     expect(storedBefore.cells.length * Uint32Array.BYTES_PER_ELEMENT).toBe(1600);
     await page.reload();
@@ -130,8 +149,8 @@ test('keeps the board on screen when scrolled far, with edge cells reaching the 
   await clickBoardCenter(page);
   await expect.poll(async () => {
     const { rows, cols, filled } = await storedCells(page);
-    return filled.length === 2 && filled[0] === 0 && filled[1] === rows * cols - 1;
-  }).toBe(true);
+    return { rows, cols, filled };
+  }).toEqual({ rows: 20, cols: 20, filled: [0, 20 * 20 - 1] });
 });
 
 test('keeps the board on screen when dragged far with two fingers', async ({ page }) => {
@@ -162,8 +181,8 @@ test('keeps the board on screen when dragged far with two fingers', async ({ pag
   await clickBoardCenter(page);
   await expect.poll(async () => {
     const { rows, cols, filled } = await storedCells(page);
-    return filled.length === 1 && filled[0] === rows * cols - 1;
-  }).toBe(true);
+    return { rows, cols, filled };
+  }).toEqual({ rows: 20, cols: 20, filled: [20 * 20 - 1] });
 });
 
 test('matches the guidance to the input method and hides the gesture hint after about ten seconds', async ({ page }, testInfo) => {
@@ -204,6 +223,9 @@ for (const saveDelay of [0, 1_400]) {
     await page.mouse.up();
 
     await waitForDrawnStitches(page);
+    if (saveDelay) {
+      await expectAutosaveDelayed(page);
+    }
     expect((await storedCells(page)).filled.length).toBeGreaterThan(1);
 
     await page.getByRole('button', { name: '消す' }).click();
