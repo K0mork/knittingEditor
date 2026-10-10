@@ -56,6 +56,9 @@ final class KnittingEditorUITests: XCTestCase {
             "使い方ページで編集画面の読み込み表示を残さない: \(app.debugDescription)"
         )
 
+        XCTAssertTrue(app.links["編集画面へ戻る"].firstMatch.exists, app.debugDescription)
+        XCTAssertFalse(app.links["編み図を作成する"].exists, app.debugDescription)
+
         // 戻るリンクはページの一番下にある。XCUITestの自動スクロールに任せると、
         // タップ位置が画面の外（y=3275）で計算されて外れ、使い方ページのまま残った（#95）。
         // 自分でページを送り、押せる位置に来てから叩く。使い方ページのまま（リンクが残って
