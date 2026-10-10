@@ -31,7 +31,47 @@ const EXPECTED_IDS = {
   erase: 25,
 };
 
+// 永続IDの互換fixture。意図した変更でも、カタログバージョンと読み込み互換試験を
+// 更新してから変更すること。現行カタログやglyphから期待値を生成しない。
+const EXPECTED_METADATA = [
+  // id, key, width, height, consumes, produces, category, standardStatus, standardReference
+  [1, 'knit', 1, 1, 1, 1, 'basic', 'jis', 'JIS 2010'],
+  [2, 'purl', 1, 1, 1, 1, 'basic', 'jis', 'JIS 2020'],
+  [3, 'yo', 1, 1, 0, 1, 'basic', 'jis', 'JIS 2030'],
+  [4, 'right_up_two_one', 2, 1, 2, 1, 'decrease', 'jis', 'JIS 2040'],
+  [5, 'left_up_two_one', 2, 1, 2, 1, 'decrease', 'jis', 'JIS 2050'],
+  [6, 'purl_left_up_two_one', 2, 1, 2, 1, 'decrease', 'jis-derived', 'JIS 2050・備考2'],
+  [7, 'right_cross', 2, 1, 2, 2, 'cable', 'jis', 'JIS 2120'],
+  [8, 'left_cross', 2, 1, 2, 2, 'cable', 'jis', 'JIS 2130'],
+  [9, 'purl_right_cross', 2, 1, 2, 2, 'cable', 'jis-derived', 'JIS 2120・備考2'],
+  [10, 'purl_left_cross', 2, 1, 2, 2, 'cable', 'jis-derived', 'JIS 2130・備考2'],
+  [11, 'purl_right_up_two_cross', 3, 1, 3, 3, 'cable', 'extension', 'JIS交差記号の拡張'],
+  [12, 'purl_left_up_two_cross', 3, 1, 3, 3, 'cable', 'extension', 'JIS交差記号の拡張'],
+  [13, 'purl_right_cross_twist_stitch', 2, 1, 2, 2, 'cable', 'extension', 'JIS交差・ねじり目の複合'],
+  [14, 'purl_left_cross_twist_stitch', 2, 1, 2, 2, 'cable', 'extension', 'JIS交差・ねじり目の複合'],
+  [15, 'middle_up_three_one', 3, 1, 3, 1, 'decrease', 'jis', 'JIS 2060'],
+  [16, 'right_up_three_one', 3, 1, 3, 1, 'decrease', 'jis', 'JIS 2070'],
+  [17, 'left_up_three_one', 3, 1, 3, 1, 'decrease', 'jis', 'JIS 2080'],
+  [18, 'right_up_two_cross', 4, 1, 4, 4, 'cable', 'extension', 'JIS交差記号の拡張'],
+  [19, 'left_up_two_cross', 4, 1, 4, 4, 'cable', 'extension', 'JIS交差記号の拡張'],
+  [20, 'right_up_three_cross', 6, 1, 6, 6, 'cable', 'extension', 'JIS交差記号の拡張'],
+  [21, 'left_up_three_cross', 6, 1, 6, 6, 'cable', 'extension', 'JIS交差記号の拡張'],
+  [22, 'slip_stitch', 1, 2, 1, 1, 'basic', 'jis', 'JIS 2160'],
+  [23, 'twist_stitch', 1, 1, 1, 1, 'twist', 'jis', 'JIS 2200'],
+  [24, 'purl_twist_stitch', 1, 1, 1, 1, 'twist', 'jis-derived', 'JIS 2200・備考2'],
+  [25, 'erase', 1, 1, 1, 1, 'utility', 'utility', '補助・JIS外'],
+  [26, 'purl_right_up_two_one', 2, 1, 2, 1, 'decrease', 'jis-derived', 'JIS 2040・備考2'],
+] as const;
+
 describe('stitch catalog', () => {
+  it('keeps every persisted stitch metadata field compatible with the fixed fixture', () => {
+    const metadata = STITCHES.map((stitch) => [
+      stitch.id, stitch.key, stitch.width, stitch.height, stitch.consumes, stitch.produces,
+      stitch.category, stitch.standardStatus, stitch.standardReference,
+    ]).sort((a, b) => Number(a[0]) - Number(b[0]));
+    expect(metadata).toEqual(EXPECTED_METADATA);
+  });
+
   it('keeps persisted ids stable and unique', () => {
     expect(Object.fromEntries(STITCHES.map((stitch) => [stitch.key, stitch.id]))).toEqual(EXPECTED_IDS);
     expect(new Set(STITCHES.map((stitch) => stitch.id)).size).toBe(STITCHES.length);
