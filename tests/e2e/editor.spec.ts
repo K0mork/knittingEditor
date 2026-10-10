@@ -766,3 +766,48 @@ test('follows the dark appearance around the board but keeps the chart ground', 
   await page.goto('/guide/');
   await expect.poll(pageBackground).toBe('rgb(23, 28, 25)');
 });
+
+test('keeps cleared size inputs empty and applies dimensions on change', async ({ page }) => {
+  await page.getByRole('button', { name: '盤面', exact: true }).click();
+  for (const [label, value] of [['段数', '25'], ['列数', '30']]) {
+    const field = page.getByLabel(label, { exact: true });
+    await field.fill('');
+    await expect(field).toHaveValue('');
+    await field.pressSequentially(value);
+    await expect(field).toHaveValue(value);
+  }
+  await expect(page.getByLabel('編み図編集盤面')).toHaveAttribute('aria-label', /20段、20目/);
+  await page.getByRole('button', { name: '変更', exact: true }).click();
+  await expect(page.getByLabel('編み図編集盤面')).toHaveAttribute('aria-label', /25段、30目/);
+  for (const label of ['段数', '列数']) {
+    const field = page.getByLabel(label, { exact: true });
+    for (const value of ['', '0']) {
+      await field.fill(value);
+      await page.getByRole('button', { name: '変更', exact: true }).click();
+      await expect(page.getByLabel('編み図編集盤面')).toHaveAttribute('aria-label', /25段、30目/);
+    }
+    await field.fill(label === '段数' ? '25' : '30');
+  }
+});
+
+test('shows stitch and rectangular block dimensions with both units', async ({ page }) => {
+  await page.getByRole('button', { name: '編み目記号を選ぶ' }).click();
+  const picker = page.getByRole('dialog', { name: '編み目記号' });
+  await expect(picker.getByRole('button', { name: /^すべり目 / }).locator('small')).toHaveText('1目×2段');
+  await expect(picker.getByRole('button', { name: /^右上3目交差 / }).locator('small')).toHaveText('6目×1段');
+  await picker.getByRole('button', { name: '閉じる' }).click();
+  await page.getByRole('button', { name: '範囲', exact: true }).click();
+  // 既存のマウスによる範囲選択と同じ操作で、横長の範囲を作る。
+  const box = (await page.getByLabel('編み図編集盤面').boundingBox())!;
+  await page.mouse.move(box.x + 75, box.y + 75);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 195, box.y + 105);
+  await page.mouse.up();
+  await page.getByRole('button', { name: 'ブロック', exact: true }).click();
+  page.once('dialog', async (dialog) => dialog.accept('横長ブロック'));
+  await page.getByRole('button', { name: '選択範囲をブロック保存' }).click();
+  const size = page.locator('.block-list > div').filter({ hasText: '横長ブロック' }).locator('small');
+  await expect(size).toHaveText(/^\d+目×\d+段$/);
+  const dimensions = (await size.innerText()).match(/^(\d+)目×(\d+)段$/)!;
+  expect(Number(dimensions[1])).toBeGreaterThan(Number(dimensions[2]));
+});

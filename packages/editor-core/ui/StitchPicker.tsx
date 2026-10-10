@@ -31,7 +31,7 @@ export function StitchPicker({ selectedStitch, onSelect, onClose }: StitchPicker
           >
             <span className="stitch-option-symbol" aria-hidden="true" dangerouslySetInnerHTML={{ __html: stitch.svg }} />
             <span className="stitch-option-name">{stitch.name}</span>
-            <small>{stitch.width}×{stitch.height}目</small>
+            <small>{stitch.width}目×{stitch.height}段</small>
           </button>)}
         </div>
       </div>)}
