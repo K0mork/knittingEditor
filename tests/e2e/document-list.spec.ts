@@ -54,10 +54,11 @@ test('shows each chart with a thumbnail and its update time, and refreshes both 
 
 test('keeps the rename, duplicate and delete buttons easy to press beside a long name', async ({ page }) => {
   await openDocuments(page);
-  page.once('dialog', (dialog) => dialog.accept('とても長い名前の編み図をここに付けて一覧の幅に収まるかを確かめる'));
-  await page.getByRole('button', { name: '名前変更' }).click();
+  const longName = 'とても長い名前の編み図をここに付けて一覧の幅に収まるかを確かめる';
+  page.once('dialog', (dialog) => dialog.accept(longName));
+  await page.getByRole('button', { name: '新しい編み図の名称を変更', exact: true }).click();
   await expect(page.locator('.document-name')).toHaveText(/とても長い名前/);
-  await page.getByRole('button', { name: '複製', exact: true }).click();
+  await page.getByRole('button', { name: `${longName}を複製`, exact: true }).click();
   await expect(page.locator('.document')).toHaveCount(2);
 
   const layout = await page.locator('.drawer').evaluate((drawer) => {
@@ -92,6 +93,41 @@ test('keeps the rename, duplicate and delete buttons easy to press beside a long
   const copy = page.getByRole('button', { name: /^とても長い名前.*のコピー、20段×20目、更新 / });
   await copy.click();
   await expect(page.locator('.app-document-name')).toContainText('のコピー');
+});
+
+test('finds each chart\'s rename, duplicate and delete buttons by the chart name', async ({ page }) => {
+  await openDocuments(page);
+  await page.getByRole('button', { name: '新しい編み図を複製', exact: true }).click();
+  await expect(page.locator('.document')).toHaveCount(2);
+
+  // 各ボタンの名前は表示の文字と対象の編み図名を含み、ボタンだけを辿っても区別できる。
+  for (const name of ['新しい編み図', '新しい編み図のコピー']) {
+    const item = page.locator('.document').filter({ has: page.getByRole('button', { name: `${name}を複製`, exact: true }) });
+    await expect(item.getByRole('button', { name: `${name}の名称を変更`, exact: true })).toHaveText('名称');
+    await expect(item.getByRole('button', { name: `${name}を複製`, exact: true })).toHaveText('複製');
+    await expect(item.getByRole('button', { name: `${name}を削除`, exact: true })).toHaveText('削除');
+  }
+
+  // 名前を変えると、ボタンの名前も新しい名前になる。
+  page.once('dialog', (dialog) => dialog.accept('縄編み'));
+  await page.getByRole('button', { name: '新しい編み図のコピーの名称を変更', exact: true }).click();
+  await expect(page.getByRole('button', { name: '縄編みの名称を変更', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '縄編みを複製', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '縄編みを削除', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^新しい編み図のコピー/ })).toHaveCount(0);
+
+  // 名前で特定した行だけを削除する。
+  page.once('dialog', (dialog) => {
+    expect(dialog.message()).toBe('「新しい編み図」を削除しますか？');
+    return dialog.accept();
+  });
+  await page.getByRole('button', { name: '新しい編み図を削除', exact: true }).click();
+  // 開いている編み図を消すと残りの編み図へ切り替わり、パネルが閉じる。
+  await expect(page.locator('.app-document-name')).toContainText('縄編み');
+  await openDocuments(page);
+  await expect(page.locator('.document')).toHaveCount(1);
+  await expect(page.locator('.document-name')).toHaveText('縄編み');
+  await expect(page.getByRole('button', { name: '縄編みを削除', exact: true })).toBeDisabled();
 });
 
 test('fits the thumbnail of a large, tall board inside its frame without distorting it', async ({ page }) => {

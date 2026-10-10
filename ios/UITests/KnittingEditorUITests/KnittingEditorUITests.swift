@@ -369,7 +369,7 @@ final class KnittingEditorUITests: XCTestCase {
         waitForDocumentSave(named: "M2切替B", in: webView)
         openDocumentsPanel(in: app)
         let documentA = app.buttons
-            .matching(NSPredicate(format: "label BEGINSWITH %@", "M2切替A"))
+            .matching(NSPredicate(format: "label BEGINSWITH %@", "M2切替A、"))
             .firstMatch
         XCTAssertTrue(documentA.waitForExistence(timeout: Self.editorAppearanceTimeout))
         documentA.tap()
@@ -383,7 +383,7 @@ final class KnittingEditorUITests: XCTestCase {
 
         openDocumentsPanel(in: app)
         let documentB = app.buttons
-            .matching(NSPredicate(format: "label BEGINSWITH %@", "M2切替B"))
+            .matching(NSPredicate(format: "label BEGINSWITH %@", "M2切替B、"))
             .firstMatch
         XCTAssertTrue(documentB.waitForExistence(timeout: Self.editorAppearanceTimeout))
         documentB.tap()
@@ -394,6 +394,55 @@ final class KnittingEditorUITests: XCTestCase {
                 .waitForExistence(timeout: Self.editorAppearanceTimeout),
             app.debugDescription
         )
+    }
+
+    /// 一覧の各行の「名称」「複製」「削除」は、表示の文字と対象の編み図名を含む名前で
+    /// 1つずつ特定でき、名前の変更に追従し、名前で特定した行にだけ効く（#189）。
+    func testDocumentActionsNameTheirChart() {
+        let app = XCUIApplication()
+        app.launch()
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
+
+        // Simulatorには前の実行の編み図が残るため、実行ごとに異なる名前にして1つだけ存在することを確かめる。
+        let suffix = String(Int(Date().timeIntervalSince1970) % 100_000)
+        let nameA = "操作名A\(suffix)"
+        let nameB = "操作名B\(suffix)"
+        let nameC = "操作名C\(suffix)"
+        createDocument(named: nameA, in: app)
+        createDocument(named: nameB, in: app)
+
+        openDocumentsPanel(in: app)
+        for name in [nameA, nameB] {
+            assertSingleButton(named: "\(name)の名称を変更", containing: "名称", in: app)
+            assertSingleButton(named: "\(name)を複製", containing: "複製", in: app)
+            assertSingleButton(named: "\(name)を削除", containing: "削除", in: app)
+        }
+        XCTAssertFalse(app.buttons["名前変更"].exists, "固定の旧名が残っている: \(app.debugDescription)")
+
+        // 開いている編み図（B）の名前を変える。パネルは開いたまま、行のボタンの名前が新しい名前になる。
+        app.buttons["\(nameB)の名称を変更"].tap()
+        let nameField = app.textFields["入力"]
+        XCTAssertTrue(nameField.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+        replaceText(nameC, in: nameField, app: app)
+        confirmDialog(closing: nameField, in: app)
+        ensureDocumentsPanelOpen(in: app)
+        assertSingleButton(named: "\(nameC)の名称を変更", containing: "名称", in: app)
+        assertSingleButton(named: "\(nameC)を削除", containing: "削除", in: app)
+        XCTAssertFalse(app.buttons["\(nameB)の名称を変更"].exists, app.debugDescription)
+        XCTAssertFalse(app.buttons["\(nameB)を削除"].exists, app.debugDescription)
+
+        // 開いていない編み図（A）を名前で特定して削除し、Aの行だけが消えることを確かめる。
+        app.buttons["\(nameA)を削除"].tap()
+        let question = app.staticTexts["「\(nameA)」を削除しますか？"]
+        XCTAssertTrue(question.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+        app.buttons["決定"].tap()
+        assertDisappears(question, from: app, note: "削除の確認が閉じない")
+        ensureDocumentsPanelOpen(in: app)
+        assertDisappears(app.buttons["\(nameA)を削除"], from: app, note: "削除した編み図の行が残っている")
+        XCTAssertFalse(app.buttons["\(nameA)の名称を変更"].exists, app.debugDescription)
+        XCTAssertFalse(app.buttons["\(nameA)を複製"].exists, app.debugDescription)
+        assertSingleButton(named: "\(nameC)の名称を変更", containing: "名称", in: app)
+        assertSingleButton(named: "\(nameC)を削除", containing: "削除", in: app)
     }
 
     /// iPadの全画面以外（Split View・可変ウィンドウ）での操作を検証する。
@@ -693,7 +742,7 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: appUpdateElementTimeout))
         openDocumentsPanel(in: app, timeout: appUpdateElementTimeout)
         let restoredDocument = app.buttons
-            .matching(NSPredicate(format: "label BEGINSWITH %@", "アプリ更新復元fixture"))
+            .matching(NSPredicate(format: "label BEGINSWITH %@", "アプリ更新復元fixture、"))
             .firstMatch
         XCTAssertTrue(restoredDocument.waitForExistence(timeout: appUpdateElementTimeout), app.debugDescription)
         restoredDocument.tap()
@@ -1129,6 +1178,21 @@ final class KnittingEditorUITests: XCTestCase {
         add(screenshotAttachment(named: "「編み図」でパネルが開かない"))
         XCTFail("「編み図」でパネルが開かない 経過: \(events.joined(separator: " → ")): \(app.debugDescription)")
         return newDocument
+    }
+
+    /// 「編み図」パネルが閉じていれば開く。開いているときに「編み図」を押すと閉じてしまうため、
+    /// 「新しい編み図」の有無で判断する。
+    private func ensureDocumentsPanelOpen(in app: XCUIApplication) {
+        if app.buttons["新しい編み図"].waitForExistence(timeout: 5) { return }
+        openDocumentsPanel(in: app)
+    }
+
+    /// 名前が完全に一致するボタンがちょうど1つあり、その名前に表示の文字が入っていることを確かめる。
+    private func assertSingleButton(named name: String, containing visibleText: String, in app: XCUIApplication) {
+        let button = app.buttons[name]
+        XCTAssertTrue(button.waitForExistence(timeout: Self.editorAppearanceTimeout), "\(name)が無い: \(app.debugDescription)")
+        XCTAssertEqual(app.buttons.matching(NSPredicate(format: "label == %@", name)).count, 1, "\(name)が1つに定まらない: \(app.debugDescription)")
+        XCTAssertTrue(button.label.contains(visibleText), "\(name)の名前に「\(visibleText)」が無い: \(button.label)")
     }
 
     /// 端末を横向きにし、WebViewが横長に配置し直されるまで待つ。
