@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { EditorAnalytics } from '../analytics';
 import { Board } from '../model/Board';
 import { SAVE_RESULT_UNKNOWN, type EditorPlatform } from '../platform';
@@ -19,6 +19,26 @@ beforeAll(() => {
   // jsdomにはResizeObserverとCanvas描画が無い。盤面の描画はこのテストの対象外。
   globalThis.ResizeObserver ??= class { observe() {} unobserve() {} disconnect() {} };
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
+});
+
+beforeEach(async () => {
+  // database.tsは接続を保持するため、DBを削除せず全ストアを空にする。
+  await initializeStorage();
+  const request = indexedDB.open('knitting-editor-v2');
+  const db = await new Promise<IDBDatabase>((resolve, reject) => {
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+  try {
+    const transaction = db.transaction(['documents', 'blocks', 'settings'], 'readwrite');
+    for (const store of ['documents', 'blocks', 'settings']) transaction.objectStore(store).clear();
+    await new Promise<void>((resolve, reject) => {
+      transaction.oncomplete = () => resolve();
+      transaction.onabort = () => reject(transaction.error);
+    });
+  } finally {
+    db.close();
+  }
 });
 
 /** `act`の中では描画がまとめて反映されるので、区切りながら条件が満たされるまで待つ。 */
@@ -239,7 +259,6 @@ describe('EditorView', () => {
     expect(pick).toHaveBeenCalledOnce();
   });
 
-  // 新しい編み図が開いたままになるので、盤面の初期状態に頼るテストより後に置く。
   it('undoes grid changes and forgets the history when another chart opens', async () => {
     const { container, button, click } = await renderEditor({ askText: async () => '別の編み図' });
     const boardLabel = () => container.querySelector('canvas')?.getAttribute('aria-label') ?? '';

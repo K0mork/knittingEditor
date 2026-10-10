@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { expect, test } from './fixtures';
+import { expect, test, type Page } from './fixtures';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -7,40 +7,44 @@ test.beforeEach(async ({ page }) => {
   await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
 });
 
-test('draws continuously and restores the board after reload', async ({ page }) => {
+/** 自動保存の400msタイマーだけを延ばし、以前の固定待機より遅くする。 */
+async function delayAutosave(page: Page, delay: number) {
+  await page.evaluate((delay) => {
+    const original = window.setTimeout.bind(window);
+    window.setTimeout = ((handler: TimerHandler, timeout?: number, ...args: unknown[]) =>
+      original(handler, timeout === 400 ? delay : timeout, ...args)) as typeof window.setTimeout;
+  }, delay);
+}
+
+/** 操作後の盤面が示す記号数まで待ち、途中の保存を完了とみなさない。 */
+async function waitForDrawnStitches(page: Page) {
   const canvas = page.getByLabel('編み図編集盤面');
-  const box = await canvas.boundingBox();
-  expect(box).not.toBeNull();
-  await page.mouse.move(box!.x + 75, box!.y + 75);
-  await page.mouse.down();
-  await page.mouse.move(box!.x + 180, box!.y + 75, { steps: 8 });
-  await page.mouse.up();
-  await page.waitForTimeout(700);
-  const storedBefore = await page.evaluate(async () => {
-    const request = indexedDB.open('knitting-editor-v2');
-    const db = await new Promise<IDBDatabase>((resolve) => { request.onsuccess = () => resolve(request.result); });
-    const transaction = db.transaction('documents');
-    const get = transaction.objectStore('documents').getAll();
-    return await new Promise<{ bytes: number; filled: number }>((resolve) => { get.onsuccess = () => {
-      const cells = new Uint32Array(get.result[0].cells);
-      resolve({ bytes: cells.byteLength, filled: cells.filter(Boolean).length });
-    }; });
+  const label = await canvas.getAttribute('aria-label');
+  const count = Number(label?.match(/記号(\d+)個/)?.[1]);
+  expect(count).toBeGreaterThan(0);
+  await expect.poll(async () => (await storedCells(page)).filled.length).toBe(count);
+}
+
+for (const saveDelay of [0, 1_400]) {
+  test(`draws continuously and restores the board after reload${saveDelay ? ' with delayed autosave' : ''}`, async ({ page }) => {
+    if (saveDelay) {
+      await delayAutosave(page, saveDelay);
+    }
+    const canvas = page.getByLabel('編み図編集盤面');
+    const box = await canvas.boundingBox();
+    expect(box).not.toBeNull();
+    await page.mouse.move(box!.x + 75, box!.y + 75);
+    await page.mouse.down();
+    await page.mouse.move(box!.x + 180, box!.y + 75, { steps: 8 });
+    await page.mouse.up();
+    await waitForDrawnStitches(page);
+    const storedBefore = await storedCells(page);
+    expect(storedBefore.cells.length * Uint32Array.BYTES_PER_ELEMENT).toBe(1600);
+    await page.reload();
+    await expect(page.getByText('新しい編み図', { exact: false })).toBeVisible();
+    await expect.poll(async () => (await storedCells(page)).cells).toEqual(storedBefore.cells);
   });
-  expect(storedBefore.bytes).toBe(1600);
-  expect(storedBefore.filled).toBeGreaterThan(0);
-  await page.reload();
-  await expect(page.getByText('新しい編み図', { exact: false })).toBeVisible();
-  const storedAfter = await page.evaluate(async () => {
-    const request = indexedDB.open('knitting-editor-v2');
-    const db = await new Promise<IDBDatabase>((resolve) => { request.onsuccess = () => resolve(request.result); });
-    const transaction = db.transaction('documents');
-    const get = transaction.objectStore('documents').getAll();
-    return await new Promise<number>((resolve) => { get.onsuccess = () => {
-      resolve(new Uint32Array(get.result[0].cells).filter(Boolean).length);
-    }; });
-  });
-  expect(storedAfter).toBe(storedBefore.filled);
-});
+}
 
 test('does not draw when a second touch turns a tap into a two-finger gesture', async ({ page }) => {
   const canvas = page.getByLabel('編み図編集盤面');
@@ -65,16 +69,10 @@ test('does not draw when a second touch turns a tap into a two-finger gesture', 
     dispatch('pointerup', 2, 140, 75);
     dispatch('pointerup', 1, 70, 75);
   });
-  await page.waitForTimeout(700);
-
-  const filled = await page.evaluate(async () => {
-    const request = indexedDB.open('knitting-editor-v2');
-    const db = await new Promise<IDBDatabase>((resolve) => { request.onsuccess = () => resolve(request.result); });
-    const get = db.transaction('documents').objectStore('documents').getAll();
-    const documents = await new Promise<Array<{ cells: ArrayBuffer }>>((resolve) => { get.onsuccess = () => resolve(get.result); });
-    return new Uint32Array(documents[0].cells).filter(Boolean).length;
-  });
-  expect(filled).toBe(0);
+  // 描画されない操作なので、UIの編集状態とDBの両方を確かめる。
+  await expect(canvas).toHaveAttribute('aria-label', /記号0個/);
+  await expect(page.locator('.app-document-name')).not.toContainText('保存中');
+  await expect.poll(async () => (await storedCells(page)).filled).toEqual([]);
 });
 
 test('prevents the canvas wheel gesture from reaching page zoom', async ({ page }) => {
@@ -94,15 +92,26 @@ async function clickBoardCenter(page: import('@playwright/test').Page) {
   await page.mouse.click(box!.x + label + (box!.width - label) / 2, box!.y + label + (box!.height - label) / 2);
 }
 
-async function storedCells(page: import('@playwright/test').Page) {
-  await page.waitForTimeout(700);
-  return await page.evaluate(async () => {
+/** 保存の観測だけを行う。呼び出し側で期待する内容までpollする。 */
+async function storedCells(page: Page) {
+  return page.evaluate(async () => {
     const request = indexedDB.open('knitting-editor-v2');
-    const db = await new Promise<IDBDatabase>((resolve) => { request.onsuccess = () => resolve(request.result); });
-    const get = db.transaction('documents').objectStore('documents').getAll();
-    const documents = await new Promise<Array<{ rows: number; cols: number; cells: ArrayBuffer }>>((resolve) => { get.onsuccess = () => resolve(get.result); });
-    const { rows, cols, cells } = documents[0];
-    return { rows, cols, filled: [...new Uint32Array(cells).entries()].filter(([, value]) => value).map(([index]) => index) };
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    try {
+      const get = db.transaction('documents').objectStore('documents').getAll();
+      const documents = await new Promise<Array<{ rows: number; cols: number; cells: ArrayBuffer; name: string }>>((resolve, reject) => {
+        get.onsuccess = () => resolve(get.result);
+        get.onerror = () => reject(get.error);
+      });
+      const { rows, cols, cells, name } = documents[0];
+      const values = [...new Uint32Array(cells)];
+      return { rows, cols, name, cells: values, filled: values.flatMap((value, index) => value ? [index] : []) };
+    } finally {
+      db.close();
+    }
   });
 }
 
@@ -114,13 +123,15 @@ test('keeps the board on screen when scrolled far, with edge cells reaching the 
   // 盤面を右下へ大きく動かすと、左上のマスが表示領域の中央で止まる。
   await scroll(-100_000, -100_000);
   await clickBoardCenter(page);
-  expect((await storedCells(page)).filled).toEqual([0]);
+  await expect.poll(async () => (await storedCells(page)).filled).toEqual([0]);
 
   // 反対へ大きく動かすと、右下のマスが表示領域の中央で止まる。
   await scroll(100_000, 100_000);
   await clickBoardCenter(page);
-  const { rows, cols, filled } = await storedCells(page);
-  expect(filled).toEqual([0, rows * cols - 1]);
+  await expect.poll(async () => {
+    const { rows, cols, filled } = await storedCells(page);
+    return filled.length === 2 && filled[0] === 0 && filled[1] === rows * cols - 1;
+  }).toBe(true);
 });
 
 test('keeps the board on screen when dragged far with two fingers', async ({ page }) => {
@@ -149,8 +160,10 @@ test('keeps the board on screen when dragged far with two fingers', async ({ pag
 
   // 右下のマスが表示領域の中央で止まっている。
   await clickBoardCenter(page);
-  const { rows, cols, filled } = await storedCells(page);
-  expect(filled).toEqual([rows * cols - 1]);
+  await expect.poll(async () => {
+    const { rows, cols, filled } = await storedCells(page);
+    return filled.length === 1 && filled[0] === rows * cols - 1;
+  }).toBe(true);
 });
 
 test('matches the guidance to the input method and hides the gesture hint after about ten seconds', async ({ page }, testInfo) => {
@@ -178,32 +191,30 @@ test('matches the guidance to the input method and hides the gesture hint after 
   await expect(hint).toBeHidden();
 });
 
-test('erases stitches continuously', async ({ page }) => {
-  const canvas = page.getByLabel('編み図編集盤面');
-  const box = await canvas.boundingBox();
-  await page.mouse.move(box!.x + 75, box!.y + 75);
-  await page.mouse.down();
-  await page.mouse.move(box!.x + 165, box!.y + 75, { steps: 6 });
-  await page.mouse.up();
+for (const saveDelay of [0, 1_400]) {
+  test(`erases stitches continuously${saveDelay ? ' with delayed autosave' : ''}`, async ({ page }) => {
+    if (saveDelay) {
+      await delayAutosave(page, saveDelay);
+    }
+    const canvas = page.getByLabel('編み図編集盤面');
+    const box = await canvas.boundingBox();
+    await page.mouse.move(box!.x + 75, box!.y + 75);
+    await page.mouse.down();
+    await page.mouse.move(box!.x + 165, box!.y + 75, { steps: 6 });
+    await page.mouse.up();
 
-  await page.getByRole('button', { name: '消す' }).click();
-  await expect(page.getByRole('button', { name: '消す' })).toHaveAttribute('aria-pressed', 'true');
-  await page.mouse.move(box!.x + 75, box!.y + 75);
-  await page.mouse.down();
-  await page.mouse.move(box!.x + 165, box!.y + 75, { steps: 6 });
-  await page.mouse.up();
-  await page.waitForTimeout(500);
+    await waitForDrawnStitches(page);
+    expect((await storedCells(page)).filled.length).toBeGreaterThan(1);
 
-  const remaining = await page.evaluate(async () => {
-    const request = indexedDB.open('knitting-editor-v2');
-    const db = await new Promise<IDBDatabase>((resolve) => { request.onsuccess = () => resolve(request.result); });
-    const transaction = db.transaction('documents');
-    const get = transaction.objectStore('documents').getAll();
-    const documents = await new Promise<Array<{ cells: ArrayBuffer }>>((resolve) => { get.onsuccess = () => resolve(get.result); });
-    return new Uint32Array(documents[0].cells).filter(Boolean).length;
+    await page.getByRole('button', { name: '消す' }).click();
+    await expect(page.getByRole('button', { name: '消す' })).toHaveAttribute('aria-pressed', 'true');
+    await page.mouse.move(box!.x + 75, box!.y + 75);
+    await page.mouse.down();
+    await page.mouse.move(box!.x + 165, box!.y + 75, { steps: 6 });
+    await page.mouse.up();
+    await expect.poll(async () => (await storedCells(page)).filled).toEqual([]);
   });
-  expect(remaining).toBe(0);
-});
+}
 
 test('selects a stitch from the visual palette and places white-out data', async ({ page }) => {
   await page.getByRole('button', { name: '編み目記号を選ぶ' }).click();
@@ -217,16 +228,7 @@ test('selects a stitch from the visual palette and places white-out data', async
   const canvas = page.getByLabel('編み図編集盤面');
   const box = await canvas.boundingBox();
   await page.mouse.click(box!.x + 75, box!.y + 75);
-  await page.waitForTimeout(500);
-  const stitchId = await page.evaluate(async () => {
-    const request = indexedDB.open('knitting-editor-v2');
-    const db = await new Promise<IDBDatabase>((resolve) => { request.onsuccess = () => resolve(request.result); });
-    const transaction = db.transaction('documents');
-    const get = transaction.objectStore('documents').getAll();
-    const documents = await new Promise<Array<{ cells: ArrayBuffer }>>((resolve) => { get.onsuccess = () => resolve(get.result); });
-    return new Uint32Array(documents[0].cells).find(Boolean)! >>> 24;
-  });
-  expect(stitchId).toBe(25);
+  await expect.poll(async () => (await storedCells(page)).cells.find(Boolean)! >>> 24).toBe(25);
 });
 
 test('selects and stores the purl right-leaning two-stitch decrease', async ({ page }) => {
@@ -238,31 +240,14 @@ test('selects and stores the purl right-leaning two-stitch decrease', async ({ p
   const canvas = page.getByLabel('編み図編集盤面');
   const box = await canvas.boundingBox();
   await page.mouse.click(box!.x + 75, box!.y + 75);
-  await page.waitForTimeout(500);
-  const stitchId = await page.evaluate(async () => {
-    const request = indexedDB.open('knitting-editor-v2');
-    const db = await new Promise<IDBDatabase>((resolve) => { request.onsuccess = () => resolve(request.result); });
-    const transaction = db.transaction('documents');
-    const get = transaction.objectStore('documents').getAll();
-    const documents = await new Promise<Array<{ cells: ArrayBuffer }>>((resolve) => { get.onsuccess = () => resolve(get.result); });
-    return new Uint32Array(documents[0].cells).find(Boolean)! >>> 24;
-  });
-  expect(stitchId).toBe(26);
+  await expect.poll(async () => (await storedCells(page)).cells.find(Boolean)! >>> 24).toBe(26);
 });
 
 test('picks a color used in the chart from the color list and draws with it', async ({ page }) => {
   const canvas = page.getByLabel('編み図編集盤面');
   const box = await canvas.boundingBox();
-  const storedColors = async () => {
-    await page.waitForTimeout(700);
-    return await page.evaluate(async () => {
-      const request = indexedDB.open('knitting-editor-v2');
-      const db = await new Promise<IDBDatabase>((resolve) => { request.onsuccess = () => resolve(request.result); });
-      const get = db.transaction('documents').objectStore('documents').getAll();
-      const documents = await new Promise<Array<{ cells: ArrayBuffer }>>((resolve) => { get.onsuccess = () => resolve(get.result); });
-      return [...new Uint32Array(documents[0].cells)].filter(Boolean).map((value) => `#${(value & 0xffffff).toString(16).padStart(6, '0')}`);
-    });
-  };
+  const storedColors = async () => (await storedCells(page)).cells.filter(Boolean)
+    .map((value) => `#${(value & 0xffffff).toString(16).padStart(6, '0')}`);
   const colorButton = page.getByRole('button', { name: /^記号の色を選ぶ/ });
   const picker = page.getByRole('dialog', { name: '記号の色' });
 
@@ -279,7 +264,7 @@ test('picks a color used in the chart from the color list and draws with it', as
   await expect(colorButton).toHaveAccessibleName('記号の色を選ぶ（現在：青緑 #264653）');
   await picker.getByRole('button', { name: '閉じる' }).click();
   await page.mouse.click(box!.x + 140, box!.y + 75);
-  expect(await storedColors()).toEqual(['#d33c32', '#264653']);
+  await expect.poll(storedColors).toEqual(['#d33c32', '#264653']);
 
   // 消すモードからでも、一覧で選べばその色で描けるようになる。
   await page.getByRole('button', { name: '消す' }).click();
@@ -300,7 +285,7 @@ test('picks a color used in the chart from the color list and draws with it', as
   await expect(page.getByRole('button', { name: '描く' })).toHaveAttribute('aria-pressed', 'true');
 
   await page.mouse.click(box!.x + 205, box!.y + 75);
-  expect(await storedColors()).toEqual(['#d33c32', '#264653', '#d33c32']);
+  await expect.poll(storedColors).toEqual(['#d33c32', '#264653', '#d33c32']);
 });
 
 test('creates a block and exports backup and PDF', async ({ page }) => {
@@ -451,13 +436,10 @@ test('copies and repeatedly pastes a selection without saving a block', async ({
 });
 
 test('undoes and redoes a stroke and a grid change, then saves the result', async ({ page }) => {
-  const readStored = () => page.evaluate(async () => {
-    const request = indexedDB.open('knitting-editor-v2');
-    const db = await new Promise<IDBDatabase>((resolve) => { request.onsuccess = () => resolve(request.result); });
-    const get = db.transaction('documents').objectStore('documents').getAll();
-    const documents = await new Promise<Array<{ cells: ArrayBuffer; rows: number }>>((resolve) => { get.onsuccess = () => resolve(get.result); });
-    return { filled: new Uint32Array(documents[0].cells).filter(Boolean).length, rows: documents[0].rows };
-  });
+  const readStored = async () => {
+    const stored = await storedCells(page);
+    return { filled: stored.filled.length, rows: stored.rows };
+  };
   const undo = page.getByRole('button', { name: '元に戻す' });
   const redo = page.getByRole('button', { name: 'やり直す' });
   await expect(undo).toBeDisabled();
@@ -470,71 +452,53 @@ test('undoes and redoes a stroke and a grid change, then saves the result', asyn
   await page.mouse.down();
   await page.mouse.move(box!.x + 180, box!.y + 135, { steps: 8 });
   await page.mouse.up();
-  await page.waitForTimeout(700);
+  await waitForDrawnStitches(page);
+  expect((await readStored()).filled).toBeGreaterThan(2);
   const drawn = await readStored();
-  expect(drawn.filled).toBeGreaterThan(2);
 
   // なぞり描き1回分がまとめて取り消され、その前のタップは残る。
   await undo.click();
   await expect(page.getByRole('status').filter({ hasText: '元に戻しました' })).toBeVisible();
-  await page.waitForTimeout(700);
-  expect((await readStored()).filled).toBe(1);
+  await expect.poll(async () => (await readStored()).filled).toBe(1);
   await expect(redo).toBeEnabled();
 
   await page.keyboard.press('ControlOrMeta+Shift+z');
-  await page.waitForTimeout(700);
-  expect((await readStored()).filled).toBe(drawn.filled);
+  await expect.poll(async () => (await readStored()).filled).toBe(drawn.filled);
 
   await page.getByRole('button', { name: '盤面' }).click();
   await page.getByRole('button', { name: '上に段' }).click();
   await page.getByRole('button', { name: '閉じる' }).click();
-  await page.waitForTimeout(700);
-  expect((await readStored()).rows).toBe(21);
+  await expect.poll(async () => (await readStored()).rows).toBe(21);
 
   await page.keyboard.press('ControlOrMeta+z');
-  await page.waitForTimeout(700);
-  expect(await readStored()).toEqual({ filled: drawn.filled, rows: 20 });
+  await expect.poll(readStored).toEqual({ filled: drawn.filled, rows: 20 });
 
   await page.keyboard.press('ControlOrMeta+z');
   await page.keyboard.press('ControlOrMeta+z');
   await expect(undo).toBeDisabled();
-  await page.waitForTimeout(700);
-  expect(await readStored()).toEqual({ filled: 0, rows: 20 });
+  await expect.poll(readStored).toEqual({ filled: 0, rows: 20 });
 });
 
 test('keeps the cast-on row when the row count grows and shrinks again', async ({ page }) => {
-  const readFilled = () => page.evaluate(async () => {
-    const request = indexedDB.open('knitting-editor-v2');
-    const db = await new Promise<IDBDatabase>((resolve) => { request.onsuccess = () => resolve(request.result); });
-    const transaction = db.transaction('documents');
-    const get = transaction.objectStore('documents').getAll();
-    const documents = await new Promise<Array<{ cells: ArrayBuffer; rows: number; cols: number }>>((resolve) => { get.onsuccess = () => resolve(get.result); });
-    const cells = new Uint32Array(documents[0].cells);
-    const indexes: number[] = [];
-    cells.forEach((value, index) => { if (value) indexes.push(index); });
-    return { indexes, rows: documents[0].rows, cols: documents[0].cols };
-  });
+  const readFilled = async () => {
+    const { filled: indexes, rows, cols } = await storedCells(page);
+    return { indexes, rows, cols };
+  };
 
   const canvas = page.getByLabel('編み図編集盤面');
   const box = await canvas.boundingBox();
   await page.mouse.click(box!.x + 75, box!.y + 75);
-  await page.waitForTimeout(700);
+  await expect.poll(async () => (await readFilled()).indexes.length).toBe(1);
   const before = await readFilled();
-  expect(before.indexes.length).toBe(1);
 
   // 盤面設定の段数変更は増減のどちらでも上端側で行う。往復しても段番号は変わらない。
   await page.getByRole('button', { name: '盤面' }).click();
   await page.getByLabel('段数').fill('25');
   await page.getByRole('button', { name: '変更' }).click();
-  await page.waitForTimeout(700);
+  await expect.poll(async () => (await readFilled()).rows).toBe(25);
   await page.getByLabel('段数').fill('20');
   await page.getByRole('button', { name: '変更' }).click();
-  await page.waitForTimeout(700);
-
-  const after = await readFilled();
-  expect(after.rows).toBe(before.rows);
-  expect(after.cols).toBe(before.cols);
-  expect(after.indexes).toEqual(before.indexes);
+  await expect.poll(readFilled).toEqual(before);
 });
 
 test('does not overwrite a renamed chart with a pending autosave', async ({ page }) => {
@@ -545,16 +509,11 @@ test('does not overwrite a renamed chart with a pending autosave', async ({ page
   await page.getByRole('button', { name: '編み図' }).click();
   page.once('dialog', async (dialog) => dialog.accept('名称変更後'));
   await page.getByRole('button', { name: '名前変更' }).click();
-  await page.waitForTimeout(700);
-
-  const names = await page.evaluate(async () => {
-    const request = indexedDB.open('knitting-editor-v2');
-    const db = await new Promise<IDBDatabase>((resolve) => { request.onsuccess = () => resolve(request.result); });
-    const get = db.transaction('documents').objectStore('documents').getAll();
-    const documents = await new Promise<Array<{ name: string }>>((resolve) => { get.onsuccess = () => resolve(get.result); });
-    return documents.map((document) => document.name);
-  });
-  expect(names).toContain('名称変更後');
+  await expect.poll(async () => {
+    const { name, filled } = await storedCells(page);
+    return { name, filled: filled.length };
+  }).toEqual({ name: '名称変更後', filled: 1 });
+  await expect(page.locator('.app-document-name')).not.toContainText('保存中');
 });
 
 test('keeps header actions visible when text is enlarged in landscape', async ({ page }) => {
