@@ -93,10 +93,11 @@ function listenExportFinished() {
 
 /** 編み図名やファイル内容は変えず、Swiftのファイル名検査に通る出力名を作る。 */
 function safeExportFilename(filename: string): string {
+  // 名前の末尾の点が拡張子の点とつながって置換されないよう、拡張子を先に分ける。
+  const extension = filename.match(/\.(png|pdf|knit)$/i)?.[0] ?? '';
   // FoundationのcontrolCharactersはCcに加えてCf（不可視の書式制御文字）も含む。
-  const safe = filename.replace(/[\/\\\p{Cc}\p{Cf}]/gu, '_').replace(/\.{2,}/g, '_').trim();
-  const extension = safe.match(/\.(png|pdf|knit)$/i)?.[0] ?? '';
-  const stem = safe.slice(0, safe.length - extension.length) || 'chart';
+  const stem = filename.slice(0, filename.length - extension.length)
+    .replace(/[\/\\\p{Cc}\p{Cf}]/gu, '_').replace(/\.{2,}/g, '_').trim() || 'chart';
   // SwiftのString.countと同様に、結合文字や絵文字を途中で分割しない。
   const segments = new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(stem);
   let truncated = '';
@@ -106,7 +107,7 @@ function safeExportFilename(filename: string): string {
     truncated += segment;
     count += 1;
   }
-  // 切り詰めた末尾の点と拡張子の点が、新たな`..`にならないようにする。
+  // 名前（切り詰めた場合はその結果）の末尾の点と拡張子の点が、`..`にならないようにする。
   return truncated.replace(/\.+$/, '_') + extension;
 }
 

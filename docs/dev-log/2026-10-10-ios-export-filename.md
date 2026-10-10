@@ -1,16 +1,23 @@
 # 2026-10-10 — iOSの出力ファイル名を安全化
 
-- 影響: #166（Closes #166）。編み図名とバックアップ内容を維持したまま、PNG・PDF・個別`.knit`をネイティブへ送る際のファイル名だけを安全化する。スラッシュ、バックスラッシュ、連続する点、制御文字を`_`に置換し、拡張子を保持して書記素単位で180文字以内に切り詰める。切り詰め後に拡張子と接して`..`になる末尾の点も置換する。Swiftの検証は変更しない。
+- 影響: #166（Closes #166）。編み図名とバックアップ内容を維持したまま、PNG・PDF・個別`.knit`をネイティブへ送る際のファイル名だけを安全化する。先に拡張子を分け、名前の部分のスラッシュ、バックスラッシュ、連続する点、制御文字を`_`に置換し、書記素単位で拡張子を含め180文字以内に切り詰める。名前（切り詰めた場合はその結果）の末尾の点は、拡張子と接して`..`になったり拡張子が失われたりしないよう`_`に置換する。Swiftの検証は変更しない。
 - 主なファイル: `ios/Web/src/nativeBridge.ts`、`ios/Web/src/nativeBridge.test.ts`、`ios/Tests/KnittingEditorAppTests/NativeBridgeMessageTests.swift`、`ios/UITests/KnittingEditorUITests/KnittingEditorUITests.swift`。
-- テスト: 各拡張子について、Issueの名前、連続する点、Cc/Cf制御文字、180文字の境界、結合文字、絵文字、切り詰め位置の点と送信内容の維持をVitestで確認。Swift単体テストで危険な名前の拒否と安全な180文字の受理を追加。XCUITestを名前ごとに4件追加し、各形式がネイティブの保存・共有選択に到達し、キャンセル後も編み図名を保持することを確認する。
-- 検証: 以下を実行し、すべて成功。
-  - `npm ci`: 成功。
+- テスト: 各拡張子について、Issueの名前、連続する点、点で終わる名前（「試作.」「.」「試作..」と上限長＋点）、Cc/Cf制御文字、180文字の境界、結合文字、絵文字、切り詰め位置の点と送信内容の維持をVitestで確認。Swift単体テストで危険な名前の拒否と安全な180文字の受理を追加。XCUITestを名前ごとに4件追加し、各形式がネイティブの保存・共有選択に到達し、キャンセル後も編み図名を保持することを確認する。
+- 検証（最終の変更後）:
   - `npm run typecheck`: 成功。
   - `npm test`: 成功、37ファイル・259件。
   - `npm run build`: 成功。
   - `npm run check:dist`: 成功。
   - `(cd ios/Web && ../../node_modules/.bin/tsc -p tsconfig.app.json --noEmit)`: 成功。
-  - `(cd ios/Web && ../../node_modules/.bin/vitest run --config vite.config.ts)`: 成功、8ファイル・67件。
+  - `(cd ios/Web && ../../node_modules/.bin/vitest run --config vite.config.ts)`: 成功、8ファイル・79件。
   - `git diff --check`: 成功。
-  - `npm run test:e2e`（Chromium/WebKit）、Swift単体テスト、iOSビルド・Simulatorテストはサンドボックスで実行できないため、検証担当とPR CIに委ねる。iOS全体のiPhone/iPad Simulator、更新テスト、unsigned Release Archive、オフライン同梱物検査もPR CIで確認する。
-- デプロイ影響: Pagesはなし。iOSアプリの同梱Webに反映する。配布後は問題のある名前のPNG・PDF・個別`.knit`がFilesへ保存でき、元の編み図名が変わらないことを確認する。
+- 検証（点で終わる名前の修正の前に実行。この修正は`safeExportFilename`の拡張子の取り出し順だけを変える）:
+  - `(cd ios/Web && ../../node_modules/.bin/vitest run --config vite.config.ts)`: 成功、8ファイル・67件。
+  - `npm run test:e2e`: 成功、164件成功・4件スキップ（chromium-desktop、chromium-mobile、webkit-mobileの各56件）。iOS Webだけの変更なので、修正後のWeb E2Eへの影響はない。
+  - `xcodegen generate --spec ios/project.yml`: 成功。コミット済みのプロジェクトとの差分なし。
+  - `xcodebuild build-for-testing -project ios/knittingEditor.xcodeproj -scheme knittingEditor -destination 'id=<iPhone Simulator>' CODE_SIGNING_ALLOWED=NO`: 成功。
+  - iPhone Simulatorで`xcodebuild test-without-building … -only-testing:knittingEditorTests/NativeBridgeMessageTests`: 成功、9件（`testExportFilenameBoundariesKeepNativeValidation`、`testDecodeRejectsPathTraversalFilename`、`testDecodeRejectsUnsupportedMimeTypeAndUnsafeFilenames`を含む）。
+  - iPhone Simulatorで`KnittingEditorUITests`の`testSlashDocumentNameReachesAllNativeExportActions`、`testRepeatedDotsDocumentNameReachesAllNativeExportActions`、`testBackslashDocumentNameReachesAllNativeExportActions`、`testLongDocumentNameReachesAllNativeExportActions`: 4件成功。
+  - iPad Simulatorで`testSlashDocumentNameReachesAllNativeExportActions`と`testLongDocumentNameReachesAllNativeExportActions`: 2件成功。
+- PR CIに委ねるもの: 修正後の同梱Webを使うiOSのビルド・Swift単体テスト・XCUITestを含むiPhone/iPad Simulator全体、更新テスト、unsigned Release Archive、オフライン同梱物検査。Filesへの実保存は手動確認が必要。
+- デプロイ影響: Pagesはなし。iOSアプリの同梱Webに反映する。配布後は問題のある名前のPNG・PDF・個別`.knit`がFilesへ拡張子付きで保存でき、元の編み図名が変わらないことを確認する。
