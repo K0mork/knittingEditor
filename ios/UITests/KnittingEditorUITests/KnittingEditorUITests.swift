@@ -336,64 +336,70 @@ final class KnittingEditorUITests: XCTestCase {
     func testDocumentSwitchAutosavesEachDocument() {
         let app = XCUIApplication()
         app.launch()
+        let suffix = UUID().uuidString
+        let nameA = "M2切替A-\(suffix)"
+        let nameB = "M2切替B-\(suffix)"
 
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
-        createDocument(named: "M2切替A", in: app)
+        createDocument(named: nameA, in: app)
 
-        let webView = app.webViews.firstMatch
-        let emptyCanvas = webView.otherElements
-            .matching(NSPredicate(format: "label CONTAINS %@", "記号0個"))
+        let canvas = app.webViews.firstMatch.otherElements
+            .matching(NSPredicate(format: "label CONTAINS %@", "編み図編集盤面"))
             .firstMatch
-        XCTAssertTrue(emptyCanvas.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
-        emptyCanvas.coordinate(withNormalizedOffset: CGVector(dx: 0.35, dy: 0.5)).tap()
-        let editedCanvas = webView.otherElements
-            .matching(NSPredicate(format: "label CONTAINS %@", "記号1個"))
-            .firstMatch
-        XCTAssertTrue(editedCanvas.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
-        waitForDocumentSave(named: "M2切替A", in: webView)
+        XCTAssertTrue(canvas.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+        waitForStitchCount(0, on: canvas, in: app)
+        let positionA = CGVector(dx: 0.35, dy: 0.5)
+        let positionsB = [CGVector(dx: 0.65, dy: 0.4), CGVector(dx: 0.65, dy: 0.6)]
+        canvas.coordinate(withNormalizedOffset: positionA).tap()
+        waitForStitchCount(1, on: canvas, in: app)
+        waitForDocumentSave(named: nameA, in: app.webViews.firstMatch)
 
-        createDocument(named: "M2切替B", in: app)
+        createDocument(named: nameB, in: app)
+        waitForStitchCount(0, on: canvas, in: app)
+        for (index, position) in positionsB.enumerated() {
+            canvas.coordinate(withNormalizedOffset: position).tap()
+            waitForStitchCount(index + 1, on: canvas, in: app)
+        }
+        waitForDocumentSave(named: nameB, in: app.webViews.firstMatch)
 
-        let secondEmptyCanvas = webView.otherElements
-            .matching(NSPredicate(format: "label CONTAINS %@", "記号0個"))
-            .firstMatch
-        XCTAssertTrue(secondEmptyCanvas.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
-        secondEmptyCanvas.coordinate(withNormalizedOffset: CGVector(dx: 0.65, dy: 0.5)).tap()
-        XCTAssertTrue(
-            webView.otherElements
-                .matching(NSPredicate(format: "label CONTAINS %@", "記号1個"))
+        // 名前だけが変わる、前の盤面が残る、常に同じ文書が開く場合も失敗させる。
+        // 実際に置いた位置を消して記号数が減ることを確認し、すぐ元へ戻す。
+        func assertDocument(named name: String, positions: [CGVector]) {
+            waitForDocumentSave(named: name, in: app.webViews.firstMatch)
+            waitForStitchCount(positions.count, on: canvas, in: app)
+            app.switches["消す"].tap()
+            for (index, position) in positions.enumerated() {
+                canvas.coordinate(withNormalizedOffset: position).tap()
+                waitForStitchCount(positions.count - index - 1, on: canvas, in: app)
+            }
+            for index in 0..<positions.count {
+                app.buttons["元に戻す"].tap()
+                waitForStitchCount(index + 1, on: canvas, in: app)
+            }
+            app.switches["描く"].tap()
+            waitForDocumentSave(named: name, in: app.webViews.firstMatch)
+        }
+
+        func selectDocument(named name: String) {
+            openDocumentsPanel(in: app)
+            let document = app.buttons
+                .matching(NSPredicate(format: "label BEGINSWITH %@", name))
                 .firstMatch
-                .waitForExistence(timeout: Self.editorAppearanceTimeout),
-            app.debugDescription
-        )
-        waitForDocumentSave(named: "M2切替B", in: webView)
-        openDocumentsPanel(in: app)
-        let documentA = app.buttons
-            .matching(NSPredicate(format: "label BEGINSWITH %@", "M2切替A"))
-            .firstMatch
-        XCTAssertTrue(documentA.waitForExistence(timeout: Self.editorAppearanceTimeout))
-        documentA.tap()
-        XCTAssertTrue(
-            webView.otherElements
-                .matching(NSPredicate(format: "label CONTAINS %@", "記号1個"))
-                .firstMatch
-                .waitForExistence(timeout: Self.editorAppearanceTimeout),
-            app.debugDescription
-        )
+            XCTAssertTrue(document.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+            document.tap()
+        }
 
-        openDocumentsPanel(in: app)
-        let documentB = app.buttons
-            .matching(NSPredicate(format: "label BEGINSWITH %@", "M2切替B"))
-            .firstMatch
-        XCTAssertTrue(documentB.waitForExistence(timeout: Self.editorAppearanceTimeout))
-        documentB.tap()
-        XCTAssertTrue(
-            webView.otherElements
-                .matching(NSPredicate(format: "label CONTAINS %@", "記号1個"))
-                .firstMatch
-                .waitForExistence(timeout: Self.editorAppearanceTimeout),
-            app.debugDescription
-        )
+        selectDocument(named: nameA)
+        assertDocument(named: nameA, positions: [positionA])
+        selectDocument(named: nameB)
+        assertDocument(named: nameB, positions: positionsB)
+
+        app.terminate()
+        app.launch()
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
+        assertDocument(named: nameB, positions: positionsB)
+        selectDocument(named: nameA)
+        assertDocument(named: nameA, positions: [positionA])
     }
 
     /// iPadの全画面以外（Split View・可変ウィンドウ）での操作を検証する。
