@@ -105,10 +105,15 @@ enum NativeBridgeMessage: Equatable {
 
 /// 書き出しを保存・共有し終えたか、取りやめたかをWebへ返すイベント（#122）。
 enum NativeExportResult {
+    enum Status: String {
+        case completed, cancelled, error
+    }
+
     static let eventName = "knittingEditorNativeExportFinished"
 
-    static func script(requestID: String, saved: Bool) -> String? {
-        let detail: [String: Any] = ["id": requestID, "saved": saved]
+    static func script(requestID: String, saved: Bool, status: Status? = nil) -> String? {
+        var detail: [String: Any] = ["id": requestID, "saved": saved]
+        if let status { detail["status"] = status.rawValue }
         guard let jsonData = try? JSONSerialization.data(withJSONObject: detail, options: [.sortedKeys]),
               let json = String(data: jsonData, encoding: .utf8) else { return nil }
         return "window.dispatchEvent(new CustomEvent('\(eventName)',{detail:\(json)}));"

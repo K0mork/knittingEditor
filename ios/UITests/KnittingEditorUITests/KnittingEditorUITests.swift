@@ -751,6 +751,60 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertEqual(app.state, .runningForeground, "\(dismissal): \(app.debugDescription)")
     }
 
+    /// 共有先が見えることと、閉じた直後の最初のタップが編集画面へ届くことを確かめる（#158、#191）。
+    ///
+    /// 共有シート1回に20秒以上かかるため、縦と横を別のテストに分け、CIの1テストあたりの
+    /// 実行時間の上限に収める。
+    func testShareSheetsDismissBackToEditor() {
+        assertShareSheetsDismissBackToEditor(landscape: false)
+    }
+
+    func testShareSheetsDismissBackToEditorInLandscape() {
+        assertShareSheetsDismissBackToEditor(landscape: true)
+    }
+
+    private func assertShareSheetsDismissBackToEditor(landscape: Bool) {
+        let app = XCUIApplication()
+        app.launch()
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
+        let save = app.buttons["保存"]
+        XCTAssertTrue(save.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+        if landscape { rotateToLandscape(app) }
+        for export in ["PNGを保存", "PDFを保存", "この編み図"] {
+            let step = "\(export)-\(landscape ? "横" : "縦")"
+            let button = app.buttons[export]
+            openSavePanel(with: save, showing: button, in: app)
+            assertHittableAfterScrolling(button, in: app)
+            waitUntilStill(button)
+            button.tap()
+            let share = app.buttons["共有"]
+            XCTAssertTrue(share.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+            share.tap()
+
+            let sheet = shareSheet(in: app)
+            XCTAssertTrue(sheet.waitForExistence(timeout: 20), "\(step): \(app.debugDescription)")
+            let copy = sheet.cells.matching(NSPredicate(format: "label IN %@", ["Copy", "コピー"])).firstMatch
+            XCTAssertTrue(copy.waitForExistence(timeout: 20), "\(step): \(app.debugDescription)")
+            add(screenshotAttachment(named: "共有-\(step)"))
+            // 共有先が画面内に見えて選べる（#158では透明な領域だけが残った）。
+            XCTAssertTrue(copy.isHittable, "\(step): \(app.debugDescription)")
+
+            // 枠外のタップで閉じる。編集画面への最初のタップとは別に行う。
+            let dismissal = dismissShareSheet(sheet, in: app)
+            assertDisappears(sheet, from: app, note: "\(step) \(dismissal)")
+
+            app.buttons["閉じる"].tap()
+            assertDisappears(app.buttons["この編み図"], from: app, note: step)
+            app.buttons["盤面"].tap()
+            let rowsUp = app.buttons["上に段"]
+            XCTAssertTrue(rowsUp.waitForExistence(timeout: 10), "\(step): \(app.debugDescription)")
+            // パネルが開く動きの途中だと「閉じる」のタップが外れる。止まってから押す。
+            waitUntilStill(rowsUp)
+            app.buttons["閉じる"].tap()
+            assertDisappears(app.buttons["上に段"], from: app, note: step)
+        }
+    }
+
     func testPngAndPdfExportsReachNativeFileActions() {
         let app = XCUIApplication()
         app.launch()
@@ -1361,6 +1415,78 @@ final class KnittingEditorUITests: XCTestCase {
             .completed,
             "自動保存が完了しない: \(webView.debugDescription)"
         )
+    }
+
+    /// 表示中の共有シート（`UIActivityViewController`）。閉じると消える。
+    ///
+    /// iOS 26では本体が`ActivityListView`として公開され、「コピー」などの共有先はボタンではなく
+    /// セル（identifier`actionGroupCell`）になる。
+    private func shareSheet(in app: XCUIApplication) -> XCUIElement {
+        app.otherElements["ActivityListView"]
+    }
+
+    /// 「保存」で保存パネルを開く。
+    ///
+    /// 起動直後は「編み図」と同じく最初のタップが効かないことがある（#44）。パネルが
+    /// 開いていない（「閉じる」が無い）ときだけ押し直す。
+    private func openSavePanel(with save: XCUIElement, showing button: XCUIElement, in app: XCUIApplication) {
+        save.tap()
+        if !button.waitForExistence(timeout: 10), !app.buttons["閉じる"].exists {
+            save.tap()
+        }
+        XCTAssertTrue(button.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+    }
+
+    /// 共有シートを枠外のタップで閉じる。戻り値は失敗時の診断用に、タップした回数を表す。
+    ///
+    /// iPadのSimulatorの横向きで、表示し終えたシートでも枠外のタップが効かないことがまれにあった。
+    /// シートが残っているあいだだけタップし直すため、シートが消えたあとの編集画面への
+    /// タップには影響しない。
+    private func dismissShareSheet(_ sheet: XCUIElement, in app: XCUIApplication) -> String {
+        waitUntilStill(sheet)
+        for attempt in 1...3 {
+            tapOutside(sheet, in: app)
+            if waitForDisappearance(of: sheet, timeout: 5) {
+                return "枠外のタップ\(attempt)回"
+            }
+        }
+        return "枠外のタップ3回でも閉じない"
+    }
+
+    /// 共有シートの枠の外で、いちばん広い余白の中央をタップする。
+    ///
+    /// iOS 26の共有シートには閉じるボタンが無く、iPhoneでも枠外（`PopoverDismissRegion`）の
+    /// タップで閉じる。ラベルで「閉じる」を探すと背後の保存パネルのボタンに当たり、
+    /// 横向きではその位置がシートの内側に入って閉じられない。
+    private func tapOutside(_ sheet: XCUIElement, in app: XCUIApplication) {
+        let window = app.windows.firstMatch
+        let bounds = window.frame
+        let frame = sheet.frame
+        let gaps: [(size: CGFloat, point: CGPoint)] = [
+            (frame.minY - bounds.minY, CGPoint(x: frame.midX, y: (bounds.minY + frame.minY) / 2)),
+            (bounds.maxY - frame.maxY, CGPoint(x: frame.midX, y: (frame.maxY + bounds.maxY) / 2)),
+            (frame.minX - bounds.minX, CGPoint(x: (bounds.minX + frame.minX) / 2, y: frame.midY)),
+            (bounds.maxX - frame.maxX, CGPoint(x: (frame.maxX + bounds.maxX) / 2, y: frame.midY)),
+        ]
+        let widest = gaps.max { $0.size < $1.size }!
+        XCTAssertGreaterThan(widest.size, 20, "共有シートの枠外が無い sheet=\(frame) window=\(bounds)")
+        window.coordinate(withNormalizedOffset: .zero)
+            .withOffset(CGVector(dx: widest.point.x - bounds.minX, dy: widest.point.y - bounds.minY))
+            .tap()
+    }
+
+    /// 要素の位置が続けて同じになるまで待つ。表示の動きが終わる前のタップは外れることがある。
+    private func waitUntilStill(_ element: XCUIElement, timeout: TimeInterval = 5) {
+        var previous = CGRect.null
+        let still = XCTNSPredicateExpectation(
+            predicate: NSPredicate { object, _ in
+                guard let frame = (object as? XCUIElement)?.frame else { return false }
+                defer { previous = frame }
+                return frame == previous
+            },
+            object: element
+        )
+        _ = XCTWaiter.wait(for: [still], timeout: timeout)
     }
 
     private func assertDisappears(_ element: XCUIElement, from app: XCUIApplication, note: String = "") {
