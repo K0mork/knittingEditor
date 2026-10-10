@@ -532,6 +532,34 @@ final class KnittingEditorUITests: XCTestCase {
         XCTContext.runActivity(named: summary) { _ in }
     }
 
+    /// 段数・列数の欄を空にしても0が入らず、続けて打った数字がそのまま表示され、「変更」で確定する。
+    func testSizeInputsStayEmptyUntilReplacementAndApplyOnChange() {
+        let app = XCUIApplication()
+        app.launch()
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
+        createDocument(named: "寸法入力確認", in: app)
+        app.buttons["盤面"].tap()
+        for (label, value) in [("段数", "25"), ("列数", "30")] {
+            let field = app.textFields[label]
+            XCTAssertTrue(field.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+            // 隣の欄から移るときは1回のタップで焦点が移らないことがある（`replaceNumber`と同じ）。
+            for _ in 0..<3 {
+                field.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+                if waitForKeyboardFocus(on: field, timeout: 5) { break }
+            }
+            XCTAssertTrue(waitForKeyboardFocus(on: field, timeout: 5), "\(label)に入力できない: \(app.debugDescription)")
+            let current = (field.value as? String) ?? ""
+            field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count + 2))
+            XCTAssertTrue(waitForValue("", of: field, timeout: 10), "\(label)を空にできない value=\(String(describing: field.value))")
+            field.typeText(value)
+            XCTAssertTrue(waitForValue(value, of: field, timeout: 10), "\(label)が\(value)にならない value=\(String(describing: field.value))")
+        }
+        app.buttons["変更"].tap()
+        let resized = app.webViews.firstMatch.otherElements
+            .matching(NSPredicate(format: "label CONTAINS %@", "25段、30目")).firstMatch
+        XCTAssertTrue(resized.waitForExistence(timeout: 30), app.debugDescription)
+    }
+
     /// 「盤面」パネルの段数・列数で盤面の大きさを変え、変更後の盤面を返す。
     private func resizeBoard(rows: Int, cols: Int, in app: XCUIApplication) -> XCUIElement {
         app.buttons["盤面"].tap()
@@ -551,10 +579,7 @@ final class KnittingEditorUITests: XCTestCase {
 
     /// 数値欄の値を置き換える。
     ///
-    /// 欄はReactの制御された`type="number"`で、空にすると`0`へ戻る。キャレットが先頭に
-    /// 入ると`20`が`100020`のようになるため、`replaceText`と同じく末尾側を叩いてから
-    /// 消して入力する。末尾で`0`の後ろに入力した`01000`は数値として同じなので、
-    /// 文字列ではなく数値で比べる。
+    /// キャレットが先頭に入ると`20`が`100020`のようになるため、末尾側を叩いてから消して入力する。
     private func replaceNumber(_ number: Int, in field: XCUIElement, app: XCUIApplication) {
         XCTAssertTrue(field.waitForExistence(timeout: 10), app.debugDescription)
         let text = String(number)

@@ -155,7 +155,7 @@ export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, 
       {panel === 'blocks' && <>
         {selection && <><button className="primary" onClick={editor.copySelection}>保存せずコピーして貼付</button><button onClick={() => void editor.saveSelectionAsBlock()}>選択範囲をブロック保存</button></>}
         {!selection && <button onClick={editor.startSelecting}>盤面で範囲を選択</button>}
-        <div className="block-list">{session.blocks.length === 0 && <p>保存済みブロックはありません。</p>}{session.blocks.map((block) => <div key={block.id}><button onClick={() => editor.choosePasteBlock(block)}>{block.name}<small>{block.rows}×{block.cols}</small></button><button onClick={() => void editor.removeBlock(block)}>削除</button></div>)}</div>
+        <div className="block-list">{session.blocks.length === 0 && <p>保存済みブロックはありません。</p>}{session.blocks.map((block) => <div key={block.id}><button onClick={() => editor.choosePasteBlock(block)}>{block.name}<small>{block.cols}目×{block.rows}段</small></button><button onClick={() => void editor.removeBlock(block)}>削除</button></div>)}</div>
       </>}
       {panel === 'export' && <ExportControls board={board} onPng={editor.runPngExport} onPdf={editor.runPdfExport} onBackup={editor.backup}
         onRestore={() => { if (!requestRestore?.()) editor.fileInputRef.current?.click(); }}

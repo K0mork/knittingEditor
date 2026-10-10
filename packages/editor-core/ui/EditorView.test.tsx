@@ -77,6 +77,31 @@ async function renderEditor(
 }
 
 describe('EditorView', () => {
+  it('shows stitch width in stitches and height in rows', async () => {
+    const { container } = await renderEditor();
+    await act(async () => { container.querySelector<HTMLButtonElement>('.stitch-tool')!.click(); });
+    const size = (name: string) => [...container.querySelectorAll('.stitch-option')]
+      .find((item) => item.querySelector('.stitch-option-name')?.textContent === name)?.querySelector('small')?.textContent;
+    expect(size('すべり目')).toBe('1目×2段');
+    expect(size('右上3目交差')).toBe('6目×1段');
+  });
+
+  it('shows both units for a rectangular block and preserves document size order', async () => {
+    const block = { id: 'size-units-block', name: '寸法確認', rows: 2, cols: 5, anchors: [], createdAt: Date.now() };
+    await saveBlock(block);
+    try {
+      const { container, click } = await renderEditor();
+      await click('ブロック');
+      const row = [...container.querySelectorAll('.block-list > div')].find((item) => item.textContent?.startsWith(block.name));
+      expect(row?.querySelector('small')?.textContent).toBe('5目×2段');
+      await click('閉じる');
+      await click('編み図');
+      expect(container.querySelector('.document-list')?.textContent).toContain('20段×20目');
+    } finally {
+      await deleteBlock(block.id);
+    }
+  });
+
   it('renders the host title around the document status and reports analytics', async () => {
     const analytics: EditorAnalytics = { track: vi.fn(), trackFirstEdit: vi.fn() };
     const { container, click } = await renderEditor({ analytics });
