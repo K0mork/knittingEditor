@@ -20,6 +20,10 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
 const persistDocument = storage.saveDocument;
 const resignActive = 'knittingEditorAppWillResignActive';
+// 偽のタイマーに置き換わる前の実物。イベント待ちの打ち切りに使う。
+const realSetTimeout = globalThis.setTimeout;
+const realClearTimeout = globalThis.clearTimeout;
+const eventSaveTimeoutMs = 1000;
 
 describe('App background save registration', () => {
   let container: HTMLDivElement;
@@ -76,10 +80,19 @@ describe('App background save registration', () => {
       try { return await persist(...args); }
       finally { complete(); }
     });
-    await act(async () => {
-      window.dispatchEvent(new Event(resignActive));
-      await completed;
+    // 購読が無いと保存が始まらない。待ち続けずにこのテストだけを失敗させる。
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timedOut = new Promise<never>((_, reject) => {
+      timer = realSetTimeout(() => reject(new Error(`${resignActive} did not save within ${eventSaveTimeoutMs}ms`)), eventSaveTimeoutMs);
     });
+    try {
+      await act(async () => {
+        window.dispatchEvent(new Event(resignActive));
+        await Promise.race([completed, timedOut]);
+      });
+    } finally {
+      realClearTimeout(timer);
+    }
   }
 
   it.each(['function', 'event'] as const)('writes unsaved cells through the registered %s before autosave', async (entry) => {
