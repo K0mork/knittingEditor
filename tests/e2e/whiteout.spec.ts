@@ -41,7 +41,7 @@ test('excludes whiteout stored colors from the used color list and keeps visible
   const swatches = colors.getByRole('group', { name: 'この編み図で使っている色' }).getByRole('button');
   const chooseColor = async (hex: string) => {
     await colorButton.click();
-    await colors.getByLabel('色を選ぶ', { exact: true }).fill(hex);
+    await colors.getByLabel('色を選ぶ').fill(hex);
     await colors.getByRole('button', { name: '閉じる' }).click();
   };
   const chooseStitch = async (name: RegExp) => {
@@ -55,6 +55,7 @@ test('excludes whiteout stored colors from the used color list and keeps visible
   await page.mouse.click(box!.x + 75, box!.y + 75);
   await chooseColor('#0000ff');
   await page.mouse.click(box!.x + 105, box!.y + 75);
+  await expect(canvas).toHaveAttribute('aria-label', /。記号2個。/);
   await colorButton.click();
   await expect(swatches).toHaveCount(0);
   await colors.getByRole('button', { name: '閉じる' }).click();
