@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { gunzipSync, strFromU8 } from 'fflate';
 import { Board } from '../model/Board';
 import {
@@ -13,7 +13,7 @@ const LEGACY_ID = 'existing-before-backup-dates';
  * 最後のバックアップ日時を記録する前のアプリが作ったデータを、同じDB名・同じ版で置く。
  * 日時は設定に足すだけで、DBの版も編み図の記録も変えていないことを確かめる。
  */
-beforeAll(async () => {
+beforeEach(async () => {
   const request = indexedDB.open('knitting-editor-v2', 1);
   request.onupgradeneeded = () => {
     const db = request.result;
@@ -25,7 +25,9 @@ beforeAll(async () => {
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
   });
-  const transaction = db.transaction(['documents', 'settings'], 'readwrite');
+  const transaction = db.transaction(['documents', 'blocks', 'settings'], 'readwrite');
+  // 接続はdatabase.tsが保持するので、全ストアを空にしてfixtureを毎回置き直す。
+  for (const store of ['documents', 'blocks', 'settings']) transaction.objectStore(store).clear();
   transaction.objectStore('documents').put({
     id: LEGACY_ID, name: '前からある編み図', rows: 2, cols: 2,
     cells: new Board(2, 2).cells.slice().buffer, createdAt: 1_700_000_000_000, updatedAt: 1_700_000_100_000,
@@ -59,6 +61,8 @@ describe('last backup dates', () => {
   });
 
   it('keeps the dates out of .knit files and restored charts', async () => {
+    await recordBackup([LEGACY_ID], 1_800_000_000_000);
+    expect(await getLastBackupAt(LEGACY_ID)).toBe(1_800_000_000_000);
     const payload = JSON.parse(strFromU8(gunzipSync(new Uint8Array(await (await exportBackup()).arrayBuffer())))) as {
       documents: Array<Record<string, unknown>>;
     };
