@@ -18,7 +18,7 @@
 
 共通コードから環境固有の機能を呼ぶ必要がある場合は、`packages/editor-core/platform.ts`の`EditorPlatform`へ足して各ビルドのアダプタで実装する。現在の項目は生成ファイルの受け渡し（`saveFile`）だけで、Web版はダウンロード、iOS版は`WKWebView`ブリッジ経由でFiles・共有シートへ渡す。呼び出し元のない項目を先に置かない。
 
-入力ダイアログ（`askText`・`askConfirm`）と分析（`EditorAnalytics`）も`useEditorController`の引数として各ビルドが渡す。分析の送信実装はWeb版の`src/analytics.ts`だけが持ち、iOS版は何も渡さないので共通の`NO_ANALYTICS`のまま一切送らない。ネイティブのバックアップ読込み、保留保存のflush、使い方ページ遷移前の保存はiOS版の`App.tsx`が扱い、外部URL・通信APIをアプリbundleへ含めない。
+入力ダイアログ（`askText`・`askConfirm`）と分析（`EditorAnalytics`）も`useEditorController`の引数として各ビルドが渡す。分析の送信実装はWeb版の`src/analytics.ts`だけが持ち、iOS版は何も渡さないので共通の`NO_ANALYTICS`のまま一切送らない。ネイティブのバックアップ読込み、保留保存のflush、使い方ページ遷移前の保存はiOS版の`App.tsx`が扱い、実行時の外部依存・通信APIをアプリbundleへ含めない。同梱の使い方ページのサポートページ（HTTPS）とメールのリンクは例外で、利用者が選んだ場合だけSafariまたはメールアプリを開く。編集・保存・ヘルプの閲覧はオフラインで完結する（`ios/AGENTS.md`、`ios/scripts/check-app-bundle.sh`）。
 
 ## ビルドと公開
 
