@@ -14,5 +14,6 @@
 - `node_modules/.bin/vitest run packages/editor-core/stitches/catalog.test.ts -t 'keeps every persisted stitch metadata field compatible with the fixed fixture'`: テストファイル内で実データを一時変更し、`yo`の`consumes: 9`、`produces: 8`、`category: cable`の場合と、`purl`の幅・高さを2にした場合の両方で、期待どおりfixture照合が失敗しました。カタログのソースは変更していません。一時変更は除去済みです。
 - `node_modules/.bin/vitest run packages/editor-core/stitches/catalog.test.ts packages/editor-core/storage/database.test.ts`: 一時変更除去後、2ファイル、33テスト成功。
 - `git diff --check`: 成功。
-- 未実行: `npm run test:e2e`（Chromium/WebKit）はsandboxでブラウザ起動不可のため検証担当へ依頼します。iOSのXcodeGen、iPhone/iPad Simulator、app-update、unsigned Release Archive、offline bundle検査はPR CIへ任せます。テストのみの変更で画面写真は不要です。
+- 別の担当が独立に確認し、`yo`の書き換えや記号の寸法の変更を新しいテストだけが検出し、従来のテストでは見逃すことを確かめた。
+- 未実行: テストだけの変更のため、E2E（Chromium/WebKit）とiOSの検査（XcodeGen、iPhone/iPad Simulator、app-update、unsigned Release Archive、offline bundle）はPR CIで確認する。画面写真は不要。
 - デプロイ影響: none。実行時コード・配信物に変更がなく、追加の配信後確認は不要です。
