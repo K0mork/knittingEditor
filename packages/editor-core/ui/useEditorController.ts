@@ -84,7 +84,7 @@ export function useEditorController(options: EditorControllerOptions) {
     board, activeDocument, changed: markChanged, commitEdit, saveNow, switchDocument: switchSessionDocument,
     refreshDocuments, refreshBlocks, applyActiveDocumentName,
   } = session;
-  const backupReminder = useBackupReminder(activeDocument);
+  const backupReminder = useBackupReminder(activeDocument, session.saveFailed && session.dirty);
   const { countEdit } = backupReminder;
 
   // 指を離すたびに盤面全体を比べないよう、書き換えがあったときだけ履歴へ積む。
@@ -275,16 +275,24 @@ export function useEditorController(options: EditorControllerOptions) {
     if (!activeDocument) return;
     setBusy('バックアップを処理中');
     try {
-      // 書き込めていないまま出力すると、直前の編集が欠けたバックアップになる。
-      if (await saveNow() === 'failed') return;
-      const blob = await exportBackup(all ? undefined : [activeDocument.id]);
+      // 保存先の障害や保存中の編集に左右されず、この時点の盤面を退避する。
+      const snapshot = session.backupSnapshot();
+      if (!snapshot) return;
+      const generation = session.backupGeneration();
+      const at = snapshot.updatedAt;
+      let exportedIds: string[] = [];
+      const blob = await exportBackup(all ? undefined : [snapshot.id], snapshot, (ids) => { exportedIds = ids; });
       const { saved } = await platform.saveFile(blob, all ? 'knitting-editor-backup.knit' : `${activeDocument.name}.knit`);
       analytics.track('backup_exported', { backup_scope: all ? 'all' : 'current' });
       // 確認ダイアログや共有シートを閉じるまで待つので、その間は処理中の表示を出さない。
       setBusy(undefined);
       // 取りやめたら記録しない。結果が分からないhost（ダウンロード）では、渡した時点を書き出した日時とする。
       if (await saved === false) return;
-      await backupReminder.recordExport(all ? undefined : [activeDocument.id]);
+      // 共有中に盤面が変わっていれば、渡したファイルは今の盤面のバックアップではない。
+      const savedAt = session.markBackupExported(generation);
+      if (savedAt === undefined) return;
+      await backupReminder.recordExport(exportedIds, Math.max(at, savedAt),
+        () => session.backupGeneration() === generation);
     } catch (error) { reportFailure('backup_export', error); }
     finally { setBusy(undefined); }
   };

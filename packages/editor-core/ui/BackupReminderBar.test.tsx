@@ -5,9 +5,11 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { Board } from '../model/Board';
 import { SAVE_RESULT_UNKNOWN, type EditorPlatform } from '../platform';
 import { BACKUP_REMINDER_EDIT_THRESHOLD, BACKUP_REMINDER_SNOOZE_KEY, BACKUP_REMINDER_SNOOZE_MS } from '../state/backupReminder';
+import * as storage from '../storage/database';
 import {
   createDocument, getLastBackupAt, getSetting, initializeStorage, listBlocks, saveDocument, setSetting,
 } from '../storage/database';
+import { AUTOSAVE_DELAY_MS } from '../state/useEditorSession';
 import { BACKUP_REMINDER_IDLE_MS } from '../state/useBackupReminder';
 import { EditorView } from './EditorView';
 import { useEditorController } from './useEditorController';
@@ -199,6 +201,43 @@ describe('backup reminder', () => {
       await act(async () => { vi.advanceTimersByTime(100); });
       expect(reminder()?.textContent).toContain('この編み図はまだバックアップしていません。');
     } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('shows a lasting save failure in the reminder slot only once the user pauses', async () => {
+    await createDocument('保存できない編み図');
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const failing = vi.spyOn(storage, 'saveDocument').mockRejectedValue(new DOMException('full', 'QuotaExceededError'));
+    try {
+      const { container, click } = await renderEditor();
+      const notice = () => container.querySelector('.backup-reminder[aria-label="保存の失敗"]');
+      const edit = async () => { await click('盤面'); await click('上に段'); await click('閉じる'); };
+
+      // 自動保存が失敗しても、指を置いている間は帯を出さず、盤面をずらさない。
+      await pointer('pointerdown', 1);
+      await edit();
+      await act(async () => { vi.advanceTimersByTime(AUTOSAVE_DELAY_MS); });
+      await waitUntil(() => container.querySelector('h1')?.textContent?.includes('保存失敗') === true);
+      await act(async () => { vi.advanceTimersByTime(BACKUP_REMINDER_IDLE_MS * 3); });
+      expect(notice()).toBeNull();
+
+      await pointer('pointerup', 1);
+      await act(async () => { vi.advanceTimersByTime(BACKUP_REMINDER_IDLE_MS - 100); });
+      expect(notice()).toBeNull();
+      await act(async () => { vi.advanceTimersByTime(100); });
+      expect(notice()?.querySelector('[role="alert"]')?.textContent).toContain('端末内への保存に失敗しています。');
+
+      // 保存できるようになっても、手を止めるまでは帯を残す。
+      failing.mockRestore();
+      await edit();
+      await act(async () => { vi.advanceTimersByTime(AUTOSAVE_DELAY_MS); });
+      await waitUntil(() => container.querySelector('h1')?.textContent?.includes('保存済み') === true);
+      expect(notice()).not.toBeNull();
+      await act(async () => { vi.advanceTimersByTime(BACKUP_REMINDER_IDLE_MS); });
+      expect(notice()).toBeNull();
+    } finally {
+      failing.mockRestore();
       vi.useRealTimers();
     }
   });

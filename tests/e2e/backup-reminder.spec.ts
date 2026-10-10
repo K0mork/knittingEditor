@@ -215,3 +215,32 @@ test('records the backup only after the file is shared on iPhone Safari', async 
   expect(await shared()).toEqual(['新しい編み図.knit']);
   await expect(page.locator('#app-drawer')).toContainText('この編み図の最後のバックアップ：');
 });
+
+test('keeps the backup date at or after the autosave of the exported edits', async ({ page }) => {
+  // 書き出しは保存を待たない。書き出した盤面が後から保存されても、次に開いたとき変更ありと判定させない。
+  const box = (await page.getByLabel('編み図編集盤面').boundingBox())!;
+  await page.mouse.click(box.x + 75, box.y + 75);
+  const download = page.waitForEvent('download');
+  // 自動保存（400ms後）より先に書き出す。操作のたびに待つと、遅い環境では保存が先に済んでしまう。
+  const exportedUnsaved = await page.evaluate(async () => {
+    const button = (name: string) => Array.from(document.querySelectorAll('button')).find((item) => item.textContent === name);
+    button('保存')!.click();
+    while (!button('この編み図')) await new Promise((resolve) => requestAnimationFrame(resolve));
+    const unsaved = document.querySelector('.app-document-name')!.textContent!.includes('保存中');
+    button('この編み図')!.click();
+    return unsaved;
+  });
+  expect(exportedUnsaved).toBe(true);
+  await download;
+  await expect(page.locator('.app-document-name')).toContainText('保存済み');
+  const id = await chartId(page);
+  const updatedAt = await page.evaluate(async (documentId) => {
+    const request = indexedDB.open('knitting-editor-v2');
+    const db = await new Promise<IDBDatabase>((resolve) => { request.onsuccess = () => resolve(request.result); });
+    const get = db.transaction('documents').objectStore('documents').get(documentId);
+    const document = await new Promise<{ updatedAt: number }>((resolve) => { get.onsuccess = () => resolve(get.result); });
+    db.close();
+    return document.updatedAt;
+  }, id);
+  await expect.poll(async () => (await readSetting(page, `lastBackupAt:${id}`)) ?? 0).toBeGreaterThanOrEqual(updatedAt);
+});

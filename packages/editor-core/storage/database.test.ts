@@ -1,11 +1,11 @@
 import 'fake-indexeddb/auto';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { gunzipSync, gzipSync, strFromU8, strToU8 } from 'fflate';
 import { Board, packCell } from '../model/Board';
 import { STITCH_BY_KEY, STITCH_CATALOG_VERSION } from '../stitches/catalog';
 import {
   BACKUP_LIMITS, boardFromDocument, createDocument, exportBackup, importBackup, initializeStorage,
-  listDocuments, saveDocument, setSetting, UNREADABLE_BACKUP_MESSAGE,
+  listDocuments, saveDocument, setSetting, deleteDocument, recordBackup, lastBackupKey, getLastBackupAt, UNREADABLE_BACKUP_MESSAGE,
 } from './database';
 
 function backupBlob(payload: unknown): Blob {
@@ -226,4 +226,65 @@ describe('unreadable backups', () => {
     for (let index = 0; index < count; index++) huge.set(member, index * member.byteLength);
     await expect(importBackup(new Blob([huge]))).rejects.toThrow('解凍後のバックアップが大きすぎます');
   }, 20_000);
+});
+
+
+describe('backup pipeline', () => {
+  it('reads only the requested document and keeps all-document export complete', async () => {
+    const first = await createDocument('個別対象', 2, 2);
+    await createDocument('対象外', 2, 2);
+    const getAll = vi.spyOn(IDBObjectStore.prototype, 'getAll');
+    const get = vi.spyOn(IDBObjectStore.prototype, 'get');
+    try {
+      const blob = await exportBackup([first.id]);
+      expect(getAll).not.toHaveBeenCalled();
+      expect(get.mock.calls.map(([key]) => key)).toEqual([first.id]);
+      const result = await importBackup(blob);
+      expect(result.documents.map((item) => item.name)).toEqual(['個別対象（復元）']);
+      const all = JSON.parse(strFromU8(gunzipSync(new Uint8Array(await (await exportBackup()).arrayBuffer()))));
+      expect(all.documents.length).toBe((await listDocuments()).length);
+    } finally { getAll.mockRestore(); get.mockRestore(); }
+  });
+
+  it('rolls back asynchronous write failures without an unhandled transaction rejection', async () => {
+    const existing = await createDocument('既存を保護', 1, 1);
+    const before = await listDocuments();
+    const original = IDBObjectStore.prototype.put;
+    let writes = 0;
+    const spy = vi.spyOn(IDBObjectStore.prototype, 'put').mockImplementation(function (this: IDBObjectStore, value, key) {
+      if (this.name === 'documents' && ++writes === 2) return this.add({ ...value, id: existing.id });
+      return original.call(this, value, key);
+    });
+    try {
+      await expect(importBackup(backupBlob({ format: 'knitting-editor', version: 2,
+        documents: [documentPayload('追加1'), documentPayload('追加2')], blocks: [] })))
+        .rejects.toMatchObject({ name: 'ConstraintError' });
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(await listDocuments()).toEqual(before);
+      // Vitest自身も未処理の拒否を検出して失敗する。
+    } finally { spy.mockRestore(); }
+  });
+});
+
+
+it.each(['delete', 'record'] as const)('handles an asynchronous settings failure during %s', async (operation) => {
+  const existing = await createDocument('失敗時に保持', 1, 1);
+  await recordBackup([existing.id], 123);
+  const originalPut = IDBObjectStore.prototype.put;
+  const originalDelete = IDBObjectStore.prototype.delete;
+  const put = vi.spyOn(IDBObjectStore.prototype, 'put').mockImplementation(function (this: IDBObjectStore, value, key) {
+    if (operation === 'record' && this.name === 'settings') return this.add(value);
+    return originalPut.call(this, value, key);
+  });
+  const remove = vi.spyOn(IDBObjectStore.prototype, 'delete').mockImplementation(function (this: IDBObjectStore, key) {
+    if (operation === 'delete' && this.name === 'settings') return this.add({ key: lastBackupKey(existing.id), value: 456 }) as unknown as IDBRequest<undefined>;
+    return originalDelete.call(this, key);
+  });
+  try {
+    await expect(operation === 'delete' ? deleteDocument(existing.id) : recordBackup([existing.id], 456))
+      .rejects.toMatchObject({ name: 'ConstraintError' });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect((await listDocuments()).some((item) => item.id === existing.id)).toBe(true);
+    expect(await getLastBackupAt(existing.id)).toBe(123);
+  } finally { put.mockRestore(); remove.mockRestore(); }
 });
