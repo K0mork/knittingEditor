@@ -129,6 +129,19 @@ describe('blockedReasons', () => {
     expect(reasonsAt(ROOT, 'cd .claude/worktrees/feature & git reset --hard')).toHaveLength(1);
   });
 
+  it.each([';', '&&', '\n'])('does not recover the parent directory from a pipeline cd across %s', (separator) => {
+    expect(reasonsAt(ROOT, `printf x | cd ${WORKTREE} ${separator} git reset --hard`)).toHaveLength(1);
+    expect(reasonsAt(ROOT, `printf x | cd ${WORKTREE} ${separator} git commit -m x`)).toHaveLength(1);
+    expect(reasonsAt(ROOT, `printf x | cd ${WORKTREE} ${separator} git status`)).toEqual([]);
+  });
+
+  it('keeps pipeline groups unknown and recovers only outside the pipeline', () => {
+    expect(reasonsAt(ROOT, `printf x | { cd ${WORKTREE}; cd ${WORKTREE}; }; git reset --hard`)).toHaveLength(1);
+    expect(reasonsAt(ROOT, `printf x | (cd ${WORKTREE}; cd ${WORKTREE}); git reset --hard`)).toHaveLength(1);
+    expect(reasonsAt(ROOT, `printf x | cd ${WORKTREE}; cd ${WORKTREE}; git commit -m x`)).toEqual([]);
+    expect(reasonsAt(ROOT, `printf x | cd ${WORKTREE}; git -C ${WORKTREE} commit -m x`)).toEqual([]);
+  });
+
   it('allows the cleanup steps in the main checkout', () => {
     expect(reasonsAt(ROOT, 'git switch main && git pull --ff-only && git worktree remove .claude/worktrees/x && git branch -d x')).toEqual([]);
   });

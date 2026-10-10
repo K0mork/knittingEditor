@@ -105,7 +105,8 @@ export function splitSegments(command) {
 // 対応範囲: リテラルのcd（-L/-P/--）、&&、;、改行、括弧のsubshell、波括弧。
 // cdは成功した場合の場所を追う。||、pipeline/background、展開を含む/省略したcd先は
 // 不明とし、mainの可能性がある破壊的操作を止める。シェル展開やcdは実行しない。
-// 既知の絶対cd先やgit -Cで場所が確定したら判定を再開する。完全なシェル解析ではない。
+// pipeline内のcdでは不明状態を解除しない。pipeline外の絶対cd先やgit -Cで
+// 場所が確定したら判定を再開する。完全なシェル解析ではない。
 function changeDirectory(cwd, words, dynamic, start) {
   let index = start + 1;
   while (words[index] === '-L' || words[index] === '-P') index += 1;
@@ -133,7 +134,15 @@ export function findInvocations(command, cwd) {
   const invocations = [];
   let directory = cwd ?? null;
   const stack = [];
+  let pipelineDepth = null;
+  let groupDepth = 0;
   for (const { words, dynamic, separator } of shellSegments(command)) {
+    // グループ内の区切りではpipelineを終了しない。右側のcdも親には伝播しない。
+    const inPipeline = pipelineDepth !== null || separator === '|';
+    if (separator === '|') pipelineDepth = pipelineDepth === null ? groupDepth : Math.min(pipelineDepth, groupDepth);
+    else if ([';', '&&', '||', '&'].includes(separator) && pipelineDepth !== null && groupDepth <= pipelineDepth) pipelineDepth = null;
+    if (separator === '(' || separator === '{') groupDepth += 1;
+    else if (separator === ')' || separator === '}') groupDepth = Math.max(0, groupDepth - 1);
     const effectiveDirectory = directory;
     const parentDirectory = separator === ')' ? (stack.length ? stack.pop() : null) : null;
     if (separator === '(') stack.push(directory);
@@ -142,7 +151,7 @@ export function findInvocations(command, cwd) {
     const start = commandStart(words);
     const program = words[start];
     if (program === 'cd') {
-      directory = changeDirectory(effectiveDirectory, words, dynamic, start);
+      directory = inPipeline ? null : changeDirectory(effectiveDirectory, words, dynamic, start);
       if (separator === ')') directory = parentDirectory;
       else if (separator === '||' || separator === '|' || separator === '&') directory = null;
       continue;
