@@ -30,7 +30,7 @@ Web版「棒針編み図エディタ」を、インターネット接続なし�
 - 実装済み範囲: SwiftUI・WKWebViewコンテナ、共通workspaceからのWeb bundle生成、ライフサイクル保存、Files／共有ブリッジ、アプリ内ダイアログ、CI／XCUITest基盤、Privacy Manifest／審査文書とSimulator用スクリーンショット下書き
 - Simulator検証: CI（Xcode 26.6、iOS 26.5 Simulator）のiPhone 17／iPad (A16)でXCTest・XCUITest、PNG／PDF／`.knit`保存導線、編集後の再起動復元、アプリ更新後のIndexedDB復元を確認している（2026-10まではXcode 15.4、iPhone 16／iPad (10th generation)のiOS 18.2 Simulator）
 - 実機検証: iPhone 17とiPad Air（第5世代）で署名ビルド、主要編集、保存、PNG・PDF・`.knit`のFiles保存と往復、Dynamic Type、iPad可変ウィンドウ、機内モード主要フローを確認済み。機内モード前後の通信監視はiPad Air（第5世代）で確認済み
-- 未完了P0: Files異常系の残り、マウス／トラックパッド、iPadのPNG上限超過表示、提出ビルドでの再確認、有料Apple Developer Programでの署名済みArchive、TestFlight、App Store Connect提出
+- 未完了P0: Files異常系の残り、マウス／トラックパッド、iPadのPNG上限超過表示、提出ビルドでの再確認、TestFlightでのクラッシュ・メモリ警告・出力時間の確認（#26）、有料Apple Developer Programでの署名済みArchive、TestFlight、App Store Connect提出
 - Xcodeプロジェクト: `knittingEditor.xcodeproj`を作成済み
 - 対象OSの下限: iOS 17.0以上
 - App Store Connect設定: 未作成

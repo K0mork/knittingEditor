@@ -28,7 +28,7 @@ SwiftUI application
 ├── WKWebView container
 ├── Native bridge
 │   ├── Web → Swift: exportFile / openBackup / webReady / commandState
-│   └── Swift → Web: knittingEditorFlushPendingSave() / result events
+│   └── Swift → Web: knittingEditorFlushPendingSave() / backup・result・command events / knittingEditorAppInfo
 ├── Files / document type integration
 └── Local bundled web assets
     ├── React UI
@@ -39,7 +39,7 @@ SwiftUI application
     └── PNG / PDF generators
 ```
 
-ブリッジのWeb→SwiftメッセージとSwift→Webの呼び出し・結果イベントの詳細は`docs/NATIVE_BRIDGE.md`を参照します。`exportFile`の保存・共有先はSwift側で扱います。
+ブリッジのWeb→Swiftメッセージと、Swift→Webのイベント（バックアップの受け渡し、書き出しの結果、エラー、メニュー操作の`knittingEditorNativeCommand`）とアプリ情報（`knittingEditorAppInfo`）の詳細は`docs/NATIVE_BRIDGE.md`を参照します。保留中の保存を書き込む`knittingEditorFlushPendingSave()`の呼び出しは「6. 保存とデータ保全」で扱います。`exportFile`の保存・共有先はSwift側で扱います。
 
 `project.yml`からXcodeGenで生成する`knittingEditor.xcodeproj`もリポジトリへ保存します。SwiftUIの入口は`App/KnittingEditorApp.swift`、ローカルWebコンテナは`App/WebViewContainer.swift`と`App/LocalWebSchemeHandler.swift`です。型付きファイル連携は`App/NativeBridgeMessage.swift`、`.knit`のUTTypeは`App/KnittingEditorUTType.swift`で定義します。Web資産はルートworkspaceの依存関係と`ios/Web`、`packages/editor-core`から生成し、`AppResources/Web/`を経由してアプリバンドルへコピーします。
 
