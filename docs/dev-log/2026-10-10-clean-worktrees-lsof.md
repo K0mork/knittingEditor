@@ -9,6 +9,7 @@
   - `npm --cache /private/tmp/g15-npm-cache exec --yes --package=node@24 -- sh -c 'node --version && npm run typecheck && npm test && npm run build && npm run check:dist'`：Node v24.21.0で型検査、全263テスト、ビルド、配信物検査が成功。
   - `npm --cache /private/tmp/g15-npm-cache exec --yes --package=node@24 -- node node_modules/vitest/vitest.mjs run scripts/clean-worktrees.test.mjs`：9テスト成功。最後の期待値追加後も成功。
   - `git diff --check`：成功。
-  - 初回の`npm run typecheck && npm test && npm run build && npm run check:dist`：依存関係導入前は親チェックアウトのVite一時ファイルへの書き込み制限でテスト起動に失敗。`npm ci`後のNode 26実行は型検査成功、テスト262件成功・既存サムネイル性能テスト1件失敗（349ms、上限250ms）。後続のビルドと配信物検査はこの実行では未実行。Node 24で上記一式を再実行し成功。
-- 未実行: Chromium/WebKit E2Eはsandboxで起動できないため検証担当へ委ねる。ブラウザー挙動の変更はない。iOSコード・共通コードは変更せず、iOS Web検査、ビルド、Simulator、更新復元、Archiveは対象外。適用されるPR CIの確認は別途必要。
+  - Node 26での初回実行では、変更していない既存のサムネイル性能テスト1件が上限（250ms）を超えて失敗した。Node 24で`npm run typecheck`、`npm test`、`npm run build`、`npm run check:dist`を実行し、すべて成功。
+- 別の担当が独立に差分を確認し、修正を1つずつ外すと追加したテストが失敗すること、偽の`git`・`gh`・`lsof`を使った実行で、作業場所を確かめられないときに削除を見送ることを確かめた。
+- 未実行: ブラウザーやiOSの挙動は変更していないため、E2EとiOSの検査はPR CIの結果で確認する。
 - デプロイ影響: none。整理スクリプトのみの変更で、配信後の画面確認は不要。
