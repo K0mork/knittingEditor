@@ -15,7 +15,7 @@
   npm --cache /private/tmp/g16-final-node24-cache exec --yes --package=node@24 -- sh -c 'node --version && npm run typecheck && npm test && npm run build && npm run check:dist'
   ```
 
-- 修正後の`node_modules/.bin/vitest run scripts/guard-shared-checkout.test.mjs`は33件成功。`git diff --check`成功。修正途中はpipelineの波括弧ケースでガード単体1件失敗、全体280件成功・1件失敗となり、型検査は成功、build/check:distは未実行だった。グループ深さを追跡して修正し、上記を再実行した。
+- パイプの修正後の`node_modules/.bin/vitest run scripts/guard-shared-checkout.test.mjs`は33件成功。`git diff --check`成功。パイプの修正の途中ではpipelineの波括弧ケースでガード単体1件失敗、全体280件成功・1件失敗となり、型検査は成功、build/check:distは未実行だった。グループ深さを追跡して修正し、上記を再実行した。
 - 初回実装時は`npm ci`成功。Node 26.8.1で型検査、全体テスト（変更途中の276件）、build/check:dist成功。Node 24.21.0の通常並列テストは既存PDF性能テストが18.53秒で15秒制限を超え、276件成功・1件失敗。`npm test -- --maxWorkers=1`で全37ファイル・277件、続くbuild/check:dist成功。初回の`npx --yes --package=node@24 -c 'node --version && npm run typecheck && npm test && npm run build && npm run check:dist'`は既定キャッシュ書き込みのEPERMで失敗し、一時キャッシュ指定で再実行した。
 - 独立確認（今回のpipeline修正前、HEAD `82f5c5a`）では、Node 26.8.1の`npm run typecheck`、`npm test`（37ファイル・277件）、`node_modules/.bin/vitest run scripts/guard-shared-checkout.test.mjs`（29件）が成功。Node 24.21.0でも以下で型検査、通常並列の277件、ガード29件成功。初回のPDFタイムアウトは再現しなかった。
 
@@ -23,6 +23,6 @@
   npm --cache <一時ディレクトリ> exec --yes --package=node@24 -- sh -c 'node --version && npm run typecheck && npm test && node_modules/.bin/vitest run scripts/guard-shared-checkout.test.mjs'
   ```
 
-- 修正前の独立確認では、`gh issue view 165`、規約・スクリプト・テスト・開発ログ・PR本文の閲覧、`git diff origin/main...HEAD`で範囲と機密情報を確認。`git diff --check`、`git diff origin/main...HEAD --check`成功、開始・終了時の`git status --short`は空。
-- 修正前の独立確認では、`git show origin/main:scripts/guard-shared-checkout.mjs`を用いた一時コピーに対し、`node_modules/.bin/vitest run --root <一時ディレクトリ> --config <一時ディレクトリ>/vitest.config.mjs`を実行し、17件失敗・12件成功で既存回帰テストの検出力を確認。`node --input-type=module`の文字列判定でpipeline右側のcdによる保護漏れを確認し、`bash -c 'printf x | cd <worktreeの絶対パス>; pwd'`で親の場所が変わらないことを確認。実際のGit変更操作は実行していない。
-- 独立確認のbuild/check:distは未実行。Chromium/WebKit E2Eも未実行（実行件数なし）。ブラウザーを起動できない環境のため、PR CIの該当チェックに残す。iOS Web型検査・テスト、Simulator・Archive等のiOS確認は実装時・独立確認とも未実行（件数なし）。iOS・共有コードは変更しておらずローカル追加検証は対象外。PR CIの該当チェックは未確認。独立確認はすべて今回のpipeline修正より前の結果であり、修正後の確認には数えない。
+- パイプの修正前の独立確認では、`gh issue view 165`、規約・スクリプト・テスト・開発ログ・PR本文の閲覧、`git diff origin/main...HEAD`で範囲と機密情報を確認。`git diff --check`、`git diff origin/main...HEAD --check`成功、開始・終了時の`git status --short`は空。
+- パイプの修正前の独立確認では、`git show origin/main:scripts/guard-shared-checkout.mjs`を用いた一時コピーに対し、`node_modules/.bin/vitest run --root <一時ディレクトリ> --config <一時ディレクトリ>/vitest.config.mjs`を実行し、17件失敗・12件成功で既存回帰テストの検出力を確認。`node --input-type=module`の文字列判定でpipeline右側のcdによる保護漏れを確認し、`bash -c 'printf x | cd <worktreeの絶対パス>; pwd'`で親の場所が変わらないことを確認。実際のGit変更操作は実行していない。
+- 独立確認のbuild/check:distは未実行。Chromium/WebKit E2Eも未実行で、PR CIで確認する。iOS Web型検査・テスト、Simulator・Archive等のiOS確認は実装時・独立確認とも未実行（件数なし）。iOS・共有コードは変更しておらずローカル追加検証は対象外。PR CIの該当チェックは未確認。独立確認はすべてパイプの修正より前の結果であり、修正後の確認には数えない。パイプの修正後に、指摘されたパイプ経由の2例（`printf x | cd <worktree>; git reset --hard`、`… && git commit`）が遮断され、worktreeからmainへの`cd`後の`git reset --hard`も遮断され、mainからworktreeへの`cd`後の`git commit`は許可されることを、`blockedReasons`の直接呼び出しで確かめた。
