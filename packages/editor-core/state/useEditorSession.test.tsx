@@ -101,6 +101,21 @@ describe('useEditorSession', () => {
     await view.unmount();
   });
 
+  it('does not warn on leaving immediately after saving, before React renders', async () => {
+    const view = await renderSession();
+    await act(async () => { view.session.changed(); });
+    const unsaved = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(unsaved);
+    expect(unsaved.defaultPrevented).toBe(true);
+    await act(async () => {
+      expect(await view.session.saveNow()).toBe('saved');
+      const saved = new Event('beforeunload', { cancelable: true });
+      window.dispatchEvent(saved);
+      expect(saved.defaultPrevented).toBe(false);
+    });
+    await view.unmount();
+  });
+
   it('updates the chart list from the save result instead of reloading every chart', async () => {
     const view = await renderSession();
     await act(async () => { view.session.changed(); });
@@ -148,6 +163,23 @@ describe('useEditorSession', () => {
     expect(outcome).toBe('failed');
     expect(view.saveErrors).toEqual(['manual']);
     expect(view.session.dirty).toBe(true);
+    await view.unmount();
+  });
+
+  it('retries the scheduled autosave without repeating the failure already reported for the same edit', async () => {
+    mocks.saveDocument.mockRejectedValue(new Error('書き込みに失敗'));
+    const view = await renderSession();
+
+    await act(async () => { view.session.changed(); });
+    await act(async () => { await view.session.saveNow(); });
+    await view.flush(500);
+    // 予約済みの自動保存は試すが、同じ編集の失敗は通知済みなので重ねない。
+    expect(mocks.saveDocument).toHaveBeenCalledTimes(2);
+    expect(view.saveErrors).toEqual(['manual']);
+
+    await act(async () => { view.session.changed(); });
+    await view.flush(500);
+    expect(view.saveErrors).toEqual(['manual', 'autosave']);
     await view.unmount();
   });
 

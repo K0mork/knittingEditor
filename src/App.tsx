@@ -1,7 +1,8 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { listBlocks } from '@knitting-editor/editor-core/storage/database';
 import { EditorView } from '@knitting-editor/editor-core/ui/EditorView';
 import { useEditorController } from '@knitting-editor/editor-core/ui/useEditorController';
+import { createGuideNavigation } from '@knitting-editor/editor-core/ui/guideNavigation';
 import { webAnalytics } from './analytics';
 import { createWebPlatform } from './platform';
 import { useShareOffer } from './ShareFileDialog';
@@ -22,8 +23,21 @@ export default function App() {
   const platform = useMemo(() => createWebPlatform(offerShare), [offerShare]);
   const editor = useEditorController({ initialize, platform, analytics: webAnalytics, askText, askConfirm });
 
+  const navigateToGuide = useMemo(() => createGuideNavigation({
+    save: () => editor.session.saveNow(),
+    notify: editor.notify,
+    navigate: (destination) => window.location.assign(destination),
+  }), [editor.session.saveNow, editor.notify]);
+  const openGuide = useCallback((event: React.MouseEvent<HTMLAnchorElement>) => {
+    // 新しいタブで開く操作は編集画面を破棄しないので、リンク本来の動作を保つ。
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
+    event.preventDefault();
+    void navigateToGuide(event.currentTarget.href);
+  }, [navigateToGuide]);
+
   return <EditorView
     editor={editor}
+    onGuideClick={openGuide}
     renderTitle={(documentStatus) => <div className="app-title">
       <div className="app-heading-row">
         <h1>棒針編み図エディタ</h1>
