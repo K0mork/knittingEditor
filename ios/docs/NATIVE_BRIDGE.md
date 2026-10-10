@@ -83,7 +83,7 @@ Swiftは保存画面・共有シート・Document Pickerを表示している間
 }
 ```
 
-Web側はBase64を`File`へ戻し、既存の`.knit`インポート検証を通す。gzipは圧縮前32 MiB、解凍後256 MiB、編み図500件、ブロック5000件を上限とする。
+Web側はBase64を`File`へ戻し、既存の`.knit`インポート検証を通す。gzipは圧縮されたファイル32 MiB、解凍後256 MiB、編み図500件、ブロック5000件を上限とする。
 
 ## 書き出しの結果（Swift → Web）
 
@@ -153,4 +153,4 @@ App Storeの評価は、StoreKitのシステムの依頼画面（`AppStore.reque
 
 ## 実機確認
 
-iPad Air（第5世代）ではPNG、PDF、`.knit`のFiles保存、共有シート、Filesから開く経路、Document Picker経路を確認済みである。iPhone 17では`.knit`のFiles保存まで確認した。iPhoneでのPNG／PDF保存と復元、両端末での異常系、TestFlightビルドによる最終往復は未完了であり、`REAL_DEVICE_RELEASE_CHECKLIST.md`をリリース判定の正とする。
+iPad Air（第5世代）は2026-09-22、iPhone 17は2026-10-09に、PNG・PDF・`.knit`のFiles保存、共有、`.knit`の復元を確認済みである。異常系は一部を確認済みだが、存在しないファイルは再現手順がなく未確認で、両端末での残りの確認とTestFlight提出ビルドによる最終往復が残る。詳細とリリース判定は`REAL_DEVICE_RELEASE_CHECKLIST.md`を正とする。

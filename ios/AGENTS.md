@@ -45,7 +45,7 @@ ios/docs/            additional app design and release records
 
 - 新しい外部URL、SDK、パッケージ、通信処理を追加する前に、オフライン要件への影響を説明する。
 - Webアセットはアプリに同梱し、`https://knittingeditor.com/`を`WKWebView`へ読み込まない。
-- 外部リンクはユーザー操作時のみSafariで開き、編集機能の正常動作と分離する。
+- 同梱の使い方ページのサポートページ（HTTPS）とメールのリンクは、実行時の外部依存禁止の例外とする。ユーザー操作時のみSafariまたはメールアプリで開き、オフラインの編集・保存・ヘルプの閲覧と分離する（`scripts/check-app-bundle.sh`もこの2つを検査対象から除く）。
 - リリースビルドにGoogle AnalyticsやGoogle Tag Managerを含めない。
 - テストでは予期しないネットワーク要求を検出し、失敗として扱う。
 
@@ -133,14 +133,28 @@ Simulatorテスト（iPhone・iPad）、アプリ更新テスト、unsigned Rele
 
 ## CI確認
 
-pushしたら、そのcommitのCIが完了するまで確認し、結果をユーザーへ報告する。**CIを確認しないまま作業完了と報告しない。**
+featureブランチをpushしたら、PRを作成してから、そのcommitのCIが完了するまで確認し、結果をユーザーへ報告する。既存PRへのpushも対象とする。`ci.yml`のイベントは`pull_request`、`main`へのpush、`workflow_dispatch`だけなので、PR作成前のfeatureブランチへのpushではrunを待たない。**CIを確認しないまま作業完了と報告しない。**
+
+PRが存在することを`gh pr view --json url,headRefOid,state`で確認し、次を実行する。runの出現は最大5分待ち、取得失敗または期限超過なら確認を中断して原因を調べる。
 
 ```sh
 SHA=$(git rev-parse HEAD)
-until RUN=$(gh run list --workflow ci.yml --commit "$SHA" --limit 1 --json databaseId --jq '.[0].databaseId // empty') && [ -n "$RUN" ]; do sleep 10; done
-gh run watch "$RUN" --compact --interval 30 > /dev/null
-gh run view "$RUN" --json headSha,conclusion,jobs --jq '"RUN: \(.conclusion) (\(.headSha))", (.jobs[] | "  \(.name): \(.conclusion)")'
+RUN=''
+DEADLINE=$(( $(date +%s) + 300 ))
+while [ "$(date +%s)" -lt "$DEADLINE" ]; do
+  RUN=$(gh run list --workflow ci.yml --commit "$SHA" --limit 1 --json databaseId --jq '.[0].databaseId // empty') || break
+  [ -z "$RUN" ] || break
+  sleep 10
+done
+if [ -n "$RUN" ]; then
+  gh run watch "$RUN" --compact --interval 30 > /dev/null
+  gh run view "$RUN" --json headSha,conclusion,jobs --jq '"RUN: \(.conclusion) (\(.headSha))", (.jobs[] | "  \(.name): \(.conclusion)")'
+else
+  echo '対象SHAのCI runを取得できませんでした。PR、push先、Actionsの状態を確認してください。' >&2
+fi
 ```
+
+runが現れない場合は、`gh pr view --json url,headRefOid,state`でPRがopenか、headが対象SHAかを確認する。`git status --short --branch`でpush先を、`gh run list --workflow ci.yml --limit 10`とGitHub Actions画面でイベント・承認待ち・ワークフロー無効化・取得エラーを調べる。原因を報告し、CI未確認のまま完了としない。ワークフローのイベント条件は変更しない。
 
 runは、pushしたコミットのSHA（完全な40桁）と`ci.yml`で絞って選ぶ。`gh run list --limit 1`だけでは、CodeQLのrunや、別のブランチ・別のセッションのrunを拾い、他人の結果を見て完了と報告してしまう。
 

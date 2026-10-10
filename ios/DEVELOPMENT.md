@@ -27,10 +27,8 @@ SwiftUI application
 ├── App lifecycle
 ├── WKWebView container
 ├── Native bridge
-│   ├── exportFile(data, type, filename)
-│   ├── importKnitFile()
-│   ├── shareFile(data, type, filename)
-│   └── flushPendingSave()
+│   ├── Web → Swift: exportFile / openBackup / webReady / commandState
+│   └── Swift → Web: knittingEditorFlushPendingSave() / result events
 ├── Files / document type integration
 └── Local bundled web assets
     ├── React UI
@@ -40,6 +38,8 @@ SwiftUI application
     ├── IndexedDB persistence
     └── PNG / PDF generators
 ```
+
+ブリッジのWeb→SwiftメッセージとSwift→Webの呼び出し・結果イベントの詳細は`docs/NATIVE_BRIDGE.md`を参照します。`exportFile`の保存・共有先はSwift側で扱います。
 
 `project.yml`からXcodeGenで生成する`knittingEditor.xcodeproj`もリポジトリへ保存します。SwiftUIの入口は`App/KnittingEditorApp.swift`、ローカルWebコンテナは`App/WebViewContainer.swift`と`App/LocalWebSchemeHandler.swift`です。型付きファイル連携は`App/NativeBridgeMessage.swift`、`.knit`のUTTypeは`App/KnittingEditorUTType.swift`で定義します。Web資産はルートworkspaceの依存関係と`ios/Web`、`packages/editor-core`から生成し、`AppResources/Web/`を経由してアプリバンドルへコピーします。
 
@@ -127,7 +127,7 @@ SwiftDataへの移行は初回リリース後の選択肢とします。初回�
 - `.knit`書き出し・読み込み
 - アプリ内ヘルプの閲覧
 
-ビルド成果物に外部URL、CDN参照、外部フォント、分析タグ、リモート設定を含めません。ネットワーク接続はテストで監視し、意図しないリクエストを失敗させます。
+ビルド成果物に実行時依存となる外部URL、CDN参照、外部フォント、分析タグ、リモート設定を含めません。同梱の使い方ページのサポートページ（HTTPS）とメールのリンクは例外で、利用者が選んだ場合だけSafariまたはメールアプリを開きます。編集・保存・ヘルプの閲覧には接続不要です。ネットワーク接続はテストで監視し、意図しないリクエストを失敗させます。
 
 ## 8. UI・デバイス対応
 
