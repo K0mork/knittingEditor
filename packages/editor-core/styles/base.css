@@ -167,6 +167,8 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 .gesture-hint.is-hidden { opacity: 0; visibility: hidden; transition: opacity .6s ease, visibility 0s linear .6s; }
 /* 選択操作は操作メニューの直前の独立した行に置き、折り返したメニューにも重ねない。 */
 .selection-actions { grid-row: 4; justify-self: center; z-index: 3; display: flex; flex-wrap: wrap; justify-content: center; gap: 7px; max-width: calc(100% - 20px); margin: 7px 0; padding: 7px; border: 1px solid var(--border); border-radius: 14px; background: var(--paper); box-shadow: var(--shadow); }
+/* 最大の文字でも帯を1行に収め、選んだ範囲が見える盤面の高さを残す。ヘッダーの2操作と同じ上限にする。 */
+.selection-actions button { font-size: min(1rem, 20px); white-space: nowrap; }
 .action-bar { min-width: 0; display: flex; flex-wrap: wrap; gap: 8px; padding: 8px max(8px, env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)); background: var(--paper); border-top: 1px solid var(--border); z-index: 3; }
 .action-bar button { font-weight: 700; padding-inline: 8px; white-space: nowrap; }
 .action-bar > button { flex: 1 0 0; min-width: max-content; }
@@ -272,7 +274,7 @@ footer { display: none; }
   .history-label { display: inline; }
   .drawer { inset: 74px 0 0 auto; width: 390px; max-height: none; border-radius: 18px 0 0 18px; box-shadow: -12px 0 40px rgba(20, 38, 27, .2); }
   .toast { bottom: 24px; }
-  .selection-actions { grid-column: 1; grid-row: 4; }
+  .selection-actions { grid-column: 1; grid-row: 4; margin-bottom: max(7px, env(safe-area-inset-bottom)); }
   .stitch-picker-backdrop, .color-picker-backdrop { place-items: center; padding: 24px; }
   .stitch-picker, .color-picker { border-radius: 18px; }
   .stitch-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }

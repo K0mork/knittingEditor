@@ -2,10 +2,10 @@ import { expect, test } from './fixtures';
 
 for (const width of [390, 760, 1024, 1280]) {
   for (const fontSize of [16, 28, 48]) {
-    // 最大文字の右列と、28pxの狭い画面で折り返す操作メニューを確かめる。
-    if (width === 390 && fontSize === 48) continue;
-    test(`keeps selection and action controls separate at ${width}px with ${fontSize}px text`, async ({ page }) => {
-      await page.setViewportSize({ width, height: width === 390 ? 664 : 1024 });
+    // 最大文字の右列と、狭い画面で折り返す操作メニューを確かめる。390pxの48pxはiPhoneの最大文字に近い縦長の画面にする。
+    const height = width === 390 ? (fontSize === 48 ? 844 : 664) : 1024;
+    test(`keeps selection and action controls separate at ${width}x${height} with ${fontSize}px text`, async ({ page }) => {
+      await page.setViewportSize({ width, height });
       await page.goto('/');
       const canvas = page.getByLabel('編み図編集盤面');
       await expect(canvas).toBeVisible();
@@ -14,11 +14,16 @@ for (const width of [390, 760, 1024, 1280]) {
       const normal = await actionBar.boundingBox();
       await page.getByRole('button', { name: '範囲', exact: true }).click();
       const box = (await canvas.boundingBox())!;
-      await page.mouse.move(box.x + 35, box.y + 35);
+      // 番号帯と余白は幅で変わるので、盤面の中心からドラッグする。
+      const centerX = box.x + box.width / 2;
+      const centerY = box.y + box.height / 2;
+      await page.mouse.move(centerX - 40, centerY - 40);
       await page.mouse.down();
-      await page.mouse.move(box.x + 65, box.y + 65);
+      await page.mouse.move(centerX + 20, centerY + 20);
       await page.mouse.up();
       await expect(page.getByRole('toolbar', { name: '選択範囲の操作' })).toBeVisible();
+      // 選択操作帯が縦の空きを使い切らず、選んだ範囲が見える高さの盤面が残る。
+      expect((await canvas.boundingBox())!.height, '選択中も盤面が見える').toBeGreaterThanOrEqual(120);
       for (const name of ['コピーして貼付', '解除', '盤面', 'ブロック', '保存']) {
         const button = page.getByRole('button', { name, exact: true });
         expect(await button.evaluate((element) => {

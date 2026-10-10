@@ -952,6 +952,8 @@ final class KnittingEditorUITests: XCTestCase {
             XCTAssertFalse(copy.frame.intersects(button.frame), "コピー帯が\(name)を覆う")
             XCTAssertFalse(clear.frame.intersects(button.frame), "解除が\(name)を覆う")
         }
+        // 選択操作帯が縦の空きを使い切らず、選んだ範囲が見える高さの盤面が残る。
+        XCTAssertGreaterThanOrEqual(canvas.frame.height, 120, "選択中に盤面が見えない: \(canvas.frame)")
         add(screenshotAttachment(named: "最大文字・選択操作帯と操作列"))
         clear.tap()
         XCTAssertTrue(waitForDisappearance(of: copy, timeout: 10), app.debugDescription)
