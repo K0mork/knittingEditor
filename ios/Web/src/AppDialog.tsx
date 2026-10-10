@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import type { ConfirmOptions } from '@knitting-editor/editor-core/ui/useEditorController';
 import { useModalFocus } from '@knitting-editor/editor-core/ui/hooks';
 
 type DialogRequest =
   | { kind: 'prompt'; title: string; defaultValue: string; resolve: (value: string | null) => void }
-  | { kind: 'confirm'; title: string; resolve: (value: boolean) => void };
+  | { kind: 'confirm'; title: string; options?: ConfirmOptions; resolve: (value: boolean) => void };
 
 /**
  * `window.prompt`・`window.confirm`の代わりに出すアプリ内ダイアログ。
@@ -15,8 +16,8 @@ export function useAppDialog() {
   const askText = useCallback((title: string, defaultValue = '') => new Promise<string | null>((resolve) => {
     setRequest({ kind: 'prompt', title, defaultValue, resolve });
   }), []);
-  const askConfirm = useCallback((title: string) => new Promise<boolean>((resolve) => {
-    setRequest({ kind: 'confirm', title, resolve });
+  const askConfirm = useCallback((title: string, options?: ConfirmOptions) => new Promise<boolean>((resolve) => {
+    setRequest({ kind: 'confirm', title, options, resolve });
   }), []);
   const resolveDialog = (value: string | null | boolean) => {
     if (!request) return;
@@ -35,7 +36,8 @@ function AppDialog({ request, onResolve }: {
 }) {
   const [value, setValue] = useState(request.kind === 'prompt' ? request.defaultValue : '');
   useEffect(() => { setValue(request.kind === 'prompt' ? request.defaultValue : ''); }, [request]);
-  const dialogRef = useModalFocus<HTMLElement>(() => onResolve(request.kind === 'prompt' ? null : false), request.kind === 'prompt' ? 'input' : 'button.primary');
+  const destructive = request.kind === 'confirm' && request.options?.destructive === true;
+  const dialogRef = useModalFocus<HTMLElement>(() => onResolve(request.kind === 'prompt' ? null : false), request.kind === 'prompt' ? 'input' : destructive ? 'button' : 'button.primary');
   // WKWebViewは、利用者のタップの処理の中でフォーカスした入力欄にしかキーボードを出さない（#148）。
   // `useModalFocus`は次のフレームでフォーカスするので、タップの処理が終わったあとになり、キーボードが
   // 出ない。「新しい編み図」などのボタンはタップの処理の中でこのダイアログを開くので、画面へ反映した
@@ -55,14 +57,17 @@ function AppDialog({ request, onResolve }: {
     if (request.kind !== 'prompt' && event.target === event.currentTarget) onResolve(false);
   }}>
     <section ref={dialogRef} className="app-dialog" role="dialog" aria-modal="true" aria-labelledby="app-dialog-title" aria-describedby="app-dialog-description" onKeyDown={(event) => {
+      if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return;
       if (event.key === 'Enter' && request.kind === 'prompt' && event.target instanceof HTMLInputElement) onResolve(value);
     }}>
       <h2 id="app-dialog-title">{request.title}</h2>
-      <p id="app-dialog-description" className="visually-hidden">入力を確認して決定またはキャンセルを選択してください。Escapeでキャンセルできます。</p>
+      <p id="app-dialog-description" className={destructive ? undefined : 'visually-hidden'}>{destructive
+        ? 'この操作は元に戻せません。'
+        : '入力を確認して決定またはキャンセルを選択してください。Escapeでキャンセルできます。'}</p>
       {request.kind === 'prompt' && <input ref={inputRef} aria-label="入力" value={value} onChange={(event) => setValue(event.target.value)} />}
       <div className="app-dialog-actions">
-        <button onClick={() => onResolve(request.kind === 'prompt' ? null : false)}>キャンセル</button>
-        <button className="primary" autoFocus={request.kind === 'confirm'} onClick={() => onResolve(request.kind === 'prompt' ? value : true)}>決定</button>
+        <button autoFocus={destructive} onClick={() => onResolve(request.kind === 'prompt' ? null : false)}>キャンセル</button>
+        <button className={destructive ? 'danger' : 'primary'} autoFocus={request.kind === 'confirm' && !destructive} onClick={() => onResolve(request.kind === 'prompt' ? value : true)}>{destructive ? '削除' : '決定'}</button>
       </div>
     </section>
   </div>;
