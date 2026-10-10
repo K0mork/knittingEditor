@@ -1,4 +1,4 @@
-import { useEffect, useState, type MouseEventHandler, type ReactNode } from 'react';
+import { useEffect, useState, type MouseEvent, type MouseEventHandler, type ReactNode } from 'react';
 import { BoardCanvas, type CanvasMode } from '../canvas/BoardCanvas';
 import { parseColor } from '../model/Board';
 import { describeColor } from '../model/usedColors';
@@ -44,6 +44,15 @@ const ACTION_BAR_PANELS: Array<{ panel: EditorPanel; label: string }> = [
   { panel: 'export', label: '保存' },
 ];
 
+/**
+ * 選択ダイアログを開く。SafariなどWebKitはクリックしたボタンへフォーカスを移さないので、
+ * 明示的にフォーカスし、ダイアログを閉じたときの戻り先にする。
+ */
+function openPicker(event: MouseEvent<HTMLButtonElement>, setOpen: (open: boolean) => void) {
+  event.currentTarget.focus();
+  setOpen(true);
+}
+
 /** 元に戻す・やり直すの矢印。文字の↶↷は書体によって細く小さく見えるので描く。 */
 function HistoryIcon({ direction }: { direction: 'undo' | 'redo' }) {
   return <svg className="history-icon" viewBox="0 0 24 24" aria-hidden="true" style={direction === 'redo' ? { transform: 'scaleX(-1)' } : undefined}>
@@ -87,11 +96,11 @@ export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, 
 
     <main className="workspace">
       <section className="primary-tools" aria-label="編集ツール">
-        <button className="color-tool" aria-label={`記号の色を選ぶ（現在：${describeColor(parseColor(editor.selectedColor))} ${editor.selectedColor}）`} aria-haspopup="dialog" aria-expanded={editor.colorPickerOpen} onClick={() => editor.setColorPickerOpen(true)}>
+        <button className="color-tool" aria-label={`記号の色を選ぶ（現在：${describeColor(parseColor(editor.selectedColor))} ${editor.selectedColor}）`} aria-haspopup="dialog" aria-expanded={editor.colorPickerOpen} onClick={(event) => openPicker(event, editor.setColorPickerOpen)}>
           <span>色</span>
           <span className="color-tool-swatch" aria-hidden="true" style={{ backgroundColor: editor.selectedColor }} />
         </button>
-        <button className="stitch-tool" aria-label="編み目記号を選ぶ" aria-haspopup="dialog" aria-expanded={editor.stitchPickerOpen} onClick={() => editor.setStitchPickerOpen(true)}>
+        <button className="stitch-tool" aria-label="編み目記号を選ぶ" aria-haspopup="dialog" aria-expanded={editor.stitchPickerOpen} onClick={(event) => openPicker(event, editor.setStitchPickerOpen)}>
           <span aria-hidden="true" dangerouslySetInnerHTML={{ __html: editor.currentStitch.svg }} />
           <span className="stitch-tool-name">{editor.currentStitch.name}</span>
           <span className="stitch-tool-chevron" aria-hidden="true">⌄</span>

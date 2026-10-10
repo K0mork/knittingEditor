@@ -58,3 +58,29 @@ it('handles only the topmost modal and respects composition, inputs, and other h
     opener.remove();
   }
 });
+
+it('keeps focus in the front modal when only the background modal closes', async () => {
+  const container = document.createElement('div');
+  const opener = document.createElement('button');
+  document.body.append(opener, container);
+  opener.focus();
+  function Modal({ label }: { label: string }) {
+    const ref = useModalFocus<HTMLElement>(() => undefined);
+    return <section ref={ref} role="dialog"><button>{label}</button></section>;
+  }
+  function Modals({ showBack }: { showBack: boolean }) {
+    return <>{showBack && <Modal label="背面" />}<Modal label="前面" /></>;
+  }
+  const root = createRoot(container);
+  try {
+    await act(async () => root.render(<Modals showBack />));
+    const front = Array.from(container.querySelectorAll('button')).find((button) => button.textContent === '前面');
+    front?.focus();
+    await act(async () => root.render(<Modals showBack={false} />));
+    expect(document.activeElement).toBe(front);
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+    opener.remove();
+  }
+});
