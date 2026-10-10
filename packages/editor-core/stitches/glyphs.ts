@@ -169,7 +169,7 @@ const svgPoint = ({ x, y }: GlyphPoint): string => `${number(x)},${number(y)}`;
 
 export function glyphSvg(key: string): string {
   if (key === 'erase') {
-    return '<svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg"><rect x="12" y="12" width="76" height="76" fill="#fff" stroke="currentColor" stroke-width="6"/></svg>';
+    return '<svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%" xmlns="http://www.w3.org/2000/svg"><rect x="12" y="12" width="76" height="76" fill="#fff" stroke="currentColor" stroke-width="6"/></svg>';
   }
   const definition = getGlyphDefinition(key);
   if (!definition) return '';
