@@ -771,7 +771,7 @@ test('reports a PDF worker load failure and clears it when retry succeeds', asyn
   await page.addInitScript(() => Object.defineProperty(Navigator.prototype, 'canShare', { value: undefined, configurable: true }));
   await page.reload();
   await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
-  const workerUrl = /\/pdf\.worker\.(?:ts|[\w-]+\.js)(?:\?.*)?$/;
+  const workerUrl = /\/pdf\.worker(?:\.ts|-[\w-]+\.js)(?:\?.*)?$/;
   await page.route(workerUrl, (route) => route.fulfill({ status: 404, body: '' }));
   await page.getByRole('button', { name: '保存', exact: true }).click();
   const exportButton = page.getByRole('button', { name: 'PDFを保存', exact: true });
