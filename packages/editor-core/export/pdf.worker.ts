@@ -18,6 +18,8 @@ export interface PdfRequest extends PdfLayoutOptions {
 }
 
 type PdfObject = Uint8Array;
+const maxStitchWidth = Math.max(...STITCHES.map((stitch) => stitch.width));
+const maxStitchHeight = Math.max(...STITCHES.map((stitch) => stitch.height));
 const encoder = new TextEncoder();
 const ascii = (value: string) => encoder.encode(value);
 
@@ -161,16 +163,18 @@ export function buildPdf(request: PdfRequest): Uint8Array {
       yield tileBackground(tile, request, originX, originY, cellSize);
       yield tileGrid(tile, request, originX, originY, cellSize);
       yield tileLabels(tile, request, originX, originY, cellSize);
-      for (let localRow = 0; localRow < tile.rows; localRow++) {
+      yield `q ${originX.toFixed(3)} ${originY.toFixed(3)} ${(tile.cols * cellSize).toFixed(3)} ${(tile.rows * cellSize).toFixed(3)} re W n\n`;
+      // 幅・高さのある記号は、ページより前の起点からも重なる。
+      for (let localRow = Math.max(0, tile.row - maxStitchHeight + 1) - tile.row; localRow < tile.rows; localRow++) {
         let rowCommands = '';
         const boardRow = tile.row + localRow;
-        for (let localCol = 0; localCol < tile.cols; localCol++) {
+        for (let localCol = Math.max(0, tile.col - maxStitchWidth + 1) - tile.col; localCol < tile.cols; localCol++) {
           const boardCol = tile.col + localCol;
           const value = cells[boardRow * request.cols + boardCol];
           if (!value) continue;
           const stitchId = cellStitchId(value);
           const stitch = STITCH_BY_ID.get(stitchId);
-          if (!stitch) continue;
+          if (!stitch || localRow + stitch.height <= 0 || localCol + stitch.width <= 0) continue;
           if (stitch.renderKind === 'whiteout') {
             const x = originX + localCol * cellSize;
             const y = originY + (tile.rows - localRow - 1) * cellSize;
@@ -189,6 +193,7 @@ export function buildPdf(request: PdfRequest): Uint8Array {
         }
         if (rowCommands) yield rowCommands;
       }
+      yield 'Q\n';
       if (request.layout === 'tiled') {
         const label = `Page ${pageIndex + 1}/${tiles.length}  Rows ${request.rows - tile.row}-${request.rows - (tile.row + tile.rows - 1)}  Cols ${request.cols - tile.col}-${request.cols - (tile.col + tile.cols - 1)}`;
         yield `0 g BT /F1 8 Tf ${margin} 10 Td (${escapePdfText(label)}) Tj ET\n`;

@@ -233,6 +233,7 @@ export function useEditorController(options: EditorControllerOptions) {
 
   const runPdfExport = async (pdfOptions: PdfLayoutOptions) => {
     if (!board || !activeDocument) return;
+    notify('');
     setBusy('PDFを生成中');
     try {
       await platform.saveFile(await renderPdf(board, pdfOptions, session.backgroundColor), `${activeDocument.name}.pdf`);
