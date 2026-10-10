@@ -140,7 +140,7 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertTrue(canvas.waitForExistence(timeout: Self.editorAppearanceTimeout))
         canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
         waitForStitchCount(1, on: canvas, in: app)
-        app.webViews.firstMatch.buttons["消す"].tap()
+        app.switches["消す"].tap()
         canvas.pinch(withScale: 0.2, velocity: -1.0)
         waitForStitchCount(1, on: canvas, in: app)
         let small = XCTAttachment(screenshot: canvas.screenshot())
@@ -153,7 +153,7 @@ final class KnittingEditorUITests: XCTestCase {
         large.name = "大きな文字・拡大した盤面の番号"
         large.lifetime = .keepAlways
         add(large)
-        app.webViews.firstMatch.buttons["範囲"].tap()
+        app.switches["範囲"].tap()
         let start = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.4, dy: 0.4))
         let end = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.6, dy: 0.6))
         start.press(forDuration: 0.1, thenDragTo: end)

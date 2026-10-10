@@ -78,12 +78,20 @@ describe('canvas touch editing', () => {
   for (const mode of ['draw', 'erase', 'select', 'paste'] as const) {
     it(`ignores band touches in ${mode} mode`, () => {
       const ui = setup(mode);
+      // Fill the board so an erase under a band would change it.
+      if (mode === 'erase') {
+        for (let row = 0; row < ui.board.rows; row += 1) {
+          for (let col = 0; col < ui.board.cols; col += 1) ui.board.place(row, col, 'knit', '#000000');
+        }
+      }
+      const before = ui.board.cells.slice();
       ui.canvas.dispatchEvent(new WheelEvent('wheel', { deltaX: 60, deltaY: 60, cancelable: true }));
       ui.pointer('pointerdown', 1, 50, 12);
       ui.pointer('pointerup', 1, 50, 12);
       expect(ui.onChange).not.toHaveBeenCalled();
       expect(ui.onPasteComplete).not.toHaveBeenCalled();
       expect(ui.selection()).toBeUndefined();
+      expect(ui.board.cells).toEqual(before);
       ui.close();
     });
   }

@@ -13,6 +13,12 @@ for (const mode of ['描く', '消す', '範囲', 'paste']) {
       await page.getByRole('button', { name: '範囲', exact: true }).click();
       await canvas.click({ position: { x: 75, y: 75 } });
       await page.getByRole('button', { name: 'コピーして貼付', exact: true }).click();
+    } else if (mode === '消す') {
+      // Fill the top-left cells, which the bands cover after scrolling at every viewport size.
+      for (let row = 0; row < 3; row += 1) {
+        for (let col = 0; col < 3; col += 1) await canvas.click({ position: { x: 51 + col * 30, y: 51 + row * 30 } });
+      }
+      await page.getByRole('button', { name: mode, exact: true }).click();
     } else if (mode !== '描く') {
       await page.getByRole('button', { name: mode, exact: true }).click();
     }
@@ -32,7 +38,7 @@ for (const mode of ['描く', '消す', '範囲', 'paste']) {
 for (const mode of ['描く', '消す', '範囲']) {
   test(`a second touch cancels first-finger micro-movement in ${mode} mode`, async ({ page }) => {
     const canvas = page.getByLabel('編み図編集盤面');
-    await canvas.click({ position: { x: 200, y: 200 } });
+    if (mode === '消す') await canvas.click({ position: { x: 200, y: 200 } });
     if (mode !== '描く') await page.getByRole('button', { name: mode, exact: true }).click();
     if (mode === '範囲') {
       const box = (await canvas.boundingBox())!;
@@ -42,18 +48,22 @@ for (const mode of ['描く', '消す', '範囲']) {
       await page.mouse.up();
     }
     const before = await canvas.getAttribute('aria-label');
-    await canvas.evaluate((element) => {
+    await canvas.evaluate(async (element) => {
       element.setPointerCapture = () => {};
       const rect = element.getBoundingClientRect();
-      const dispatch = (type: string, id: number, x: number, y: number) => element.dispatchEvent(new PointerEvent(type, {
-        bubbles: true, pointerId: id, pointerType: 'touch', clientX: rect.left + x, clientY: rect.top + y, button: 0,
-      }));
-      dispatch('pointerdown', 1, 200, 200);
-      dispatch('pointermove', 1, 203, 202);
-      dispatch('pointerdown', 2, 260, 200);
-      dispatch('pointermove', 2, 280, 220);
-      dispatch('pointerup', 2, 280, 220);
-      dispatch('pointerup', 1, 203, 202);
+      // Deliver each event in its own frame, as a real touch screen does, so React applies every update in between.
+      const dispatch = async (type: string, id: number, x: number, y: number) => {
+        element.dispatchEvent(new PointerEvent(type, {
+          bubbles: true, pointerId: id, pointerType: 'touch', clientX: rect.left + x, clientY: rect.top + y, button: 0,
+        }));
+        await new Promise(requestAnimationFrame);
+      };
+      await dispatch('pointerdown', 1, 200, 200);
+      await dispatch('pointermove', 1, 203, 202);
+      await dispatch('pointerdown', 2, 260, 200);
+      await dispatch('pointermove', 2, 280, 220);
+      await dispatch('pointerup', 2, 280, 220);
+      await dispatch('pointerup', 1, 203, 202);
     });
     await expect(canvas).toHaveAttribute('aria-label', before!);
   });
