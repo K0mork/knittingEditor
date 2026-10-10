@@ -44,10 +44,12 @@ final class KnittingEditorUITests: XCTestCase {
 
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
         createDocument(named: "使い方保存確認", in: app)
+        // 記号数で探すと、描いたあとに同じ要素を見失う。盤面の名前で探して記号数を待つ。
         let canvas = app.webViews.firstMatch.otherElements
-            .matching(NSPredicate(format: "label CONTAINS %@", "記号0個"))
+            .matching(NSPredicate(format: "label CONTAINS %@", "編み図編集盤面"))
             .firstMatch
-        XCTAssertTrue(canvas.waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertTrue(canvas.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+        waitForStitchCount(0, on: canvas, in: app)
         canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
         waitForStitchCount(1, on: canvas, in: app)
         let guideLink = app.links["使い方"]

@@ -37,8 +37,12 @@ test('keeps the edited board when saving before the guide fails', async ({ page 
   });
   const box = await canvas.boundingBox();
   await page.mouse.click(box!.x + 75, box!.y + 75);
+  // 400msの自動保存より前に押す。予約済みの自動保存も失敗するが、使い方の案内は残す。
   await page.locator('.header-guide').click();
+  const guideNotice = '編集を保存できなかったため、使い方を開きませんでした。「保存」からバックアップを保存してください。';
+  await expect(page.locator('.toast')).toHaveText(guideNotice);
+  await page.waitForTimeout(1_000);
+  await expect(page.locator('.toast')).toHaveText(guideNotice);
   await expect(page).toHaveURL(/\/$/);
   await expect(canvas).toHaveAttribute('aria-label', /記号1個/);
-  await expect(page.locator('.toast')).toContainText('バックアップ');
 });

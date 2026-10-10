@@ -103,6 +103,9 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
   const backgroundRef = useRef(backgroundColor);
   const dirtyRef = useRef(false);
   const editGenerationRef = useRef(0);
+  // 失敗を通知した編集の世代。同じ内容の自動保存がまた失敗しても通知を重ねず、
+  // 先に出した理由と次の操作（使い方を開かなかった、など）を上書きしない。
+  const reportedFailureGenerationRef = useRef<number | undefined>(undefined);
   // 履歴は開いている編み図ごとに持ち、端末へは保存しない。切り替えると捨てる。
   const historyRef = useRef<BoardHistory | undefined>(undefined);
   const [canUndo, setCanUndo] = useState(false);
@@ -125,7 +128,9 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
     try {
       saved = await saveDocument({ ...document, backgroundColor: backgroundRef.current }, target);
     } catch (error) {
-      optionsRef.current.onSaveError(error, trigger);
+      const reported = reportedFailureGenerationRef.current === generation;
+      reportedFailureGenerationRef.current = generation;
+      if (trigger !== 'autosave' || !reported) optionsRef.current.onSaveError(error, trigger);
       return 'failed';
     }
     // 書き込んだ1件だけを一覧へ反映する。全件取得だと編集していない編み図の
