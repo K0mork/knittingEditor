@@ -928,6 +928,41 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertTrue(app.buttons["閉じる"].isHittable, app.debugDescription)
     }
 
+    /// iPhone・iPad、可変幅で選択操作帯が操作メニューを覆わないことを確認する。
+    func testAccessibilityExtraExtraExtraLargeKeepsSelectionActionsSeparate() {
+        let app = launchWithAccessibilityExtraExtraExtraLarge()
+        assertPrimaryControlsAreUsable(in: app)
+        add(screenshotAttachment(named: "最大文字・通常の操作列"))
+        app.switches["範囲"].tap()
+        let canvas = app.webViews.firstMatch.otherElements
+            .matching(NSPredicate(format: "label CONTAINS %@", "編み図編集盤面"))
+            .firstMatch
+        XCTAssertTrue(canvas.waitForExistence(timeout: 10), app.debugDescription)
+        let start = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.25, dy: 0.25))
+        let end = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.45, dy: 0.45))
+        start.press(forDuration: 0.05, thenDragTo: end)
+        let copy = app.buttons["コピーして貼付"]
+        let clear = app.buttons["解除"]
+        XCTAssertTrue(copy.waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertTrue(copy.isHittable, app.debugDescription)
+        XCTAssertTrue(clear.isHittable, app.debugDescription)
+        for name in ["盤面", "ブロック", "保存"] {
+            let button = app.buttons[name]
+            XCTAssertTrue(button.isHittable, app.debugDescription)
+            XCTAssertFalse(copy.frame.intersects(button.frame), "コピー帯が\(name)を覆う")
+            XCTAssertFalse(clear.frame.intersects(button.frame), "解除が\(name)を覆う")
+        }
+        // 選択操作帯が縦の空きを使い切らず、選んだ範囲が見える高さの盤面が残る。
+        XCTAssertGreaterThanOrEqual(canvas.frame.height, 120, "選択中に盤面が見えない: \(canvas.frame)")
+        add(screenshotAttachment(named: "最大文字・選択操作帯と操作列"))
+        clear.tap()
+        XCTAssertTrue(waitForDisappearance(of: copy, timeout: 10), app.debugDescription)
+        for name in ["盤面", "ブロック", "保存"] {
+            XCTAssertTrue(app.buttons[name].isHittable, app.debugDescription)
+        }
+        add(screenshotAttachment(named: "最大文字・選択解除後"))
+    }
+
     func testAccessibilityExtraExtraExtraLargeKeepsSaveActionsReachable() {
         let app = launchWithAccessibilityExtraExtraExtraLarge()
 

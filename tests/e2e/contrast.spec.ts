@@ -62,15 +62,30 @@ async function lowContrast(page: Page, label: string): Promise<string[]> {
       const large = size >= 24 || (Number(style.fontWeight) >= 700 && size >= 18.66);
       if (value < (large ? 3 : 4.5)) failures.push(`${where}: 文字「${text.slice(0, 16)}」 ${value.toFixed(2)}:1`);
     }
-    for (const control of document.querySelectorAll('button, input:not([type="color"]):not([type="range"]):not([type="file"]), select')) {
+    for (const control of document.querySelectorAll('button, input:not([type="range"]):not([type="file"]), select')) {
       if (!visible(control)) continue;
       const style = getComputedStyle(control);
       const border = parse(style.borderTopColor);
+      // 色入力は枠が無いと、白や淡色が地と区別できない。枠の色だけでなく、線があることも確かめる。
+      if (control.matches('input[type="color"]') && (style.borderTopStyle === 'none' || parseFloat(style.borderTopWidth) < 1)) {
+        failures.push(`${where}: 枠「${control.getAttribute('aria-label') ?? 'input'}」 線なし`);
+        continue;
+      }
       if (!border || parseFloat(style.borderTopWidth) === 0 || border.a === 0) continue;
       const outside = backgroundOf(control.parentElement);
       const value = ratio(over(border, outside), outside);
       const name = control.getAttribute('aria-label') ?? control.textContent?.trim() ?? control.tagName;
       if (value < 3) failures.push(`${where}: 枠「${name.slice(0, 16)}」 ${value.toFixed(2)}:1`);
+    }
+    for (const control of document.querySelectorAll(':focus-visible')) {
+      if (!visible(control)) continue;
+      const style = getComputedStyle(control);
+      const outline = parse(style.outlineColor);
+      const outside = backgroundOf(control.parentElement);
+      const value = outline ? ratio(over(outline, outside), outside) : 0;
+      if (style.outlineStyle === 'none' || parseFloat(style.outlineWidth) < 3 || value < 3) {
+        failures.push(`${where}: フォーカス枠「${control.textContent?.trim()}」 ${value.toFixed(2)}:1`);
+      }
     }
     return failures;
   }, label);
@@ -107,4 +122,38 @@ for (const colorScheme of ['light', 'dark'] as const) {
     }
     expect(failures).toEqual([]);
   });
+}
+
+for (const colorScheme of ['light', 'dark'] as const) {
+  for (const width of [390, 1280]) {
+    test(`keeps keyboard focus visible in ${colorScheme} at ${width}px`, async ({ page, browserName }) => {
+      await page.setViewportSize({ width, height: 800 });
+      await page.emulateMedia({ colorScheme });
+      await page.goto('/');
+      await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
+      // WebKitはSafariの既定と同じく、Tabだけではリンクとボタンに移らない。Option+Tabで移る。
+      const next = browserName === 'webkit' ? 'Alt+Tab' : 'Tab';
+      for (const selector of ['.header-guide', '.header-document', '.color-tool', '.stitch-tool']) {
+        await page.keyboard.press(next);
+        await expect(page.locator(selector)).toBeFocused();
+        expect(await lowContrast(page, `Tab: ${selector}`)).toEqual([]);
+      }
+      await page.getByRole('button', { name: '盤面', exact: true }).click();
+      const color = page.getByLabel('ほかの色を選ぶ');
+      for (const value of ['#ffffff', '#fff6df', '#000000']) {
+        await color.fill(value);
+        await expect(color).toHaveValue(value);
+        expect(await lowContrast(page, `背景色 ${value}`)).toEqual([]);
+      }
+      // WebKitはOption+Tabでも色入力に移らず、focus()で移してもフォーカス枠の表示にならない（ブラウザの制限）。
+      // 色入力のキーボードフォーカスはChromiumで確かめる。
+      if (browserName === 'webkit') return;
+      await color.focus();
+      await page.keyboard.press('Shift+Tab');
+      await page.keyboard.press('Tab');
+      await expect(color).toBeFocused();
+      expect(await color.evaluate((element) => element.matches(':focus-visible')), '色入力のフォーカス枠が出る').toBe(true);
+      expect(await lowContrast(page, '色入力のフォーカス')).toEqual([]);
+    });
+  }
 }
