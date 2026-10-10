@@ -1,5 +1,7 @@
 import { readFileSync } from 'node:fs';
-import { expect, test } from './fixtures';
+import { packCell } from '../../packages/editor-core/model/Board';
+import { STITCH_BY_KEY } from '../../packages/editor-core/stitches/catalog';
+import { expect, test, type Page } from './fixtures';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -431,23 +433,118 @@ test('hands PNG and PDF to the share sheet on iPhone Safari without leaving the 
   await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
 });
 
-test('copies and repeatedly pastes a selection without saving a block', async ({ page }) => {
-  await page.getByRole('button', { name: '範囲' }).click();
-  const canvas = page.getByLabel('編み図編集盤面');
-  const box = await canvas.boundingBox();
-  await page.mouse.move(box!.x + 75, box!.y + 75);
+// 保存済みのセル全体を比べ、空として貼り付ける退行や余分なセルの変更も検出する。
+async function storedPackedCells(page: Page): Promise<number[]> {
+  return page.evaluate(async () => {
+    const request = indexedDB.open('knitting-editor-v2');
+    const db = await new Promise<IDBDatabase>((resolve) => { request.onsuccess = () => resolve(request.result); });
+    try {
+      const get = db.transaction('documents').objectStore('documents').getAll();
+      const docs = await new Promise<Array<{ name: string; cells: ArrayBuffer }>>((resolve) => { get.onsuccess = () => resolve(get.result); });
+      const activeName = document.querySelector('.app-document-name')!.textContent!;
+      const active = docs.find((doc) => activeName.startsWith(doc.name) && doc.name.includes('（復元）')) ?? docs[0];
+      return Array.from(new Uint32Array(active.cells));
+    } finally { db.close(); }
+  });
+}
+
+async function drawRealContent(page: Page) {
+  const box = (await page.getByLabel('編み図編集盤面').boundingBox())!;
+  for (const [name, color, col] of [['表目', '#c83264', 1], ['右上2目一度', '#2468ac', 2], ['白くする', '#abcdef', 4]] as const) {
+    await page.getByRole('button', { name: '編み目記号を選ぶ', exact: true }).click();
+    await page.getByRole('button', { name: new RegExp(`^${name}(?:\\s|[0-9])`) }).click();
+    await page.getByRole('button', { name: /^記号の色を選ぶ/ }).click();
+    await page.locator('input[type="color"]').fill(color);
+    await page.getByRole('button', { name: '閉じる', exact: true }).click();
+    await page.mouse.click(box.x + 36 + col * 30 + 15, box.y + 81);
+  }
+  const expected = new Array<number>(400).fill(0);
+  for (const [key, color, col] of [['knit', 0xc83264, 1], ['right_up_two_one', 0x2468ac, 2], ['erase', 0xabcdef, 4]] as const) {
+    expected[20 + col] = packCell(STITCH_BY_KEY.get(key)!.id, color) >>> 0;
+  }
+  await expect.poll(() => storedPackedCells(page)).toEqual(expected);
+  return { box, expected };
+}
+
+async function selectRealContent(page: Page, box: { x: number; y: number }) {
+  await page.getByRole('button', { name: '範囲', exact: true }).click();
+  await page.mouse.move(box.x + 81, box.y + 81);
   await page.mouse.down();
-  await page.mouse.move(box!.x + 135, box!.y + 135);
+  await page.mouse.move(box.x + 171, box.y + 81);
   await page.mouse.up();
+}
+
+test('copies colored symbols including a multi-cell stitch to new positions and undoes the paste', async ({ page }) => {
+  const { box, expected } = await drawRealContent(page);
+  await selectRealContent(page, box);
   await page.getByRole('button', { name: 'コピーして貼付' }).click();
-  await expect(page.getByRole('button', { name: '貼付' })).toBeVisible();
-  await page.mouse.click(box!.x + 180, box!.y + 180);
-  await expect(page.getByText('ブロックを貼り付けました')).toBeVisible();
-  await page.getByRole('button', { name: '貼付' }).click();
-  await page.mouse.click(box!.x + 240, box!.y + 180);
-  await expect(page.getByText('ブロックを貼り付けました')).toBeVisible();
-  await page.getByRole('button', { name: 'ブロック' }).click();
+  await page.mouse.click(box.x + 81, box.y + 171);
+  const first = [...expected];
+  first.splice(4 * 20 + 1, 4, ...expected.slice(21, 25));
+  await expect.poll(() => storedPackedCells(page)).toEqual(first);
+  await page.getByRole('button', { name: '貼付', exact: true }).click();
+  await page.mouse.click(box.x + 81, box.y + 231);
+  const second = [...first];
+  second.splice(6 * 20 + 1, 4, ...expected.slice(21, 25));
+  await expect.poll(() => storedPackedCells(page)).toEqual(second);
+  await page.getByRole('button', { name: '元に戻す', exact: true }).click();
+  await expect.poll(() => storedPackedCells(page)).toEqual(first);
+  await page.getByRole('button', { name: '元に戻す', exact: true }).click();
+  await expect.poll(() => storedPackedCells(page)).toEqual(expected);
+  await page.getByRole('button', { name: 'ブロック', exact: true }).click();
   await expect(page.getByText('保存済みブロックはありません。')).toBeVisible();
+});
+
+test('exports real symbol pixels and restores a full backup block for pasting', async ({ page }) => {
+  await page.addInitScript(() => Object.defineProperty(Navigator.prototype, 'canShare', { value: undefined, configurable: true }));
+  await page.reload();
+  const { box, expected } = await drawRealContent(page);
+  await page.getByRole('button', { name: '盤面', exact: true }).click();
+  await page.getByRole('button', { name: '黒', exact: true }).click();
+  await page.getByRole('button', { name: '閉じる', exact: true }).click();
+  await page.getByRole('button', { name: '保存', exact: true }).click();
+  const pngDownload = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'PNGを保存' }).click();
+  const png = readFileSync((await (await pngDownload).path())!);
+  const pixels = await page.evaluate(async (base64) => {
+    const bytes = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
+    const image = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+    const canvas = new OffscreenCanvas(image.width, image.height);
+    const ctx = canvas.getContext('2d')!;
+    ctx.drawImage(image, 0, 0);
+    const count = (col: number, width: number, rgb: number[]) => {
+      const data = ctx.getImageData(24 + col * 24 + 2, 50, width * 24 - 4, 20).data;
+      let found = 0;
+      for (let i = 0; i < data.length; i += 4) if (rgb.every((v, c) => data[i + c] === v)) found++;
+      return found;
+    };
+    return { knit: count(1, 1, [200, 50, 100]), wideLeft: count(2, 1, [36, 104, 172]), wideRight: count(3, 1, [36, 104, 172]), white: count(4, 1, [255, 255, 255]), empty: count(5, 1, [255, 255, 255]) };
+  }, png.toString('base64'));
+  expect(pixels.knit).toBeGreaterThan(0);
+  expect(pixels.wideLeft).toBeGreaterThan(0);
+  expect(pixels.wideRight).toBeGreaterThan(0);
+  expect(pixels.white).toBe(400);
+  expect(pixels.empty).toBe(0);
+  await page.getByRole('button', { name: '閉じる', exact: true }).click();
+  await selectRealContent(page, box);
+  await page.getByRole('button', { name: 'ブロック', exact: true }).click();
+  page.once('dialog', (dialog) => dialog.accept('記号入りブロック'));
+  await page.getByRole('button', { name: '選択範囲をブロック保存' }).click();
+  await expect(page.getByText('記号入りブロック', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '閉じる', exact: true }).click();
+  await page.getByRole('button', { name: '保存', exact: true }).click();
+  const backupDownload = page.waitForEvent('download');
+  await page.getByRole('button', { name: '全データ', exact: true }).click();
+  await page.locator('input[type="file"]').setInputFiles((await (await backupDownload).path())!);
+  await expect(page.locator('.app-document-name')).toContainText('新しい編み図（復元）');
+  await expect.poll(() => storedPackedCells(page)).toEqual(expected);
+  await page.getByRole('button', { name: 'ブロック', exact: true }).click();
+  await expect(page.locator('.block-list > div')).toHaveCount(2);
+  await page.getByRole('button', { name: '記号入りブロック（復元）' }).click();
+  await page.mouse.click(box.x + 81, box.y + 171);
+  const pasted = [...expected];
+  pasted.splice(81, 4, ...expected.slice(21, 25));
+  await expect.poll(() => storedPackedCells(page)).toEqual(pasted);
 });
 
 test('undoes and redoes a stroke and a grid change, then saves the result', async ({ page }) => {

@@ -5,7 +5,7 @@ import { Board, packCell } from '../model/Board';
 import { STITCH_BY_KEY, STITCH_CATALOG_VERSION } from '../stitches/catalog';
 import {
   BACKUP_LIMITS, boardFromDocument, createDocument, exportBackup, importBackup, initializeStorage,
-  listDocuments, saveDocument, setSetting, UNREADABLE_BACKUP_MESSAGE,
+  listBlocks, saveBlock, listDocuments, saveDocument, setSetting, UNREADABLE_BACKUP_MESSAGE,
 } from './database';
 
 function backupBlob(payload: unknown): Blob {
@@ -92,6 +92,41 @@ describe('backup restore', () => {
     expect(result.documents[0].name).toBe('復元テスト（復元）');
     const restored = boardFromDocument(result.documents[0]);
     expect(restored.valueAt(1, 2)).toBe(board.valueAt(1, 2));
+  });
+
+  it('round-trips normal blocks only in full backups without overwriting originals', async () => {
+    const source = await createDocument('記号入り全体バックアップ', 2, 4);
+    const board = new Board(2, 4);
+    board.place(0, 0, 'knit', '#c83264', false);
+    board.place(1, 1, 'right_up_two_one', '#2468ac', false);
+    await saveDocument(source, board);
+    const block = board.createBlock({ top: 0, left: 0, bottom: 1, right: 3 }, '色付きブロック');
+    await saveBlock(block);
+    const before = await listBlocks();
+    const individual = await exportBackup([source.id]);
+    const payload = JSON.parse(strFromU8(gunzipSync(new Uint8Array(await individual.arrayBuffer()))));
+    expect(payload.blocks).toEqual([]);
+    const singleResult = await importBackup(individual);
+    expect(boardFromDocument(singleResult.documents[0]).cells).toEqual(board.cells);
+    expect(await listBlocks()).toEqual(before);
+
+    const full = await exportBackup();
+    const fullPayload = JSON.parse(strFromU8(gunzipSync(new Uint8Array(await full.arrayBuffer()))));
+    expect(fullPayload.blocks).toContainEqual(block);
+    const result = await importBackup(full);
+    const restoredDocument = result.documents.find((item) => item.name === `${source.name}（復元）`)!;
+    expect(restoredDocument.id).not.toBe(source.id);
+    expect(boardFromDocument(restoredDocument).cells).toEqual(board.cells);
+    const after = await listBlocks();
+    expect(after).toHaveLength(before.length * 2);
+    for (const original of before) expect(after).toContainEqual(original);
+    const restored = after.find((item) => item.name === `${block.name}（復元）`)!;
+    expect(restored.id).not.toBe(block.id);
+    expect([restored.rows, restored.cols, restored.anchors]).toEqual([block.rows, block.cols, block.anchors]);
+    const pasted = new Board(2, 4);
+    expect(pasted.pasteBlock(restored, 0, 0)).toBe(true);
+    expect(pasted.cells).toEqual(board.cells);
+    expect(pasted.anchorAt(1, 2)).toEqual({ row: 1, col: 1 });
   });
 
   it('rejects malformed gzip data before touching IndexedDB', async () => {

@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { Board, parseColor } from '../model/Board';
-import { defaultPngCellSize, PNG_CELL_SIZE_RANGE, PNG_PREFERRED_CELL_SIZE, pngGridStyles, pngLabelLayout, validatePngSize } from './exporters';
+import { defaultPngCellSize, PNG_CELL_SIZE_RANGE, PNG_PREFERRED_CELL_SIZE, pngGridStyles, pngLabelLayout, renderPng, validatePngSize } from './exporters';
 
 describe('defaultPngCellSize', () => {
   it('uses the preferred cell size for ordinary boards', () => {
@@ -61,3 +61,49 @@ describe('pngLabelLayout', () => {
   });
 });
 
+describe('renderPng with real symbols', () => {
+  it('draws colored single and multi-cell glyphs and whiteout on a dark ground', async () => {
+    // Canvasの描画命令を記録する。drawCellとdrawGlyphは実装をそのまま通す。
+    const strokes: Array<{ color: string; origin: number[]; path: number[][] }> = [];
+    const fills: Array<{ color: string; rect: number[] }> = [];
+    let origin = [0, 0];
+    let path: number[][] = [];
+    const context = {
+      fillStyle: '', strokeStyle: '',
+      fillRect: (...rect: number[]) => fills.push({ color: context.fillStyle, rect }),
+      fillText: vi.fn(), save: vi.fn(), restore: vi.fn(), scale: vi.fn(),
+      translate: (x: number, y: number) => { origin = [x, y]; },
+      beginPath: () => { path = []; },
+      moveTo: (...point: number[]) => path.push(point),
+      lineTo: (...point: number[]) => path.push(point),
+      ellipse: vi.fn(), bezierCurveTo: vi.fn(),
+      stroke: () => strokes.push({ color: context.strokeStyle, origin: [...origin], path: [...path] }),
+    };
+    const canvas = {
+      width: 0, height: 0, getContext: () => context,
+      toBlob: (callback: BlobCallback) => callback(new Blob(['png'], { type: 'image/png' })),
+    };
+    vi.stubGlobal('document', { createElement: () => canvas });
+    try {
+      const board = new Board(2, 4);
+      board.place(0, 0, 'knit', '#c83264', false);
+      board.place(1, 1, 'right_up_two_one', '#2468ac', false);
+      board.place(1, 3, 'erase', '#abcdef', false);
+      expect((await renderPng(board, 24, '#1e1e1e')).type).toBe('image/png');
+      expect(strokes.filter((stroke) => stroke.color === '#c83264')).toEqual([
+        expect.objectContaining({ origin: [24, 24], path: [[50, 12], [50, 88]] }),
+      ]);
+      const wide = strokes.find((stroke) => stroke.color === '#2468ac')!;
+      expect(wide.origin).toEqual([48, 48]);
+      expect(Math.max(...wide.path.map((point) => point[0]))).toBeGreaterThan(100);
+      expect(fills).toContainEqual({ color: '#fff', rect: [96, 48, 24, 24] });
+      strokes.length = 0;
+      fills.length = 0;
+      await renderPng(new Board(2, 4), 24, '#1e1e1e');
+      expect(strokes.some((stroke) => ['#c83264', '#2468ac'].includes(stroke.color))).toBe(false);
+      expect(fills).not.toContainEqual({ color: '#fff', rect: [96, 48, 24, 24] });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});
