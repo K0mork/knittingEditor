@@ -83,6 +83,7 @@ export function useEditorController(options: EditorControllerOptions) {
       setInitializationError(reason);
     },
     onSaveError: (_error, trigger) => notify(saveErrorMessage(trigger)),
+    onSaveConflict: (saved) => notify(`別のタブで変更されたため、この編集を「${saved.name}」として保存しました。`),
   });
   const {
     board, activeDocument, changed: markChanged, commitEdit, saveNow, switchDocument: switchSessionDocument,
@@ -286,7 +287,7 @@ export function useEditorController(options: EditorControllerOptions) {
     if (document.id === activeDocument?.id && !(await saveBeforeManagement('編み図の名前を変更'))) return;
     const renamed = await renameDocument(document.id, name);
     session.updateDocument(renamed);
-    if (document.id === activeDocument?.id) applyActiveDocumentName(name);
+    if (session.activeSnapshot()?.id === renamed.id) applyActiveDocumentName(renamed.name, renamed.updatedAt);
   });
 
   const duplicateChart = (document: ChartDocument) => runManagementOperation('chart_duplicate', '編み図の複製', async () => {

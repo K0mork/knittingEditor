@@ -1,6 +1,7 @@
-import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
+import { openDB, unwrap, type DBSchema, type IDBPDatabase } from 'idb';
 import { Board, cellStitchId, packCell, type PatternBlock } from '../model/Board';
 import { STITCH_BY_ID } from '../stitches/catalog';
+import { compareDocuments } from './documentOrder';
 import { BACKUP_LIMITS } from './backupCodec';
 import { runBackupTask } from './backupTask';
 export { BACKUP_LIMITS, UNREADABLE_BACKUP_MESSAGE } from './backupCodec';
@@ -62,7 +63,7 @@ export function boardFromDocument(document: ChartDocument): Board {
 
 export async function listDocuments(): Promise<ChartDocument[]> {
   const values = await (await database()).getAll('documents');
-  return values.sort((a, b) => b.updatedAt - a.updatedAt);
+  return values.sort(compareDocuments);
 }
 
 export async function createDocument(name = '新しい編み図', rows = 20, cols = 20): Promise<ChartDocument> {
@@ -87,23 +88,46 @@ export async function createDocument(name = '新しい編み図', rows = 20, col
 }
 
 export async function saveDocument(
-  document: Pick<ChartDocument, 'id' | 'name' | 'createdAt'> & Partial<Pick<ChartDocument, 'backgroundColor'>>,
+  document: Pick<ChartDocument, 'id' | 'name' | 'createdAt' | 'updatedAt'> & Partial<Pick<ChartDocument, 'backgroundColor'>>,
   board: Board,
 ): Promise<ChartDocument> {
-  const saved: ChartDocument = {
-    ...document, rows: board.rows, cols: board.cols,
-    cells: board.cells.slice().buffer as ArrayBuffer, updatedAt: Date.now(),
-  };
-  await (await database()).put('documents', saved);
+  const db = await database();
+  const transaction = db.transaction(['documents', 'settings'], 'readwrite');
+  let saved!: ChartDocument;
+  await finishTransaction(transaction, () => new Promise<void>((resolve, reject) => {
+    const store = transaction.objectStore('documents');
+    const request = unwrap(store).get(document.id);
+    request.onerror = () => reject(request.error);
+    // 読み出しのイベント内で書き込みを予約し、トランザクションが有効な間に判定と保存を行う。
+    request.onsuccess = () => {
+      try {
+        const current = request.result as ChartDocument | undefined;
+        const conflict = !current || current.updatedAt !== document.updatedAt;
+        const now = Math.max(Date.now(), (current?.updatedAt ?? document.updatedAt) + 1);
+        saved = {
+          ...document, rows: board.rows, cols: board.cols,
+          cells: board.cells.slice().buffer as ArrayBuffer, updatedAt: now,
+          ...(conflict ? { id: crypto.randomUUID(), name: `${document.name}（別のタブの編集）`, createdAt: now } : {}),
+        };
+        const writes = [store.put(saved)];
+        if (conflict) writes.push(transaction.objectStore('settings').put({ key: 'activeDocumentId', value: saved.id }));
+        void Promise.all(writes).then(() => resolve(), reject);
+      } catch (error) { reject(error); }
+    };
+  }));
   return saved;
 }
 
 export async function renameDocument(id: string, name: string): Promise<ChartDocument> {
   const db = await database();
-  const document = await db.get('documents', id);
-  if (!document) throw new Error('編み図が見つかりません');
-  const renamed = { ...document, name, updatedAt: Date.now() };
-  await db.put('documents', renamed);
+  const transaction = db.transaction('documents', 'readwrite');
+  let renamed!: ChartDocument;
+  await finishTransaction(transaction, async () => {
+    const document = await transaction.store.get(id);
+    if (!document) throw new Error('編み図が見つかりません');
+    renamed = { ...document, name, updatedAt: Math.max(Date.now(), document.updatedAt + 1) };
+    await transaction.store.put(renamed);
+  });
   return renamed;
 }
 

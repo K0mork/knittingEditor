@@ -152,12 +152,25 @@ function readBackupPayload(data: Uint8Array): unknown {
   }
 }
 
+export const BACKUP_EXPORT_LIMIT_MESSAGE = 'バックアップの上限を超えています。編み図を個別に書き出すか、不要な編み図を削除してください。';
+
 export function encodeBackup(documents: ChartDocument[], blocks: PatternBlock[]): Uint8Array<ArrayBuffer> {
+  if (documents.length > BACKUP_LIMITS.maxDocuments || blocks.length > BACKUP_LIMITS.maxBlocks
+      || blocks.reduce((total, block) => total + block.anchors.length, 0) > BACKUP_LIMITS.maxBlockAnchors) {
+    throw new Error(BACKUP_EXPORT_LIMIT_MESSAGE);
+  }
+  // セルのbase64だけで上限を超える場合は、巨大なJSONを作る前に止める。
+  const cellBytes = documents.reduce((total, item) => total + 4 * Math.ceil(item.cells.byteLength / 3), 0);
+  if (cellBytes > BACKUP_LIMITS.maxDecompressedBytes) throw new Error(BACKUP_EXPORT_LIMIT_MESSAGE);
   const payload: BackupPayload = {
     format: 'knitting-editor', version: 2, stitchCatalogVersion: STITCH_CATALOG_VERSION, exportedAt: new Date().toISOString(),
     documents: documents.map((item) => ({ ...item, cells: bytesToBase64(new Uint8Array(item.cells)) })), blocks,
   };
-  return gzipSync(strToU8(JSON.stringify(payload)));
+  const bytes = strToU8(JSON.stringify(payload));
+  if (bytes.byteLength > BACKUP_LIMITS.maxDecompressedBytes) throw new Error(BACKUP_EXPORT_LIMIT_MESSAGE);
+  const compressed = gzipSync(bytes);
+  if (compressed.byteLength > BACKUP_LIMITS.maxCompressedBytes) throw new Error(BACKUP_EXPORT_LIMIT_MESSAGE);
+  return compressed;
 }
 
 export function decodeBackup(data: Uint8Array): ImportBackupResult & { blocks: PatternBlock[] } {
@@ -198,7 +211,10 @@ export function decodeBackup(data: Uint8Array): ImportBackupResult & { blocks: P
     return {
       ...rest, ...(backgroundColor ? { backgroundColor } : {}),
       id: crypto.randomUUID(), name: `${item.name}（復元）`, cells: bytes.slice().buffer as ArrayBuffer,
-      createdAt: now, updatedAt: now,
+      // 一覧の順序のため更新日時だけ元の値を保つ。作成日時は復元時刻にし、
+      // 復元した直後に「まだバックアップしていません」の勧めが出ないようにする。
+      createdAt: now,
+      updatedAt: typeof item.updatedAt === 'number' && Number.isFinite(item.updatedAt) ? item.updatedAt : now,
     };
   });
   const restoredBlocks = blocks.map((block) => restoreBlock(block, now));
