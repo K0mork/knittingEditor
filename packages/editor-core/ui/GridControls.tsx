@@ -19,9 +19,9 @@ export interface GridControlsProps {
 
 /** 盤面設定パネル。Web版とiOS版で共通。 */
 export function GridControls({ board, backgroundColor, onBackgroundColorChange, changed, askText, askConfirm, notify }: GridControlsProps) {
-  const [rows, setRows] = useState(board.rows);
-  const [cols, setCols] = useState(board.cols);
-  useEffect(() => { setRows(board.rows); setCols(board.cols); }, [board.rows, board.cols]);
+  const [rows, setRows] = useState(String(board.rows));
+  const [cols, setCols] = useState(String(board.cols));
+  useEffect(() => { setRows(String(board.rows)); setCols(String(board.cols)); }, [board.rows, board.cols]);
 
   const mutateStructure = (operation: () => void) => {
     try { operation(); changed(); }
@@ -43,10 +43,10 @@ export function GridControls({ board, backgroundColor, onBackgroundColorChange, 
 
   // 段番号は下から数える。増減のどちらでも上端側で調整し、編み始め（段1）と
   // 既存の段番号を保つ。増加だけ上端、減少は下端では往復で編み始めが消える。
-  const resize = () => mutateStructure(() => board.resize(rows, cols, rows - board.rows, 0));
+  const resize = () => mutateStructure(() => board.resize(Number(rows), Number(cols), Number(rows) - board.rows, 0));
 
   return <div className="grid-controls">
-    <div className="size-inputs"><label>段数<input type="number" min="1" max="1000" value={rows} onChange={(event) => setRows(Number(event.target.value))} /></label><label>列数<input type="number" min="1" max="1000" value={cols} onChange={(event) => setCols(Number(event.target.value))} /></label><button className="primary" onClick={resize}>変更</button></div>
+    <div className="size-inputs"><label>段数<input type="number" min="1" max="1000" value={rows} onChange={(event) => setRows(event.target.value)} /></label><label>列数<input type="number" min="1" max="1000" value={cols} onChange={(event) => setCols(event.target.value)} /></label><button className="primary" onClick={resize}>変更</button></div>
     <h3 id="background-color-title">背景色</h3>
     <div className="background-presets" role="group" aria-labelledby="background-color-title">
       {BACKGROUND_PRESETS.map((preset) => <button key={preset.color} className="background-preset" aria-pressed={backgroundColor === preset.color}

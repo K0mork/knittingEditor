@@ -49,3 +49,24 @@ export interface DocumentSummary { name: string; rows: number; cols: number; upd
 export function documentAccessibleName(document: DocumentSummary, now: number = Date.now()): string {
   return `${document.name}、${document.rows}段×${document.cols}目、更新 ${formatUpdatedAt(document.updatedAt, now)}`;
 }
+
+export type DocumentAction = 'rename' | 'duplicate' | 'delete';
+
+/** 一覧の各行に並べるボタンの表示。 */
+export const DOCUMENT_ACTION_LABELS: Readonly<Record<DocumentAction, string>> = {
+  rename: '名称',
+  duplicate: '複製',
+  delete: '削除',
+};
+
+/**
+ * 行のボタンの読み上げ名。表示の文字を含め、音声コントロールで表示どおりに呼んでも押せる
+ * ようにする。対象の編み図名も含め、ボタンだけを辿っても、どの編み図への操作か分かるようにする。
+ */
+export function documentActionName(action: DocumentAction, name: string): string {
+  switch (action) {
+    case 'rename': return `${name}の${DOCUMENT_ACTION_LABELS.rename}を変更`;
+    case 'duplicate': return `${name}を${DOCUMENT_ACTION_LABELS.duplicate}`;
+    case 'delete': return `${name}を${DOCUMENT_ACTION_LABELS.delete}`;
+  }
+}

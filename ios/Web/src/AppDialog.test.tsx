@@ -71,11 +71,13 @@ describe('AppDialog', () => {
     expect(description.textContent).toBe('この操作は元に戻せません。');
     expect(description.classList.contains('visually-hidden')).toBe(false);
     expect(view.button('削除').className).toBe('danger');
+    expect([...view.container.querySelectorAll('button')].some((button) => button.textContent === '決定')).toBe(false);
     expect(document.activeElement).toBe(view.button('キャンセル'));
     view.focusFrame();
     expect(document.activeElement).toBe(view.button('キャンセル'));
     await act(async () => { view.button('キャンセル').click(); });
     expect(resolved).toHaveBeenCalledWith(false);
+    expect(view.container.querySelector('[role="dialog"]')).toBeNull();
   });
 
   it('resolves deletion only when the delete button is chosen', async () => {
@@ -84,6 +86,21 @@ describe('AppDialog', () => {
     await act(async () => { void view.api().askConfirm('「模様」を削除しますか？', { destructive: true }).then(resolved); });
     await act(async () => { view.button('削除').click(); });
     expect(resolved).toHaveBeenCalledWith(true);
+    expect(view.container.querySelector('[role="dialog"]')).toBeNull();
+  });
+
+  it('keeps a prompt open on backdrop clicks and cancels it explicitly', async () => {
+    const view = await renderDialog();
+    const resolved = vi.fn();
+    await act(async () => { void view.api().askText('編み図名', '春').then(resolved); });
+    const backdrop = view.container.querySelector('.app-dialog-backdrop')!;
+    expect(backdrop).not.toBeNull();
+    await act(async () => { backdrop.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); });
+    expect(resolved).not.toHaveBeenCalled();
+    expect(view.container.querySelector('input')?.value).toBe('春');
+    await act(async () => { view.button('キャンセル').click(); });
+    expect(resolved).toHaveBeenCalledWith(null);
+    expect(view.container.querySelector('[role="dialog"]')).toBeNull();
   });
 
   it.each(['キャンセル', '決定'])('keeps board clearing neutral and resolves %s', async (label) => {

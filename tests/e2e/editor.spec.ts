@@ -1,5 +1,7 @@
 import { readFileSync } from 'node:fs';
-import { expect, test } from './fixtures';
+import { packCell } from '../../packages/editor-core/model/Board';
+import { STITCH_BY_KEY } from '../../packages/editor-core/stitches/catalog';
+import { expect, test, type Page } from './fixtures';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -7,40 +9,63 @@ test.beforeEach(async ({ page }) => {
   await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
 });
 
-test('draws continuously and restores the board after reload', async ({ page }) => {
+/** `packages/editor-core/state/useEditorSession.ts`の`AUTOSAVE_DELAY_MS`と同じ値にする。 */
+const AUTOSAVE_DELAY_MS = 400;
+
+type AutosaveDelayWindow = Window & { delayedAutosaveCount?: number };
+
+/** 自動保存のタイマーだけを延ばし、以前の固定待機より遅くする。延ばした回数を数える。 */
+async function delayAutosave(page: Page, delay: number) {
+  await page.evaluate(({ autosaveDelay, delay }) => {
+    const target = window as AutosaveDelayWindow;
+    const original = window.setTimeout.bind(window);
+    target.delayedAutosaveCount = 0;
+    window.setTimeout = ((handler: TimerHandler, timeout?: number, ...args: unknown[]) => {
+      if (timeout !== autosaveDelay) return original(handler, timeout, ...args);
+      target.delayedAutosaveCount! += 1;
+      return original(handler, delay, ...args);
+    }) as typeof window.setTimeout;
+  }, { autosaveDelay: AUTOSAVE_DELAY_MS, delay });
+}
+
+/** 自動保存のタイマーを実際に延ばしたことを確かめる。値が変わって何も遅らせていない場合に失敗させる。 */
+async function expectAutosaveDelayed(page: Page) {
+  const count = await page.evaluate(() => (window as AutosaveDelayWindow).delayedAutosaveCount ?? 0);
+  expect(count, '延ばした自動保存のタイマー').toBeGreaterThan(0);
+}
+
+/** 操作後の盤面が示す記号数まで待ち、途中の保存を完了とみなさない。 */
+async function waitForDrawnStitches(page: Page) {
   const canvas = page.getByLabel('編み図編集盤面');
-  const box = await canvas.boundingBox();
-  expect(box).not.toBeNull();
-  await page.mouse.move(box!.x + 75, box!.y + 75);
-  await page.mouse.down();
-  await page.mouse.move(box!.x + 180, box!.y + 75, { steps: 8 });
-  await page.mouse.up();
-  await page.waitForTimeout(700);
-  const storedBefore = await page.evaluate(async () => {
-    const request = indexedDB.open('knitting-editor-v2');
-    const db = await new Promise<IDBDatabase>((resolve) => { request.onsuccess = () => resolve(request.result); });
-    const transaction = db.transaction('documents');
-    const get = transaction.objectStore('documents').getAll();
-    return await new Promise<{ bytes: number; filled: number }>((resolve) => { get.onsuccess = () => {
-      const cells = new Uint32Array(get.result[0].cells);
-      resolve({ bytes: cells.byteLength, filled: cells.filter(Boolean).length });
-    }; });
+  const label = await canvas.getAttribute('aria-label');
+  const count = Number(label?.match(/記号(\d+)個/)?.[1]);
+  expect(count).toBeGreaterThan(0);
+  await expect.poll(async () => (await storedCells(page)).filled.length).toBe(count);
+}
+
+for (const saveDelay of [0, 1_400]) {
+  test(`draws continuously and restores the board after reload${saveDelay ? ' with delayed autosave' : ''}`, async ({ page }) => {
+    if (saveDelay) {
+      await delayAutosave(page, saveDelay);
+    }
+    const canvas = page.getByLabel('編み図編集盤面');
+    const box = await canvas.boundingBox();
+    expect(box).not.toBeNull();
+    await page.mouse.move(box!.x + 75, box!.y + 75);
+    await page.mouse.down();
+    await page.mouse.move(box!.x + 180, box!.y + 75, { steps: 8 });
+    await page.mouse.up();
+    await waitForDrawnStitches(page);
+    if (saveDelay) {
+      await expectAutosaveDelayed(page);
+    }
+    const storedBefore = await storedCells(page);
+    expect(storedBefore.cells.length * Uint32Array.BYTES_PER_ELEMENT).toBe(1600);
+    await page.reload();
+    await expect(page.getByText('新しい編み図', { exact: false })).toBeVisible();
+    await expect.poll(async () => (await storedCells(page)).cells).toEqual(storedBefore.cells);
   });
-  expect(storedBefore.bytes).toBe(1600);
-  expect(storedBefore.filled).toBeGreaterThan(0);
-  await page.reload();
-  await expect(page.getByText('新しい編み図', { exact: false })).toBeVisible();
-  const storedAfter = await page.evaluate(async () => {
-    const request = indexedDB.open('knitting-editor-v2');
-    const db = await new Promise<IDBDatabase>((resolve) => { request.onsuccess = () => resolve(request.result); });
-    const transaction = db.transaction('documents');
-    const get = transaction.objectStore('documents').getAll();
-    return await new Promise<number>((resolve) => { get.onsuccess = () => {
-      resolve(new Uint32Array(get.result[0].cells).filter(Boolean).length);
-    }; });
-  });
-  expect(storedAfter).toBe(storedBefore.filled);
-});
+}
 
 test('does not draw when a second touch turns a tap into a two-finger gesture', async ({ page }) => {
   const canvas = page.getByLabel('編み図編集盤面');
@@ -65,16 +90,10 @@ test('does not draw when a second touch turns a tap into a two-finger gesture', 
     dispatch('pointerup', 2, 140, 75);
     dispatch('pointerup', 1, 70, 75);
   });
-  await page.waitForTimeout(700);
-
-  const filled = await page.evaluate(async () => {
-    const request = indexedDB.open('knitting-editor-v2');
-    const db = await new Promise<IDBDatabase>((resolve) => { request.onsuccess = () => resolve(request.result); });
-    const get = db.transaction('documents').objectStore('documents').getAll();
-    const documents = await new Promise<Array<{ cells: ArrayBuffer }>>((resolve) => { get.onsuccess = () => resolve(get.result); });
-    return new Uint32Array(documents[0].cells).filter(Boolean).length;
-  });
-  expect(filled).toBe(0);
+  // 描画されない操作なので、UIの編集状態とDBの両方を確かめる。
+  await expect(canvas).toHaveAttribute('aria-label', /記号0個/);
+  await expect(page.locator('.app-document-name')).not.toContainText('保存中');
+  await expect.poll(async () => (await storedCells(page)).filled).toEqual([]);
 });
 
 test('prevents the canvas wheel gesture from reaching page zoom', async ({ page }) => {
@@ -110,15 +129,26 @@ async function showTopLeftCellAtCenter(page: import('@playwright/test').Page) {
   return [label + (box!.width - label) / 2, label + (box!.height - label) / 2 + 30] as const;
 }
 
-async function storedCells(page: import('@playwright/test').Page) {
-  await page.waitForTimeout(700);
-  return await page.evaluate(async () => {
+/** 保存の観測だけを行う。呼び出し側で期待する内容までpollする。 */
+async function storedCells(page: Page) {
+  return page.evaluate(async () => {
     const request = indexedDB.open('knitting-editor-v2');
-    const db = await new Promise<IDBDatabase>((resolve) => { request.onsuccess = () => resolve(request.result); });
-    const get = db.transaction('documents').objectStore('documents').getAll();
-    const documents = await new Promise<Array<{ rows: number; cols: number; cells: ArrayBuffer }>>((resolve) => { get.onsuccess = () => resolve(get.result); });
-    const { rows, cols, cells } = documents[0];
-    return { rows, cols, filled: [...new Uint32Array(cells).entries()].filter(([, value]) => value).map(([index]) => index) };
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    try {
+      const get = db.transaction('documents').objectStore('documents').getAll();
+      const documents = await new Promise<Array<{ rows: number; cols: number; cells: ArrayBuffer; name: string }>>((resolve, reject) => {
+        get.onsuccess = () => resolve(get.result);
+        get.onerror = () => reject(get.error);
+      });
+      const { rows, cols, cells, name } = documents[0];
+      const values = [...new Uint32Array(cells)];
+      return { rows, cols, name, cells: values, filled: values.flatMap((value, index) => value ? [index] : []) };
+    } finally {
+      db.close();
+    }
   });
 }
 
@@ -130,13 +160,15 @@ test('keeps the board on screen when scrolled far, with edge cells reaching the 
   // 盤面を右下へ大きく動かすと、左上のマスが表示領域の中央で止まる。
   await scroll(-100_000, -100_000);
   await clickBoardCenter(page);
-  expect((await storedCells(page)).filled).toEqual([0]);
+  await expect.poll(async () => (await storedCells(page)).filled).toEqual([0]);
 
   // 反対へ大きく動かすと、右下のマスが表示領域の中央で止まる。
   await scroll(100_000, 100_000);
   await clickBoardCenter(page);
-  const { rows, cols, filled } = await storedCells(page);
-  expect(filled).toEqual([0, rows * cols - 1]);
+  await expect.poll(async () => {
+    const { rows, cols, filled } = await storedCells(page);
+    return { rows, cols, filled };
+  }).toEqual({ rows: 20, cols: 20, filled: [0, 20 * 20 - 1] });
 });
 
 test('keeps the board on screen when dragged far with two fingers', async ({ page }) => {
@@ -165,8 +197,10 @@ test('keeps the board on screen when dragged far with two fingers', async ({ pag
 
   // 右下のマスが表示領域の中央で止まっている。
   await clickBoardCenter(page);
-  const { rows, cols, filled } = await storedCells(page);
-  expect(filled).toEqual([rows * cols - 1]);
+  await expect.poll(async () => {
+    const { rows, cols, filled } = await storedCells(page);
+    return { rows, cols, filled };
+  }).toEqual({ rows: 20, cols: 20, filled: [20 * 20 - 1] });
 });
 
 test('matches the guidance to the input method and hides the gesture hint after about ten seconds', async ({ page }, testInfo) => {
@@ -194,32 +228,33 @@ test('matches the guidance to the input method and hides the gesture hint after 
   await expect(hint).toBeHidden();
 });
 
-test('erases stitches continuously', async ({ page }) => {
-  const canvas = page.getByLabel('編み図編集盤面');
-  const box = await canvas.boundingBox();
-  await page.mouse.move(box!.x + 75, box!.y + 75);
-  await page.mouse.down();
-  await page.mouse.move(box!.x + 165, box!.y + 75, { steps: 6 });
-  await page.mouse.up();
+for (const saveDelay of [0, 1_400]) {
+  test(`erases stitches continuously${saveDelay ? ' with delayed autosave' : ''}`, async ({ page }) => {
+    if (saveDelay) {
+      await delayAutosave(page, saveDelay);
+    }
+    const canvas = page.getByLabel('編み図編集盤面');
+    const box = await canvas.boundingBox();
+    await page.mouse.move(box!.x + 75, box!.y + 75);
+    await page.mouse.down();
+    await page.mouse.move(box!.x + 165, box!.y + 75, { steps: 6 });
+    await page.mouse.up();
 
-  await page.getByRole('button', { name: '消す' }).click();
-  await expect(page.getByRole('button', { name: '消す' })).toHaveAttribute('aria-pressed', 'true');
-  await page.mouse.move(box!.x + 75, box!.y + 75);
-  await page.mouse.down();
-  await page.mouse.move(box!.x + 165, box!.y + 75, { steps: 6 });
-  await page.mouse.up();
-  await page.waitForTimeout(500);
+    await waitForDrawnStitches(page);
+    if (saveDelay) {
+      await expectAutosaveDelayed(page);
+    }
+    expect((await storedCells(page)).filled.length).toBeGreaterThan(1);
 
-  const remaining = await page.evaluate(async () => {
-    const request = indexedDB.open('knitting-editor-v2');
-    const db = await new Promise<IDBDatabase>((resolve) => { request.onsuccess = () => resolve(request.result); });
-    const transaction = db.transaction('documents');
-    const get = transaction.objectStore('documents').getAll();
-    const documents = await new Promise<Array<{ cells: ArrayBuffer }>>((resolve) => { get.onsuccess = () => resolve(get.result); });
-    return new Uint32Array(documents[0].cells).filter(Boolean).length;
+    await page.getByRole('button', { name: '消す' }).click();
+    await expect(page.getByRole('button', { name: '消す' })).toHaveAttribute('aria-pressed', 'true');
+    await page.mouse.move(box!.x + 75, box!.y + 75);
+    await page.mouse.down();
+    await page.mouse.move(box!.x + 165, box!.y + 75, { steps: 6 });
+    await page.mouse.up();
+    await expect.poll(async () => (await storedCells(page)).filled).toEqual([]);
   });
-  expect(remaining).toBe(0);
-});
+}
 
 test('selects a stitch from the visual palette and places white-out data', async ({ page }) => {
   await page.getByRole('button', { name: '編み目記号を選ぶ' }).click();
@@ -233,16 +268,7 @@ test('selects a stitch from the visual palette and places white-out data', async
   const canvas = page.getByLabel('編み図編集盤面');
   const box = await canvas.boundingBox();
   await page.mouse.click(box!.x + 75, box!.y + 75);
-  await page.waitForTimeout(500);
-  const stitchId = await page.evaluate(async () => {
-    const request = indexedDB.open('knitting-editor-v2');
-    const db = await new Promise<IDBDatabase>((resolve) => { request.onsuccess = () => resolve(request.result); });
-    const transaction = db.transaction('documents');
-    const get = transaction.objectStore('documents').getAll();
-    const documents = await new Promise<Array<{ cells: ArrayBuffer }>>((resolve) => { get.onsuccess = () => resolve(get.result); });
-    return new Uint32Array(documents[0].cells).find(Boolean)! >>> 24;
-  });
-  expect(stitchId).toBe(25);
+  await expect.poll(async () => (await storedCells(page)).cells.find(Boolean)! >>> 24).toBe(25);
 });
 
 test('selects and stores the purl right-leaning two-stitch decrease', async ({ page }) => {
@@ -254,31 +280,14 @@ test('selects and stores the purl right-leaning two-stitch decrease', async ({ p
   const canvas = page.getByLabel('編み図編集盤面');
   const box = await canvas.boundingBox();
   await page.mouse.click(box!.x + 75, box!.y + 75);
-  await page.waitForTimeout(500);
-  const stitchId = await page.evaluate(async () => {
-    const request = indexedDB.open('knitting-editor-v2');
-    const db = await new Promise<IDBDatabase>((resolve) => { request.onsuccess = () => resolve(request.result); });
-    const transaction = db.transaction('documents');
-    const get = transaction.objectStore('documents').getAll();
-    const documents = await new Promise<Array<{ cells: ArrayBuffer }>>((resolve) => { get.onsuccess = () => resolve(get.result); });
-    return new Uint32Array(documents[0].cells).find(Boolean)! >>> 24;
-  });
-  expect(stitchId).toBe(26);
+  await expect.poll(async () => (await storedCells(page)).cells.find(Boolean)! >>> 24).toBe(26);
 });
 
 test('picks a color used in the chart from the color list and draws with it', async ({ page }) => {
   const canvas = page.getByLabel('編み図編集盤面');
   const box = await canvas.boundingBox();
-  const storedColors = async () => {
-    await page.waitForTimeout(700);
-    return await page.evaluate(async () => {
-      const request = indexedDB.open('knitting-editor-v2');
-      const db = await new Promise<IDBDatabase>((resolve) => { request.onsuccess = () => resolve(request.result); });
-      const get = db.transaction('documents').objectStore('documents').getAll();
-      const documents = await new Promise<Array<{ cells: ArrayBuffer }>>((resolve) => { get.onsuccess = () => resolve(get.result); });
-      return [...new Uint32Array(documents[0].cells)].filter(Boolean).map((value) => `#${(value & 0xffffff).toString(16).padStart(6, '0')}`);
-    });
-  };
+  const storedColors = async () => (await storedCells(page)).cells.filter(Boolean)
+    .map((value) => `#${(value & 0xffffff).toString(16).padStart(6, '0')}`);
   const colorButton = page.getByRole('button', { name: /^記号の色を選ぶ/ });
   const picker = page.getByRole('dialog', { name: '記号の色' });
 
@@ -295,7 +304,7 @@ test('picks a color used in the chart from the color list and draws with it', as
   await expect(colorButton).toHaveAccessibleName('記号の色を選ぶ（現在：青緑 #264653）');
   await picker.getByRole('button', { name: '閉じる' }).click();
   await page.mouse.click(box!.x + 140, box!.y + 75);
-  expect(await storedColors()).toEqual(['#d33c32', '#264653']);
+  await expect.poll(storedColors).toEqual(['#d33c32', '#264653']);
 
   // 消すモードからでも、一覧で選べばその色で描けるようになる。
   await page.getByRole('button', { name: '消す' }).click();
@@ -316,7 +325,7 @@ test('picks a color used in the chart from the color list and draws with it', as
   await expect(page.getByRole('button', { name: '描く' })).toHaveAttribute('aria-pressed', 'true');
 
   await page.mouse.click(box!.x + 205, box!.y + 75);
-  expect(await storedColors()).toEqual(['#d33c32', '#264653', '#d33c32']);
+  await expect.poll(storedColors).toEqual(['#d33c32', '#264653', '#d33c32']);
 });
 
 test('creates a block and exports backup and PDF', async ({ page }) => {
@@ -447,33 +456,163 @@ test('hands PNG and PDF to the share sheet on iPhone Safari without leaving the 
   await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
 });
 
-test('copies and repeatedly pastes a selection without saving a block', async ({ page }) => {
-  await page.getByRole('button', { name: '範囲' }).click();
+// 保存済みのセル全体を比べ、空として貼り付ける退行や余分なセルの変更も検出する。
+async function storedPackedCells(page: Page): Promise<number[]> {
+  return page.evaluate(async () => {
+    const request = indexedDB.open('knitting-editor-v2');
+    const db = await new Promise<IDBDatabase>((resolve) => { request.onsuccess = () => resolve(request.result); });
+    try {
+      const get = db.transaction('documents').objectStore('documents').getAll();
+      const docs = await new Promise<Array<{ name: string; cells: ArrayBuffer }>>((resolve) => { get.onsuccess = () => resolve(get.result); });
+      const activeName = document.querySelector('.app-document-name')!.textContent!;
+      const active = docs.find((doc) => activeName.startsWith(doc.name) && doc.name.includes('（復元）')) ?? docs[0];
+      return Array.from(new Uint32Array(active.cells));
+    } finally { db.close(); }
+  });
+}
+
+/** `BoardCanvas.tsx`の既定の1マスの大きさ（初期表示では倍率を変えない）。 */
+const CELL = 30;
+
+/**
+ * 盤面を決まった位置に置き、左上のマス（0段目・0目）の中央のページ座標を返す。
+ * 初期位置は画面の大きさで変わる（収まらないときは右下の編み始めに寄せる）ので、`showTopLeftCellAtCenter`と同じく
+ * 大きく動かして左上のマスを表示領域の中央に置き、さらに3マス左上へずらして、使う7段×6目が狭い画面でも見えるようにする。
+ * 編み図を復元すると初期位置を置き直すので、そのあとにも呼ぶ。
+ */
+async function placeBoardOrigin(page: Page) {
   const canvas = page.getByLabel('編み図編集盤面');
-  const box = await canvas.boundingBox();
-  await page.mouse.move(box!.x + 75, box!.y + 75);
+  const shift = 3 * CELL;
+  await canvas.evaluate((element, shift) => {
+    element.dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaX: -100_000, deltaY: -100_000 }));
+    element.dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaX: shift, deltaY: shift }));
+  }, shift);
+  const box = (await canvas.boundingBox())!;
+  const label = 28;
+  return { x: box.x + label + (box.width - label) / 2 - shift, y: box.y + label + (box.height - label) / 2 - shift };
+}
+
+type BoardOrigin = { x: number; y: number };
+
+/** `row`段目・`col`目のマスの中央のページ座標。 */
+const cellCenter = (origin: BoardOrigin, row: number, col: number) => ({ x: origin.x + col * CELL, y: origin.y + row * CELL });
+
+// 初期盤面は20×20マスで、記号は1段目（上から2段目）の1・2（2目幅）・4目に置く。
+async function drawRealContent(page: Page) {
+  const origin = await placeBoardOrigin(page);
+  for (const [name, color, col] of [['表目', '#c83264', 1], ['右上2目一度', '#2468ac', 2], ['白くする', '#abcdef', 4]] as const) {
+    await page.getByRole('button', { name: '編み目記号を選ぶ', exact: true }).click();
+    await page.getByRole('button', { name: new RegExp(`^${name}(?:\\s|[0-9])`) }).click();
+    await page.getByRole('button', { name: /^記号の色を選ぶ/ }).click();
+    await page.locator('input[type="color"]').fill(color);
+    await page.getByRole('button', { name: '閉じる', exact: true }).click();
+    const target = cellCenter(origin, 1, col);
+    await page.mouse.click(target.x, target.y);
+  }
+  const expected = new Array<number>(400).fill(0);
+  for (const [key, color, col] of [['knit', 0xc83264, 1], ['right_up_two_one', 0x2468ac, 2], ['erase', 0xabcdef, 4]] as const) {
+    expected[20 + col] = packCell(STITCH_BY_KEY.get(key)!.id, color) >>> 0;
+  }
+  await expect.poll(() => storedPackedCells(page)).toEqual(expected);
+  return { origin, expected };
+}
+
+/** 1段目の1〜4目を範囲選択する。 */
+async function selectRealContent(page: Page, origin: BoardOrigin) {
+  await page.getByRole('button', { name: '範囲', exact: true }).click();
+  const start = cellCenter(origin, 1, 1);
+  const end = cellCenter(origin, 1, 4);
+  await page.mouse.move(start.x, start.y);
   await page.mouse.down();
-  await page.mouse.move(box!.x + 135, box!.y + 135);
+  await page.mouse.move(end.x, end.y);
   await page.mouse.up();
+}
+
+/** 貼り付け先として`row`段目・`col`目（貼り付ける範囲の左上）をクリックする。 */
+async function clickCell(page: Page, origin: BoardOrigin, row: number, col: number) {
+  const target = cellCenter(origin, row, col);
+  await page.mouse.click(target.x, target.y);
+}
+
+test('copies colored symbols including a multi-cell stitch to new positions and undoes the paste', async ({ page }) => {
+  const { origin, expected } = await drawRealContent(page);
+  await selectRealContent(page, origin);
   await page.getByRole('button', { name: 'コピーして貼付' }).click();
-  await expect(page.getByRole('button', { name: '貼付' })).toBeVisible();
-  await page.mouse.click(box!.x + 180, box!.y + 180);
-  await expect(page.getByText('ブロックを貼り付けました')).toBeVisible();
-  await page.getByRole('button', { name: '貼付' }).click();
-  await page.mouse.click(box!.x + 240, box!.y + 180);
-  await expect(page.getByText('ブロックを貼り付けました')).toBeVisible();
-  await page.getByRole('button', { name: 'ブロック' }).click();
+  await clickCell(page, origin, 4, 1);
+  const first = [...expected];
+  first.splice(4 * 20 + 1, 4, ...expected.slice(21, 25));
+  await expect.poll(() => storedPackedCells(page)).toEqual(first);
+  await page.getByRole('button', { name: '貼付', exact: true }).click();
+  await clickCell(page, origin, 6, 1);
+  const second = [...first];
+  second.splice(6 * 20 + 1, 4, ...expected.slice(21, 25));
+  await expect.poll(() => storedPackedCells(page)).toEqual(second);
+  await page.getByRole('button', { name: '元に戻す', exact: true }).click();
+  await expect.poll(() => storedPackedCells(page)).toEqual(first);
+  await page.getByRole('button', { name: '元に戻す', exact: true }).click();
+  await expect.poll(() => storedPackedCells(page)).toEqual(expected);
+  await page.getByRole('button', { name: 'ブロック', exact: true }).click();
   await expect(page.getByText('保存済みブロックはありません。')).toBeVisible();
 });
 
+test('exports real symbol pixels and restores a full backup block for pasting', async ({ page }) => {
+  await page.addInitScript(() => Object.defineProperty(Navigator.prototype, 'canShare', { value: undefined, configurable: true }));
+  await page.reload();
+  const { origin, expected } = await drawRealContent(page);
+  await page.getByRole('button', { name: '盤面', exact: true }).click();
+  await page.getByRole('button', { name: '黒', exact: true }).click();
+  await page.getByRole('button', { name: '閉じる', exact: true }).click();
+  await page.getByRole('button', { name: '保存', exact: true }).click();
+  const pngDownload = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'PNGを保存' }).click();
+  const png = readFileSync((await (await pngDownload).path())!);
+  const pixels = await page.evaluate(async (base64) => {
+    const bytes = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
+    const image = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+    const canvas = new OffscreenCanvas(image.width, image.height);
+    const ctx = canvas.getContext('2d')!;
+    ctx.drawImage(image, 0, 0);
+    const count = (col: number, width: number, rgb: number[]) => {
+      const data = ctx.getImageData(24 + col * 24 + 2, 50, width * 24 - 4, 20).data;
+      let found = 0;
+      for (let i = 0; i < data.length; i += 4) if (rgb.every((v, c) => data[i + c] === v)) found++;
+      return found;
+    };
+    return { knit: count(1, 1, [200, 50, 100]), wideLeft: count(2, 1, [36, 104, 172]), wideRight: count(3, 1, [36, 104, 172]), white: count(4, 1, [255, 255, 255]), empty: count(5, 1, [255, 255, 255]) };
+  }, png.toString('base64'));
+  expect(pixels.knit).toBeGreaterThan(0);
+  expect(pixels.wideLeft).toBeGreaterThan(0);
+  expect(pixels.wideRight).toBeGreaterThan(0);
+  expect(pixels.white).toBe(400);
+  expect(pixels.empty).toBe(0);
+  await page.getByRole('button', { name: '閉じる', exact: true }).click();
+  await selectRealContent(page, origin);
+  await page.getByRole('button', { name: 'ブロック', exact: true }).click();
+  page.once('dialog', (dialog) => dialog.accept('記号入りブロック'));
+  await page.getByRole('button', { name: '選択範囲をブロック保存' }).click();
+  await expect(page.locator('.block-list').getByRole('button', { name: /^記号入りブロック\s/ })).toBeVisible();
+  await page.getByRole('button', { name: '閉じる', exact: true }).click();
+  await page.getByRole('button', { name: '保存', exact: true }).click();
+  const backupDownload = page.waitForEvent('download');
+  await page.getByRole('button', { name: '全データ', exact: true }).click();
+  await page.locator('input[type="file"]').setInputFiles((await (await backupDownload).path())!);
+  await expect(page.locator('.app-document-name')).toContainText('新しい編み図（復元）');
+  await expect.poll(() => storedPackedCells(page)).toEqual(expected);
+  await page.getByRole('button', { name: 'ブロック', exact: true }).click();
+  await expect(page.locator('.block-list > div')).toHaveCount(2);
+  await page.getByRole('button', { name: '記号入りブロック（復元）' }).click();
+  // 復元した編み図は初期位置に置き直されるので、もう一度位置を決めてから貼り付ける。
+  await clickCell(page, await placeBoardOrigin(page), 4, 1);
+  const pasted = [...expected];
+  pasted.splice(81, 4, ...expected.slice(21, 25));
+  await expect.poll(() => storedPackedCells(page)).toEqual(pasted);
+});
+
 test('undoes and redoes a stroke and a grid change, then saves the result', async ({ page }) => {
-  const readStored = () => page.evaluate(async () => {
-    const request = indexedDB.open('knitting-editor-v2');
-    const db = await new Promise<IDBDatabase>((resolve) => { request.onsuccess = () => resolve(request.result); });
-    const get = db.transaction('documents').objectStore('documents').getAll();
-    const documents = await new Promise<Array<{ cells: ArrayBuffer; rows: number }>>((resolve) => { get.onsuccess = () => resolve(get.result); });
-    return { filled: new Uint32Array(documents[0].cells).filter(Boolean).length, rows: documents[0].rows };
-  });
+  const readStored = async () => {
+    const stored = await storedCells(page);
+    return { filled: stored.filled.length, rows: stored.rows };
+  };
   const undo = page.getByRole('button', { name: '元に戻す' });
   const redo = page.getByRole('button', { name: 'やり直す' });
   await expect(undo).toBeDisabled();
@@ -486,71 +625,53 @@ test('undoes and redoes a stroke and a grid change, then saves the result', asyn
   await page.mouse.down();
   await page.mouse.move(box!.x + 180, box!.y + 135, { steps: 8 });
   await page.mouse.up();
-  await page.waitForTimeout(700);
+  await waitForDrawnStitches(page);
+  expect((await readStored()).filled).toBeGreaterThan(2);
   const drawn = await readStored();
-  expect(drawn.filled).toBeGreaterThan(2);
 
   // なぞり描き1回分がまとめて取り消され、その前のタップは残る。
   await undo.click();
   await expect(page.getByRole('status').filter({ hasText: '元に戻しました' })).toBeVisible();
-  await page.waitForTimeout(700);
-  expect((await readStored()).filled).toBe(1);
+  await expect.poll(async () => (await readStored()).filled).toBe(1);
   await expect(redo).toBeEnabled();
 
   await page.keyboard.press('ControlOrMeta+Shift+z');
-  await page.waitForTimeout(700);
-  expect((await readStored()).filled).toBe(drawn.filled);
+  await expect.poll(async () => (await readStored()).filled).toBe(drawn.filled);
 
   await page.getByRole('button', { name: '盤面' }).click();
   await page.getByRole('button', { name: '上に段' }).click();
   await page.getByRole('button', { name: '閉じる' }).click();
-  await page.waitForTimeout(700);
-  expect((await readStored()).rows).toBe(21);
+  await expect.poll(async () => (await readStored()).rows).toBe(21);
 
   await page.keyboard.press('ControlOrMeta+z');
-  await page.waitForTimeout(700);
-  expect(await readStored()).toEqual({ filled: drawn.filled, rows: 20 });
+  await expect.poll(readStored).toEqual({ filled: drawn.filled, rows: 20 });
 
   await page.keyboard.press('ControlOrMeta+z');
   await page.keyboard.press('ControlOrMeta+z');
   await expect(undo).toBeDisabled();
-  await page.waitForTimeout(700);
-  expect(await readStored()).toEqual({ filled: 0, rows: 20 });
+  await expect.poll(readStored).toEqual({ filled: 0, rows: 20 });
 });
 
 test('keeps the cast-on row when the row count grows and shrinks again', async ({ page }) => {
-  const readFilled = () => page.evaluate(async () => {
-    const request = indexedDB.open('knitting-editor-v2');
-    const db = await new Promise<IDBDatabase>((resolve) => { request.onsuccess = () => resolve(request.result); });
-    const transaction = db.transaction('documents');
-    const get = transaction.objectStore('documents').getAll();
-    const documents = await new Promise<Array<{ cells: ArrayBuffer; rows: number; cols: number }>>((resolve) => { get.onsuccess = () => resolve(get.result); });
-    const cells = new Uint32Array(documents[0].cells);
-    const indexes: number[] = [];
-    cells.forEach((value, index) => { if (value) indexes.push(index); });
-    return { indexes, rows: documents[0].rows, cols: documents[0].cols };
-  });
+  const readFilled = async () => {
+    const { filled: indexes, rows, cols } = await storedCells(page);
+    return { indexes, rows, cols };
+  };
 
   const canvas = page.getByLabel('編み図編集盤面');
   const box = await canvas.boundingBox();
   await page.mouse.click(box!.x + 75, box!.y + 75);
-  await page.waitForTimeout(700);
+  await expect.poll(async () => (await readFilled()).indexes.length).toBe(1);
   const before = await readFilled();
-  expect(before.indexes.length).toBe(1);
 
   // 盤面設定の段数変更は増減のどちらでも上端側で行う。往復しても段番号は変わらない。
   await page.getByRole('button', { name: '盤面' }).click();
   await page.getByLabel('段数').fill('25');
   await page.getByRole('button', { name: '変更' }).click();
-  await page.waitForTimeout(700);
+  await expect.poll(async () => (await readFilled()).rows).toBe(25);
   await page.getByLabel('段数').fill('20');
   await page.getByRole('button', { name: '変更' }).click();
-  await page.waitForTimeout(700);
-
-  const after = await readFilled();
-  expect(after.rows).toBe(before.rows);
-  expect(after.cols).toBe(before.cols);
-  expect(after.indexes).toEqual(before.indexes);
+  await expect.poll(readFilled).toEqual(before);
 });
 
 test('does not overwrite a renamed chart with a pending autosave', async ({ page }) => {
@@ -560,17 +681,12 @@ test('does not overwrite a renamed chart with a pending autosave', async ({ page
 
   await page.getByRole('button', { name: '編み図' }).click();
   page.once('dialog', async (dialog) => dialog.accept('名称変更後'));
-  await page.getByRole('button', { name: '名前変更' }).click();
-  await page.waitForTimeout(700);
-
-  const names = await page.evaluate(async () => {
-    const request = indexedDB.open('knitting-editor-v2');
-    const db = await new Promise<IDBDatabase>((resolve) => { request.onsuccess = () => resolve(request.result); });
-    const get = db.transaction('documents').objectStore('documents').getAll();
-    const documents = await new Promise<Array<{ name: string }>>((resolve) => { get.onsuccess = () => resolve(get.result); });
-    return documents.map((document) => document.name);
-  });
-  expect(names).toContain('名称変更後');
+  await page.getByRole('button', { name: '新しい編み図の名称を変更', exact: true }).click();
+  await expect.poll(async () => {
+    const { name, filled } = await storedCells(page);
+    return { name, filled: filled.length };
+  }).toEqual({ name: '名称変更後', filled: 1 });
+  await expect(page.locator('.app-document-name')).not.toContainText('保存中');
 });
 
 test('keeps header actions visible when text is enlarged in landscape', async ({ page }) => {
@@ -627,7 +743,7 @@ test('describes the board and the current mode for assistive technology', async 
 for (const action of ['switch', 'restore'] as const) {
   test(`preserves unsaved edits when ${action} cannot save`, async ({ page }) => {
     await page.getByRole('button', { name: '編み図', exact: true }).click();
-    await page.getByRole('button', { name: '複製', exact: true }).click();
+    await page.getByRole('button', { name: '新しい編み図を複製', exact: true }).click();
     await expect(page.locator('.document')).toHaveCount(2);
     await page.getByRole('button', { name: '閉じる', exact: true }).click();
     await page.evaluate(() => {
@@ -663,7 +779,7 @@ for (const action of ['switch', 'restore'] as const) {
 
 test('explains why a switch is blocked by an edit that lands during the save', async ({ page }) => {
   await page.getByRole('button', { name: '編み図', exact: true }).click();
-  await page.getByRole('button', { name: '複製', exact: true }).click();
+  await page.getByRole('button', { name: '新しい編み図を複製', exact: true }).click();
   await expect(page.locator('.document')).toHaveCount(2);
   await page.getByRole('button', { name: '閉じる', exact: true }).click();
 
@@ -780,6 +896,51 @@ test('follows the dark appearance around the board but keeps the chart ground', 
 
   await page.goto('/guide/');
   await expect.poll(pageBackground).toBe('rgb(23, 28, 25)');
+});
+
+test('keeps cleared size inputs empty and applies dimensions on change', async ({ page }) => {
+  await page.getByRole('button', { name: '盤面', exact: true }).click();
+  for (const [label, value] of [['段数', '25'], ['列数', '30']]) {
+    const field = page.getByLabel(label, { exact: true });
+    await field.fill('');
+    await expect(field).toHaveValue('');
+    await field.pressSequentially(value);
+    await expect(field).toHaveValue(value);
+  }
+  await expect(page.getByLabel('編み図編集盤面')).toHaveAttribute('aria-label', /20段、20目/);
+  await page.getByRole('button', { name: '変更', exact: true }).click();
+  await expect(page.getByLabel('編み図編集盤面')).toHaveAttribute('aria-label', /25段、30目/);
+  for (const label of ['段数', '列数']) {
+    const field = page.getByLabel(label, { exact: true });
+    for (const value of ['', '0']) {
+      await field.fill(value);
+      await page.getByRole('button', { name: '変更', exact: true }).click();
+      await expect(page.getByLabel('編み図編集盤面')).toHaveAttribute('aria-label', /25段、30目/);
+    }
+    await field.fill(label === '段数' ? '25' : '30');
+  }
+});
+
+test('shows stitch and rectangular block dimensions with both units', async ({ page }) => {
+  await page.getByRole('button', { name: '編み目記号を選ぶ' }).click();
+  const picker = page.getByRole('dialog', { name: '編み目記号' });
+  await expect(picker.getByRole('button', { name: /^すべり目 / }).locator('small')).toHaveText('2段×1目');
+  await expect(picker.getByRole('button', { name: /^右上3目交差 / }).locator('small')).toHaveText('1段×6目');
+  await picker.getByRole('button', { name: '閉じる' }).click();
+  await page.getByRole('button', { name: '範囲', exact: true }).click();
+  // 既存のマウスによる範囲選択と同じ操作で、横長の範囲を作る。
+  const box = (await page.getByLabel('編み図編集盤面').boundingBox())!;
+  await page.mouse.move(box.x + 75, box.y + 75);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 195, box.y + 105);
+  await page.mouse.up();
+  await page.getByRole('button', { name: 'ブロック', exact: true }).click();
+  page.once('dialog', async (dialog) => dialog.accept('横長ブロック'));
+  await page.getByRole('button', { name: '選択範囲をブロック保存' }).click();
+  const size = page.locator('.block-list > div').filter({ hasText: '横長ブロック' }).locator('small');
+  await expect(size).toHaveText(/^\d+段×\d+目$/);
+  const dimensions = (await size.innerText()).match(/^(\d+)段×(\d+)目$/)!;
+  expect(Number(dimensions[2])).toBeGreaterThan(Number(dimensions[1]));
 });
 
 test('reports a PDF worker load failure and clears it when retry succeeds', async ({ page }) => {

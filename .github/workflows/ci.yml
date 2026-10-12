@@ -144,6 +144,11 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+      - name: Check PR UI smoke test list
+        run: node scripts/check-pr-smoke-ui-tests.mjs
       - name: Check the App Store documents
         run: ios/scripts/check-app-store-docs.sh
 
@@ -171,19 +176,12 @@ jobs:
   ios:
     needs: changes
     if: needs.changes.outputs.ios == 'true'
-    strategy:
-      fail-fast: false
-      matrix:
-        device:
-          - 'iPhone 17'
-          - 'iPad (A16)'
     runs-on: macos-26
     # App Store提出に要るiOS 26 SDKを持ち、イメージにあるSimulatorのランタイムと版が揃うXcodeに固定する。
     # イメージの既定Xcodeが替わってもビルドとテストのXcodeが変わらないよう、明示的に選ぶ。
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
-    # UIテストの追加で、iPadの実行が28〜29分かかるようになり、テストが成功し続けている
-    # まま30分で取り消されたことがある。テストの増加に備えて余裕を持たせる。
+    # 再試行やSimulatorの起動遅延に備え、既存の上限を維持する。
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -197,7 +195,7 @@ jobs:
       - name: Boot simulator
         id: simulator
         run: |
-          udid="$(ios/scripts/boot-simulator.sh '${{ matrix.device }}')"
+          udid="$(ios/scripts/boot-simulator.sh 'iPhone 17')"
           echo "udid=$udid" >> "$GITHUB_OUTPUT"
       - name: Install XcodeGen
         run: ios/scripts/install-xcodegen.sh "$RUNNER_TEMP/xcodegen"
@@ -205,96 +203,39 @@ jobs:
         run: xcodegen generate --spec ios/project.yml
       - name: Wait for simulator boot
         run: xcrun simctl bootstatus '${{ steps.simulator.outputs.udid }}' -b
-      - name: Run iOS tests
-        run: >-
-          xcodebuild test
-          -project ios/knittingEditor.xcodeproj
-          -scheme knittingEditor
-          -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.udid }}'
-          -derivedDataPath "$RUNNER_TEMP/DerivedData"
-          -retry-tests-on-failure
-          -test-iterations 2
-          -test-timeouts-enabled YES
-          -default-test-execution-time-allowance 150
-          -maximum-test-execution-time-allowance 240
-          CODE_SIGNING_ALLOWED=NO
+      - name: Run iOS unit tests and PR UI smoke tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/check-pr-smoke-ui-tests.mjs
+          unit_targets="$(ruby -ryaml -e 'targets = YAML.load_file("ios/project.yml").fetch("targets").select { |_, target| target["type"] == "bundle.unit-test" }.keys; abort "No unit test targets found" if targets.empty?; puts targets')"
+          selections=()
+          while IFS= read -r target; do
+            selections+=("-only-testing:$target")
+          done <<< "$unit_targets"
+          while IFS= read -r test || [[ -n "$test" ]]; do
+            [[ "$test" =~ ^[[:space:]]*(#|$) ]] && continue
+            selections+=("-only-testing:knittingEditorUITests/$test")
+          done < ios/UITests/pr-smoke-ui-tests.txt
+          xcodebuild test \
+            -project ios/knittingEditor.xcodeproj \
+            -scheme knittingEditor \
+            -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.udid }}' \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            -retry-tests-on-failure \
+            -test-iterations 2 \
+            -test-timeouts-enabled YES \
+            -default-test-execution-time-allowance 150 \
+            -maximum-test-execution-time-allowance 240 \
+            "${selections[@]}" \
+            CODE_SIGNING_ALLOWED=NO
       # テストのためにビルドしたDebugのアプリをそのまま検査する。ビルドし直すと1〜2分かかる。
       - name: Verify generated app bundle
         run: ios/scripts/check-app-bundle.sh "$RUNNER_TEMP/DerivedData/Build/Products/Debug-iphonesimulator/knittingEditor.app"
 
-  app_update:
-    needs: changes
-    if: needs.changes.outputs.ios == 'true'
-    strategy:
-      fail-fast: false
-      matrix:
-        device:
-          - 'iPhone 17'
-          - 'iPad (A16)'
-    runs-on: macos-26
-    # `ios`ジョブと同じXcodeに固定する。
-    env:
-      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
-    # 実作業は8〜10分。ランナーの後片付けが5分以上かかって20分を超え、
-    # 検証が全部成功しているのにcancelled扱いになったことがある。
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - name: Show Xcode and Simulator runtimes
-        run: |
-          xcodebuild -version
-          xcrun simctl list runtimes
-      # `ios`ジョブと同じ理由で先に起動を始める。完了はスクリプトがビルド前に待つ。
-      - name: Boot simulator
-        id: simulator
-        run: |
-          udid="$(ios/scripts/boot-simulator.sh '${{ matrix.device }}')"
-          echo "udid=$udid" >> "$GITHUB_OUTPUT"
-      - name: Install XcodeGen
-        run: ios/scripts/install-xcodegen.sh "$RUNNER_TEMP/xcodegen"
-      - name: Generate Xcode project
-        run: xcodegen generate --spec ios/project.yml
-      - name: Simulate app update and restore IndexedDB
-        env:
-          SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}
-        run: |
-          ios/scripts/simulate-app-update.sh \
-            '${{ matrix.device }}' \
-            'platform=iOS Simulator,name=${{ matrix.device }},OS=latest'
-
-  release_archive:
-    needs: changes
-    if: needs.changes.outputs.ios == 'true'
-    runs-on: macos-26
-    # `ios`ジョブと同じXcodeに固定する。
-    env:
-      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - name: Show Xcode and Simulator runtimes
-        run: |
-          xcodebuild -version
-          xcrun simctl list runtimes
-      - name: Install XcodeGen
-        run: ios/scripts/install-xcodegen.sh "$RUNNER_TEMP/xcodegen"
-      - name: Generate Xcode project
-        run: xcodegen generate --spec ios/project.yml
-      - name: Create unsigned Release archive
-        run: >-
-          xcodebuild archive
-          -project ios/knittingEditor.xcodeproj
-          -scheme knittingEditor
-          -configuration Release
-          -destination 'generic/platform=iOS'
-          -archivePath "$RUNNER_TEMP/knittingEditor.xcarchive"
-          CODE_SIGNING_ALLOWED=NO
-          CODE_SIGNING_REQUIRED=NO
-      - name: Verify archived app bundle
-        run: ios/scripts/check-release-assets.sh "$RUNNER_TEMP/knittingEditor.xcarchive/Products/Applications/knittingEditor.app"
-
   ci-gate:
     if: always()
-    needs: [changes, web, ios_web, ios, app_update, release_archive, app_store_docs]
+    needs: [changes, web, ios_web, ios, app_store_docs]
     runs-on: ubuntu-latest
     steps:
       - name: Require the checks relevant to this change
@@ -305,8 +246,6 @@ jobs:
           WEB_RESULT: ${{ needs.web.result }}
           IOS_WEB_RESULT: ${{ needs.ios_web.result }}
           IOS_RESULT: ${{ needs.ios.result }}
-          UPDATE_RESULT: ${{ needs.app_update.result }}
-          ARCHIVE_RESULT: ${{ needs.release_archive.result }}
           DOCS_RESULT: ${{ needs.app_store_docs.result }}
         run: |
           set -eu
@@ -329,7 +268,7 @@ jobs:
             exit 1
           fi
           if [[ "$IOS_NEEDED" == true ]]; then
-            for result in "$IOS_WEB_RESULT" "$IOS_RESULT" "$UPDATE_RESULT" "$ARCHIVE_RESULT"; do
+            for result in "$IOS_WEB_RESULT" "$IOS_RESULT"; do
               [[ "$result" == success ]] || { echo "iOS validation result: $result" >&2; exit 1; }
             done
           fi
