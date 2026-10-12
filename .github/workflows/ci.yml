@@ -144,6 +144,11 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+      - name: Check iPad UI test skip list
+        run: node scripts/check-ipad-ui-tests.mjs
       - name: Check the App Store documents
         run: ios/scripts/check-app-store-docs.sh
 
@@ -206,6 +211,7 @@ jobs:
       - name: Wait for simulator boot
         run: xcrun simctl bootstatus '${{ steps.simulator.outputs.udid }}' -b
       - name: Run iOS tests
+        if: matrix.device == 'iPhone 17'
         run: >-
           xcodebuild test
           -project ios/knittingEditor.xcodeproj
@@ -218,6 +224,30 @@ jobs:
           -default-test-execution-time-allowance 150
           -maximum-test-execution-time-allowance 240
           CODE_SIGNING_ALLOWED=NO
+      - name: Run iPad tests with explicit UI exclusions
+        if: matrix.device == 'iPad (A16)'
+        shell: bash
+        run: |
+          set -euo pipefail
+          exclusions=()
+          # 除外指定だけを渡すため、新規UIテストと単体テストも既定で全件実行する。
+          while IFS= read -r test || [[ -n "$test" ]]; do
+            [[ "$test" =~ ^[[:space:]]*(#|$) ]] && continue
+            [[ "$test" =~ ^[A-Za-z_][A-Za-z0-9_]*/test[A-Za-z0-9_]+$ ]] || { echo "Invalid iPad UI test: $test" >&2; exit 1; }
+            exclusions+=("-skip-testing:knittingEditorUITests/$test")
+          done < ios/UITests/ipad-skipped-ui-tests.txt
+          xcodebuild test \
+            -project ios/knittingEditor.xcodeproj \
+            -scheme knittingEditor \
+            -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.udid }}' \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            -retry-tests-on-failure \
+            -test-iterations 2 \
+            -test-timeouts-enabled YES \
+            -default-test-execution-time-allowance 150 \
+            -maximum-test-execution-time-allowance 240 \
+            ${exclusions[@]+"${exclusions[@]}"} \
+            CODE_SIGNING_ALLOWED=NO
       # テストのためにビルドしたDebugのアプリをそのまま検査する。ビルドし直すと1〜2分かかる。
       - name: Verify generated app bundle
         run: ios/scripts/check-app-bundle.sh "$RUNNER_TEMP/DerivedData/Build/Products/Debug-iphonesimulator/knittingEditor.app"

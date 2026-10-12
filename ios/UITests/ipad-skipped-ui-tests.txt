@@ -1,0 +1,26 @@
+# iPadでは全テストを実行し、端末で挙動が変わらない以下のテストだけ除外する。
+# 空リストも有効（除外なし）。新規テストは既定で両端末に追加される。
+# WebViewコンテナの存在だけを確認し、端末別の配置検証はない。
+KnittingEditorUITests/testLaunchShowsLocalEditorContainer
+# 同じタッチ操作で履歴のデータ変化を確認する。
+KnittingEditorUITests/testUndoAndRedoRestoreBoardEdits
+# 編集データの再起動復元を確認し、配置の検証はない。
+KnittingEditorUITests/testEditAndRelaunchRestoresLocalDocument
+# 編み図切替と自動保存のデータ検証で端末別の分岐はない。
+KnittingEditorUITests/testDocumentSwitchAutosavesEachDocument
+# 更新用データの作成・保存だけを検証する（app_update両端末で継続）。
+KnittingEditorUITests/testSeedDocumentForAppUpdateProbe
+# 更新後の記号データ復元だけを検証する（app_update両端末で継続）。
+KnittingEditorUITests/testUpdatedAppRestoresSeedDocument
+# 出力から共通の保存確認アラートへの到達だけで共有シートは開かない。
+KnittingEditorUITests/testPngAndPdfExportsReachNativeFileActions
+# 名前のスラッシュ処理と共通の保存確認アラートへの到達を検証する。
+KnittingEditorUITests/testSlashDocumentNameReachesAllNativeExportActions
+# 名前の連続ドット処理を検証し、共有シートは開かない。
+KnittingEditorUITests/testRepeatedDotsDocumentNameReachesAllNativeExportActions
+# 名前のバックスラッシュ処理を検証し、共有シートは開かない。
+KnittingEditorUITests/testBackslashDocumentNameReachesAllNativeExportActions
+# 長い名前の出力処理を検証し、配置のアサーションはない。
+KnittingEditorUITests/testLongDocumentNameReachesAllNativeExportActions
+# 削除確認・取消・データ削除の共通フロー（座標は同名ボタンの識別用）。
+KnittingEditorUITests/testDeleteDocumentConfirmationCancelsThenDeletes
