@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  NATIVE_EXPORT_FINISHED_EVENT, listenNativeBackupSelected, notifyNativeReady, requestNativeBackupOpen, saveBlobWithNativeBridge,
+  NATIVE_EXPORT_FINISHED_EVENT, listenNativeError, listenNativeBackupSelected, notifyNativeReady, requestNativeBackupOpen, saveBlobWithNativeBridge,
 } from './nativeBridge';
 
 function finishNativeExport(detail: unknown) {
@@ -53,6 +53,21 @@ describe('native bridge', () => {
     const { outcome, id } = await startNativeExport();
     finishNativeExport({ id, saved: false });
     await expect(outcome!.saved).resolves.toBe(false);
+  });
+
+  it('reports a share error once and never treats it as saved', async () => {
+    const notice = vi.fn();
+    const remove = listenNativeError(notice);
+    try {
+      const { outcome, id } = await startNativeExport();
+      finishNativeExport({ id, saved: true, status: 'error' });
+      finishNativeExport({ id, saved: true, status: 'error' });
+      finishNativeExport({ id: 'unknown', saved: false, status: 'error' });
+      await expect(outcome!.saved).resolves.toBe(false);
+      expect(notice).toHaveBeenCalledExactlyOnceWith('共有に失敗しました。もう一度共有を試してください。');
+    } finally {
+      remove();
+    }
   });
 
   it('matches each result to its own request and ignores unknown or malformed results', async () => {

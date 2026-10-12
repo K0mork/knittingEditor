@@ -142,24 +142,33 @@ export class Board {
       bottom: clampRow(Math.max(rect.top, rect.bottom)),
       right: clampCol(Math.max(rect.left, rect.right)),
     };
-    let changed = true;
-    while (changed) {
-      changed = false;
-      for (let row = normalized.top; row <= normalized.bottom; row++) {
-        for (let col = normalized.left; col <= normalized.right; col++) {
+    // 各走査の境界を固定し、次の周では新しく加わった帯だけを調べる。
+    // 盤面は走査中に変わらないので、一度調べたセルを再訪する必要はない。
+    const scan = (top: number, left: number, bottom: number, right: number): void => {
+      if (top > bottom || left > right) return;
+      for (let row = top; row <= bottom; row++) {
+        for (let col = left; col <= right; col++) {
           const anchor = this.anchorAt(row, col);
           if (!anchor) continue;
           const definition = this.definitionAt(row, col)!;
-          const nextTop = Math.min(normalized.top, anchor.row);
-          const nextLeft = Math.min(normalized.left, anchor.col);
-          const nextBottom = Math.max(normalized.bottom, anchor.row + definition.height - 1);
-          const nextRight = Math.max(normalized.right, anchor.col + definition.width - 1);
-          if (nextTop !== normalized.top || nextLeft !== normalized.left || nextBottom !== normalized.bottom || nextRight !== normalized.right) {
-            Object.assign(normalized, { top: nextTop, left: nextLeft, bottom: nextBottom, right: nextRight });
-            changed = true;
-          }
+          normalized.top = Math.min(normalized.top, anchor.row);
+          normalized.left = Math.min(normalized.left, anchor.col);
+          normalized.bottom = Math.max(normalized.bottom, anchor.row + definition.height - 1);
+          normalized.right = Math.max(normalized.right, anchor.col + definition.width - 1);
         }
       }
+    };
+    let scanned = { ...normalized };
+    scan(scanned.top, scanned.left, scanned.bottom, scanned.right);
+    while (scanned.top !== normalized.top || scanned.left !== normalized.left
+      || scanned.bottom !== normalized.bottom || scanned.right !== normalized.right) {
+      const next = { ...normalized };
+      // 上下の帯は新しい全幅、左右の帯は走査済みの高さに限り、角の重複を避ける。
+      scan(next.top, next.left, scanned.top - 1, next.right);
+      scan(scanned.bottom + 1, next.left, next.bottom, next.right);
+      scan(scanned.top, next.left, scanned.bottom, scanned.left - 1);
+      scan(scanned.top, scanned.right + 1, scanned.bottom, next.right);
+      scanned = next;
     }
     return normalized;
   }

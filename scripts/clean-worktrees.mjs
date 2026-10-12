@@ -32,11 +32,13 @@ export function parseWorktrees(porcelain) {
  *   facts.inMain     先端が`origin/main`に含まれる
  *   facts.pr         同じ名前のブランチから出た最新のPR（{ number, state, headIsTipOrDescendant }）、無ければnull
  *   facts.dirty      未コミットの変更がある（worktreeのみ）
+ *   facts.processCwdsKnown プロセスの作業場所を完全に取得できた（worktreeのみ）
  *   facts.inUse      どれかのプロセスが作業場所にしている（worktreeのみ）
  * 戻り値: { remove: boolean, reason: string }
  */
-export function decide({ inMain, pr, dirty = false, inUse = false }) {
+export function decide({ inMain, pr, dirty = false, inUse = false, processCwdsKnown = true }) {
   if (dirty) return { remove: false, reason: 'uncommitted changes' };
+  if (!processCwdsKnown) return { remove: false, reason: 'process working directories could not be determined' };
   if (inUse) return { remove: false, reason: 'in use by a running process' };
   if (pr?.state === 'OPEN') return { remove: false, reason: `PR #${pr.number} is open` };
   if (inMain) return { remove: true, reason: pr ? `PR #${pr.number} ${pr.state.toLowerCase()}, tip is in origin/main` : 'tip is in origin/main' };
@@ -66,7 +68,7 @@ function tryRun(args) {
   try {
     return { ok: true, output: run(args) };
   } catch (error) {
-    return { ok: false, output: String(error.stderr ?? error.message).trim() };
+    return { ok: false, output: String(error.stdout ?? '').trim(), error: String(error.stderr || error.message).trim() };
   }
 }
 
@@ -84,17 +86,20 @@ function realPath(path) {
 
 function pullRequestFor(branch, tip) {
   const result = tryRun(['gh', 'pr', 'list', '--state', 'all', '--head', branch, '--limit', '1', '--json', 'number,state,headRefOid']);
-  if (!result.ok) throw new Error(`gh pr list failed for ${branch}: ${result.output}`);
+  if (!result.ok) throw new Error(`gh pr list failed for ${branch}: ${result.error}`);
   const [pr] = JSON.parse(result.output || '[]');
   if (!pr) return null;
   const headKnown = tryRun(['git', 'cat-file', '-e', `${pr.headRefOid}^{commit}`]).ok;
   return { number: pr.number, state: pr.state, headIsTipOrDescendant: pr.headRefOid === tip || (headKnown && isAncestor(tip, pr.headRefOid)) };
 }
 
-function processCwds() {
+export function processCwds() {
   const result = tryRun(['lsof', '-a', '-d', 'cwd', '-F', 'n']);
   // lsofは権限の無いプロセスがあると終了コード1になるが、読めた分は出力される。
-  return parseLsofCwds(result.ok ? result.output : '').map(realPath);
+  return {
+    cwds: [...parseLsofCwds(result.output), process.cwd()].map(realPath),
+    complete: result.ok,
+  };
 }
 
 function main() {
@@ -102,7 +107,7 @@ function main() {
   run(['git', 'fetch', '--prune', '--quiet', 'origin']);
   const [mainCheckout, ...worktrees] = parseWorktrees(run(['git', 'worktree', 'list', '--porcelain']));
   // このスクリプト自身の作業場所も「使用中」に含める。実行中のworktreeは消さない。
-  const cwds = processCwds();
+  const { cwds, complete } = processCwds();
   const kept = new Set(mainCheckout.branch ? [mainCheckout.branch, 'main'] : ['main']);
   const actions = [];
 
@@ -112,6 +117,7 @@ function main() {
       inMain: isAncestor(tip, 'origin/main'),
       pr: worktree.branch ? pullRequestFor(worktree.branch, tip) : null,
       dirty: run(['git', '-C', worktree.path, 'status', '--porcelain']) !== '',
+      processCwdsKnown: complete,
       inUse: isPathInUse(realPath(worktree.path), cwds),
     };
     const decision = decide(facts);
