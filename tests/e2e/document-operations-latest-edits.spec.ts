@@ -32,6 +32,9 @@ for (const action of ['reselect', 'duplicate'] as const) {
     if (action === 'duplicate') {
       await expect(page.locator('.document')).toHaveCount(2);
       await page.locator('.document').filter({ hasText: 'のコピー' }).locator('.document-open').click();
+      // 元の編み図も記号2個なので、切り替えの完了を名前で待ってから描く。
+      // 切り替え前に描くと元の編み図に入り、保存中の編集として切り替えが取りやめられる。
+      await expect(page.locator('.app-document-name')).toContainText('のコピー');
       await expect(canvas).toHaveAttribute('aria-label', /記号2個/);
       const box = (await canvas.boundingBox())!;
       await page.mouse.click(box.x + 195, box.y + 135);
