@@ -112,6 +112,27 @@ describe('App background save registration', () => {
     expect(save).toHaveBeenCalledTimes(1);
   });
 
+  it('preserves distinct cell positions while switching between two charts before autosave', async () => {
+    const second = await storage.createDocument('切替先', 4, 4);
+    await edit(1, 1, '#123456');
+    const firstCells = probe.editor!.session.board!.cells.slice();
+    await act(async () => { expect(await probe.editor!.session.switchDocument(second)).toBe('switched'); });
+    expect(probe.editor!.session.board!.occupiedStitchCount).toBe(0);
+    await edit(0, 3, '#abcdef');
+    await edit(3, 0, '#abcdef');
+    const secondCells = probe.editor!.session.board!.cells.slice();
+    const first = (await storage.listDocuments()).find((chart) => chart.id === documentId)!;
+    await act(async () => { expect(await probe.editor!.session.switchDocument(first)).toBe('switched'); });
+    expect(probe.editor!.session.board!.cells).toEqual(firstCells);
+    const charts = await storage.listDocuments();
+    const savedSecond = charts.find((chart) => chart.id === second.id)!;
+    expect(storage.boardFromDocument(charts.find((chart) => chart.id === documentId)!).cells).toEqual(firstCells);
+    expect(storage.boardFromDocument(savedSecond).cells).toEqual(secondCells);
+    await act(async () => { expect(await probe.editor!.session.switchDocument(savedSecond)).toBe('switched'); });
+    expect(probe.editor!.session.board!.cells).toEqual(secondCells);
+    expect(await storage.getSetting('activeDocumentId')).toBe(second.id);
+  });
+
   it('returns false while an edit arrives during its write and saves that edit on the next flush', async () => {
     const persist = persistDocument;
     let release!: () => void;

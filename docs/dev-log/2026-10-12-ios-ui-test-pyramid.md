@@ -1,0 +1,9 @@
+# 2026-10-12 — iOS UIテストをネイティブ統合の検証へ集約
+
+- 影響: 製品の挙動は変更しない。履歴・寸法入力・文書切替・行操作・Reactダイアログ・ファイル名規則を下位層で検証し、XCUITestではWKWebView、キーボード、Files/共有、Dynamic Type、回転、再起動・更新復元を検証する。
+- 主なファイル: `ios/UITests/KnittingEditorUITests/KnittingEditorUITests.swift`、`ios/UITests/pr-smoke-ui-tests.txt`、`ios/Tests/KnittingEditorAppTests/NativeExportResultTests.swift`、`ios/Web/src/App.backgroundSave.test.tsx`、`ios/Web/src/AppDialog.test.tsx`、`packages/editor-core/ui/EditorView.test.tsx`、`packages/editor-core/ui/useEditorController.test.tsx`。
+- テスト: UI登録40→28件（通常自動実行35→23件、手動/撮影/更新用5件を維持）、PR smoke11→11件。特殊名のUIは1件を維持しSwiftに4名×3形式のdecode/実ファイル作成を追加。全MIMEの共有完了/キャンセル/エラーをSwiftで追加。iOS Webに2文書の異なるセル配置の保存・切替とprompt背景操作を追加。共有は縦向きでPNG/PDF/個別/全データ、横向きで共通native経路をPNGで確認。入力フォーカスと文字選択、最大文字の主要操作と保存操作を各1起動へ統合。
+- 所要時間: 提供iPadログ37件の合計1154.883秒→推定829.478秒、約325秒（5分25秒、28.2%）削減。ログにない3件は除外。移管削除296.410秒、起動2回分13.954秒と横共有2経路67.712秒を削減し、全データ共有30.100秒と復元Picker22.571秒を加算した代理値による推定。変更後UIは未実測で、起動を含む経路時間の比例配分には不確実性がある。
+- 検証（Node 24）: `npm run typecheck`、`npm test`（476件）、iOS Webの型検査とテスト（111件）、`node scripts/check-pr-smoke-ui-tests.mjs`（11件）、`npm test -- scripts/`（85件）、`npm run test:e2e`（342件成功、失敗0件）、`git diff --check`が成功。`xcodegen generate`で`project.pbxproj`に差分なし。iOS 26.5のSimulator（iPhone 17・iPad (A16)、手元のXcode 27.0）で全テストをCIと同じ再試行・時間上限の設定で実行し、Swiftの単体テストは両端末とも86件（1件スキップ）が成功した。UIテストは、iPhoneで新しい`testRestorePickerDismissesBackToEditor`だけが失敗した（復元の選択画面を閉じたあとも保存・出力パネルが開いたままで、iPhoneではパネルが下の「保存」を覆うため）。パネルを閉じてから「保存」を確かめるように直し、iPhone・iPadで3回ずつ成功した。消した・まとめたUIテスト13件の確認は、それぞれ移した先のテスト（Playwright、Vitest、iOS Web、Swift）にあることを読んで確かめ、それらを実行して成功した。
+- 実測（手元、負荷が高くぶれがある）: UIテストの合計はiPhoneで約628秒、iPadで約714秒。変えていないUIテスト22件の比から手元はCIの約0.85倍の速さで、CIに換算するとiPadは約840秒（直近のCIの約1155秒から約27%短い）。縦向きの共有のテストはCI換算で約114秒で、時間上限150秒に収まる。PRで流す主要UIテスト（iPhone）は約372秒。
+- デプロイ影響: none。TestFlight/App Store/Pagesへ配布する挙動は変更しない。配信後の新しい操作確認は不要だが、マージ前の両端末full検証とマージ後のFull iOS validationの成功を確認する。
