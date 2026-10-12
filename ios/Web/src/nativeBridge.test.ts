@@ -120,6 +120,48 @@ describe('native bridge', () => {
     }
   });
 
+  it('passes on the guide section that native code attaches to a share error', async () => {
+    const notice = vi.fn();
+    const remove = listenNativeError(notice);
+    const photos = '写真に保存できませんでした。設定アプリの「棒針編み図」→「写真」で追加を許可してから、もう一度お試しください。';
+    try {
+      const denied = await startNativeExport();
+      finishNativeExport({ id: denied.id, saved: false, status: 'error', message: photos, guideSection: 'allow-photos' });
+      await expect(denied.outcome!.saved).resolves.toBe(false);
+      // ページ内の節の形でないものは、案内だけを出す。
+      for (const guideSection of ['', '#allow-photos', '../index.html', 'Allow', 1, 'a'.repeat(65)]) {
+        const malformed = await startNativeExport();
+        finishNativeExport({ id: malformed.id, saved: false, status: 'error', message: photos, guideSection });
+        await expect(malformed.outcome!.saved).resolves.toBe(false);
+      }
+      // 取りやめや成功には添えない。
+      const cancelled = await startNativeExport();
+      finishNativeExport({ id: cancelled.id, saved: false, status: 'cancelled', guideSection: 'allow-photos' });
+      await expect(cancelled.outcome!.saved).resolves.toBe(false);
+      expect(notice.mock.calls).toEqual([[photos, 'allow-photos'], ...Array.from({ length: 6 }, () => [photos])]);
+    } finally {
+      remove();
+    }
+  });
+
+  it('accepts a native error as text or as a message with a guide section', () => {
+    const notice = vi.fn();
+    const remove = listenNativeError(notice);
+    const dispatch = (detail: unknown) => window.dispatchEvent(new CustomEvent('knittingEditorNativeError', { detail }));
+    try {
+      dispatch('保存画面を表示できませんでした');
+      dispatch({ message: '案内', guideSection: 'allow-photos' });
+      dispatch({ message: '案内だけ', guideSection: 'javascript:alert(1)' });
+      dispatch({ message: '', guideSection: 'allow-photos' });
+      dispatch({ guideSection: 'allow-photos' });
+      dispatch('');
+      dispatch(null);
+      expect(notice.mock.calls).toEqual([['保存画面を表示できませんでした'], ['案内', 'allow-photos'], ['案内だけ']]);
+    } finally {
+      remove();
+    }
+  });
+
   it('matches each result to its own request and ignores unknown or malformed results', async () => {
     const postMessage = vi.fn();
     const first = await startNativeExport(postMessage);

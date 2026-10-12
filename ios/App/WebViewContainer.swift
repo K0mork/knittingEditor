@@ -127,9 +127,14 @@ final class WebViewModel {
     }
 
     /// 書き出しを保存・共有し終えたか、取りやめたかをWebへ返す（#122）。
-    func reportExportFinished(requestID: String, saved: Bool, status: NativeExportResult.Status? = nil, message: String? = nil) {
+    func reportExportFinished(
+        requestID: String,
+        saved: Bool,
+        status: NativeExportResult.Status? = nil,
+        notice: NativeExportResult.FailureNotice? = nil
+    ) {
         guard let webView,
-              let script = NativeExportResult.script(requestID: requestID, saved: saved, status: status, message: message) else { return }
+              let script = NativeExportResult.script(requestID: requestID, saved: saved, status: status, notice: notice) else { return }
         webView.evaluateJavaScript(script, completionHandler: nil)
     }
 
@@ -281,13 +286,15 @@ struct WebViewContainer: UIViewRepresentable {
         /// テストでは保存画面を出さずに用途を設定し、閉じたときの扱いを確かめる。
         var pickerPurpose: PickerPurpose?
         /// 書き出しの結果をWebへ返す。テストでは差し替えて、返した結果を確かめる。
-        var reportExportResult: (_ requestID: String, _ saved: Bool, _ status: NativeExportResult.Status?, _ message: String?) -> Void
+        var reportExportResult: (
+            _ requestID: String, _ saved: Bool, _ status: NativeExportResult.Status?, _ notice: NativeExportResult.FailureNotice?
+        ) -> Void
 
         init(model: WebViewModel, reviewRequestTracker: ReviewRequestTracker? = nil) {
             self.model = model
             self.reviewRequestTracker = reviewRequestTracker ?? ReviewRequestTracker()
-            reportExportResult = { [weak model] requestID, saved, status, message in
-                model?.reportExportFinished(requestID: requestID, saved: saved, status: status, message: message)
+            reportExportResult = { [weak model] requestID, saved, status, notice in
+                model?.reportExportFinished(requestID: requestID, saved: saved, status: status, notice: notice)
             }
         }
 
@@ -349,14 +356,34 @@ struct WebViewContainer: UIViewRepresentable {
                 decisionHandler(.cancel)
                 return
             }
-            if url.scheme == LocalWebSchemeHandler.scheme {
+            switch Self.navigationDecision(for: url, navigationType: navigationAction.navigationType) {
+            case .load:
                 decisionHandler(.allow)
-            } else if ["http", "https", "mailto"].contains(url.scheme?.lowercased()) {
-                UIApplication.shared.open(url)
+            case let .openExternally(destination):
+                UIApplication.shared.open(destination)
                 decisionHandler(.cancel)
-            } else {
+            case .cancel:
                 decisionHandler(.cancel)
             }
+        }
+
+        enum NavigationDecision: Equatable {
+            case load
+            case openExternally(URL)
+            case cancel
+        }
+
+        /// 同梱ページは読み込み、WebとメールのリンクはSafariとメールアプリで開く（#81）。
+        /// 使い方の`app-settings:`のリンクは、押されたときだけ設定アプリのこのアプリのページを開く（#208）。
+        nonisolated static func navigationDecision(for url: URL, navigationType: WKNavigationType) -> NavigationDecision {
+            let scheme = url.scheme?.lowercased()
+            if scheme == LocalWebSchemeHandler.scheme { return .load }
+            if ["http", "https", "mailto"].contains(scheme) { return .openExternally(url) }
+            if scheme == "app-settings", navigationType == .linkActivated,
+               let settings = URL(string: UIApplication.openSettingsURLString) {
+                return .openExternally(settings)
+            }
+            return .cancel
         }
 
         func webView(_ webView: WKWebView, didCommit navigation: WKNavigation?) {
@@ -539,26 +566,30 @@ struct WebViewContainer: UIViewRepresentable {
             finishPendingExport(
                 saved: false,
                 status: .error,
-                failureMessage: Self.shareFailureMessage(activityType: activityType, error: error)
+                failureNotice: Self.shareFailureNotice(activityType: activityType, error: error)
             )
         }
 
-        nonisolated static let shareFailedMessage = "共有に失敗しました。もう一度共有を試してください。"
-        nonisolated static let photosAddDeniedMessage = "写真に保存できませんでした。設定アプリの「棒針編み図」→「写真」で追加を許可してから、もう一度お試しください。"
+        nonisolated static let shareFailed = NativeExportResult.FailureNotice(message: "共有に失敗しました。もう一度共有を試してください。")
+        /// 使い方ページの「写真への保存を許可する」の節（`ios/Web/public/guide/index.html`の`id`）を開くボタンを添える。
+        nonisolated static let photosAddDenied = NativeExportResult.FailureNotice(
+            message: "写真に保存できませんでした。設定アプリの「棒針編み図」→「写真」で追加を許可してから、もう一度お試しください。",
+            guideSection: "allow-photos"
+        )
 
         /// 共有に失敗したときの案内（#208）。写真への追加を拒否されると、iOSは権限画面を出し直さないため、
         /// 「画像を保存」の失敗だけは設定アプリでの許可を案内する。
         /// 拒否されたときの「画像を保存」は`ALAssetsLibraryErrorDomain`のエラーを返し、その元のエラーが`PHPhotosError.accessUserDenied`になる。
-        nonisolated static func shareFailureMessage(activityType: UIActivity.ActivityType?, error: Error) -> String {
-            guard activityType == .saveToCameraRoll else { return shareFailedMessage }
+        nonisolated static func shareFailureNotice(activityType: UIActivity.ActivityType?, error: Error) -> NativeExportResult.FailureNotice {
+            guard activityType == .saveToCameraRoll else { return shareFailed }
             var current: NSError? = error as NSError
             while let nsError = current {
                 if nsError.domain == PHPhotosErrorDomain, nsError.code == PHPhotosError.Code.accessUserDenied.rawValue {
-                    return photosAddDeniedMessage
+                    return photosAddDenied
                 }
                 current = nsError.userInfo[NSUnderlyingErrorKey] as? NSError
             }
-            return shareFailedMessage
+            return shareFailed
         }
 
         /// 画面全体を基準にすると、iPadでポップオーバーの配置先が無くなる（#158）。
@@ -592,14 +623,18 @@ struct WebViewContainer: UIViewRepresentable {
 
         /// 書き出しを終え、一時ファイルを消して結果をWebへ返す（#122）。
         /// 保存・共有を終えたときだけ`saved`を真にし、Webはそのときだけ最後のバックアップ日時を記録する。
-        private func finishPendingExport(saved: Bool, status: NativeExportResult.Status? = nil, failureMessage: String? = nil) {
+        private func finishPendingExport(
+            saved: Bool,
+            status: NativeExportResult.Status? = nil,
+            failureNotice: NativeExportResult.FailureNotice? = nil
+        ) {
             guard let pendingExport else { return }
             self.pendingExport = nil
             try? FileManager.default.removeItem(at: pendingExport.directory)
             if let requestID = pendingExport.requestID {
-                reportExportResult(requestID, saved, status, failureMessage)
+                reportExportResult(requestID, saved, status, failureNotice)
             } else if status == .error {
-                model.presentError(failureMessage ?? Self.shareFailedMessage)
+                model.presentError((failureNotice ?? Self.shareFailed).message)
             }
             // 書き出しを保存・共有し終えた作業の区切りで、App Storeの評価の依頼を検討する（#84）。
             if saved {

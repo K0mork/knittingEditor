@@ -9,6 +9,7 @@ import App from './App';
 const mocks = vi.hoisted(() => ({
   save: vi.fn<() => Promise<SaveOutcome>>(), notify: vi.fn(), navigate: vi.fn(),
   command: undefined as ((command: NativeCommand) => void) | undefined,
+  nativeError: undefined as ((message: string, guideSection?: string) => void) | undefined,
 }));
 vi.mock('@knitting-editor/editor-core/ui/useEditorController', () => ({
   useEditorController: () => ({ session: { saveNow: mocks.save, canUndo: false, canRedo: false }, notify: mocks.notify }),
@@ -23,7 +24,8 @@ vi.mock('@knitting-editor/editor-core/ui/guideNavigation', async (importOriginal
 });
 vi.mock('./nativeBridge', () => ({
   listenNativeCommand: (listener: (command: NativeCommand) => void) => { mocks.command = listener; return () => {}; },
-  listenNativeBackupSelected: () => () => {}, listenNativeError: () => () => {},
+  listenNativeBackupSelected: () => () => {},
+  listenNativeError: (listener: (message: string, guideSection?: string) => void) => { mocks.nativeError = listener; return () => {}; },
   notifyNativeCommandState: () => {}, notifyNativeReady: () => {}, requestNativeBackupOpen: () => false,
 }));
 
@@ -65,3 +67,21 @@ for (const source of ['link', 'menu'] as const) {
     });
   });
 }
+
+describe('iOS native error', () => {
+  it('shows a plain toast without a guide section', async () => {
+    await act(async () => mocks.nativeError!('保存画面を表示できませんでした'));
+    expect(mocks.notify).toHaveBeenCalledExactlyOnceWith('保存画面を表示できませんでした');
+  });
+
+  it('adds a button that saves and opens the guide section', async () => {
+    mocks.save.mockResolvedValue('saved');
+    await act(async () => mocks.nativeError!('写真に保存できませんでした。', 'allow-photos'));
+    expect(mocks.notify).toHaveBeenCalledExactlyOnceWith('写真に保存できませんでした。', { label: 'やり方を見る', run: expect.any(Function) });
+    expect(mocks.navigate).not.toHaveBeenCalled();
+    const [, action] = mocks.notify.mock.calls[0] as [string, { run: () => void }];
+    await act(async () => action.run());
+    expect(mocks.save).toHaveBeenCalledTimes(1);
+    expect(mocks.navigate).toHaveBeenCalledExactlyOnceWith(new URL('/guide/#allow-photos', window.location.href).href);
+  });
+});

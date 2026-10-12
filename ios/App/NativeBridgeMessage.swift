@@ -109,13 +109,22 @@ enum NativeExportResult {
         case completed, cancelled, error
     }
 
+    /// 失敗したときにWebが出す案内（#208）。`guideSection`があれば、Webは使い方ページのその節（`/guide/#…`）を開くボタンを添える。
+    struct FailureNotice: Equatable {
+        let message: String
+        var guideSection: String?
+    }
+
     static let eventName = "knittingEditorNativeExportFinished"
 
-    /// `message`は失敗したときにWebが出す案内。無ければWebは既定の案内を出す。
-    static func script(requestID: String, saved: Bool, status: Status? = nil, message: String? = nil) -> String? {
+    /// `notice`が無ければ、失敗したときWebは既定の案内を出す。
+    static func script(requestID: String, saved: Bool, status: Status? = nil, notice: FailureNotice? = nil) -> String? {
         var detail: [String: Any] = ["id": requestID, "saved": saved]
         if let status { detail["status"] = status.rawValue }
-        if let message { detail["message"] = message }
+        if let notice {
+            detail["message"] = notice.message
+            if let guideSection = notice.guideSection { detail["guideSection"] = guideSection }
+        }
         guard let jsonData = try? JSONSerialization.data(withJSONObject: detail, options: [.sortedKeys]),
               let json = String(data: jsonData, encoding: .utf8) else { return nil }
         return "window.dispatchEvent(new CustomEvent('\(eventName)',{detail:\(json)}));"

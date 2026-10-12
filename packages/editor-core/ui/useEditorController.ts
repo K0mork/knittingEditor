@@ -70,7 +70,7 @@ export function useEditorController(options: EditorControllerOptions) {
   const [busy, setBusy] = useState<BusyTask>();
   const [initializationError, setInitializationError] = useState<string>();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { message, notify } = useNotifier();
+  const { message, notificationAction, notify } = useNotifier();
   const { panelRef, rememberTrigger } = usePanelFocus<HTMLElement>(panel !== undefined);
 
   const session = useEditorSession({
@@ -361,7 +361,7 @@ export function useEditorController(options: EditorControllerOptions) {
     session,
     changed, strokeChanged, commitStroke,
     undo, redo,
-    notify, message,
+    notify, message, notificationAction,
     initializationError, busy,
     selectedStitch, currentStitch, selectStitch, stitchPickerOpen, setStitchPickerOpen,
     selectedColor, setSelectedColor, selectColor, colorPickerOpen, setColorPickerOpen,

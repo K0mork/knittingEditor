@@ -66,14 +66,16 @@ final class NativeExportResultTests: XCTestCase {
         var reports: [(String, Bool)] = []
         var statuses: [NativeExportResult.Status?] = []
         var messages: [String?] = []
+        var guideSections: [String?] = []
 
         init() {
             let defaults = UserDefaults(suiteName: "NativeExportResultTests.\(UUID().uuidString)")!
             coordinator = WebViewContainer.Coordinator(model: model, reviewRequestTracker: ReviewRequestTracker(defaults: defaults))
-            coordinator.reportExportResult = { [unowned self] id, saved, status, message in
+            coordinator.reportExportResult = { [unowned self] id, saved, status, notice in
                 self.reports.append((id, saved))
                 self.statuses.append(status)
-                self.messages.append(message)
+                self.messages.append(notice?.message)
+                self.guideSections.append(notice?.guideSection)
             }
         }
 
@@ -149,6 +151,7 @@ final class NativeExportResultTests: XCTestCase {
             harness.assertFinished([("export-1", false)], directory: directory)
             XCTAssertEqual(harness.statuses, [.error])
             XCTAssertEqual(harness.messages, ["共有に失敗しました。もう一度共有を試してください。"])
+            XCTAssertEqual(harness.guideSections, [nil])
         }
         XCTAssertEqual(
             NativeExportResult.script(requestID: "export-1", saved: false, status: .error),
@@ -166,7 +169,7 @@ final class NativeExportResultTests: XCTestCase {
     func testShareFailureMessageExplainsSettingsOnlyWhenPhotosAdditionWasDenied() {
         let generic = "共有に失敗しました。もう一度共有を試してください。"
         let photos = "写真に保存できませんでした。設定アプリの「棒針編み図」→「写真」で追加を許可してから、もう一度お試しください。"
-        let message = WebViewContainer.Coordinator.shareFailureMessage
+        let message = { WebViewContainer.Coordinator.shareFailureNotice(activityType: $0, error: $1).message }
         XCTAssertEqual(message(.saveToCameraRoll, photosAddDenied), photos)
         XCTAssertEqual(message(.saveToCameraRoll, NSError(domain: PHPhotosErrorDomain, code: PHPhotosError.Code.accessUserDenied.rawValue)), photos)
         // 写真の保存でも、拒否以外の失敗は今までどおり。
@@ -189,8 +192,17 @@ final class NativeExportResultTests: XCTestCase {
             harness.messages,
             ["写真に保存できませんでした。設定アプリの「棒針編み図」→「写真」で追加を許可してから、もう一度お試しください。"]
         )
+        // Webは、この節を開く「やり方を見る」をトーストに添える。
+        XCTAssertEqual(harness.guideSections, ["allow-photos"])
+        XCTAssertNil(
+            WebViewContainer.Coordinator.shareFailureNotice(activityType: .saveToCameraRoll, error: NSError(domain: "test", code: 1)).guideSection
+        )
         XCTAssertEqual(
-            NativeExportResult.script(requestID: "export-1", saved: false, status: .error, message: "案内"),
+            NativeExportResult.script(requestID: "export-1", saved: false, status: .error, notice: .init(message: "案内", guideSection: "allow-photos")),
+            #"window.dispatchEvent(new CustomEvent('knittingEditorNativeExportFinished',{detail:{"guideSection":"allow-photos","id":"export-1","message":"案内","saved":false,"status":"error"}}));"#
+        )
+        XCTAssertEqual(
+            NativeExportResult.script(requestID: "export-1", saved: false, status: .error, notice: .init(message: "案内")),
             #"window.dispatchEvent(new CustomEvent('knittingEditorNativeExportFinished',{detail:{"id":"export-1","message":"案内","saved":false,"status":"error"}}));"#
         )
     }

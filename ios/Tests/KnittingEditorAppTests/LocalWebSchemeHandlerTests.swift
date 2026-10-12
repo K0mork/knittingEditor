@@ -3,6 +3,26 @@ import XCTest
 @testable import knittingEditor
 
 final class LocalWebSchemeHandlerTests: XCTestCase {
+    /// 使い方の「設定アプリを開く」は、押したときだけ設定アプリのこのアプリのページを開く（#208）。
+    @MainActor
+    func testGuideOpensThisAppsSettingsOnlyWhenTheLinkIsTapped() throws {
+        let decide = WebViewContainer.Coordinator.navigationDecision
+        let appSettings = try XCTUnwrap(URL(string: "app-settings:"))
+        let settings = try XCTUnwrap(URL(string: UIApplication.openSettingsURLString))
+        XCTAssertEqual(decide(appSettings, .linkActivated), .openExternally(settings))
+        for navigationType in [WKNavigationType.other, .formSubmitted, .reload, .backForward] {
+            XCTAssertEqual(decide(appSettings, navigationType), .cancel, "リンクを押した以外では開かない")
+        }
+        // 設定アプリのほかのページや、未知のスキームは開かない。
+        XCTAssertEqual(decide(try XCTUnwrap(URL(string: "prefs:root=Privacy")), .linkActivated), .cancel)
+        XCTAssertEqual(decide(try XCTUnwrap(URL(string: "app-settings-other:")), .linkActivated), .cancel)
+        // 同梱ページの読み込みと、Webとメールのリンクの扱いは変えない。
+        XCTAssertEqual(decide(try XCTUnwrap(URL(string: "knitting-local://bundle/guide/#allow-photos")), .linkActivated), .load)
+        XCTAssertEqual(decide(LocalWebSchemeHandler.indexURL, .other), .load)
+        let mail = try XCTUnwrap(URL(string: "mailto:support@example.com"))
+        XCTAssertEqual(decide(mail, .linkActivated), .openExternally(mail))
+    }
+
     @MainActor
     func testWebContentReadinessStartsFalseAndBecomesTrue() {
         let model = WebViewModel()

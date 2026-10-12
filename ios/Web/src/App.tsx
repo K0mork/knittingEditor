@@ -71,6 +71,8 @@ export default function App() {
     notify: editor.notify,
     navigate: (destination) => window.location.assign(destination),
   }), [saveNow, editor.notify]);
+  const navigateToGuideRef = useRef(navigateToGuide);
+  navigateToGuideRef.current = navigateToGuide;
   const openGuide = useCallback((event: React.MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault();
     void navigateToGuide(event.currentTarget.href);
@@ -94,7 +96,17 @@ export default function App() {
         notifyRef.current('バックアップを読み込めませんでした');
       }
     });
-    const removeErrorListener = listenNativeError((message) => notifyRef.current(message));
+    const removeErrorListener = listenNativeError((message, guideSection) => {
+      if (guideSection === undefined) {
+        notifyRef.current(message);
+        return;
+      }
+      // 写真への追加を拒否されたときなど、使い方ページに詳しいやり方がある案内には、その節を開くボタンを添える（#208）。
+      notifyRef.current(message, {
+        label: 'やり方を見る',
+        run: () => { void navigateToGuideRef.current(new URL(`/guide/#${guideSection}`, window.location.href).href); },
+      });
+    });
     const removeCommandListener = listenNativeCommand((command) => {
       // ショートカットはメニューバーが先に受け取り、ページの`keydown`へ届かない。
       // 記号の一覧の「Escapeで閉じます。」などを出せるよう、キーボードがあるとみなす。

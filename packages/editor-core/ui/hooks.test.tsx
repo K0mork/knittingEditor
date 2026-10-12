@@ -1,7 +1,7 @@
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { expect, it, vi } from 'vitest';
-import { useModalFocus } from './hooks';
+import { NOTIFICATION_DURATION_MS, useModalFocus, useNotifier } from './hooks';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -82,5 +82,34 @@ it('keeps focus in the front modal when only the background modal closes', async
     await act(async () => root.unmount());
     container.remove();
     opener.remove();
+  }
+});
+
+it('clears a toast and its action together after the notification duration', async () => {
+  vi.useFakeTimers();
+  const container = document.createElement('div');
+  document.body.append(container);
+  let latest!: ReturnType<typeof useNotifier>;
+  function Probe() {
+    latest = useNotifier();
+    return null;
+  }
+  const root = createRoot(container);
+  try {
+    await act(async () => root.render(<Probe />));
+    const action = { label: 'やり方を見る', run: vi.fn() };
+    await act(async () => latest.notify('案内', action));
+    expect(latest.message).toBe('案内');
+    expect(latest.notificationAction).toBe(action);
+    await act(async () => { vi.advanceTimersByTime(NOTIFICATION_DURATION_MS - 1); });
+    expect(latest.notificationAction).toBe(action);
+    await act(async () => { vi.advanceTimersByTime(1); });
+    expect(latest.message).toBe('');
+    expect(latest.notificationAction).toBeUndefined();
+    expect(action.run).not.toHaveBeenCalled();
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+    vi.useRealTimers();
   }
 });

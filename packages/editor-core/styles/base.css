@@ -235,6 +235,7 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 .busy, .toast { position: fixed; z-index: 20; left: 50%; transform: translateX(-50%); border-radius: 14px; box-shadow: var(--shadow); }
 .busy { top: 50%; display: flex; align-items: center; gap: 10px; padding: 14px 18px; background: var(--paper); }
 .toast { bottom: calc(78px + env(safe-area-inset-bottom)); width: max-content; max-width: calc(100% - 30px); padding: 10px 14px; color: white; background: var(--toast); }
+.toast-action { display: block; margin: 8px 0 0 auto; border-color: rgba(255, 255, 255, .75); background: transparent; color: white; font-weight: 700; }
 .spinner { width: 18px; height: 18px; border: 3px solid var(--spinner-track); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .loading { display: grid; place-items: center; width: 100%; height: 100%; }

@@ -85,14 +85,17 @@ function listenExportFinished() {
   window.addEventListener(NATIVE_EXPORT_FINISHED_EVENT, (event) => {
     const detail = (event as CustomEvent<unknown>).detail;
     if (!detail || typeof detail !== 'object') return;
-    const { id, saved, status, message } = detail as { id?: unknown; saved?: unknown; status?: unknown; message?: unknown };
+    const { id, saved, status, message, guideSection } = detail as {
+      id?: unknown; saved?: unknown; status?: unknown; message?: unknown; guideSection?: unknown;
+    };
     if (typeof id !== 'string' || !pendingExports.has(id)) return;
     // 失敗は取りやめと区別して通知するが、バックアップ日時の記録はどちらも行わない。
     settleExport(id, status === 'error' ? false : typeof saved === 'boolean' ? saved : undefined);
     if (status === 'error') {
-      // 写真への追加を拒否されたときなど、ネイティブ側が失敗の理由に合う案内を添えることがある（#208）。
+      // 写真への追加を拒否されたときなど、ネイティブ側が失敗の理由に合う案内と、使い方の節を添えることがある（#208）。
+      const notice = typeof message === 'string' && message ? message : '共有に失敗しました。もう一度共有を試してください。';
       window.dispatchEvent(new CustomEvent('knittingEditorNativeError', {
-        detail: typeof message === 'string' && message ? message : '共有に失敗しました。もう一度共有を試してください。',
+        detail: isGuideSection(guideSection) ? { message: notice, guideSection } : notice,
       }));
     }
   });
@@ -172,10 +175,27 @@ export function listenNativeBackupSelected(listener: (detail: NativeBackupDetail
   return () => window.removeEventListener('knittingEditorNativeBackupSelected', handler);
 }
 
-export function listenNativeError(listener: (message: string) => void): () => void {
+/** 使い方ページの節のID（`/guide/#…`）。ページ内の移動にしか使えない形だけを受け付ける。 */
+function isGuideSection(value: unknown): value is string {
+  return typeof value === 'string' && /^[a-z][a-z0-9-]{0,63}$/.test(value);
+}
+
+/**
+ * ネイティブ側のエラーの案内を受け取る。`guideSection`があれば、使い方ページのその節に詳しいやり方がある。
+ * 案内は文字列、または`{ message, guideSection }`で届く。
+ */
+export function listenNativeError(listener: (message: string, guideSection?: string) => void): () => void {
   const handler = (event: Event) => {
     const detail = (event as CustomEvent<unknown>).detail;
-    if (typeof detail === 'string' && detail) listener(detail);
+    if (typeof detail === 'string' && detail) {
+      listener(detail);
+      return;
+    }
+    if (!detail || typeof detail !== 'object') return;
+    const { message, guideSection } = detail as { message?: unknown; guideSection?: unknown };
+    if (typeof message !== 'string' || !message) return;
+    if (isGuideSection(guideSection)) listener(message, guideSection);
+    else listener(message);
   };
   window.addEventListener('knittingEditorNativeError', handler);
   return () => window.removeEventListener('knittingEditorNativeError', handler);
