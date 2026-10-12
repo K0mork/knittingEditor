@@ -793,8 +793,8 @@ test('keeps cleared size inputs empty and applies dimensions on change', async (
 test('shows stitch and rectangular block dimensions with both units', async ({ page }) => {
   await page.getByRole('button', { name: '編み目記号を選ぶ' }).click();
   const picker = page.getByRole('dialog', { name: '編み目記号' });
-  await expect(picker.getByRole('button', { name: /^すべり目 / }).locator('small')).toHaveText('1目×2段');
-  await expect(picker.getByRole('button', { name: /^右上3目交差 / }).locator('small')).toHaveText('6目×1段');
+  await expect(picker.getByRole('button', { name: /^すべり目 / }).locator('small')).toHaveText('2段×1目');
+  await expect(picker.getByRole('button', { name: /^右上3目交差 / }).locator('small')).toHaveText('1段×6目');
   await picker.getByRole('button', { name: '閉じる' }).click();
   await page.getByRole('button', { name: '範囲', exact: true }).click();
   // 既存のマウスによる範囲選択と同じ操作で、横長の範囲を作る。
@@ -807,9 +807,9 @@ test('shows stitch and rectangular block dimensions with both units', async ({ p
   page.once('dialog', async (dialog) => dialog.accept('横長ブロック'));
   await page.getByRole('button', { name: '選択範囲をブロック保存' }).click();
   const size = page.locator('.block-list > div').filter({ hasText: '横長ブロック' }).locator('small');
-  await expect(size).toHaveText(/^\d+目×\d+段$/);
-  const dimensions = (await size.innerText()).match(/^(\d+)目×(\d+)段$/)!;
-  expect(Number(dimensions[1])).toBeGreaterThan(Number(dimensions[2]));
+  await expect(size).toHaveText(/^\d+段×\d+目$/);
+  const dimensions = (await size.innerText()).match(/^(\d+)段×(\d+)目$/)!;
+  expect(Number(dimensions[2])).toBeGreaterThan(Number(dimensions[1]));
 });
 
 test('reports a PDF worker load failure and clears it when retry succeeds', async ({ page }) => {
