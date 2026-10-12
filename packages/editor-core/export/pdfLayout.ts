@@ -105,24 +105,28 @@ export function pdfPageLayout(rows: number, cols: number, options: PdfLayoutOpti
         rows: Math.min(grid.tileRows, rows - row),
         cols: Math.min(grid.tileCols, cols - col),
       });
-      if (!tiled) break;
+      if (!tiled || col + grid.tileCols >= cols) break;
     }
-    if (!tiled) break;
+    if (!tiled || row + grid.tileRows >= rows) break;
   }
 
   return {
     ...grid,
     margin: PAGE_MARGIN,
-    pageRows: tiled ? Math.ceil(rows / grid.stepRows) : 1,
-    pageCols: tiled ? Math.ceil(cols / grid.stepCols) : 1,
+    pageRows: tiled ? axisPageCount(rows, grid.tileRows, grid.stepRows) : 1,
+    pageCols: tiled ? axisPageCount(cols, grid.tileCols, grid.stepCols) : 1,
     pageCount: tiles.length,
     tiles,
   };
 }
 
+function axisPageCount(length: number, capacity: number, step: number): number {
+  return 1 + Math.ceil(Math.max(0, length - capacity) / step);
+}
+
 /** 出力設定の推定表示用。タイルを組み立てずにページ数だけを求める。 */
 export function pdfPageCount(rows: number, cols: number, options: PdfLayoutOptions): number {
   if (options.layout === 'single') return 1;
-  const { stepRows, stepCols } = pdfGrid(rows, cols, options);
-  return Math.ceil(rows / stepRows) * Math.ceil(cols / stepCols);
+  const { tileRows, tileCols, stepRows, stepCols } = pdfGrid(rows, cols, options);
+  return axisPageCount(rows, tileRows, stepRows) * axisPageCount(cols, tileCols, stepCols);
 }

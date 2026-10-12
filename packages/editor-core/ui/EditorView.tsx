@@ -1,4 +1,4 @@
-import { useEffect, useState, type MouseEventHandler, type ReactNode } from 'react';
+import { useEffect, useState, type MouseEvent, type MouseEventHandler, type ReactNode } from 'react';
 import { BoardCanvas, type CanvasMode } from '../canvas/BoardCanvas';
 import { parseColor } from '../model/Board';
 import { describeColor } from '../model/usedColors';
@@ -19,7 +19,7 @@ export interface EditorViewProps {
    * `documentStatus`は編み図名と保存状態で、`aria-live`の要素の中へ置く。
    */
   renderTitle: (documentStatus: ReactNode) => ReactNode;
-  /** 使い方ページへのリンクを押したとき。iOS版は移動前に保留中の保存を書き込む。 */
+  /** 使い方ページへのリンクを押したとき。両ホストで移動前に保留中の保存を確認する。 */
   onGuideClick?: MouseEventHandler<HTMLAnchorElement>;
   /** 復元ボタン。`true`を返すと処理済みとみなし、ファイル選択を開かない。 */
   requestRestore?: () => boolean;
@@ -43,6 +43,15 @@ const ACTION_BAR_PANELS: Array<{ panel: EditorPanel; label: string }> = [
   { panel: 'blocks', label: 'ブロック' },
   { panel: 'export', label: '保存' },
 ];
+
+/**
+ * 選択ダイアログを開く。SafariなどWebKitはクリックしたボタンへフォーカスを移さないので、
+ * 明示的にフォーカスし、ダイアログを閉じたときの戻り先にする。
+ */
+function openPicker(event: MouseEvent<HTMLButtonElement>, setOpen: (open: boolean) => void) {
+  event.currentTarget.focus();
+  setOpen(true);
+}
 
 /** 元に戻す・やり直すの矢印。文字の↶↷は書体によって細く小さく見えるので描く。 */
 function HistoryIcon({ direction }: { direction: 'undo' | 'redo' }) {
@@ -73,7 +82,8 @@ export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, 
   if (editor.initializationError) return <main className="loading" role="alert">編み図を読み込めませんでした：{editor.initializationError}<button onClick={() => window.location.reload()}>再読み込み</button></main>;
   if (!board || !activeDocument) return <main className="loading">編み図を読み込んでいます…</main>;
 
-  const documentStatus = <>{activeDocument.name}<span aria-hidden="true">{dirty ? '（保存中…）' : ''}</span><span className="visually-hidden">、{dirty ? '保存中' : '保存済み'}</span></>;
+  const saveStatus = dirty ? (session.saveFailed ? '保存失敗' : '保存中') : '保存済み';
+  const documentStatus = <>{activeDocument.name}<span aria-hidden="true">{dirty ? (session.saveFailed ? '（保存失敗）' : '（保存中…）') : ''}</span><span className="visually-hidden">、{saveStatus}</span></>;
   const modeButton = (target: CanvasMode, label: string, onClick: () => void) => <button key={target} className={mode === target ? 'active' : ''} aria-pressed={mode === target} onClick={onClick}>{label}</button>;
 
   return <div className="app-shell">
@@ -87,11 +97,11 @@ export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, 
 
     <main className="workspace">
       <section className="primary-tools" aria-label="編集ツール">
-        <button className="color-tool" aria-label={`記号の色を選ぶ（現在：${describeColor(parseColor(editor.selectedColor))} ${editor.selectedColor}）`} aria-haspopup="dialog" aria-expanded={editor.colorPickerOpen} onClick={() => editor.setColorPickerOpen(true)}>
+        <button className="color-tool" aria-label={`記号の色を選ぶ（現在：${describeColor(parseColor(editor.selectedColor))} ${editor.selectedColor}）`} aria-haspopup="dialog" aria-expanded={editor.colorPickerOpen} onClick={(event) => openPicker(event, editor.setColorPickerOpen)}>
           <span>色</span>
           <span className="color-tool-swatch" aria-hidden="true" style={{ backgroundColor: editor.selectedColor }} />
         </button>
-        <button className="stitch-tool" aria-label="編み目記号を選ぶ" aria-haspopup="dialog" aria-expanded={editor.stitchPickerOpen} onClick={() => editor.setStitchPickerOpen(true)}>
+        <button className="stitch-tool" aria-label="編み目記号を選ぶ" aria-haspopup="dialog" aria-expanded={editor.stitchPickerOpen} onClick={(event) => openPicker(event, editor.setStitchPickerOpen)}>
           <span aria-hidden="true" dangerouslySetInnerHTML={{ __html: editor.currentStitch.svg }} />
           <span className="stitch-tool-name">{editor.currentStitch.name}</span>
           <span className="stitch-tool-chevron" aria-hidden="true">⌄</span>
@@ -120,8 +130,12 @@ export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, 
         <button onClick={editor.clearSelection}>解除</button>
       </div>}
 
+      {/* 保存の失敗は勧めと同じ段に出し、勧めより優先する。どちらも手を止めたときだけ出し入れする。 */}
+      {editor.backupReminder.saveFailureShown && <section className="backup-reminder" aria-label="保存の失敗">
+        <p role="alert">端末内への保存に失敗しています。「保存」から.knitのバックアップを書き出してください。</p>
+      </section>}
       {/* ドロワーや処理中の表示と重なるときは出さない。 */}
-      {editor.backupReminder.kind && !panel && !editor.busy && <BackupReminderBar kind={editor.backupReminder.kind}
+      {!editor.backupReminder.saveFailureShown && editor.backupReminder.kind && !panel && !editor.busy && <BackupReminderBar kind={editor.backupReminder.kind}
         lastBackupAt={editor.backupReminder.lastBackupAt} onBackup={() => void editor.backup(false)} onSnooze={editor.backupReminder.snooze} />}
 
       <section className="canvas-wrap">

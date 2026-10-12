@@ -43,6 +43,15 @@ final class KnittingEditorUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
+        createDocument(named: "使い方保存確認", in: app)
+        // 記号数で探すと、描いたあとに同じ要素を見失う。盤面の名前で探して記号数を待つ。
+        let canvas = app.webViews.firstMatch.otherElements
+            .matching(NSPredicate(format: "label CONTAINS %@", "編み図編集盤面"))
+            .firstMatch
+        XCTAssertTrue(canvas.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+        waitForStitchCount(0, on: canvas, in: app)
+        canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        waitForStitchCount(1, on: canvas, in: app)
         let guideLink = app.links["使い方"]
         XCTAssertTrue(guideLink.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
         guideLink.tap()
@@ -76,6 +85,10 @@ final class KnittingEditorUITests: XCTestCase {
         }
         XCTAssertTrue(save.waitForExistence(timeout: 20), "使い方ページから編集画面へ戻れない: \(app.debugDescription)")
         XCTAssertFalse(app.otherElements["editorLoadingOverlay"].exists, app.debugDescription)
+        let restoredCanvas = app.webViews.firstMatch.otherElements
+            .matching(NSPredicate(format: "label CONTAINS %@", "記号1個"))
+            .firstMatch
+        XCTAssertTrue(restoredCanvas.waitForExistence(timeout: 10), "使い方から戻るとセルが消えた: \(app.debugDescription)")
     }
 
     /// 2本指ジェスチャで盤面へ記号が入らないことを確認する。
@@ -126,6 +139,41 @@ final class KnittingEditorUITests: XCTestCase {
                 .waitForExistence(timeout: Self.editorAppearanceTimeout),
             app.debugDescription
         )
+    }
+
+    /// 大きな文字で番号帯を確認し、消去モードのピンチが記号を消さないことを確認する。
+    func testCanvasLabelsWithLargeTextAndErasePinch() {
+        let app = XCUIApplication()
+        app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        app.launch()
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
+        createDocument(named: "番号帯確認", in: app)
+        let canvas = app.webViews.firstMatch.otherElements
+            .matching(NSPredicate(format: "label CONTAINS %@", "編み図編集盤面")).firstMatch
+        XCTAssertTrue(canvas.waitForExistence(timeout: Self.editorAppearanceTimeout))
+        canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        waitForStitchCount(1, on: canvas, in: app)
+        app.switches["消す"].tap()
+        canvas.pinch(withScale: 0.2, velocity: -1.0)
+        waitForStitchCount(1, on: canvas, in: app)
+        let small = XCTAttachment(screenshot: canvas.screenshot())
+        small.name = "大きな文字・縮小した盤面の番号"
+        small.lifetime = .keepAlways
+        add(small)
+        canvas.pinch(withScale: 5.0, velocity: 1.0)
+        waitForStitchCount(1, on: canvas, in: app)
+        let large = XCTAttachment(screenshot: canvas.screenshot())
+        large.name = "大きな文字・拡大した盤面の番号"
+        large.lifetime = .keepAlways
+        add(large)
+        app.switches["範囲"].tap()
+        let start = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.4, dy: 0.4))
+        let end = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.6, dy: 0.6))
+        start.press(forDuration: 0.1, thenDragTo: end)
+        let selectionBefore = canvas.label
+        XCTAssertFalse(selectionBefore.contains("選択範囲なし"))
+        canvas.pinch(withScale: 0.5, velocity: -1.0)
+        XCTAssertEqual(canvas.label, selectionBefore)
     }
 
     /// 盤面の外では、WKWebView由来のWebページ特有の挙動を出さない（#81）。
@@ -739,9 +787,6 @@ final class KnittingEditorUITests: XCTestCase {
     /// 画面座標の下スワイプで閉じる。シートの有無は`SystemSheet`の要素で判定する
     /// （実機で表示中のみ存在し、閉じると消えることを確認済み）。
     func testBackupExportSheetDismissesBackToEditor() throws {
-        if ProcessInfo.processInfo.environment["CI"] == "true" {
-            throw XCTSkip("Xcode 15.4 CI SimulatorではWebKitがgzipバックアップ生成中に無応答になるため、保存パネル・PNG/PDF導線とローカルSimulatorで検証する")
-        }
         let app = XCUIApplication()
         app.launch()
 
@@ -776,6 +821,60 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertEqual(app.state, .runningForeground, "\(dismissal): \(app.debugDescription)")
     }
 
+    /// 共有先が見えることと、閉じた直後の最初のタップが編集画面へ届くことを確かめる（#158、#191）。
+    ///
+    /// 共有シート1回に20秒以上かかるため、縦と横を別のテストに分け、CIの1テストあたりの
+    /// 実行時間の上限に収める。
+    func testShareSheetsDismissBackToEditor() {
+        assertShareSheetsDismissBackToEditor(landscape: false)
+    }
+
+    func testShareSheetsDismissBackToEditorInLandscape() {
+        assertShareSheetsDismissBackToEditor(landscape: true)
+    }
+
+    private func assertShareSheetsDismissBackToEditor(landscape: Bool) {
+        let app = XCUIApplication()
+        app.launch()
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
+        let save = app.buttons["保存"]
+        XCTAssertTrue(save.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+        if landscape { rotateToLandscape(app) }
+        for export in ["PNGを保存", "PDFを保存", "この編み図"] {
+            let step = "\(export)-\(landscape ? "横" : "縦")"
+            let button = app.buttons[export]
+            openSavePanel(with: save, showing: button, in: app)
+            assertHittableAfterScrolling(button, in: app)
+            waitUntilStill(button)
+            button.tap()
+            let share = app.buttons["共有"]
+            XCTAssertTrue(share.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+            share.tap()
+
+            let sheet = shareSheet(in: app)
+            XCTAssertTrue(sheet.waitForExistence(timeout: 20), "\(step): \(app.debugDescription)")
+            let copy = sheet.cells.matching(NSPredicate(format: "label IN %@", ["Copy", "コピー"])).firstMatch
+            XCTAssertTrue(copy.waitForExistence(timeout: 20), "\(step): \(app.debugDescription)")
+            add(screenshotAttachment(named: "共有-\(step)"))
+            // 共有先が画面内に見えて選べる（#158では透明な領域だけが残った）。
+            XCTAssertTrue(copy.isHittable, "\(step): \(app.debugDescription)")
+
+            // 枠外のタップで閉じる。編集画面への最初のタップとは別に行う。
+            let dismissal = dismissShareSheet(sheet, in: app)
+            assertDisappears(sheet, from: app, note: "\(step) \(dismissal)")
+
+            app.buttons["閉じる"].tap()
+            assertDisappears(app.buttons["この編み図"], from: app, note: step)
+            app.buttons["盤面"].tap()
+            let rowsUp = app.buttons["上に段"]
+            XCTAssertTrue(rowsUp.waitForExistence(timeout: 10), "\(step): \(app.debugDescription)")
+            // パネルが開く動きの途中だと「閉じる」のタップが外れる。止まってから押す。
+            waitUntilStill(rowsUp)
+            app.buttons["閉じる"].tap()
+            assertDisappears(app.buttons["上に段"], from: app, note: step)
+        }
+    }
+
     func testPngAndPdfExportsReachNativeFileActions() {
         let app = XCUIApplication()
         app.launch()
@@ -798,6 +897,41 @@ final class KnittingEditorUITests: XCTestCase {
         let pdfFileSave = app.buttons["ファイルに保存"]
         XCTAssertTrue(pdfFileSave.waitForExistence(timeout: Self.editorAppearanceTimeout))
         cancelExportAlert(in: app)
+    }
+
+    func testSlashDocumentNameReachesAllNativeExportActions() {
+        assertAllNativeExportActions(documentName: "春/秋")
+    }
+
+    func testRepeatedDotsDocumentNameReachesAllNativeExportActions() {
+        assertAllNativeExportActions(documentName: "試作..完成")
+    }
+
+    func testBackslashDocumentNameReachesAllNativeExportActions() {
+        assertAllNativeExportActions(documentName: "試作\\修正版")
+    }
+
+    func testLongDocumentNameReachesAllNativeExportActions() {
+        assertAllNativeExportActions(documentName: String(repeating: "春", count: 177))
+    }
+
+    private func assertAllNativeExportActions(documentName name: String) {
+        XCUIDevice.shared.orientation = .portrait
+        let app = XCUIApplication()
+        app.launch()
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
+        createDocument(named: name, in: app)
+        app.buttons["保存"].tap()
+        for format in ["PNGを保存", "PDFを保存", "この編み図"] {
+            let export = app.buttons[format]
+            XCTAssertTrue(export.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+            export.tap()
+            XCTAssertTrue(app.buttons["ファイルに保存"].waitForExistence(timeout: Self.editorAppearanceTimeout), "\(name): \(format): \(app.debugDescription)")
+            XCTAssertTrue(app.buttons["共有"].exists)
+            cancelExportAlert(in: app)
+        }
+        app.buttons["閉じる"].tap()
+        waitForDocumentSave(named: name, in: app.webViews.firstMatch)
     }
 
     func testPrimaryControlsRemainUsableInPortraitAndLandscape() {
@@ -896,6 +1030,40 @@ final class KnittingEditorUITests: XCTestCase {
             selectionActions.waitForExistence(timeout: 10),
             "入力欄で文字を選択・コピーできない: \(app.debugDescription)"
         )
+    }
+
+    /// 編み図の削除は取り消せないことを示して確認し、キャンセルでは消えず、「削除」で消える（#201）。
+    ///
+    /// 一覧の各行の削除ボタンも確認ダイアログのボタンも「削除」なので、ラベルだけでは区別できない。
+    /// 行の削除は行と同じ高さのボタン、ダイアログの削除はタイトルより下のボタンとして選ぶ。
+    func testDeleteDocumentConfirmationCancelsThenDeletes() {
+        let app = XCUIApplication()
+        app.launch()
+        XCUIDevice.shared.orientation = .portrait
+
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
+        // 前の実行で残った編み図と重ならないよう、名前を実行ごとに変える。
+        let name = "削除確認\(Int(Date().timeIntervalSince1970) % 100_000)"
+        createDocument(named: name, in: app)
+        openDocumentsPanel(in: app)
+
+        let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", name)).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+        let title = app.staticTexts["「\(name)」を削除しますか？"]
+
+        deleteButton(inRowOf: row, in: app).tap()
+        XCTAssertTrue(title.waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertTrue(app.staticTexts["この操作は元に戻せません。"].exists, app.debugDescription)
+        XCTAssertFalse(app.buttons["決定"].exists, "削除の確認に「決定」が出ている: \(app.debugDescription)")
+        app.buttons["キャンセル"].tap()
+        assertDisappears(title, from: app, note: "キャンセルで確認が閉じない")
+        XCTAssertTrue(row.exists, "キャンセルしたのに編み図が消えた: \(app.debugDescription)")
+
+        deleteButton(inRowOf: row, in: app).tap()
+        XCTAssertTrue(title.waitForExistence(timeout: 10), app.debugDescription)
+        dialogDeleteButton(below: title, in: app).tap()
+        assertDisappears(title, from: app, note: "削除で確認が閉じない")
+        assertDisappears(row, from: app, note: "削除した編み図が一覧に残る")
     }
 
     func testCoreEditorControlsExposeAccessibleNamesAndState() {
@@ -1388,6 +1556,78 @@ final class KnittingEditorUITests: XCTestCase {
         )
     }
 
+    /// 表示中の共有シート（`UIActivityViewController`）。閉じると消える。
+    ///
+    /// iOS 26では本体が`ActivityListView`として公開され、「コピー」などの共有先はボタンではなく
+    /// セル（identifier`actionGroupCell`）になる。
+    private func shareSheet(in app: XCUIApplication) -> XCUIElement {
+        app.otherElements["ActivityListView"]
+    }
+
+    /// 「保存」で保存パネルを開く。
+    ///
+    /// 起動直後は「編み図」と同じく最初のタップが効かないことがある（#44）。パネルが
+    /// 開いていない（「閉じる」が無い）ときだけ押し直す。
+    private func openSavePanel(with save: XCUIElement, showing button: XCUIElement, in app: XCUIApplication) {
+        save.tap()
+        if !button.waitForExistence(timeout: 10), !app.buttons["閉じる"].exists {
+            save.tap()
+        }
+        XCTAssertTrue(button.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+    }
+
+    /// 共有シートを枠外のタップで閉じる。戻り値は失敗時の診断用に、タップした回数を表す。
+    ///
+    /// iPadのSimulatorの横向きで、表示し終えたシートでも枠外のタップが効かないことがまれにあった。
+    /// シートが残っているあいだだけタップし直すため、シートが消えたあとの編集画面への
+    /// タップには影響しない。
+    private func dismissShareSheet(_ sheet: XCUIElement, in app: XCUIApplication) -> String {
+        waitUntilStill(sheet)
+        for attempt in 1...3 {
+            tapOutside(sheet, in: app)
+            if waitForDisappearance(of: sheet, timeout: 5) {
+                return "枠外のタップ\(attempt)回"
+            }
+        }
+        return "枠外のタップ3回でも閉じない"
+    }
+
+    /// 共有シートの枠の外で、いちばん広い余白の中央をタップする。
+    ///
+    /// iOS 26の共有シートには閉じるボタンが無く、iPhoneでも枠外（`PopoverDismissRegion`）の
+    /// タップで閉じる。ラベルで「閉じる」を探すと背後の保存パネルのボタンに当たり、
+    /// 横向きではその位置がシートの内側に入って閉じられない。
+    private func tapOutside(_ sheet: XCUIElement, in app: XCUIApplication) {
+        let window = app.windows.firstMatch
+        let bounds = window.frame
+        let frame = sheet.frame
+        let gaps: [(size: CGFloat, point: CGPoint)] = [
+            (frame.minY - bounds.minY, CGPoint(x: frame.midX, y: (bounds.minY + frame.minY) / 2)),
+            (bounds.maxY - frame.maxY, CGPoint(x: frame.midX, y: (frame.maxY + bounds.maxY) / 2)),
+            (frame.minX - bounds.minX, CGPoint(x: (bounds.minX + frame.minX) / 2, y: frame.midY)),
+            (bounds.maxX - frame.maxX, CGPoint(x: (frame.maxX + bounds.maxX) / 2, y: frame.midY)),
+        ]
+        let widest = gaps.max { $0.size < $1.size }!
+        XCTAssertGreaterThan(widest.size, 20, "共有シートの枠外が無い sheet=\(frame) window=\(bounds)")
+        window.coordinate(withNormalizedOffset: .zero)
+            .withOffset(CGVector(dx: widest.point.x - bounds.minX, dy: widest.point.y - bounds.minY))
+            .tap()
+    }
+
+    /// 要素の位置が続けて同じになるまで待つ。表示の動きが終わる前のタップは外れることがある。
+    private func waitUntilStill(_ element: XCUIElement, timeout: TimeInterval = 5) {
+        var previous = CGRect.null
+        let still = XCTNSPredicateExpectation(
+            predicate: NSPredicate { object, _ in
+                guard let frame = (object as? XCUIElement)?.frame else { return false }
+                defer { previous = frame }
+                return frame == previous
+            },
+            object: element
+        )
+        _ = XCTWaiter.wait(for: [still], timeout: timeout)
+    }
+
     private func assertDisappears(_ element: XCUIElement, from app: XCUIApplication, note: String = "") {
         let disappearance = XCTNSPredicateExpectation(
             predicate: NSPredicate(format: "exists == false"),
@@ -1395,6 +1635,33 @@ final class KnittingEditorUITests: XCTestCase {
         )
         let result = XCTWaiter.wait(for: [disappearance], timeout: 15)
         XCTAssertTrue(result == .completed, "\(note): \(app.debugDescription)")
+    }
+
+    /// 編み図一覧で、指定した行と同じ高さにある「削除」ボタン。
+    private func deleteButton(inRowOf row: XCUIElement, in app: XCUIApplication) -> XCUIElement {
+        nearestDeleteButton(in: app, failure: "行の「削除」が無い") { abs($0.midY - row.frame.midY) }
+    }
+
+    /// 確認ダイアログの「削除」ボタン。一覧の行のボタンと区別するため、タイトルより下で最も近いものを選ぶ。
+    private func dialogDeleteButton(below title: XCUIElement, in app: XCUIApplication) -> XCUIElement {
+        let titleBottom = title.frame.maxY
+        return nearestDeleteButton(in: app, failure: "ダイアログの「削除」が無い") {
+            $0.minY >= titleBottom ? $0.minY - titleBottom : nil
+        }
+    }
+
+    private func nearestDeleteButton(
+        in app: XCUIApplication,
+        failure: String,
+        distance: (CGRect) -> CGFloat?
+    ) -> XCUIElement {
+        let candidates = app.buttons.matching(NSPredicate(format: "label == %@", "削除")).allElementsBoundByIndex
+        let scored = candidates.compactMap { button in distance(button.frame).map { (button, $0) } }
+        guard let nearest = scored.min(by: { $0.1 < $1.1 })?.0 else {
+            XCTFail("\(failure): \(app.debugDescription)")
+            return app.buttons["削除"].firstMatch
+        }
+        return nearest
     }
 
     private func requireAppUpdateProbe() throws {
