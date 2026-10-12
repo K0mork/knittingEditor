@@ -25,7 +25,7 @@ test('serves crawlable content before JavaScript runs', async ({ page }) => {
   expect(response.status()).toBe(200);
   const html = await response.text();
   expect(html).toContain('<h1>無料で使える棒針編み図エディタ</h1>');
-  expect(html).toContain('<p>登録不要で、スマホ・PCから使える無料の棒針編み図作成サイトです。26種類の編み目記号や色の編集、パターンブロック、PNG・PDF出力、端末内自動保存に対応しています。</p>');
+  expect(html).toContain('<p>登録不要で、スマホ・PCから使える無料の棒針編み図作成サイトです。29種類の編み目記号や色の編集、パターンブロック、PNG・PDF出力、端末内自動保存に対応しています。</p>');
   expect(html).toContain('<a href="/guide/">棒針編み図エディタの使い方</a>');
   expect(html).toContain('<a href="/privacy/">プライバシーポリシー</a>');
 });
@@ -55,9 +55,9 @@ test('exposes search and sharing metadata on the editor page', async ({ page }) 
   await expect(page).toHaveTitle('棒針編み図エディタ｜無料の編み図作成サイト');
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://knittingeditor.com/');
   await expectAppIconLinks(page);
-  await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', /登録不要で使える無料の棒針編み図作成サイト/);
+  await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', /登録不要で使える無料の棒針編み図作成サイト.*29種類の編み目記号/);
   await expect(page.locator('meta[property="og:title"]')).toHaveAttribute('content', '棒針編み図エディタ｜無料の編み図作成サイト');
-  await expect(page.locator('meta[property="og:description"]')).toHaveAttribute('content', /登録不要.*PNG・PDF保存/);
+  await expect(page.locator('meta[property="og:description"]')).toHaveAttribute('content', /登録不要.*29種類の編み目記号.*PNG・PDF保存/);
   await expect(page.locator('meta[property="og:type"]')).toHaveAttribute('content', 'website');
   await expect(page.locator('meta[property="og:url"]')).toHaveAttribute('content', 'https://knittingeditor.com/');
   await expect(page.locator('meta[property="og:locale"]')).toHaveAttribute('content', 'ja_JP');
@@ -75,6 +75,7 @@ test('describes the site and the application as structured data', async ({ page 
   expect(website?.url).toBe('https://knittingeditor.com/');
   expect(application?.url).toBe('https://knittingeditor.com/');
   expect(application?.description).toContain('無料の棒針編み図作成サイト');
+  expect(application?.description).toContain('29種類の編み目記号');
   expect(application?.isAccessibleForFree).toBe(true);
   expect(application?.offers?.price).toBe('0');
 });

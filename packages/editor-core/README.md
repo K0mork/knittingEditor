@@ -35,7 +35,7 @@ PDFの推定ページ数は`export/pdfLayout.ts`をPDF Workerと共有し、用�
 ## 永続記号IDスナップショット
 
 `.knit`とIndexedDBに保存される永続値。カタログの配列順ではなくこのIDが正で、
-変更・再利用・配列位置からの再採番をしない。`STITCH_CATALOG_VERSION`は現在3。
+変更・再利用・配列位置からの再採番をしない。`STITCH_CATALOG_VERSION`は現在4。
 
 | ID | key | ID | key |
 |---:|---|---:|---|
@@ -52,6 +52,8 @@ PDFの推定ページ数は`export/pdfLayout.ts`をPDF Workerと共有し、用�
 | 11 | `purl_right_up_two_cross` | 24 | `purl_twist_stitch` |
 | 12 | `purl_left_up_two_cross` | 25 | `erase` |
 | 13 | `purl_right_cross_twist_stitch` | 26 | `purl_right_up_two_one` |
+| 27 | `right_increase` | 28 | `left_increase` |
+| 29 | `float_stitch` | | |
 
 IndexedDBのDB名`knitting-editor-v2`、`.knit`の`format`・`version`・`stitchCatalogVersion`も
 同じ扱いとし、既存fixtureとの互換性を確認せずに変更しない。

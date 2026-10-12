@@ -67,7 +67,7 @@ SIMULATOR_UDID=<booted-simulator-udid> ios/scripts/simulate-app-update.sh "iPhon
 
 公開中の`https://knittingeditor.com/`は読み込みません。Viteのアプリ用ビルドをXcodeバンドルへ格納し、HTML、JavaScript、記号、WorkerをローカルURLから読み込みます。
 
-`knitting-local://bundle/index.html`という固定originを`WKURLSchemeHandler`で提供し、`WKWebsiteDataStore.default()`を使います。実行時に外部URLを許可しません。`AppResources/Web/`にはCanvas、Pointer Events、Blob、IndexedDB、module Worker、全26記号を含むVite成果物を同梱します。型付きブリッジを通じたFiles・共有シート・ネイティブ保存、Privacy Manifest、アプリ内のプライバシー／サポート説明も実装済みです。実機で確認済みの往復範囲と残作業は`docs/REAL_DEVICE_RELEASE_CHECKLIST.md`を正とします。
+`knitting-local://bundle/index.html`という固定originを`WKURLSchemeHandler`で提供し、`WKWebsiteDataStore.default()`を使います。実行時に外部URLを許可しません。`AppResources/Web/`にはCanvas、Pointer Events、Blob、IndexedDB、module Worker、全29記号を含むVite成果物を同梱します。型付きブリッジを通じたFiles・共有シート・ネイティブ保存、Privacy Manifest、アプリ内のプライバシー／サポート説明も実装済みです。実機で確認済みの往復範囲と残作業は`docs/REAL_DEVICE_RELEASE_CHECKLIST.md`を正とします。
 
 ## 4. 共通実装と環境固有実装
 

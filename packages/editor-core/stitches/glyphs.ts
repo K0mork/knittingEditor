@@ -54,6 +54,8 @@ function glyph(width: number, height: number, primitives: GlyphPrimitive[], stro
   return { width: width * GLYPH_CELL, height: height * GLYPH_CELL, strokeWidth, primitives };
 }
 
+// JIS L 0201:1995、2090の縦棒と右上への枝。2100はその鏡像。
+const rightIncrease = [line(28, 12, 28, 88), line(28, 50, 78, 16)];
 const rightTwoDecrease = [polyline(18, 84, 52, 50, 24, 14), line(52, 50, 80, 86)];
 const middleThreeDecrease = [line(50, 12, 50, 88), line(16, 82, 50, 50), line(84, 82, 50, 50)];
 const rightThreeDecrease = [line(50, 88, 50, 50), polyline(16, 82, 50, 50, 20, 14), line(50, 50, 80, 86)];
@@ -136,6 +138,9 @@ const glyphs: Record<string, GlyphDefinition> = {
   knit: glyph(1, 1, [line(50, 12, 50, 88)]),
   purl: glyph(1, 1, [line(12, 50, 88, 50)]),
   yo: glyph(1, 1, [{ kind: 'ellipse', cx: 50, cy: 50, rx: 35, ry: 35 }]),
+  right_increase: glyph(1, 1, rightIncrease),
+  left_increase: glyph(1, 1, mirror(rightIncrease, GLYPH_CELL)),
+  float_stitch: glyph(1, 2, scale([polyline(16, 16, 50, 88, 84, 16), line(8, 40, 92, 40)], 1, 2)),
   right_up_two_one: glyph(2, 1, scale(rightTwoDecrease, 2, 1)),
   left_up_two_one: glyph(2, 1, scale(mirror(rightTwoDecrease, GLYPH_CELL), 2, 1)),
   purl_right_up_two_one: glyph(2, 1, scale([...rightTwoDecrease, line(35, 82, 65, 82)], 2, 1)),
