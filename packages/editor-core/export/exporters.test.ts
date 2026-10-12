@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Board, parseColor } from '../model/Board';
-import { defaultPngCellSize, PNG_CELL_SIZE_RANGE, PNG_PREFERRED_CELL_SIZE, pngGridStyles, pngLabelLayout, validatePngSize } from './exporters';
+import { defaultPngCellSize, PNG_CELL_SIZE_RANGE, PNG_PREFERRED_CELL_SIZE, pngGridStyles, pngLabelLayout, renderPdf, validatePngSize } from './exporters';
 
 describe('defaultPngCellSize', () => {
   it('uses the preferred cell size for ordinary boards', () => {
@@ -61,3 +61,38 @@ describe('pngLabelLayout', () => {
   });
 });
 
+
+describe('renderPdf worker failures', () => {
+  const options = { layout: 'single', orientation: 'portrait', cellMillimeters: 5 } as const;
+  afterEach(() => vi.unstubAllGlobals());
+
+  function mockWorker(reply: (worker: Worker) => void) {
+    const terminate = vi.fn();
+    vi.stubGlobal('Worker', class {
+      onmessage: Worker['onmessage'] = null;
+      onerror: Worker['onerror'] = null;
+      terminate = terminate;
+      postMessage() { queueMicrotask(() => reply(this as unknown as Worker)); }
+    });
+    return terminate;
+  }
+
+  it.each([undefined, '', '   '])('explains reload and retry for an empty error message (%s)', async (message) => {
+    const terminate = mockWorker((worker) => worker.onerror?.call(worker, message === undefined ? new Event('error') as ErrorEvent : { message } as ErrorEvent));
+    await expect(renderPdf(new Board(1, 1), options)).rejects.toThrow('PDFを生成できませんでした。ページを再読み込みして、もう一度お試しください。');
+    expect(terminate).toHaveBeenCalledOnce();
+  });
+
+  it('preserves an error message from PDF generation', async () => {
+    const terminate = mockWorker((worker) => worker.onmessage?.call(worker, { data: { ok: false, error: '生成中の例外' } } as MessageEvent));
+    await expect(renderPdf(new Board(1, 1), options)).rejects.toThrow('生成中の例外');
+    expect(terminate).toHaveBeenCalledOnce();
+  });
+
+  it('rejects a constructor exception and allows a subsequent successful attempt', async () => {
+    vi.stubGlobal('Worker', class { constructor() { throw new Error('Workerを開始できません'); } });
+    await expect(renderPdf(new Board(1, 1), options)).rejects.toThrow('Workerを開始できません');
+    mockWorker((worker) => worker.onmessage?.call(worker, { data: { ok: true, pdf: new ArrayBuffer(8) } } as MessageEvent));
+    expect((await renderPdf(new Board(1, 1), options)).type).toBe('application/pdf');
+  });
+});
