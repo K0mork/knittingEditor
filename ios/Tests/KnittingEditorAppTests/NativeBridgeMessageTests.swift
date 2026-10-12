@@ -72,6 +72,24 @@ final class NativeBridgeMessageTests: XCTestCase {
         XCTAssertEqual(decode(filename: String(repeating: "a", count: 181)), .failure(.invalidFile))
     }
 
+    func testExportFilenameBoundariesKeepNativeValidation() {
+        for (extensionName, mimeType) in [("png", "image/png"), ("pdf", "application/pdf"), ("knit", "application/gzip")] {
+            func decode(_ filename: String) -> Result<NativeBridgeMessage, NativeBridgeMessage.MessageError> {
+                NativeBridgeMessage.decode(body: [
+                    "version": 1, "type": "exportFile", "filename": filename,
+                    "mimeType": mimeType, "dataBase64": Data([1]).base64EncodedString(),
+                ])
+            }
+            for name in ["春/秋", "試作..完成", "試作\\修正版", "試作\u{85}完成", "試作\u{200b}完成", String(repeating: "春", count: 177)] {
+                XCTAssertEqual(decode("\(name).\(extensionName)"), .failure(.invalidFile))
+            }
+            for stem in [String(repeating: "春", count: 179 - extensionName.count), "春_秋", "試作_完成", "試作_修正版", String(repeating: "🧶", count: 179 - extensionName.count), String(repeating: "か\u{3099}", count: 179 - extensionName.count)] {
+                let filename = "\(stem).\(extensionName)"
+                XCTAssertEqual(decode(filename), .success(.exportFile(data: Data([1]), filename: filename, mimeType: mimeType, requestID: nil)))
+            }
+        }
+    }
+
     func testDecodeRejectsEmptyAndOversizedPayloads() {
         XCTAssertEqual(
             NativeBridgeMessage.decode(body: [

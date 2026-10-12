@@ -65,17 +65,42 @@ final class WebViewModel {
             presentError("対応していないファイル形式です")
             return
         }
-        do {
-            let data = try Data(contentsOf: url, options: [.mappedIfSafe])
-            guard data.count <= NativeBridgeLimits.maxFileBytes else {
+        // iCloud Driveの原本は読む前にダウンロードされることがあるので、画面を止めないよう別のスレッドで読む。
+        Task { @MainActor in
+            let result = await Task.detached { Result { try Self.readIncomingBackup(at: url) } }.value
+            switch result {
+            case .success(let data):
+                deliverBackup(data, filename: url.lastPathComponent)
+                Self.removeImportedCopy(at: url)
+            case .failure(IncomingBackupError.tooLarge):
                 presentError("バックアップが大きすぎます")
-                return
+            case .failure:
+                presentError("バックアップを読み込めませんでした")
             }
-            deliverBackup(data, filename: url.lastPathComponent)
-            Self.removeImportedCopy(at: url)
-        } catch {
-            presentError("バックアップを読み込めませんでした")
         }
+    }
+
+    enum IncomingBackupError: Error {
+        case tooLarge
+    }
+
+    /// 受け取った`.knit`のバイト列を読む。「ファイル」アプリでタップしたときは、複製ではなく利用者の
+    /// 原本のURLが届く（`LSSupportsOpeningDocumentsInPlace`、#149）。読む間だけアクセス権を得て、
+    /// 他のアプリやiCloudの書き込みと重ならないよう`NSFileCoordinator`で調整して読む。原本には書き戻さない。
+    nonisolated static func readIncomingBackup(at url: URL) throws -> Data {
+        let accessing = url.startAccessingSecurityScopedResource()
+        defer { if accessing { url.stopAccessingSecurityScopedResource() } }
+        var coordinationError: NSError?
+        var result: Result<Data, Error> = .failure(CocoaError(.fileReadUnknown))
+        NSFileCoordinator().coordinate(readingItemAt: url, options: [.withoutChanges], error: &coordinationError) { readingURL in
+            result = Result {
+                let data = try Data(contentsOf: readingURL, options: [.mappedIfSafe])
+                guard data.count <= NativeBridgeLimits.maxFileBytes else { throw IncomingBackupError.tooLarge }
+                return data
+            }
+        }
+        if let coordinationError { throw coordinationError }
+        return try result.get()
     }
 
     /// WebViewが準備できていない間は保留し、`webReady`到着後に一度だけ配送する。
@@ -101,8 +126,8 @@ final class WebViewModel {
     }
 
     /// 書き出しを保存・共有し終えたか、取りやめたかをWebへ返す（#122）。
-    func reportExportFinished(requestID: String, saved: Bool) {
-        guard let webView, let script = NativeExportResult.script(requestID: requestID, saved: saved) else { return }
+    func reportExportFinished(requestID: String, saved: Bool, status: NativeExportResult.Status? = nil) {
+        guard let webView, let script = NativeExportResult.script(requestID: requestID, saved: saved, status: status) else { return }
         webView.evaluateJavaScript(script, completionHandler: nil)
     }
 
@@ -123,9 +148,8 @@ final class WebViewModel {
         }
     }
 
-    /// `LSSupportsOpeningDocumentsInPlace`が無効なため、Files・AirDrop・他アプリからの
-    /// `.knit`は`Documents/Inbox`へ複製される。読み込み後に消さないと端末内へ蓄積する。
-    /// 将来in-place編集を有効化しても利用者の原本を消さないよう、複製だけを対象にする。
+    /// AirDropや他のアプリの共有から受け取った`.knit`は`Documents/Inbox`へ複製される。読み込み後に
+    /// 消さないと端末内へ蓄積する。「ファイル」アプリから開いたときは原本のURLが届くので、複製だけを消す。
     nonisolated static func isImportedCopy(_ url: URL, documentsDirectory: URL) -> Bool {
         guard url.isFileURL else { return false }
         let inbox = documentsDirectory.appendingPathComponent("Inbox", isDirectory: true)
@@ -255,13 +279,13 @@ struct WebViewContainer: UIViewRepresentable {
         /// テストでは保存画面を出さずに用途を設定し、閉じたときの扱いを確かめる。
         var pickerPurpose: PickerPurpose?
         /// 書き出しの結果をWebへ返す。テストでは差し替えて、返した結果を確かめる。
-        var reportExportResult: (_ requestID: String, _ saved: Bool) -> Void
+        var reportExportResult: (_ requestID: String, _ saved: Bool, _ status: NativeExportResult.Status?) -> Void
 
         init(model: WebViewModel, reviewRequestTracker: ReviewRequestTracker? = nil) {
             self.model = model
             self.reviewRequestTracker = reviewRequestTracker ?? ReviewRequestTracker()
-            reportExportResult = { [weak model] requestID, saved in
-                model?.reportExportFinished(requestID: requestID, saved: saved)
+            reportExportResult = { [weak model] requestID, saved, status in
+                model?.reportExportFinished(requestID: requestID, saved: saved, status: status)
             }
         }
 
@@ -305,7 +329,7 @@ struct WebViewContainer: UIViewRepresentable {
                 model.presentError(bridgeErrorMessage(error))
                 // 検証できなかった書き出しも、Webが結果を待ち続けないよう取りやめとして返す。
                 if let requestID = NativeBridgeMessage.exportRequestID(body: message.body) {
-                    reportExportResult(requestID, false)
+                    reportExportResult(requestID, false, nil)
                 }
             }
         }
@@ -423,12 +447,12 @@ struct WebViewContainer: UIViewRepresentable {
             finishPendingExport(saved: false)
             guard let presenter = presenter() else {
                 model.presentError("保存画面を表示できませんでした")
-                if let requestID { reportExportResult(requestID, false) }
+                if let requestID { reportExportResult(requestID, false, nil) }
                 return
             }
             guard preparePendingExport(data: data, filename: filename, mimeType: mimeType, requestID: requestID) else {
                 model.presentError("出力ファイルを準備できませんでした")
-                if let requestID { reportExportResult(requestID, false) }
+                if let requestID { reportExportResult(requestID, false, nil) }
                 return
             }
 
@@ -456,12 +480,13 @@ struct WebViewContainer: UIViewRepresentable {
                         return
                     }
                     let activity = UIActivityViewController(activityItems: [pendingExportURL], applicationActivities: nil)
-                    activity.completionWithItemsHandler = { [weak self] _, completed, _, _ in
-                        self?.finishSharing(completed: completed)
+                    activity.completionWithItemsHandler = { [weak self] _, completed, _, error in
+                        self?.finishSharing(completed: completed, error: error)
                     }
                     if let popover = activity.popoverPresentationController {
-                        popover.sourceView = self.webView
-                        popover.sourceRect = self.webView?.bounds ?? .zero
+                        let sourceView = (self.webView as UIView?) ?? presenter.view!
+                        popover.sourceView = sourceView
+                        popover.sourceRect = Self.shareAnchor(in: sourceView.bounds)
                     }
                     self.present(activity, from: presenter)
                 }
@@ -503,9 +528,15 @@ struct WebViewContainer: UIViewRepresentable {
         }
 
         /// 共有シートを閉じたとき。共有を終えたら`completed`が真、取り消したら偽になる。
-        func finishSharing(completed: Bool) {
+        func finishSharing(completed: Bool, error: Error? = nil) {
             model.isPresentingNativeUI = false
-            finishPendingExport(saved: completed)
+            let status: NativeExportResult.Status = error != nil ? .error : (completed ? .completed : .cancelled)
+            finishPendingExport(saved: status == .completed, status: status)
+        }
+
+        /// 画面全体を基準にすると、iPadでポップオーバーの配置先が無くなる（#158）。
+        nonisolated static func shareAnchor(in bounds: CGRect) -> CGRect {
+            CGRect(x: bounds.midX, y: bounds.midY, width: 1, height: 1)
         }
 
         /// 保存画面などを出し、閉じるまでメニューの項目を選べなくする。
@@ -534,11 +565,15 @@ struct WebViewContainer: UIViewRepresentable {
 
         /// 書き出しを終え、一時ファイルを消して結果をWebへ返す（#122）。
         /// 保存・共有を終えたときだけ`saved`を真にし、Webはそのときだけ最後のバックアップ日時を記録する。
-        private func finishPendingExport(saved: Bool) {
+        private func finishPendingExport(saved: Bool, status: NativeExportResult.Status? = nil) {
             guard let pendingExport else { return }
             self.pendingExport = nil
             try? FileManager.default.removeItem(at: pendingExport.directory)
-            if let requestID = pendingExport.requestID { reportExportResult(requestID, saved) }
+            if let requestID = pendingExport.requestID {
+                reportExportResult(requestID, saved, status)
+            } else if status == .error {
+                model.presentError("共有に失敗しました。もう一度共有を試してください。")
+            }
             // 書き出しを保存・共有し終えた作業の区切りで、App Storeの評価の依頼を検討する（#84）。
             if saved {
                 reviewRequestTracker.exportDidSucceed(mimeType: pendingExport.mimeType) { [weak self] in self?.webView?.window }

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ThumbnailCache, thumbnailSize } from '../model/thumbnail';
 import type { ChartDocument } from '../storage/database';
-import { documentAccessibleName, formatUpdatedAt, msUntilNextDay } from './documentListText';
+import { DOCUMENT_ACTION_LABELS, documentAccessibleName, documentActionName, formatUpdatedAt, msUntilNextDay } from './documentListText';
 
 /** 一覧を閉じて開き直しても作り直さないよう、縮小画像はモジュールで1つの置き場に覚える。 */
 const thumbnailCache = new ThumbnailCache();
@@ -87,9 +87,9 @@ export function DocumentList({ documents, activeId, onOpen, onRename, onDuplicat
         </span>
       </button>
       <div className="document-actions">
-        <button aria-label="名前変更" onClick={() => onRename(document)}>名称</button>
-        <button aria-label="複製" onClick={() => onDuplicate(document)}>複製</button>
-        <button aria-label="削除" disabled={documents.length === 1} onClick={() => onDelete(document)}>削除</button>
+        <button aria-label={documentActionName('rename', document.name)} onClick={() => onRename(document)}>{DOCUMENT_ACTION_LABELS.rename}</button>
+        <button aria-label={documentActionName('duplicate', document.name)} onClick={() => onDuplicate(document)}>{DOCUMENT_ACTION_LABELS.duplicate}</button>
+        <button aria-label={documentActionName('delete', document.name)} disabled={documents.length === 1} onClick={() => onDelete(document)}>{DOCUMENT_ACTION_LABELS.delete}</button>
       </div>
     </li>;
   })}</ul>;

@@ -1,0 +1,54 @@
+import { expect, test } from './fixtures';
+
+test('guide explains chart reading, block reuse and backup scope', async ({ page }) => {
+  await page.goto('/guide/');
+  const main = page.locator('main');
+  await expect(main).toContainText('右下が1段め・1目め');
+  await expect(main).toContainText('奇数段は右から左へ、偶数段は左から右へ');
+  await expect(main).toContainText('偶数段も表から見た「表目」を入力');
+  await expect(main).toContainText('「選択範囲をブロック保存」');
+  await expect(main).toContainText('保存済みブロックは含まれません');
+  await expect(main).toContainText('既存の編み図は上書きされず');
+  await expect(main).toContainText('復元した先頭の編み図へ切り替わります');
+  await page.locator('footer').getByRole('link', { name: '棒針編み図エディタへ戻る', exact: true }).click();
+  await expect(page.getByRole('button', { name: '編み図', exact: true })).toBeVisible();
+});
+
+test('follows guide steps for a second chart, reusable block and all-data restore', async ({ page }) => {
+  await page.addInitScript(() => Object.defineProperty(Navigator.prototype, 'canShare', { value: undefined, configurable: true }));
+  await page.goto('/');
+  const canvas = page.getByLabel('編み図編集盤面');
+  await expect(canvas).toBeVisible();
+  await page.getByRole('button', { name: '編み図', exact: true }).click();
+  page.once('dialog', async (dialog) => dialog.accept('ガイドの2枚目'));
+  await page.getByRole('button', { name: '新しい編み図', exact: true }).click();
+  await expect(page.locator('.app-document-name')).toContainText('ガイドの2枚目');
+  const box = await canvas.boundingBox();
+  expect(box).not.toBeNull();
+  await canvas.click({ position: { x: 75, y: 75 } });
+  await page.getByRole('button', { name: '範囲', exact: true }).click();
+  await page.mouse.move(box!.x + 75, box!.y + 75);
+  await page.mouse.down();
+  await page.mouse.move(box!.x + 105, box!.y + 105);
+  await page.mouse.up();
+  await page.getByRole('button', { name: 'ブロック', exact: true }).click();
+  page.once('dialog', async (dialog) => dialog.accept('ガイドの模様'));
+  await page.getByRole('button', { name: '選択範囲をブロック保存', exact: true }).click();
+  await page.locator('.block-list').getByRole('button', { name: /ガイドの模様/ }).click();
+  await canvas.click({ position: { x: 195, y: 195 } });
+  await expect(page.getByText('ブロックを貼り付けました', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '保存', exact: true }).click();
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: '全データ', exact: true }).click();
+  const backupPath = await (await download).path();
+  expect(backupPath).not.toBeNull();
+  await page.locator('input[type="file"]').setInputFiles(backupPath!);
+  await expect(page.getByText('2件の編み図を復元しました', { exact: true })).toBeVisible();
+  await expect(page.locator('.app-document-name')).toContainText('（復元）');
+  await page.getByRole('button', { name: '編み図', exact: true }).click();
+  await expect(page.locator('.document-list > li')).toHaveCount(4);
+  await expect(page.locator('.document-name').filter({ hasText: /^ガイドの2枚目$/ })).toBeVisible();
+  await page.getByRole('button', { name: '閉じる', exact: true }).click();
+  await page.getByRole('button', { name: 'ブロック', exact: true }).click();
+  await expect(page.locator('.block-list > div')).toHaveCount(2);
+});

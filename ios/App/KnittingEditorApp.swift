@@ -4,12 +4,14 @@ import UIKit
 @main
 @MainActor
 struct KnittingEditorApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @Environment(\.scenePhase) private var scenePhase
     @State private var webViewModel = WebViewModel()
 
     var body: some Scene {
         WindowGroup {
             ContentView(model: webViewModel)
+                .onAppear { appDelegate.model = webViewModel }
                 .onChange(of: scenePhase) { _, phase in
                     guard phase == .background || phase == .inactive else { return }
                     webViewModel.flushPendingSave()

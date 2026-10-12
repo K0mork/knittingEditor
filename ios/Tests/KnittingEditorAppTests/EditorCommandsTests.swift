@@ -31,6 +31,17 @@ final class EditorCommandsTests: XCTestCase {
         }
     }
 
+    /// iPadOSの「開く…」（`open:`）は、編集画面が復元を受け付けるときだけ選べる。
+    @MainActor
+    func testSystemOpenCommandFollowsRestoreAvailability() {
+        let delegate = AppDelegate()
+        let open = #selector(AppDelegate.open(_:))
+        XCTAssertFalse(delegate.canPerformAction(open, withSender: nil), "編集画面がまだ無い")
+        let model = WebViewModel()
+        delegate.model = model
+        XCTAssertFalse(delegate.canPerformAction(open, withSender: nil), "編集画面の準備ができていない")
+    }
+
     func testUndoAndRedoFollowWebHistoryState() {
         let empty = EditorCommandState()
         XCTAssertFalse(WebViewModel.canPerform(.undo, webContentReady: true, state: empty))

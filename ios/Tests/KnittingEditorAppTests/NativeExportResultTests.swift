@@ -63,11 +63,15 @@ final class NativeExportResultTests: XCTestCase {
         let model = WebViewModel()
         let coordinator: WebViewContainer.Coordinator
         var reports: [(String, Bool)] = []
+        var statuses: [NativeExportResult.Status?] = []
 
         init() {
             let defaults = UserDefaults(suiteName: "NativeExportResultTests.\(UUID().uuidString)")!
             coordinator = WebViewContainer.Coordinator(model: model, reviewRequestTracker: ReviewRequestTracker(defaults: defaults))
-            coordinator.reportExportResult = { [unowned self] id, saved in self.reports.append((id, saved)) }
+            coordinator.reportExportResult = { [unowned self] id, saved, status in
+                self.reports.append((id, saved))
+                self.statuses.append(status)
+            }
         }
 
         /// 保存画面へ渡す直前の状態を作り、一時ファイルのディレクトリを返す。
@@ -121,12 +125,37 @@ final class NativeExportResultTests: XCTestCase {
         let completed = Harness()
         let completedDirectory = try completed.prepareExport()
         completed.coordinator.finishSharing(completed: true)
+        completed.coordinator.finishSharing(completed: true)
         completed.assertFinished([("export-1", true)], directory: completedDirectory)
+        XCTAssertEqual(completed.statuses, [.completed])
 
         let cancelled = Harness()
         let cancelledDirectory = try cancelled.prepareExport()
         cancelled.coordinator.finishSharing(completed: false)
         cancelled.assertFinished([("export-1", false)], directory: cancelledDirectory)
+        XCTAssertEqual(cancelled.statuses, [.cancelled])
+    }
+
+    @MainActor
+    func testShareErrorOverridesCompletionAndReportsOnce() throws {
+        for completed in [false, true] {
+            let harness = Harness()
+            let directory = try harness.prepareExport()
+            harness.coordinator.finishSharing(completed: completed, error: NSError(domain: "test", code: 1))
+            harness.coordinator.finishSharing(completed: true)
+            harness.assertFinished([("export-1", false)], directory: directory)
+            XCTAssertEqual(harness.statuses, [.error])
+        }
+        XCTAssertEqual(
+            NativeExportResult.script(requestID: "export-1", saved: false, status: .error),
+            #"window.dispatchEvent(new CustomEvent('knittingEditorNativeExportFinished',{detail:{"id":"export-1","saved":false,"status":"error"}}));"#
+        )
+    }
+
+    func testShareAnchorUsesSmallCenterRectAtAnyWindowSize() {
+        for bounds in [CGRect(x: 0, y: 0, width: 1024, height: 768), CGRect(x: 0, y: 0, width: 320, height: 1024)] {
+            XCTAssertEqual(WebViewContainer.Coordinator.shareAnchor(in: bounds), CGRect(x: bounds.midX, y: bounds.midY, width: 1, height: 1))
+        }
     }
 
     @MainActor

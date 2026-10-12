@@ -97,6 +97,31 @@ async function renderEditor(
 }
 
 describe('EditorView', () => {
+  it('shows stitch width in stitches and height in rows', async () => {
+    const { container } = await renderEditor();
+    await act(async () => { container.querySelector<HTMLButtonElement>('.stitch-tool')!.click(); });
+    const size = (name: string) => [...container.querySelectorAll('.stitch-option')]
+      .find((item) => item.querySelector('.stitch-option-name')?.textContent === name)?.querySelector('small')?.textContent;
+    expect(size('すべり目')).toBe('2段×1目');
+    expect(size('右上3目交差')).toBe('1段×6目');
+  });
+
+  it('shows both units for a rectangular block and preserves document size order', async () => {
+    const block = { id: 'size-units-block', name: '寸法確認', rows: 2, cols: 5, anchors: [], createdAt: Date.now() };
+    await saveBlock(block);
+    try {
+      const { container, click } = await renderEditor();
+      await click('ブロック');
+      const row = [...container.querySelectorAll('.block-list > div')].find((item) => item.textContent?.startsWith(block.name));
+      expect(row?.querySelector('small')?.textContent).toBe('2段×5目');
+      await click('閉じる');
+      await click('編み図');
+      expect(container.querySelector('.document-list')?.textContent).toContain('20段×20目');
+    } finally {
+      await deleteBlock(block.id);
+    }
+  });
+
   it('renders the host title around the document status and reports analytics', async () => {
     const analytics: EditorAnalytics = { track: vi.fn(), trackFirstEdit: vi.fn() };
     const { container, click } = await renderEditor({ analytics });
@@ -162,7 +187,8 @@ describe('EditorView', () => {
   });
 
   it('hides the gesture hint about ten seconds after opening', async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
+    // IndexedDBのテスト実装が使うsetImmediateなどは本物のまま動かし、ヒントのタイマーだけを進める。
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout'] });
     try {
       const { container } = await renderEditor();
       const hint = () => container.querySelector('.gesture-hint');
@@ -204,7 +230,7 @@ describe('EditorView', () => {
 
       await click('ブロック');
       await act(async () => { deleteButton()!.click(); });
-      expect(askConfirm).toHaveBeenCalledWith('ブロック「削除確認ブロック」を削除しますか？');
+      expect(askConfirm).toHaveBeenCalledWith('ブロック「削除確認ブロック」を削除しますか？', { destructive: true });
       expect((await listBlocks()).some((item) => item.id === block.id)).toBe(true);
       expect(deleteButton()).toBeDefined();
 

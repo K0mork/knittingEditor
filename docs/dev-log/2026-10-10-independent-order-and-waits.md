@@ -23,3 +23,4 @@
   - 2本指テストの負例：2本目の指のイベントを一時的に外して1本指のタップにすると、3プロジェクトすべてで盤面が`記号1個`になり失敗した。その後元に戻した。
 - PRのCIに任せること: iOSのビルド、iPhone/iPadのSimulatorテスト、更新復元、unsigned Release Archive、オフライン同梱物検査。Swift・iOS UIコードは変更していない。
 - デプロイ影響: なし。テストのみの変更で、配信後の追加確認は不要。
+- マージ前の追従（2026-10-12）: mainに入った #235 で編み図の操作ボタンの名前が変わったため、名前変更のE2E（`does not overwrite a renamed chart…`）は「新しい編み図の名称を変更」を押すようにした。保存の確認は、このPRの`expect.poll`による方法を残した。#219 で編み図の削除が同じ書き込みにまとめられた結果、新しいデータベースを作る処理が`setImmediate`を使う`fake-indexeddb`で進まなくなり、すべてのタイマーを偽装する案内の表示のVitestが単独実行で止まったため、偽装するタイマーを`setTimeout`・`clearTimeout`に限った。実際のブラウザで案内が約10秒で消えることは別に確かめた。main取り込み後に`npm run typecheck`、`npm test`（468件）、`npm run build`、`npm run check:dist`、`npm run test:e2e`（336件成功）を実行し、すべて成功した。
