@@ -18,17 +18,20 @@ afterEach(async () => {
 
 async function renderControls(backgroundColor: string) {
   const onBackgroundColorChange = vi.fn();
+  const board = new Board(2, 2);
+  const changed = vi.fn();
+  const notify = vi.fn();
   const container = document.createElement('div');
   document.body.append(container);
   let root!: Root;
   await act(async () => {
     root = createRoot(container);
-    root.render(<GridControls board={new Board(2, 2)} backgroundColor={backgroundColor} onBackgroundColorChange={onBackgroundColorChange}
-      changed={() => undefined} askText={async () => null} askConfirm={async () => false} notify={() => undefined} />);
+    root.render(<GridControls board={board} backgroundColor={backgroundColor} onBackgroundColorChange={onBackgroundColorChange}
+      changed={changed} askText={async () => null} askConfirm={async () => false} notify={notify} />);
   });
   cleanup = async () => { await act(async () => root.unmount()); container.remove(); };
   const presets = () => [...container.querySelectorAll<HTMLButtonElement>('.background-preset')];
-  return { container, presets, onBackgroundColorChange };
+  return { container, presets, onBackgroundColorChange, board, changed, notify };
 }
 
 describe('GridControls background color', () => {
@@ -56,5 +59,42 @@ describe('GridControls background color', () => {
       input.dispatchEvent(new Event('input', { bubbles: true }));
     });
     expect(view.onBackgroundColorChange).toHaveBeenLastCalledWith('#2f4f4f');
+  });
+});
+
+async function inputValue(input: HTMLInputElement, value: string) {
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, value);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+}
+
+describe('GridControls size inputs', () => {
+  it('keeps cleared fields empty and applies replacement dimensions only on change', async () => {
+    const view = await renderControls('#ffffff');
+    const [rows, cols] = view.container.querySelectorAll<HTMLInputElement>('.size-inputs input');
+    for (const [input, value] of [[rows, '25'], [cols, '30']] as const) {
+      await inputValue(input, '');
+      expect(input.value).toBe('');
+      await inputValue(input, value);
+      expect(input.value).toBe(value);
+    }
+    expect([view.board.rows, view.board.cols]).toEqual([2, 2]);
+    await act(async () => { view.container.querySelector<HTMLButtonElement>('.size-inputs button')!.click(); });
+    expect([view.board.rows, view.board.cols]).toEqual([25, 30]);
+    expect(view.changed).toHaveBeenCalledOnce();
+    expect(view.notify).not.toHaveBeenCalled();
+  });
+
+  it.each(['', '0', '1.5', '1001'])('rejects invalid dimension %j without changing the board', async (value) => {
+    const view = await renderControls('#ffffff');
+    for (const input of view.container.querySelectorAll<HTMLInputElement>('.size-inputs input')) {
+      await inputValue(input, value);
+      await act(async () => { view.container.querySelector<HTMLButtonElement>('.size-inputs button')!.click(); });
+      expect([view.board.rows, view.board.cols]).toEqual([2, 2]);
+      expect(view.changed).not.toHaveBeenCalled();
+      expect(view.notify).toHaveBeenCalled();
+      await inputValue(input, '2');
+    }
   });
 });

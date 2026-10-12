@@ -56,7 +56,7 @@ for (const action of ['create', 'rename', 'duplicate', 'delete'] as const) {
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
     if (action === 'delete') {
-      await page.getByRole('button', { name: '複製', exact: true }).click();
+      await page.locator('.document.active .document-actions').getByRole('button', { name: /を複製$/ }).click();
       await expect(page.locator('.document')).toHaveCount(2);
     }
     const names = await page.locator('.document-name').allTextContents();
@@ -75,7 +75,8 @@ for (const action of ['create', 'rename', 'duplicate', 'delete'] as const) {
     page.once('dialog', (dialog) => dialog.type() === 'prompt' ? dialog.accept('変更した名前') : dialog.accept());
     if (action === 'create') await page.getByRole('button', { name: '新しい編み図', exact: true }).click();
     else {
-      const label = { rename: '名前変更', duplicate: '複製', delete: '削除' }[action];
+      // 操作ボタンの名前は「<編み図名>の名称を変更」「<編み図名>を複製」「<編み図名>を削除」。
+      const label = { rename: /の名称を変更$/, duplicate: /を複製$/, delete: /を削除$/ }[action];
       // 複製にはダイアログがないので、登録したハンドラはここでは使われない。
       await page.locator('.document.active .document-actions').getByRole('button', { name: label }).click();
     }
