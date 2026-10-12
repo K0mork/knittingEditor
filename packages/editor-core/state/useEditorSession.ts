@@ -130,6 +130,9 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
   // 書き出した盤面が後から保存されると更新日時が記録より新しくなり、次に開いたとき
   // 「バックアップの後に変更があります」と誤って出る。その保存の日時で記録を進める。
   const exportedGenerationRef = useRef<string | undefined>(undefined);
+  // 失敗を通知した編集の世代。同じ内容の自動保存がまた失敗しても通知を重ねず、
+  // 先に出した理由と次の操作（使い方を開かなかった、など）を上書きしない。
+  const reportedFailureGenerationRef = useRef<number | undefined>(undefined);
   // 履歴は開いている編み図ごとに持ち、端末へは保存しない。切り替えると捨てる。
   const historyRef = useRef<BoardHistory | undefined>(undefined);
   const [canUndo, setCanUndo] = useState(false);
@@ -153,7 +156,9 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
       saved = await saveDocument({ ...document, backgroundColor: backgroundRef.current }, target);
     } catch (error) {
       setSaveFailed(true);
-      optionsRef.current.onSaveError(error, trigger);
+      const reported = reportedFailureGenerationRef.current === generation;
+      reportedFailureGenerationRef.current = generation;
+      if (trigger !== 'autosave' || !reported) optionsRef.current.onSaveError(error, trigger);
       return 'failed';
     }
     setSaveFailed(false);
@@ -210,12 +215,13 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
 
   useEffect(() => {
     const handler = (event: BeforeUnloadEvent) => {
-      if (!dirty) return;
+      // 即時保存の完了直後は、Reactの再描画より先にページを離れることがある。
+      if (!dirtyRef.current) return;
       event.preventDefault();
     };
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
-  }, [dirty]);
+  }, []);
 
   const changed = useCallback(() => {
     editGenerationRef.current += 1;
