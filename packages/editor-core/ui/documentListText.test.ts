@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { documentAccessibleName, formatUpdatedAt, msUntilNextDay } from './documentListText';
+import { DOCUMENT_ACTION_LABELS, documentAccessibleName, documentActionName, formatUpdatedAt, msUntilNextDay } from './documentListText';
 
 // 端末の時刻で書くので、期待値も端末の時刻で組み立てる。
 const at = (year: number, month: number, day: number, hours = 0, minutes = 0) => new Date(year, month - 1, day, hours, minutes).getTime();
@@ -34,6 +34,20 @@ describe('documentAccessibleName', () => {
   it('starts with the chart name and reads the size and the update time', () => {
     expect(documentAccessibleName({ name: 'ケーブル模様', rows: 40, cols: 30, updatedAt: at(2026, 10, 7, 9, 0) }, now))
       .toBe('ケーブル模様、40段×30目、更新 今日 9:00');
+  });
+});
+
+describe('documentActionName', () => {
+  it('names the target chart and the action', () => {
+    expect(documentActionName('rename', 'ケーブル模様')).toBe('ケーブル模様の名称を変更');
+    expect(documentActionName('duplicate', 'ケーブル模様')).toBe('ケーブル模様を複製');
+    expect(documentActionName('delete', 'ケーブル模様')).toBe('ケーブル模様を削除');
+  });
+
+  it('contains the visible label of each button', () => {
+    for (const action of ['rename', 'duplicate', 'delete'] as const) {
+      expect(documentActionName(action, '地模様')).toContain(DOCUMENT_ACTION_LABELS[action]);
+    }
   });
 });
 

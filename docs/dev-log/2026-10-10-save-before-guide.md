@@ -1,0 +1,22 @@
+# 2026-10-10 — 使い方へ移る前に最新の編集の保存を確認
+
+- 影響: WebとiOSで「使い方」を押したとき、保存結果が `saved` または `idle` の場合だけ移動する。`failed`、`pending`、2秒のタイムアウトでは編集画面を残し、理由と次の操作を通知する。保存待ちは通知し、待機中の重複操作は保存を重ねて始めない。iOSの画面リンク、フッター、ネイティブメニューは同じ処理を使う。保存に失敗した編集は、予約済みの自動保存で書き込みを再び試すが、同じ編集の失敗を重ねて通知しない。編集から400ms以内に押して保存できなかったとき、使い方を開かなかった理由とバックアップの案内が、自動保存の失敗通知で上書きされない。対応Issue: Closes #161、Closes #186。
+- 主なファイル: `src/App.tsx`、`ios/Web/src/App.tsx`、`packages/editor-core/ui/guideNavigation.ts`、`packages/editor-core/package.json`、`packages/editor-core/ui/EditorView.tsx`、`packages/editor-core/state/useEditorSession.ts`。即時保存直後の離脱確認は再描画前でも最新の未保存状態を参照する。Webで新しいタブを開く修飾キー付きの操作は従来どおりとする。
+- テスト: 共通の遷移処理、Webホスト、iOSのリンクとメニューに保存結果・タイムアウトを注入したVitestを追加。保存完了前の待機、再試行、重複操作、遅れて完了した保存による遷移の防止を検証。保存直後の `beforeunload` の回帰テストと、保存失敗後の自動保存が同じ編集の失敗を重ねて通知しないテストを追加。Playwright `tests/e2e/save-before-guide.spec.ts` は390px・1280pxで編集直後の遷移と復帰後のセル数を検証し、保存失敗時は画面を残したうえで、使い方を開かなかった案内が1秒後も表示されていることを検証する。XCUITest `testGuideNavigationReturnsToUsableEditor` はセルを置いて使い方から戻った後にセルが残ることを追加検証する。盤面は名前（`編み図編集盤面`）で探して記号数を待つ。
+- 検証（最終コード）:
+  - `npm run typecheck`: 成功。
+  - `npm test`: 39ファイル273件成功。
+  - `npm run build`: 成功。
+  - `npm run check:dist`: 成功。
+  - `(cd ios/Web && ../../node_modules/.bin/tsc -p tsconfig.app.json --noEmit)`: 成功。
+  - `(cd ios/Web && ../../node_modules/.bin/vitest run --config vite.config.ts)`: 9ファイル44件成功。
+  - `npx playwright test tests/e2e/save-before-guide.spec.ts`: chromium-mobile・webkit-mobile・chromium-desktopで9件成功。保存失敗時の通知の修正を外した状態では、追加した案内の検証が失敗することも確認した。
+  - `xcodegen generate --spec ios/project.yml`: 成功。追跡しているファイルに差分なし。
+  - `xcodebuild test -project ios/knittingEditor.xcodeproj -scheme knittingEditor -destination 'id=<iPhone Simulator, iOS 26.5>' -derivedDataPath .dd CODE_SIGNING_ALLOWED=NO -only-testing:knittingEditorUITests/KnittingEditorUITests/testGuideNavigationReturnsToUsableEditor`: 成功（56.1秒）。続けて同じテストを `xcodebuild test-without-building` で再実行し、成功（53.6秒）。
+  - `git diff --check`: 成功。
+- 検証（保存失敗時の通知の修正とXCUITestの修正の前のコードで実行）:
+  - `npm run test:e2e`: 173件成功、4件スキップ、失敗0。追加した3テストは3プロジェクトで9件成功。
+  - iPad Simulatorで `KeyboardCommandUITests/testFileAndHelpShortcutsOpenEditorActions`（⇧⌘Hのメニュー経路で使い方へ移る）: 成功。
+  - 390px（WebKit）と1440px（Chromium）で、編集直後の遷移と復帰、保存待ち、タイムアウト、保存失敗の通知と盤面を画面写真で確認。保存失敗時の画面写真は、自動保存の失敗通知に上書きされる修正前の状態。
+- PRのCIに任せる確認: 最終コードでの `npm run test:e2e` 全体、iPhone・iPadのSimulatorテスト全体（iPadでの `testGuideNavigationReturnsToUsableEditor` を含む）、アプリ更新テスト、unsigned Release Archive、オフライン同梱物検査。
+- デプロイ影響: マージ後はPagesの編集画面へ配信され、iOSの次回ビルドにも反映される。配信後はHTTPSのサイトで編集直後に使い方へ移って戻り、最後のセルを確認する。タブ破棄・再読み込みによる消失はこの修正の対象外で、実機Safariで別に確認する。
