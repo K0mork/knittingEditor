@@ -714,9 +714,6 @@ final class KnittingEditorUITests: XCTestCase {
     /// 画面座標の下スワイプで閉じる。シートの有無は`SystemSheet`の要素で判定する
     /// （実機で表示中のみ存在し、閉じると消えることを確認済み）。
     func testBackupExportSheetDismissesBackToEditor() throws {
-        if ProcessInfo.processInfo.environment["CI"] == "true" {
-            throw XCTSkip("Xcode 15.4 CI SimulatorではWebKitがgzipバックアップ生成中に無応答になるため、保存パネル・PNG/PDF導線とローカルSimulatorで検証する")
-        }
         let app = XCUIApplication()
         app.launch()
 
