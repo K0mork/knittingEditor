@@ -24,6 +24,12 @@ on:
 permissions:
   contents: read
 
+# マージのたびに5つのmacOSジョブを積むと、PRのCIの順番待ちが増える。同じブランチでは最新の
+# 実行だけを残し、古い実行は取り消す。最新のコミットはそれ以前の変更をすべて含む。
+concurrency:
+  group: ios-full-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   ios_full:
     strategy:
