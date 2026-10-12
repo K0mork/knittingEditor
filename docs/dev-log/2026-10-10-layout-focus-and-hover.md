@@ -1,0 +1,24 @@
+# 2026-10-10 — 大きな文字での配置とフォーカス・色見本・hoverの修正
+
+- 対象: #178、#179、#188、#207、#210（Closes #178、Closes #179、Closes #188、Closes #207、Closes #210）。
+- 影響: 選択操作帯を独立したグリッド行に置き、折り返した操作メニューと重ならなくする。帯のボタンの文字はヘッダーの2操作と同じ`min(1rem, 20px)`を上限にして1行に収め、iPhoneの最大のDynamic Typeでも選択中に盤面が見える高さを残す。広い画面では帯の下に下のセーフエリアの余白を取る。広い画面の右列は内容の実幅とrem単位の最小幅に合わせて広げる（標準の文字では760〜1179pxで96pxから99pxになり、1180px以上は118pxのまま）。フォーカス枠を不透明色にし、ヘッダーの「編み図」にも白い枠を付ける。色入力に背景から判別できる外枠を付け、hoverの強調はhoverできる環境に限る。Web・iOS共通。
+- 主なファイル: `packages/editor-core/styles/base.css`、`tests/e2e/contrast.spec.ts`、`tests/e2e/layout-focus-and-hover.spec.ts`、`ios/UITests/KnittingEditorUITests/KnittingEditorUITests.swift`。
+- テスト:
+  - `contrast.spec.ts`: 明暗・390/1280pxでキーボードによる「使い方」→「編み図」→色→記号の移動とフォーカス枠の3:1、白・淡色・黒の色入力の輪郭（線の有無も確かめる）を追加。WebKitはSafariの既定と同じくTabだけではボタンに移らないので、Option+Tab（`Alt+Tab`）で移す。色入力のキーボードフォーカスはChromiumで確かめる（下の既知の制限を参照）。
+  - `layout-focus-and-hover.spec.ts`: 390×664（16/28px）、390×844（48px）、760/1024/1280px×1024（16/28/48px）の文字で、盤面の中心からの範囲選択、選択操作帯と操作メニューの非重複、選択中の盤面の高さ120px以上、右列の文字の収まり、ブロック保存への到達、解除後の復帰を確かめる。hoverの入力環境による切り替えも追加。
+  - XCUITest `testAccessibilityExtraExtraExtraLargeKeepsSelectionActionsSeparate`: 最大Dynamic Typeで選択操作帯と操作列の非重複、選択中の盤面の高さ120pt以上、解除後の操作を確かめ、写真を添付する。
+- 既知の制限: WebKitではOption+Tabでも`input[type="color"]`にフォーカスが移らず、`focus()`で移してもフォーカス枠の表示（`:focus-visible`）にならない。修正前からのブラウザの挙動で、#207の「キーボードの操作で色を選べる」はWebKit（Safari）のキーボード操作では満たせない。色入力のキーボードフォーカスはChromiumだけで確かめている。
+- 検証:
+  - `npm run typecheck` 成功。`npm test` 成功（37ファイル、259件）。xcodebuildのSimulatorテストと並行して流した1回目だけ1件失敗した（出力を残しておらず、どのテストかは特定していない）。単独で2回流し直すと2回とも成功した。`npm run build` 成功、`npm run check:dist` 成功。`(cd ios/Web && ../../node_modules/.bin/tsc -p tsconfig.app.json --noEmit)` 成功、`(cd ios/Web && ../../node_modules/.bin/vitest run --config vite.config.ts)` 成功（8ファイル、34件）。
+  - `npx playwright test tests/e2e/contrast.spec.ts tests/e2e/layout-focus-and-hover.spec.ts`（Chromium・WebKitの3プロジェクト）: 修正後のCSSで2回とも57件成功。
+  - 同じ2ファイルを修正前のCSS（`origin/main`の`base.css`）で実行: 44件失敗。390×664・28pxと390×844・48pxで「盤面の中心が覆われない」、760/1024/1280pxの28・48pxで「右列の名前が切れない」、キーボードのフォーカス枠（「使い方」が明2.17:1・暗2.98:1）、色入力の「線なし」、Pixel 7・iPhone 14のhoverで失敗し、回帰を捉えることを確かめた。
+  - 同じ2ファイルを、選択操作帯の文字の上限を入れる前のCSSで実行: 390×844・48pxの3件が「選択中も盤面が見える」（盤面の高さ60px）で失敗した。
+  - `npm run test:e2e`（全体、1回）: 215件成功、4件スキップ、失敗なし。
+  - `xcodegen generate --spec project.yml`（`ios/`で実行）成功、追跡しているファイルに差分なし。
+  - `xcodebuild test -project ios/knittingEditor.xcodeproj -scheme knittingEditor -destination id=<Simulator> -derivedDataPath .dd CODE_SIGNING_ALLOWED=NO -only-testing:knittingEditorUITests/KnittingEditorUITests/testAccessibilityExtraExtraExtraLargeKeepsSelectionActionsSeparate`: iPhone・iPadのSimulatorで各2回、すべて`** TEST SUCCEEDED **`。文字の上限を入れる前のCSSでは、iPhoneで盤面の高さが10ptになり失敗した。iPhoneの最大文字の写真で、修正前は盤面が見えず道具の列の上が欠け、修正後は選んだ範囲と道具の列が見えることを確かめた。
+  - 文字の上限を入れる前の版でも、別の確認者が`npm run test:e2e`（テストの座標とWebKitのキー操作を直す前で37件失敗、既存のテストはすべて成功）と、iPhone・iPadの`testAccessibilityExtraExtraExtraLargeKeepsSelectionActionsSeparate`・`testAccessibilityExtraExtraExtraLargeKeepsPrimaryControlsUsable`（各2件成功）を実行した。この結果は今回の変更より前のもので、上の結果に置き換わる。
+  - 写真で確かめたこと（今回）: iPhoneの最大文字の範囲選択中に、選んだ範囲・道具の列・1行の選択操作帯・操作メニューがすべて見える。iPadの最大文字の範囲選択中に、右列の名前が読め、帯が盤面列の下で下端から離れている。WebKitの390×844・48pxで帯が1行に収まり、盤面が残る。
+  - 写真で確かめたこと（帯の文字の上限を入れる前の版で、別の確認者が撮影）: 390pxで28pxの範囲選択中に帯が操作メニューと重ならない、ヘッダーと通常のボタンのフォーカス枠が明暗で見える、白い色見本に輪郭がある、760/1024/1280pxの48pxで右列の名前が切れない。今回の変更は帯のボタンの文字と広い画面の帯の下余白だけで、これらの写真の対象には影響しない。
+  - 確かめていないこと: iPadのSplit Viewなどの可変幅はSimulatorで確かめず、Playwrightの760px・1024pxで近似した。iOSのタップ後にhoverの枠が残らないことは、Simulatorと実機の目視で確かめていない。盤面パネルの「グレー」の折り返しは今回変更・確認していない。
+  - PR CIに任せること: iOSのビルド、Simulatorのテスト一式（iPhone・iPad）、アプリ更新のテスト、unsigned Release Archive、オフライン同梱物の検査。
+- デプロイ影響: Pagesで共通CSSが配信され、iOSの同梱Webにも反映される。配信後はHTTPSの編集画面で、範囲選択中の操作帯、文字拡大時の右列、明暗のフォーカス枠と色入力、マウスのhoverを確かめる。

@@ -1,0 +1,181 @@
+name: Full iOS validation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'ios/**'
+      - '!ios/**/*.md'
+      - 'packages/**'
+      - '!packages/**/*.md'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.ts'
+      - 'vite.shared.ts'
+      - 'scripts/third-party-notices.mjs'
+      - 'tsconfig*.json'
+      - 'playwright.config.ts'
+      - '.github/workflows/**'
+      - '!.github/workflows/**/*.md'
+  schedule:
+    - cron: '23 18 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# マージのたびに5つのmacOSジョブを積むと、PRのCIの順番待ちが増える。同じブランチでは最新の
+# 実行だけを残し、古い実行は取り消す。最新のコミットはそれ以前の変更をすべて含む。
+concurrency:
+  group: ios-full-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ios_full:
+    strategy:
+      fail-fast: false
+      matrix:
+        device:
+          - 'iPhone 17'
+          - 'iPad (A16)'
+    runs-on: macos-26
+    # App Store提出に要るiOS 26 SDKを持ち、イメージにあるSimulatorのランタイムと版が揃うXcodeに固定する。
+    # イメージの既定Xcodeが替わってもビルドとテストのXcodeが変わらないよう、明示的に選ぶ。
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+    # UIテストの追加で、iPadの実行が28〜29分かかるようになり、テストが成功し続けている
+    # まま30分で取り消されたことがある。テストの増加に備えて余裕を持たせる。
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Show Xcode and Simulator runtimes
+        run: |
+          xcodebuild -version
+          xcrun simctl list runtimes
+      # xcodebuildに任せると、ビルド後に初回起動してすぐテストを始めるため、起動直後の
+      # 初期化処理とUIテストが重なってXCUITestの操作1つが数十秒かかることがある。
+      # 先に起動を始め、完了を待ってからビルドに入り、ビルドの間に落ち着かせる。
+      - name: Boot simulator
+        id: simulator
+        run: |
+          udid="$(ios/scripts/boot-simulator.sh '${{ matrix.device }}')"
+          echo "udid=$udid" >> "$GITHUB_OUTPUT"
+      - name: Install XcodeGen
+        run: ios/scripts/install-xcodegen.sh "$RUNNER_TEMP/xcodegen"
+      - name: Generate Xcode project
+        run: xcodegen generate --spec ios/project.yml
+      - name: Wait for simulator boot
+        run: xcrun simctl bootstatus '${{ steps.simulator.outputs.udid }}' -b
+      - name: Run iOS tests
+        run: >-
+          xcodebuild test
+          -project ios/knittingEditor.xcodeproj
+          -scheme knittingEditor
+          -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.udid }}'
+          -derivedDataPath "$RUNNER_TEMP/DerivedData"
+          -retry-tests-on-failure
+          -test-iterations 2
+          -test-timeouts-enabled YES
+          -default-test-execution-time-allowance 150
+          -maximum-test-execution-time-allowance 240
+          CODE_SIGNING_ALLOWED=NO
+      # テストのためにビルドしたDebugのアプリをそのまま検査する。ビルドし直すと1〜2分かかる。
+      - name: Verify generated app bundle
+        run: ios/scripts/check-app-bundle.sh "$RUNNER_TEMP/DerivedData/Build/Products/Debug-iphonesimulator/knittingEditor.app"
+
+  app_update:
+    strategy:
+      fail-fast: false
+      matrix:
+        device:
+          - 'iPhone 17'
+          - 'iPad (A16)'
+    runs-on: macos-26
+    # `ios`ジョブと同じXcodeに固定する。
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+    # 実作業は8〜10分。ランナーの後片付けが5分以上かかって20分を超え、
+    # 検証が全部成功しているのにcancelled扱いになったことがある。
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Show Xcode and Simulator runtimes
+        run: |
+          xcodebuild -version
+          xcrun simctl list runtimes
+      # `ios`ジョブと同じ理由で先に起動を始める。完了はスクリプトがビルド前に待つ。
+      - name: Boot simulator
+        id: simulator
+        run: |
+          udid="$(ios/scripts/boot-simulator.sh '${{ matrix.device }}')"
+          echo "udid=$udid" >> "$GITHUB_OUTPUT"
+      - name: Install XcodeGen
+        run: ios/scripts/install-xcodegen.sh "$RUNNER_TEMP/xcodegen"
+      - name: Generate Xcode project
+        run: xcodegen generate --spec ios/project.yml
+      - name: Simulate app update and restore IndexedDB
+        env:
+          SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}
+        run: |
+          ios/scripts/simulate-app-update.sh \
+            '${{ matrix.device }}' \
+            'platform=iOS Simulator,name=${{ matrix.device }},OS=latest'
+
+  release_archive:
+    runs-on: macos-26
+    # `ios`ジョブと同じXcodeに固定する。
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Show Xcode and Simulator runtimes
+        run: |
+          xcodebuild -version
+          xcrun simctl list runtimes
+      - name: Install XcodeGen
+        run: ios/scripts/install-xcodegen.sh "$RUNNER_TEMP/xcodegen"
+      - name: Generate Xcode project
+        run: xcodegen generate --spec ios/project.yml
+      - name: Create unsigned Release archive
+        run: >-
+          xcodebuild archive
+          -project ios/knittingEditor.xcodeproj
+          -scheme knittingEditor
+          -configuration Release
+          -destination 'generic/platform=iOS'
+          -archivePath "$RUNNER_TEMP/knittingEditor.xcarchive"
+          CODE_SIGNING_ALLOWED=NO
+          CODE_SIGNING_REQUIRED=NO
+      - name: Verify archived app bundle
+        run: ios/scripts/check-release-assets.sh "$RUNNER_TEMP/knittingEditor.xcarchive/Products/Applications/knittingEditor.app"
+
+  report_failure:
+    needs: [ios_full, app_update, release_archive]
+    if: ${{ failure() && (github.ref == 'refs/heads/main' || github.event_name == 'schedule') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    # 同時に失敗したrunによるIssueの重複作成を防ぐ。
+    concurrency:
+      group: ios-full-failure-issue
+      cancel-in-progress: false
+    steps:
+      - name: Report full iOS validation failure
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          COMMIT: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          title='Full iOS validation failed'
+          issue="$(gh issue list --state open --label bug --label priority:P1 --label platform:ios --limit 1000 --json number,title --jq 'map(select(.title == "Full iOS validation failed")) | first | .number // empty')"
+          body="iOSの全検証が失敗しました。該当コミットの失敗ジョブとログを確認してください。\n\nCommit: $COMMIT\nRun: $RUN_URL"
+          printf '%b\n' "$body" > "$RUNNER_TEMP/ios-full-failure.md"
+          if [[ -n "$issue" ]]; then
+            gh issue comment "$issue" --body-file "$RUNNER_TEMP/ios-full-failure.md"
+          else
+            gh issue create --title "$title" --label bug --label priority:P1 --label platform:ios --body-file "$RUNNER_TEMP/ios-full-failure.md"
+          fi

@@ -56,6 +56,38 @@ final class NativeExportResultTests: XCTestCase {
         )
     }
 
+    /// Webが正規化した名前をブリッジで受け取り、各形式の一時ファイルを作れる。
+    @MainActor
+    func testNormalizedTrickyNamesPrepareNativeFilesForEveryExportFormat() throws {
+        let bytes = Data([1, 2, 3])
+        for (ext, mime) in [("png", "image/png"), ("pdf", "application/pdf"), ("knit", "application/gzip")] {
+            for (original, normalized) in [
+                ("春/秋", "春_秋"),
+                ("試作..完成", "試作_完成"),
+                ("試作\\修正版", "試作_修正版"),
+                (String(repeating: "春", count: 177), String(repeating: "春", count: 179 - ext.count)),
+            ] {
+                let unsafe = "\(original).\(ext)"
+                let filename = "\(normalized).\(ext)"
+                func decode(_ name: String) -> Result<NativeBridgeMessage, NativeBridgeMessage.MessageError> {
+                    NativeBridgeMessage.decode(body: [
+                        "version": 1, "type": "exportFile", "filename": name,
+                        "mimeType": mime, "dataBase64": bytes.base64EncodedString(), "id": "filename-test",
+                    ])
+                }
+                XCTAssertEqual(decode(unsafe), .failure(.invalidFile), unsafe)
+                XCTAssertEqual(decode(filename), .success(.exportFile(data: bytes, filename: filename, mimeType: mime, requestID: "filename-test")))
+                let harness = Harness()
+                XCTAssertTrue(harness.coordinator.preparePendingExport(data: bytes, filename: filename, mimeType: mime, requestID: "filename-test"))
+                let pending = try XCTUnwrap(harness.coordinator.pendingExport)
+                defer { harness.coordinator.cancelExportOptions() }
+                XCTAssertEqual(pending.url.lastPathComponent, filename)
+                XCTAssertEqual(pending.url.deletingLastPathComponent(), pending.directory)
+                XCTAssertEqual(try Data(contentsOf: pending.url), bytes)
+            }
+        }
+    }
+
     // MARK: - Coordinator
 
     @MainActor
@@ -134,6 +166,21 @@ final class NativeExportResultTests: XCTestCase {
         cancelled.coordinator.finishSharing(completed: false)
         cancelled.assertFinished([("export-1", false)], directory: cancelledDirectory)
         XCTAssertEqual(cancelled.statuses, [.cancelled])
+    }
+
+    @MainActor
+    func testEveryExportMimeTypeReportsShareCompletionCancellationAndError() throws {
+        for (ext, mime) in [("png", "image/png"), ("pdf", "application/pdf"), ("knit", "application/gzip")] {
+            for status in [NativeExportResult.Status.completed, .cancelled, .error] {
+                let harness = Harness()
+                XCTAssertTrue(harness.coordinator.preparePendingExport(data: Data([1, 2, 3]), filename: "chart.\(ext)", mimeType: mime, requestID: "export-1"))
+                let directory = try XCTUnwrap(harness.coordinator.pendingExport?.directory)
+                harness.model.isPresentingNativeUI = true
+                harness.coordinator.finishSharing(completed: status == .completed, error: status == .error ? NSError(domain: "test", code: 1) : nil)
+                harness.assertFinished([("export-1", status == .completed)], directory: directory)
+                XCTAssertEqual(harness.statuses, [status])
+            }
+        }
     }
 
     @MainActor
