@@ -23,22 +23,23 @@ export function swiftTestMethods(source) {
   return tests;
 }
 
-export function validateSkiplist(text, methods) {
+export function validateSmokeList(text, methods) {
   const entries = text.split(/\r?\n/)
     .filter((line) => line.trim() && !line.trimStart().startsWith('#'));
+  if (entries.length === 0) throw new Error('Empty PR smoke UI test list');
   const seen = new Set();
   for (const entry of entries) {
     if (!/^[A-Za-z_][A-Za-z0-9_]*\/test[A-Za-z0-9_]+$/.test(entry)) {
-      throw new Error(`Invalid iPad UI test: ${entry}`);
+      throw new Error(`Invalid PR smoke UI test: ${entry}`);
     }
-    if (seen.has(entry)) throw new Error(`Duplicate iPad UI test: ${entry}`);
-    if (!methods.has(entry)) throw new Error(`Unknown iPad UI test: ${entry}`);
+    if (seen.has(entry)) throw new Error(`Duplicate PR smoke UI test: ${entry}`);
+    if (!methods.has(entry)) throw new Error(`Unknown PR smoke UI test: ${entry}`);
     seen.add(entry);
   }
   return entries;
 }
 
-export function checkIpadUiTests(root = fileURLToPath(new URL('../', import.meta.url))) {
+export function checkPrSmokeUiTests(root = fileURLToPath(new URL('../', import.meta.url))) {
   const methods = new Set();
   function visit(directory) {
     for (const entry of readdirSync(directory, { withFileTypes: true })) {
@@ -50,12 +51,12 @@ export function checkIpadUiTests(root = fileURLToPath(new URL('../', import.meta
     }
   }
   visit(join(root, 'ios/UITests/KnittingEditorUITests'));
-  return validateSkiplist(readFileSync(join(root, 'ios/UITests/ipad-skipped-ui-tests.txt'), 'utf8'), methods);
+  return validateSmokeList(readFileSync(join(root, 'ios/UITests/pr-smoke-ui-tests.txt'), 'utf8'), methods);
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
-    console.log(`iPad UI test skip list: ${checkIpadUiTests().length} existing tests`);
+    console.log(`PR smoke UI test list: ${checkPrSmokeUiTests().length} existing tests`);
   } catch (error) {
     console.error(error.message);
     process.exitCode = 1;
