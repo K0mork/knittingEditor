@@ -25,6 +25,23 @@ describe('PDF page layout', () => {
     expect(estimated).toBe(pagesInPdf(rows, cols, options));
   });
 
+  it.each([
+    [53, 37, 1], [54, 37, 2], [53, 38, 2], [54, 38, 4],
+    [105, 71, 4], [106, 72, 9],
+  ])('covers %i×%i without overlap-only pages (%i pages)', (rows, cols, expected) => {
+    const options: PdfLayoutOptions = { layout: 'tiled', orientation: 'portrait', cellMillimeters: 5 };
+    const layout = pdfPageLayout(rows, cols, options);
+    expect(layout.pageCount).toBe(expected);
+    expect(pdfPageCount(rows, cols, options)).toBe(expected);
+    expect(pagesInPdf(rows, cols, options)).toBe(expected);
+    expect(layout.pageRows * layout.pageCols).toBe(expected);
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        expect(layout.tiles.some((tile) => row >= tile.row && row < tile.row + tile.rows && col >= tile.col && col < tile.col + tile.cols)).toBe(true);
+      }
+    }
+  });
+
   it('keeps one overlapping row and column between tiles', () => {
     const layout = pdfPageLayout(60, 40, { layout: 'tiled', orientation: 'portrait', cellMillimeters: 5 });
     expect(layout.stepCols).toBe(layout.tileCols - 1);

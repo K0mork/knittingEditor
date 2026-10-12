@@ -69,6 +69,10 @@ extension WebViewModel {
 /// iPadのメニューバーと、⌘キーの長押しで出るショートカットの一覧に載せる項目。
 ///
 /// キーの割り当ては、iPadOSの慣習（⌘N・⌘O・⌘S・⌘Z・⇧⌘Z）と、Web版のキー操作（⌘Z・⇧⌘Z）に合わせる。
+/// 復元（⌘O）はここに置かない。「ファイル」アプリから`.knit`を開けるよう`LSSupportsOpeningDocumentsInPlace`を
+/// 有効にすると、iPadOSが「ファイル」メニューの先頭に「開く…」（⌘O）と「最近使った項目を開く」を足す。
+/// 同じ⌘Oの項目を置くと、その項目を含むグループがまるごとメニューから外れ、⌘Nも効かなくなった（#149、
+/// iOS 26.5のSimulator）。「開く…」は外せないので、`AppDelegate`で受けて復元につなぐ。
 /// 使い方は慣習の⌘?にすると、メニューに載ってもiPadのSimulatorで押したときに呼ばれなかった
 /// （⇧⌘/も同じ。原因は確かめていない）。押して動くことを確かめた⇧⌘H（Help）にする。
 struct EditorCommands: Commands {
@@ -77,7 +81,6 @@ struct EditorCommands: Commands {
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
             item("新しい編み図…", .newDocument, "n")
-            item("バックアップから復元…", .restoreBackup, "o")
         }
         CommandGroup(replacing: .saveItem) {
             item("この編み図をバックアップ…", .exportBackup, "s")
@@ -107,5 +110,20 @@ struct EditorCommands: Commands {
         Button(title) { model.perform(command) }
             .keyboardShortcut(key, modifiers: modifiers)
             .disabled(!model.canPerform(command))
+    }
+}
+
+/// iPadOSが「ファイル」メニューに足す「開く…」（⌘O、`open:`）を受け取り、バックアップの復元につなぐ（#149）。
+/// アプリの委譲先はレスポンダチェーンの最後にあるので、編集画面のどこにフォーカスがあっても届く。
+final class AppDelegate: UIResponder, UIApplicationDelegate {
+    weak var model: WebViewModel?
+
+    override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
+        if action == #selector(open(_:)) { return model?.canPerform(.restoreBackup) ?? false }
+        return super.canPerformAction(action, withSender: sender)
+    }
+
+    @objc func open(_ sender: Any?) {
+        model?.perform(.restoreBackup)
     }
 }

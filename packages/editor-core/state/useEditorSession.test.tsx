@@ -16,7 +16,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('../storage/database', async () => {
   const { Board: BoardClass } = await import('../model/Board');
   return {
-    boardFromDocument: (document: ChartDocument) => new BoardClass(document.rows, document.cols),
+    boardFromDocument: (document: ChartDocument) => new BoardClass(document.rows, document.cols, new Uint32Array(document.cells.slice(0))),
     listBlocks: async () => [],
     listDocuments: mocks.listDocuments,
     saveDocument: mocks.saveDocument,
@@ -70,7 +70,7 @@ beforeEach(() => {
   mocks.listDocuments.mockResolvedValue([]);
   mocks.setSetting.mockResolvedValue(undefined);
   mocks.saveDocument.mockImplementation(async (document: ChartDocument, board: Board) => ({
-    ...document, rows: board.rows, cols: board.cols, updatedAt: Date.now(),
+    ...document, rows: board.rows, cols: board.cols, cells: board.cells.slice().buffer, updatedAt: Date.now(),
   }));
 });
 
@@ -88,6 +88,63 @@ describe('mergeSavedDocument', () => {
 });
 
 describe('useEditorSession', () => {
+  it.each(['before autosave', 'during pending save'])('keeps edits and history on same-ID selection %s', async (timing) => {
+    const view = await renderSession();
+    const stale = view.session.documents.find((document) => document.id === 'a')!;
+    const target = view.session.board!;
+    await act(async () => {
+      target.resize(5, 6);
+      target.place(0, 0, 'knit', '#123456');
+      view.session.changed();
+      view.session.commitEdit();
+      view.session.setBackgroundColor('#808080');
+    });
+    let release!: () => void;
+    let saving: Promise<unknown> | undefined;
+    if (timing === 'during pending save') {
+      mocks.saveDocument.mockImplementationOnce((document: ChartDocument, board: Board) => {
+        const saved = { ...document, rows: board.rows, cols: board.cols, cells: board.cells.slice().buffer, updatedAt: 50 };
+        return new Promise((resolve) => { release = () => resolve(saved); });
+      });
+      await act(async () => { saving = view.session.saveNow(); });
+      await act(async () => {
+        target.place(1, 1, 'purl', '#123456');
+        view.session.changed();
+        view.session.commitEdit();
+      });
+    }
+    await act(async () => { expect(await view.session.switchDocument(stale)).toBe('switched'); });
+    expect(view.session.board).toBe(target);
+    expect(target.rows).toBe(5);
+    expect(target.cols).toBe(6);
+    expect(target.valueAt(0, 0)).not.toBe(0);
+    expect(view.session.backgroundColor).toBe('#808080');
+    expect(view.session.canUndo).toBe(true);
+    expect(view.session.dirty).toBe(true);
+    if (saving) await act(async () => { release(); expect(await saving).toBe('pending'); });
+    await view.flush(500);
+    expect(view.session.dirty).toBe(false);
+    const saved = view.session.documents.find((document) => document.id === 'a')!;
+    expect(saved.rows).toBe(5);
+    expect(saved.cols).toBe(6);
+    expect(new Uint32Array(saved.cells)[0]).toBe(target.valueAt(0, 0));
+    expect(saved.backgroundColor).toBe('#808080');
+    if (saving) expect(new Uint32Array(saved.cells)[7]).toBe(target.valueAt(1, 1));
+    await view.unmount();
+  });
+
+  it('keeps the board and history if the active setting cannot be written', async () => {
+    const view = await renderSession();
+    const target = view.session.board;
+    mocks.setSetting.mockRejectedValueOnce(new Error('quota'));
+    await act(async () => {
+      await expect(view.session.switchDocument(chart('b', 20))).rejects.toThrow('quota');
+    });
+    expect(view.session.activeDocument?.id).toBe('a');
+    expect(view.session.board).toBe(target);
+    await view.unmount();
+  });
+
   it('autosaves the edited chart and clears the unsaved marker', async () => {
     const view = await renderSession();
     expect(view.session.activeDocument?.id).toBe('a');
@@ -98,6 +155,21 @@ describe('useEditorSession', () => {
 
     expect(mocks.saveDocument).toHaveBeenCalledTimes(1);
     expect(view.session.dirty).toBe(false);
+    await view.unmount();
+  });
+
+  it('does not warn on leaving immediately after saving, before React renders', async () => {
+    const view = await renderSession();
+    await act(async () => { view.session.changed(); });
+    const unsaved = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(unsaved);
+    expect(unsaved.defaultPrevented).toBe(true);
+    await act(async () => {
+      expect(await view.session.saveNow()).toBe('saved');
+      const saved = new Event('beforeunload', { cancelable: true });
+      window.dispatchEvent(saved);
+      expect(saved.defaultPrevented).toBe(false);
+    });
     await view.unmount();
   });
 
@@ -137,6 +209,41 @@ describe('useEditorSession', () => {
     await view.unmount();
   });
 
+  it('flushes latest edits after waiting for an in-flight autosave', async () => {
+    const view = await renderSession();
+    const target = view.session.board!;
+    let release!: () => void;
+    mocks.saveDocument.mockImplementationOnce((document: ChartDocument, board: Board) => {
+      const saved = { ...document, cells: board.cells.slice().buffer, updatedAt: 50 };
+      return new Promise((resolve) => { release = () => resolve(saved); });
+    });
+    await act(async () => {
+      target.place(0, 0, 'knit', '#123456');
+      view.session.changed();
+    });
+    let autosaving!: Promise<unknown>;
+    await act(async () => { autosaving = view.session.saveNow('autosave'); });
+    await act(async () => {
+      target.place(1, 1, 'purl', '#123456');
+      view.session.changed();
+    });
+    let flushing!: Promise<unknown>;
+    await act(async () => { flushing = view.session.saveNow('background'); });
+    expect(mocks.saveDocument).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      release();
+      expect(await autosaving).toBe('pending');
+      expect(await flushing).toBe('saved');
+    });
+    expect(mocks.saveDocument).toHaveBeenCalledTimes(2);
+    const saved = view.session.documents.find((document) => document.id === 'a')!;
+    expect(new Uint32Array(saved.cells)[0]).toBe(target.valueAt(0, 0));
+    expect(new Uint32Array(saved.cells)[5]).toBe(target.valueAt(1, 1));
+    expect(target.valueAt(1, 1)).not.toBe(0);
+    expect(view.session.dirty).toBe(false);
+    await view.unmount();
+  });
+
   it('reports a failed save once and leaves the chart unsaved', async () => {
     mocks.saveDocument.mockRejectedValue(new Error('書き込みに失敗'));
     const view = await renderSession();
@@ -148,6 +255,23 @@ describe('useEditorSession', () => {
     expect(outcome).toBe('failed');
     expect(view.saveErrors).toEqual(['manual']);
     expect(view.session.dirty).toBe(true);
+    await view.unmount();
+  });
+
+  it('retries the scheduled autosave without repeating the failure already reported for the same edit', async () => {
+    mocks.saveDocument.mockRejectedValue(new Error('書き込みに失敗'));
+    const view = await renderSession();
+
+    await act(async () => { view.session.changed(); });
+    await act(async () => { await view.session.saveNow(); });
+    await view.flush(500);
+    // 予約済みの自動保存は試すが、同じ編集の失敗は通知済みなので重ねない。
+    expect(mocks.saveDocument).toHaveBeenCalledTimes(2);
+    expect(view.saveErrors).toEqual(['manual']);
+
+    await act(async () => { view.session.changed(); });
+    await view.flush(500);
+    expect(view.saveErrors).toEqual(['manual', 'autosave']);
     await view.unmount();
   });
 
