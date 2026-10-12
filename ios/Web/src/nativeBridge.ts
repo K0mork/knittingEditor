@@ -85,9 +85,15 @@ function listenExportFinished() {
   window.addEventListener(NATIVE_EXPORT_FINISHED_EVENT, (event) => {
     const detail = (event as CustomEvent<unknown>).detail;
     if (!detail || typeof detail !== 'object') return;
-    const { id, saved } = detail as { id?: unknown; saved?: unknown };
-    if (typeof id !== 'string') return;
-    settleExport(id, typeof saved === 'boolean' ? saved : undefined);
+    const { id, saved, status } = detail as { id?: unknown; saved?: unknown; status?: unknown };
+    if (typeof id !== 'string' || !pendingExports.has(id)) return;
+    // 失敗は取りやめと区別して通知するが、バックアップ日時の記録はどちらも行わない。
+    settleExport(id, status === 'error' ? false : typeof saved === 'boolean' ? saved : undefined);
+    if (status === 'error') {
+      window.dispatchEvent(new CustomEvent('knittingEditorNativeError', {
+        detail: '共有に失敗しました。もう一度共有を試してください。',
+      }));
+    }
   });
 }
 
