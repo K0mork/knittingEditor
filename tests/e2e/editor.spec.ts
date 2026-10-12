@@ -94,6 +94,22 @@ async function clickBoardCenter(page: import('@playwright/test').Page) {
   await page.mouse.click(box!.x + label + (box!.width - label) / 2, box!.y + label + (box!.height - label) / 2);
 }
 
+/**
+ * 盤面を右下へ大きく動かし、左上のマスを表示領域の中央に置く（位置の制限でそこで止まる）。
+ * 初期位置は画面の大きさで変わる（狭い画面では右下の編み始めに寄せる）ので、画素を見るテストは先にこれで位置を決める。
+ * 戻り値は、上から2段目（縞のない段）・左端のマスの中央の、Canvas内のCSS座標。
+ */
+async function showTopLeftCellAtCenter(page: import('@playwright/test').Page) {
+  const canvas = page.getByLabel('編み図編集盤面');
+  await canvas.evaluate((element) => {
+    element.dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaX: -100_000, deltaY: -100_000 }));
+  });
+  const box = await canvas.boundingBox();
+  expect(box).not.toBeNull();
+  const label = 28;
+  return [label + (box!.width - label) / 2, label + (box!.height - label) / 2 + 30] as const;
+}
+
 async function storedCells(page: import('@playwright/test').Page) {
   await page.waitForTimeout(700);
   return await page.evaluate(async () => {
@@ -697,21 +713,20 @@ test('keeps the chosen board background after reload and exports it to PNG', asy
     const ratio = canvas.width / canvas.clientWidth;
     return Array.from(canvas.getContext('2d')!.getImageData(Math.round(cssX * ratio), Math.round(cssY * ratio), 1, 1).data.slice(0, 3));
   }, [x, y]);
-  // 盤面は左上の番号の帯（28px）から8px内側で始まり、1マス30px。上から2段目・左端のマスの中央を見る。
-  const groundPoint = [36 + 15, 36 + 30 + 15] as const;
-  await expect.poll(() => canvasPixel(...groundPoint)).toEqual([255, 255, 255]);
+  // 上から2段目・左端のマスの中央を見る。パネルの開閉や再読み込みの後は、位置を決め直してから見る。
+  await expect.poll(async () => canvasPixel(...await showTopLeftCellAtCenter(page))).toEqual([255, 255, 255]);
 
   await page.getByRole('button', { name: '盤面' }).click();
   await expect(page.getByRole('button', { name: '白', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('button', { name: '黒', exact: true }).click();
   await expect(page.getByRole('button', { name: '黒', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('button', { name: '閉じる' }).click();
-  await expect.poll(() => canvasPixel(...groundPoint)).toEqual([0x1e, 0x1e, 0x1e]);
+  await expect.poll(async () => canvasPixel(...await showTopLeftCellAtCenter(page))).toEqual([0x1e, 0x1e, 0x1e]);
 
   await expect(page.getByText('（保存中…）')).toHaveCount(0);
   await page.reload();
   await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
-  await expect.poll(() => canvasPixel(...groundPoint)).toEqual([0x1e, 0x1e, 0x1e]);
+  await expect.poll(async () => canvasPixel(...await showTopLeftCellAtCenter(page))).toEqual([0x1e, 0x1e, 0x1e]);
   await page.getByRole('button', { name: '盤面' }).click();
   await expect(page.getByRole('button', { name: '黒', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('button', { name: '閉じる' }).click();
@@ -741,8 +756,8 @@ test('follows the dark appearance around the board but keeps the chart ground', 
     return Array.from(canvas.getContext('2d')!.getImageData(Math.round(cssX * ratio), Math.round(cssY * ratio), 1, 1).data.slice(0, 3));
   }, [x, y]);
   const pageBackground = () => page.evaluate(() => getComputedStyle(document.documentElement).backgroundColor);
-  // 盤面は左上の番号の帯（28px）から8px内側で始まり、1マス30px。上から2段目・左端のマスの中央と、帯の左上の角を見る。
-  const groundPoint = [36 + 15, 36 + 30 + 15] as const;
+  // 上から2段目・左端のマスの中央と、帯の左上の角を見る。
+  const groundPoint = await showTopLeftCellAtCenter(page);
   const bandPoint = [4, 4] as const;
   /** 番号の帯は半透明で重ねるので、ブラウザによって各色が1ずれる。 */
   const near = (actual: number[], expected: number[]) => actual.every((value, index) => Math.abs(value - expected[index]) <= 2);

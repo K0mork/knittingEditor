@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { Board, type PatternBlock, type Point, type Rect } from '../model/Board';
 import { boardSurface, DEFAULT_BACKGROUND_COLOR } from '../model/boardColors';
 import { STITCH_BY_KEY, STITCHES } from '../stitches/catalog';
@@ -189,6 +189,26 @@ export function BoardCanvas(props: Props) {
   // 描くたびに計算済みスタイルを読まないよう、外観が変わったときだけ読み直す。
   const chromeRef = useRef<CanvasChrome>(LIGHT_CANVAS_CHROME);
 
+  /** 番号の文字の大きさと帯の幅。最も長い段番号を実際の文字で測って決める。 */
+  const measureLabels = (context: CanvasRenderingContext2D, rows: number) => {
+    const rootFontSize = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    return fitCanvasLabels(rootFontSize, (size) => {
+      context.font = `${size}px system-ui`;
+      return context.measureText(String(rows)).width;
+    });
+  };
+
+  /**
+   * 初めて表示する編み図を、表示領域の大きさが分かった時点で編み始めの右下が見える位置に置く。
+   * 一度置いた編み図には二度と適用しないので、利用者が動かした位置や倍率は上書きしない。
+   */
+  const placeInitialViewport = (width: number, height: number, band: number) => {
+    const board = propsRef.current.board;
+    if (initializedBoardRef.current === board || width <= band || height <= band) return;
+    viewportRef.current = initialViewport(viewportRef.current.cell, board, { width, height }, band);
+    initializedBoardRef.current = board;
+  };
+
   const requestDraw = () => {
     cancelAnimationFrame(frameRef.current);
     frameRef.current = requestAnimationFrame(draw);
@@ -214,21 +234,14 @@ export function BoardCanvas(props: Props) {
 
     const { selection, pasteBlock, mode, background = DEFAULT_BACKGROUND_COLOR } = propsRef.current;
     const board = provisionalRef.current ?? propsRef.current.board;
-    const rootFontSize = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
-    const { fontSize, band } = fitCanvasLabels(rootFontSize, (size) => {
-      context.font = `${size}px system-ui`;
-      return context.measureText(String(board.rows)).width;
-    });
+    const { fontSize, band } = measureLabels(context, board.rows);
     context.font = `${fontSize}px system-ui`;
     const colExtent = context.measureText(String(board.cols)).width;
     bandRef.current = band;
     const surface = boardSurface(background, 'screen');
     // 画面の大きさ（回転・可変ウィンドウ）や段数・列数、編み図が変わると、
     // 今の位置が範囲の外になることがあるので、描くたびに範囲へ戻す。
-    if (initializedBoardRef.current !== propsRef.current.board && width > band && height > band) {
-      viewportRef.current = initialViewport(viewportRef.current.cell, board, { width, height }, band);
-      initializedBoardRef.current = propsRef.current.board;
-    }
+    placeInitialViewport(width, height, band);
     viewportRef.current = clampViewport(viewportRef.current, board, { width, height }, band);
     const view = viewportRef.current;
     const firstCol = Math.max(0, Math.floor((-view.x + band) / view.cell));
@@ -302,6 +315,19 @@ export function BoardCanvas(props: Props) {
       cancelAnimationFrame(frameRef.current);
     };
   }, []);
+
+  // 初期位置は最初の描画（次のフレーム）を待たずに決める。描画より先に届いたスクロールや
+  // タッチが、後から初期位置で上書きされて失われたり、違うマスに入ったりしないようにする。
+  // 表示前で大きさが無いときは、描画のたびに置き直しを試みる。
+  useLayoutEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || initializedBoardRef.current === props.board || !canvas.clientWidth || !canvas.clientHeight) return;
+    const context = canvas.getContext('2d');
+    if (!context) return;
+    const { band } = measureLabels(context, props.board.rows);
+    bandRef.current = band;
+    placeInitialViewport(canvas.clientWidth, canvas.clientHeight, band);
+  }, [props.board]);
 
   useEffect(requestDraw, [props.board, props.background, props.revision, props.selection, props.mode, props.pasteBlock]);
 

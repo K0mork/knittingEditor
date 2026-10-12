@@ -244,3 +244,47 @@ describe('canvas mouse sequences', () => {
     expect(document.getElementById(canvas.getAttribute('aria-describedby')!)?.textContent).toContain('タップまたはドラッグ');
   }));
 });
+
+describe('initial view timing', () => {
+  it('keeps a scroll that arrives before the first frame instead of replacing it with the initial view', () => {
+    // 390×477はwebkit-mobile（iPhone 14）の盤面の大きさ。初期位置では表示領域の中央が段13・目15付近になる。
+    const size = { clientWidth: 390, clientHeight: 477 };
+    for (const [key, value] of Object.entries(size)) Object.defineProperty(HTMLCanvasElement.prototype, key, { configurable: true, get: () => value });
+    const context = new Proxy({}, { get: (_target, key) => (key === 'measureText' ? () => ({ width: 10 }) : () => undefined), set: () => true });
+    const getContext = vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => context as CanvasRenderingContext2D);
+    const frames: FrameRequestCallback[] = [];
+    vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => frames.push(callback));
+    vi.stubGlobal('cancelAnimationFrame', () => {});
+    const host = document.createElement('div');
+    document.body.append(host);
+    const root = createRoot(host);
+    const board = new Board(20, 20);
+    try {
+      act(() => root.render(createElement(BoardCanvas, {
+        board, revision: 0, mode: 'draw', stitchKey: 'knit', color: '#000000',
+        onChange: () => {}, onSelectionChange: () => {}, onPasteComplete: () => {},
+      })));
+      const canvas = host.querySelector('canvas')!;
+      canvas.setPointerCapture = () => {};
+      // 最初の描画より前に、盤面を右下へ大きく動かす。左上のマスが表示領域の中央で止まる。
+      act(() => { canvas.dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaX: -100_000, deltaY: -100_000 })); });
+      act(() => { while (frames.length) frames.shift()!(0); });
+      const center = { x: LABEL_SIZE + (size.clientWidth - LABEL_SIZE) / 2, y: LABEL_SIZE + (size.clientHeight - LABEL_SIZE) / 2 };
+      for (const [type, buttons] of [['pointerdown', 1], ['pointerup', 0]] as const) act(() => {
+        const event = new Event(type, { bubbles: true });
+        Object.assign(event, { pointerId: 1, pointerType: 'mouse', clientX: center.x, clientY: center.y, button: 0, buttons });
+        canvas.dispatchEvent(event);
+      });
+      expect([...board.cells.keys()].filter((index) => board.cells[index])).toEqual([0]);
+    } finally {
+      act(() => root.unmount());
+      host.remove();
+      vi.unstubAllGlobals();
+      getContext.mockRestore();
+      // 上書きした大きさを消し、HTMLElementの本来の定義へ戻す。
+      for (const key of Object.keys(size)) delete (HTMLCanvasElement.prototype as unknown as Record<string, unknown>)[key];
+    }
+  });
+});
