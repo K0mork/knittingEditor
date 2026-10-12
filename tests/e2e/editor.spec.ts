@@ -590,7 +590,7 @@ test('resizes to one million cells without creating cell DOM nodes', async ({ pa
 
 test('describes the board and the current mode for assistive technology', async ({ page }) => {
   const canvas = page.getByLabel('編み図編集盤面');
-  await expect(canvas).toHaveAttribute('role', 'application');
+  await expect(canvas).toHaveAttribute('role', 'region');
   await expect(canvas).toHaveAttribute('aria-label', /20段、20目。記号0個。描画モード。選択範囲なし/);
   await expect(page.locator('#board-instructions')).toHaveText(/現在は描画モードです/);
   await expect(canvas).toHaveAttribute('aria-describedby', 'board-instructions');
