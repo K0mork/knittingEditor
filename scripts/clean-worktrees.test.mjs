@@ -1,5 +1,8 @@
-import { describe, expect, it } from 'vitest';
-import { decide, isPathInUse, parseLsofCwds, parseWorktrees } from './clean-worktrees.mjs';
+import { mkdtempSync, writeFileSync, rmSync, realpathSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { decide, isPathInUse, parseLsofCwds, parseWorktrees, processCwds } from './clean-worktrees.mjs';
 
 describe('parseWorktrees', () => {
   it('reads branches and detached worktrees from porcelain output', () => {
@@ -44,5 +47,68 @@ describe('process working directories', () => {
     expect(isPathInUse('/repo/.claude/worktrees/x', ['/repo/.claude/worktrees/x/src'])).toBe(true);
     expect(isPathInUse('/repo/.claude/worktrees/x', ['/repo/.claude/worktrees/x'])).toBe(true);
     expect(isPathInUse('/repo/.claude/worktrees/x', ['/repo/.claude/worktrees/x2', '/repo'])).toBe(false);
+  });
+});
+
+describe('processCwds with a fake lsof', () => {
+  let fakeBin;
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    if (fakeBin) rmSync(fakeBin, { recursive: true, force: true });
+    fakeBin = undefined;
+  });
+
+  function fakeLsof(output, exitCode) {
+    fakeBin = mkdtempSync(join(tmpdir(), 'clean-worktrees-lsof-'));
+    writeFileSync(join(fakeBin, 'lsof'), `#!/bin/sh\nprintf '%s' '${output}'\nexit ${exitCode}\n`, { mode: 0o755 });
+    vi.stubEnv('PATH', fakeBin);
+  }
+
+  function decisionFor(path, result) {
+    return decide({
+      inMain: true,
+      pr: null,
+      inUse: isPathInUse(path, result.cwds),
+      processCwdsKnown: result.complete,
+    });
+  }
+
+  it('keeps partial stdout and skips removal when lsof exits with 1', () => {
+    fakeLsof('p123\nfcwd\nn/repo/.claude/worktrees/x\n', 1);
+    const result = processCwds();
+    expect(result.complete).toBe(false);
+    expect(result.cwds).toContain('/repo/.claude/worktrees/x');
+    expect(decisionFor('/repo/.claude/worktrees/x', result).remove).toBe(false);
+    expect(decisionFor('/repo/.claude/worktrees/unreported', result)).toEqual({
+      remove: false,
+      reason: 'process working directories could not be determined',
+    });
+    expect(result.cwds).toContain(realpathSync(process.cwd()));
+  });
+
+  it('skips removal when lsof fails without stdout', () => {
+    fakeLsof('', 1);
+    const result = processCwds();
+    expect(result.complete).toBe(false);
+    expect(decisionFor('/repo/.claude/worktrees/x', result).remove).toBe(false);
+  });
+
+  it('skips removal when lsof cannot be executed', () => {
+    fakeBin = mkdtempSync(join(tmpdir(), 'clean-worktrees-lsof-'));
+    vi.stubEnv('PATH', fakeBin);
+    const result = processCwds();
+    expect(result.complete).toBe(false);
+    expect(result.cwds).toContain(realpathSync(process.cwd()));
+    expect(decisionFor('/repo/.claude/worktrees/x', result).remove).toBe(false);
+  });
+
+  it('preserves normal decisions and always protects its own working directory', () => {
+    fakeLsof('p123\nfcwd\nn/repo/.claude/worktrees/x\n', 0);
+    const result = processCwds();
+    expect(result.complete).toBe(true);
+    expect(decisionFor('/repo/.claude/worktrees/x', result).remove).toBe(false);
+    expect(decisionFor('/repo/.claude/worktrees/unused', result).remove).toBe(true);
+    expect(decisionFor(realpathSync(process.cwd()), result).remove).toBe(false);
   });
 });

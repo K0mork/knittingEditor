@@ -640,7 +640,7 @@ for (const action of ['switch', 'restore'] as const) {
     }
     await expect(page.locator('.app-document-name')).toContainText('新しい編み図');
     await expect(page.locator('.app-document-name')).not.toContainText('コピー');
-    await expect(page.locator('.app-document-name')).toContainText('保存中');
+    await expect(page.locator('.app-document-name')).toContainText('保存失敗');
     await expect(page.locator('.toast')).toContainText('保存');
   });
 }
@@ -765,4 +765,88 @@ test('follows the dark appearance around the board but keeps the chart ground', 
 
   await page.goto('/guide/');
   await expect.poll(pageBackground).toBe('rgb(23, 28, 25)');
+});
+
+test('keeps cleared size inputs empty and applies dimensions on change', async ({ page }) => {
+  await page.getByRole('button', { name: '盤面', exact: true }).click();
+  for (const [label, value] of [['段数', '25'], ['列数', '30']]) {
+    const field = page.getByLabel(label, { exact: true });
+    await field.fill('');
+    await expect(field).toHaveValue('');
+    await field.pressSequentially(value);
+    await expect(field).toHaveValue(value);
+  }
+  await expect(page.getByLabel('編み図編集盤面')).toHaveAttribute('aria-label', /20段、20目/);
+  await page.getByRole('button', { name: '変更', exact: true }).click();
+  await expect(page.getByLabel('編み図編集盤面')).toHaveAttribute('aria-label', /25段、30目/);
+  for (const label of ['段数', '列数']) {
+    const field = page.getByLabel(label, { exact: true });
+    for (const value of ['', '0']) {
+      await field.fill(value);
+      await page.getByRole('button', { name: '変更', exact: true }).click();
+      await expect(page.getByLabel('編み図編集盤面')).toHaveAttribute('aria-label', /25段、30目/);
+    }
+    await field.fill(label === '段数' ? '25' : '30');
+  }
+});
+
+test('shows stitch and rectangular block dimensions with both units', async ({ page }) => {
+  await page.getByRole('button', { name: '編み目記号を選ぶ' }).click();
+  const picker = page.getByRole('dialog', { name: '編み目記号' });
+  await expect(picker.getByRole('button', { name: /^すべり目 / }).locator('small')).toHaveText('2段×1目');
+  await expect(picker.getByRole('button', { name: /^右上3目交差 / }).locator('small')).toHaveText('1段×6目');
+  await picker.getByRole('button', { name: '閉じる' }).click();
+  await page.getByRole('button', { name: '範囲', exact: true }).click();
+  // 既存のマウスによる範囲選択と同じ操作で、横長の範囲を作る。
+  const box = (await page.getByLabel('編み図編集盤面').boundingBox())!;
+  await page.mouse.move(box.x + 75, box.y + 75);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 195, box.y + 105);
+  await page.mouse.up();
+  await page.getByRole('button', { name: 'ブロック', exact: true }).click();
+  page.once('dialog', async (dialog) => dialog.accept('横長ブロック'));
+  await page.getByRole('button', { name: '選択範囲をブロック保存' }).click();
+  const size = page.locator('.block-list > div').filter({ hasText: '横長ブロック' }).locator('small');
+  await expect(size).toHaveText(/^\d+段×\d+目$/);
+  const dimensions = (await size.innerText()).match(/^(\d+)段×(\d+)目$/)!;
+  expect(Number(dimensions[2])).toBeGreaterThan(Number(dimensions[1]));
+});
+
+test('reports a PDF worker load failure and clears it when retry succeeds', async ({ page }) => {
+  await page.addInitScript(() => Object.defineProperty(Navigator.prototype, 'canShare', { value: undefined, configurable: true }));
+  await page.reload();
+  await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
+  const workerUrl = /\/pdf\.worker(?:\.ts|-[\w-]+\.js)(?:\?.*)?$/;
+  await page.route(workerUrl, (route) => route.fulfill({ status: 404, body: '' }));
+  await page.getByRole('button', { name: '保存', exact: true }).click();
+  const exportButton = page.getByRole('button', { name: 'PDFを保存', exact: true });
+  await exportButton.click();
+  await expect(page.locator('.toast')).toContainText('PDFを生成できませんでした。ページを再読み込みして、もう一度お試しください。');
+  await expect(exportButton).toBeEnabled();
+  await expect(page.getByText('PDFを生成中', { exact: true })).not.toBeVisible();
+  await page.unroute(workerUrl);
+  const download = page.waitForEvent('download');
+  await exportButton.click();
+  expect((await download).suggestedFilename()).toMatch(/\.pdf$/);
+  await expect(page.locator('.toast')).not.toBeVisible();
+});
+
+test('exports an exactly fitting tiled PDF as one estimated and actual page', async ({ page }) => {
+  await page.addInitScript(() => Object.defineProperty(Navigator.prototype, 'canShare', { value: undefined, configurable: true }));
+  await page.reload();
+  await page.getByRole('button', { name: '盤面', exact: true }).click();
+  await page.getByLabel('段数').fill('53');
+  await page.getByLabel('列数').fill('37');
+  await page.getByRole('button', { name: '変更', exact: true }).click();
+  await page.getByRole('button', { name: '閉じる', exact: true }).click();
+  await page.getByRole('button', { name: '保存', exact: true }).click();
+  await page.getByLabel('構成').selectOption('tiled');
+  await page.getByLabel('用紙').selectOption('portrait');
+  await page.getByLabel('セル寸法').fill('5');
+  await expect(page.getByText('推定 1ページ', { exact: true })).toBeVisible();
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'PDFを保存', exact: true }).click();
+  const file = await (await download).path();
+  expect(file).not.toBeNull();
+  expect(readFileSync(file!).toString('latin1')).toMatch(/\/Type \/Pages \/Kids \[[^\]]*\] \/Count 1\b/);
 });
