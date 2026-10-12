@@ -483,7 +483,8 @@ final class KnittingEditorUITests: XCTestCase {
         app.buttons["\(nameA)を削除"].tap()
         let question = app.staticTexts["「\(nameA)」を削除しますか？"]
         XCTAssertTrue(question.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
-        app.buttons["決定"].tap()
+        // 行のボタンは「<名前>を削除」なので、名前がちょうど「削除」なのは確認ダイアログのボタンだけ。
+        app.buttons["削除"].tap()
         assertDisappears(question, from: app, note: "削除の確認が閉じない")
         ensureDocumentsPanelOpen(in: app)
         assertDisappears(app.buttons["\(nameA)を削除"], from: app, note: "削除した編み図の行が残っている")
@@ -1100,7 +1101,10 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertTrue(row.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
         let title = app.staticTexts["「\(name)」を削除しますか？"]
 
-        deleteButton(inRowOf: row, in: app).tap()
+        // 行のボタンは「<名前>を削除」、確認ダイアログのボタンは「削除」という名前で区別できる。
+        let rowDelete = app.buttons["\(name)を削除"]
+        XCTAssertTrue(rowDelete.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+        rowDelete.tap()
         XCTAssertTrue(title.waitForExistence(timeout: 10), app.debugDescription)
         XCTAssertTrue(app.staticTexts["この操作は元に戻せません。"].exists, app.debugDescription)
         XCTAssertFalse(app.buttons["決定"].exists, "削除の確認に「決定」が出ている: \(app.debugDescription)")
@@ -1108,9 +1112,9 @@ final class KnittingEditorUITests: XCTestCase {
         assertDisappears(title, from: app, note: "キャンセルで確認が閉じない")
         XCTAssertTrue(row.exists, "キャンセルしたのに編み図が消えた: \(app.debugDescription)")
 
-        deleteButton(inRowOf: row, in: app).tap()
+        rowDelete.tap()
         XCTAssertTrue(title.waitForExistence(timeout: 10), app.debugDescription)
-        dialogDeleteButton(below: title, in: app).tap()
+        app.buttons["削除"].tap()
         assertDisappears(title, from: app, note: "削除で確認が閉じない")
         assertDisappears(row, from: app, note: "削除した編み図が一覧に残る")
     }
@@ -1699,33 +1703,6 @@ final class KnittingEditorUITests: XCTestCase {
         )
         let result = XCTWaiter.wait(for: [disappearance], timeout: 15)
         XCTAssertTrue(result == .completed, "\(note): \(app.debugDescription)")
-    }
-
-    /// 編み図一覧で、指定した行と同じ高さにある「削除」ボタン。
-    private func deleteButton(inRowOf row: XCUIElement, in app: XCUIApplication) -> XCUIElement {
-        nearestDeleteButton(in: app, failure: "行の「削除」が無い") { abs($0.midY - row.frame.midY) }
-    }
-
-    /// 確認ダイアログの「削除」ボタン。一覧の行のボタンと区別するため、タイトルより下で最も近いものを選ぶ。
-    private func dialogDeleteButton(below title: XCUIElement, in app: XCUIApplication) -> XCUIElement {
-        let titleBottom = title.frame.maxY
-        return nearestDeleteButton(in: app, failure: "ダイアログの「削除」が無い") {
-            $0.minY >= titleBottom ? $0.minY - titleBottom : nil
-        }
-    }
-
-    private func nearestDeleteButton(
-        in app: XCUIApplication,
-        failure: String,
-        distance: (CGRect) -> CGFloat?
-    ) -> XCUIElement {
-        let candidates = app.buttons.matching(NSPredicate(format: "label == %@", "削除")).allElementsBoundByIndex
-        let scored = candidates.compactMap { button in distance(button.frame).map { (button, $0) } }
-        guard let nearest = scored.min(by: { $0.1 < $1.1 })?.0 else {
-            XCTFail("\(failure): \(app.debugDescription)")
-            return app.buttons["削除"].firstMatch
-        }
-        return nearest
     }
 
     private func requireAppUpdateProbe() throws {
