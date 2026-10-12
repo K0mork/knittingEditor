@@ -85,10 +85,36 @@ function listenExportFinished() {
   window.addEventListener(NATIVE_EXPORT_FINISHED_EVENT, (event) => {
     const detail = (event as CustomEvent<unknown>).detail;
     if (!detail || typeof detail !== 'object') return;
-    const { id, saved } = detail as { id?: unknown; saved?: unknown };
-    if (typeof id !== 'string') return;
-    settleExport(id, typeof saved === 'boolean' ? saved : undefined);
+    const { id, saved, status } = detail as { id?: unknown; saved?: unknown; status?: unknown };
+    if (typeof id !== 'string' || !pendingExports.has(id)) return;
+    // 失敗は取りやめと区別して通知するが、バックアップ日時の記録はどちらも行わない。
+    settleExport(id, status === 'error' ? false : typeof saved === 'boolean' ? saved : undefined);
+    if (status === 'error') {
+      window.dispatchEvent(new CustomEvent('knittingEditorNativeError', {
+        detail: '共有に失敗しました。もう一度共有を試してください。',
+      }));
+    }
   });
+}
+
+/** 編み図名やファイル内容は変えず、Swiftのファイル名検査に通る出力名を作る。 */
+function safeExportFilename(filename: string): string {
+  // 名前の末尾の点が拡張子の点とつながって置換されないよう、拡張子を先に分ける。
+  const extension = filename.match(/\.(png|pdf|knit)$/i)?.[0] ?? '';
+  // FoundationのcontrolCharactersはCcに加えてCf（不可視の書式制御文字）も含む。
+  const stem = filename.slice(0, filename.length - extension.length)
+    .replace(/[\/\\\p{Cc}\p{Cf}]/gu, '_').replace(/\.{2,}/g, '_').trim() || 'chart';
+  // SwiftのString.countと同様に、結合文字や絵文字を途中で分割しない。
+  const segments = new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(stem);
+  let truncated = '';
+  let count = 0;
+  for (const { segment } of segments) {
+    if (count >= 180 - extension.length) break;
+    truncated += segment;
+    count += 1;
+  }
+  // 名前（切り詰めた場合はその結果）の末尾の点と拡張子の点が、`..`にならないようにする。
+  return truncated.replace(/\.+$/, '_') + extension;
 }
 
 /**
@@ -108,7 +134,7 @@ export async function saveBlobWithNativeBridge(blob: Blob, filename: string): Pr
       version: 1,
       type: 'exportFile',
       id,
-      filename,
+      filename: safeExportFilename(filename),
       mimeType: blob.type || 'application/octet-stream',
       dataBase64: bytesToBase64(new Uint8Array(await blob.arrayBuffer())),
     });

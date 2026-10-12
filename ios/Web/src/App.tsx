@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { initializeStorage, listBlocks } from '@knitting-editor/editor-core/storage/database';
 import { base64ToBytes } from '@knitting-editor/editor-core/util/base64';
 import { EditorView } from '@knitting-editor/editor-core/ui/EditorView';
 import { noteHardwareKeyboard } from '@knitting-editor/editor-core/ui/inputEnvironment';
 import { useEditorController } from '@knitting-editor/editor-core/ui/useEditorController';
+import { createGuideNavigation } from '@knitting-editor/editor-core/ui/guideNavigation';
 import { useAppDialog } from './AppDialog';
 import { withTimeout } from './async';
 import { useNotifyWhenEditorShown } from './editorReady';
@@ -20,7 +21,7 @@ declare global {
 }
 
 export const STORAGE_INITIALIZATION_TIMEOUT_MS = 10_000;
-export const GUIDE_NAVIGATION_SAVE_TIMEOUT_MS = 2_000;
+export { GUIDE_NAVIGATION_SAVE_TIMEOUT_MS } from '@knitting-editor/editor-core/ui/guideNavigation';
 
 function initialize() {
   return withTimeout(
@@ -47,7 +48,10 @@ export default function App() {
 
   // アプリがバックグラウンドへ移るときは待たずに書き込む。共通の保存経路を通すので、
   // 書き込み中に入った編集は未保存のまま残り、「保存済み」表示にはならない。
-  const flushPendingSave = useCallback(async () => await saveNow('background') !== 'failed', [saveNow]);
+  const flushPendingSave = useCallback(async () => {
+    const outcome = await saveNow('background');
+    return outcome === 'saved' || outcome === 'idle';
+  }, [saveNow]);
 
   useEffect(() => {
     const handler = () => { void flushPendingSave(); };
@@ -62,15 +66,14 @@ export default function App() {
 
   // 使い方ページへの遷移でReactは破棄される。WKWebViewはbeforeunloadの確認を
   // 表示しないため、保留中の自動保存を完了させてから移動する。
-  const navigateToGuide = useCallback((destination: string) => {
-    // 保存が滞っても使い方ページを開けなくならないよう、待ち時間を区切る。
-    void withTimeout(flushPendingSave(), GUIDE_NAVIGATION_SAVE_TIMEOUT_MS, '保存の完了を待てませんでした')
-      .catch(() => false)
-      .finally(() => window.location.assign(destination));
-  }, [flushPendingSave]);
+  const navigateToGuide = useMemo(() => createGuideNavigation({
+    save: () => saveNow(),
+    notify: editor.notify,
+    navigate: (destination) => window.location.assign(destination),
+  }), [saveNow, editor.notify]);
   const openGuide = useCallback((event: React.MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault();
-    navigateToGuide(event.currentTarget.href);
+    void navigateToGuide(event.currentTarget.href);
   }, [navigateToGuide]);
 
   // メニューバーとキーボードショートカットの操作。購読は一度だけにし、最新の操作をrefで参照する。
