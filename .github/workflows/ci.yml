@@ -182,7 +182,9 @@ jobs:
     # イメージの既定Xcodeが替わってもビルドとテストのXcodeが変わらないよう、明示的に選ぶ。
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
-    timeout-minutes: 30
+    # UIテストの追加で、iPadの実行が28〜29分かかるようになり、テストが成功し続けている
+    # まま30分で取り消されたことがある。テストの増加に備えて余裕を持たせる。
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Show Xcode and Simulator runtimes
