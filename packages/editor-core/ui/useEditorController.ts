@@ -34,6 +34,10 @@ export function saveErrorMessage(trigger: SaveTrigger): string {
   return '変更を保存できませんでした。バックアップを保存してください。';
 }
 
+export interface ConfirmOptions {
+  destructive?: boolean;
+}
+
 export interface EditorControllerOptions {
   /** 端末内データの読み出し。Web版は旧localStorageからの移行、iOS版はタイムアウトを挟む。 */
   initialize: () => Promise<EditorSessionInit>;
@@ -42,7 +46,7 @@ export interface EditorControllerOptions {
   analytics?: EditorAnalytics;
   /** 名前や位置の入力。Web版は`window.prompt`、iOS版はアプリ内ダイアログを渡す。 */
   askText: (title: string, defaultValue?: string) => Promise<string | null>;
-  askConfirm: (title: string) => Promise<boolean>;
+  askConfirm: (title: string, options?: ConfirmOptions) => Promise<boolean>;
 }
 
 /**
@@ -238,7 +242,7 @@ export function useEditorController(options: EditorControllerOptions) {
 
   const removeBlock = (block: PatternBlock) => runManagementOperation('block_delete', 'ブロックの削除', async () => {
     // 削除は元に戻せないので、編み図の削除と同じく確認する。
-    if (!(await askConfirm(`ブロック「${block.name}」を削除しますか？`))) return;
+    if (!(await askConfirm(`ブロック「${block.name}」を削除しますか？`, { destructive: true }))) return;
     await deleteBlock(block.id);
     session.removeBlock(block.id);
   });
@@ -294,7 +298,7 @@ export function useEditorController(options: EditorControllerOptions) {
   });
 
   const deleteChart = (document: ChartDocument) => runManagementOperation('chart_delete', '編み図の削除', async () => {
-    if (!(await askConfirm(`「${document.name}」を削除しますか？`))) return;
+    if (!(await askConfirm(`「${document.name}」を削除しますか？`, { destructive: true }))) return;
     const remaining = session.documents.filter((item) => item.id !== document.id);
     if (!remaining.length) return;
     const active = document.id === activeDocument?.id;

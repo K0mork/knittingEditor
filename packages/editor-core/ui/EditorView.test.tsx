@@ -184,7 +184,7 @@ describe('EditorView', () => {
 
       await click('ブロック');
       await act(async () => { deleteButton()!.click(); });
-      expect(askConfirm).toHaveBeenCalledWith('ブロック「削除確認ブロック」を削除しますか？');
+      expect(askConfirm).toHaveBeenCalledWith('ブロック「削除確認ブロック」を削除しますか？', { destructive: true });
       expect((await listBlocks()).some((item) => item.id === block.id)).toBe(true);
       expect(deleteButton()).toBeDefined();
 
