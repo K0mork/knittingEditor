@@ -1,10 +1,10 @@
 # PRでは単体テスト全件とこのUIリストを実行。全UIは両端末の全検証で実行。
 # 起動して編集画面を表示
 KnittingEditorUITests/testLaunchShowsLocalEditorContainer
-# 描画と取り消し・やり直し
-KnittingEditorUITests/testUndoAndRedoRestoreBoardEdits
-# 作成・切替・自動保存
-KnittingEditorUITests/testDocumentSwitchAutosavesEachDocument
+# WKWebView入力のフォーカス・キーボードと文字選択
+KnittingEditorUITests/testNewDocumentDialogFocusesNameInputWithoutTapping
+# 回転とセーフエリア
+KnittingEditorUITests/testPrimaryControlsRemainUsableInPortraitAndLandscape
 # 再起動後のデータ復元
 KnittingEditorUITests/testEditAndRelaunchRestoresLocalDocument
 # 名前の特殊文字1ケースでPNG/PDF/バックアップのネイティブ操作へ到達
@@ -15,8 +15,8 @@ KnittingEditorUITests/testShareSheetsDismissBackToEditor
 KnittingEditorUITests/testBackupExportSheetDismissesBackToEditor
 # 使い方から編集へ戻る
 KnittingEditorUITests/testGuideNavigationReturnsToUsableEditor
-# 段数・列数の入力を盤面に反映
-KnittingEditorUITests/testSizeInputsStayEmptyUntilReplacementAndApplyOnChange
+# 復元Pickerを閉じて編集へ復帰
+KnittingEditorUITests/testRestorePickerDismissesBackToEditor
 # 最大文字サイズで主要操作を維持
 KnittingEditorUITests/testAccessibilityExtraExtraExtraLargeKeepsPrimaryControlsUsable
 # 描画モードと主要パネルの状態

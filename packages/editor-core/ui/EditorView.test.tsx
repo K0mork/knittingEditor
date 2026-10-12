@@ -243,6 +243,15 @@ describe('EditorView', () => {
     }
   });
 
+  it('shows all backup actions in the save panel', async () => {
+    const { container, click, button } = await renderEditor();
+    await click('保存');
+    expect(container.querySelector('#app-drawer-title')?.textContent).toBe('保存・出力');
+    for (const label of ['この編み図', '全データ', '復元']) expect(button(label)).toBeDefined();
+    await click('閉じる');
+    expect(container.querySelector('#app-drawer-title')).toBeNull();
+  });
+
   it('hands the current chart backup to the platform', async () => {
     const { platform, click } = await renderEditor();
 
