@@ -27,6 +27,34 @@ describe('collectUsedColors', () => {
     });
   });
 
+  it('excludes all stored colors when the board only contains whiteout', () => {
+    const board = new Board(1, 3);
+    board.place(0, 0, 'erase', '#ff0000');
+    board.place(0, 1, 'erase', '#0000ff');
+    board.place(0, 2, 'erase', '#ffffff');
+    expect(collectUsedColors(board.cells)).toEqual({ colors: [], total: 0 });
+  });
+
+  it('skips whiteout without changing visible color counts or first-found order', () => {
+    const board = new Board(1, 8);
+    board.place(0, 0, 'erase', '#0000ff');
+    board.place(0, 1, 'knit', '#000000');
+    board.place(0, 2, 'erase', '#ff0000');
+    board.place(0, 3, 'purl', '#000000');
+    board.place(0, 4, 'knit', '#0000ff');
+    board.place(0, 5, 'erase', '#000000');
+    board.place(0, 6, 'purl', '#0000ff');
+    board.place(0, 7, 'knit', '#ffffff');
+    expect(collectUsedColors(board.cells)).toEqual({
+      colors: [
+        { color: 0x000000, hex: '#000000', count: 2 },
+        { color: 0x0000ff, hex: '#0000ff', count: 2 },
+        { color: 0xffffff, hex: '#ffffff', count: 1 },
+      ],
+      total: 3,
+    });
+  });
+
   it('orders many colors by use and keeps only the limit', () => {
     const knit = STITCH_BY_KEY.get('knit')!.id;
     const cells = new Uint32Array(1000);
