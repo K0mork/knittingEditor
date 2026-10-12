@@ -112,7 +112,7 @@ describe('App background save registration', () => {
     expect(save).toHaveBeenCalledTimes(1);
   });
 
-  it('returns true for pending but retains the edit made while the write was in flight', async () => {
+  it('returns false while an edit arrives during its write and saves that edit on the next flush', async () => {
     const persist = persistDocument;
     let release!: () => void;
     const gate = new Promise<void>((resolve) => { release = resolve; });
@@ -125,7 +125,8 @@ describe('App background save registration', () => {
     let result!: Promise<boolean>;
     await act(async () => { result = window.knittingEditorFlushPendingSave!(); });
     await edit(2, 3, '#abcdef');
-    await act(async () => { release(); expect(await result).toBe(true); });
+    // 書き込み中に入った編集はまだ保存されていないので、成功とは返さない。
+    await act(async () => { release(); expect(await result).toBe(false); });
     expect((await storedBoard()).occupiedStitchCount).toBe(1);
     expect(probe.editor!.session.board!.occupiedStitchCount).toBe(2);
     expect(probe.editor!.session.dirty).toBe(true);

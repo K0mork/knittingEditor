@@ -3,7 +3,7 @@ import { Board, type PatternBlock } from '../model/Board';
 import { BoardHistory } from '../model/BoardHistory';
 import { backgroundColorOf } from '../model/boardColors';
 import { errorMessage } from '../util/errors';
-import { boardFromDocument, listBlocks, listDocuments, saveDocument, setSetting, type ChartDocument } from '../storage/database';
+import { boardFromDocument, listBlocks, listDocuments, recordBackup, saveDocument, setSetting, type ChartDocument } from '../storage/database';
 
 export const AUTOSAVE_DELAY_MS = 400;
 
@@ -49,6 +49,18 @@ export interface EditorSession {
   blocks: PatternBlock[];
   revision: number;
   dirty: boolean;
+  /** 最後の書き込みが失敗したか。次の書き込みが成功するまで`true`のまま。 */
+  saveFailed: boolean;
+  /** 開いている編み図と編集の世代。書き出し中に盤面が変わったかを比べるのに使う。 */
+  backupGeneration: () => string;
+  /** 保存の成否によらず、開いている編み図の今の盤面を写した記録を返す。`updatedAt`は写した時刻。 */
+  backupSnapshot: () => ChartDocument | undefined;
+  /**
+   * 書き出した世代の日時を記録する直前に呼ぶ。世代が変わっていれば`undefined`を返す。
+   * 変わっていなければ、記録する日時の下限（その世代までを保存した更新日時）を返し、
+   * 後からこの世代を保存したときも記録した日時を保存の更新日時へ進める。
+   */
+  markBackupExported: (generation: string) => number | undefined;
   /** 盤面を編集したときに呼ぶ。自動保存の待ち時間を測り直す。履歴には積まない。 */
   changed: () => void;
   /** ここまでの編集を元に戻す単位として1件にまとめる。なぞり描きは指を離したときに呼ぶ。 */
@@ -60,8 +72,17 @@ export interface EditorSession {
   redo: () => boolean;
   /** 保留中の変更をすぐ書き込む。バックアップ前やバックグラウンド移行前に使う。 */
   saveNow: (trigger?: SaveTrigger) => Promise<SaveOutcome>;
-  /** 切り替え前に保留中の変更を書き込む。書き切れないときは盤面を差し替えず理由を返す。 */
-  switchDocument: (document: ChartDocument, saveCurrent?: boolean) => Promise<SwitchOutcome>;
+  /**
+   * 同じIDは盤面と履歴を維持する。それ以外は切り替え前に変更を書き込む。
+   * `remember=false`は、作成・削除と一緒に開く編み図の設定を保存した場合に使う。
+   */
+  switchDocument: (document: ChartDocument, saveCurrent?: boolean, remember?: boolean) => Promise<SwitchOutcome>;
+  /** 現在の盤面を独立したセル配列へコピーする。保存済み記録には依存しない。 */
+  activeSnapshot: () => ChartDocument | undefined;
+  updateDocument: (document: ChartDocument) => void;
+  removeDocument: (id: string) => void;
+  updateBlock: (block: PatternBlock) => void;
+  removeBlock: (id: string) => void;
   refreshDocuments: () => Promise<void>;
   refreshBlocks: () => Promise<void>;
   applyActiveDocumentName: (name: string) => void;
@@ -92,6 +113,7 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
   const [blocks, setBlocks] = useState<PatternBlock[]>([]);
   const [revision, setRevision] = useState(0);
   const [dirty, setDirty] = useState(false);
+  const [saveFailed, setSaveFailed] = useState(false);
 
   const optionsRef = useRef(options);
   optionsRef.current = options;
@@ -103,6 +125,14 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
   const backgroundRef = useRef(backgroundColor);
   const dirtyRef = useRef(false);
   const editGenerationRef = useRef(0);
+  const savingRef = useRef<Promise<SaveOutcome> | undefined>(undefined);
+  // 書き出して日時を記録した世代（`編み図ID:編集世代`）。保存は書き出しを待たないので、
+  // 書き出した盤面が後から保存されると更新日時が記録より新しくなり、次に開いたとき
+  // 「バックアップの後に変更があります」と誤って出る。その保存の日時で記録を進める。
+  const exportedGenerationRef = useRef<string | undefined>(undefined);
+  // 失敗を通知した編集の世代。同じ内容の自動保存がまた失敗しても通知を重ねず、
+  // 先に出した理由と次の操作（使い方を開かなかった、など）を上書きしない。
+  const reportedFailureGenerationRef = useRef<number | undefined>(undefined);
   // 履歴は開いている編み図ごとに持ち、端末へは保存しない。切り替えると捨てる。
   const historyRef = useRef<BoardHistory | undefined>(undefined);
   const [canUndo, setCanUndo] = useState(false);
@@ -118,15 +148,23 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
     syncHistory();
   }, [syncHistory]);
 
-  const persist = useCallback(async (document: ChartDocument, target: Board, trigger: SaveTrigger): Promise<SaveOutcome> => {
+  const writeDocument = useCallback(async (document: ChartDocument, target: Board, trigger: SaveTrigger): Promise<SaveOutcome> => {
     const documentId = document.id;
     const generation = editGenerationRef.current;
     let saved: ChartDocument;
     try {
       saved = await saveDocument({ ...document, backgroundColor: backgroundRef.current }, target);
     } catch (error) {
-      optionsRef.current.onSaveError(error, trigger);
+      setSaveFailed(true);
+      const reported = reportedFailureGenerationRef.current === generation;
+      reportedFailureGenerationRef.current = generation;
+      if (trigger !== 'autosave' || !reported) optionsRef.current.onSaveError(error, trigger);
       return 'failed';
+    }
+    setSaveFailed(false);
+    if (exportedGenerationRef.current === `${documentId}:${generation}`) {
+      // 記録に失敗しても保存の失敗ではない。次に開いたとき勧めが出るだけになる。
+      void recordBackup([documentId], saved.updatedAt).catch(() => undefined);
     }
     // 書き込んだ1件だけを一覧へ反映する。全件取得だと編集していない編み図の
     // セル配列まで読み直すことになり、保存済みの編み図が増えるほど重くなる。
@@ -140,6 +178,15 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
     setDirty(false);
     return 'saved';
   }, []);
+
+  const persist = useCallback((document: ChartDocument, target: Board, trigger: SaveTrigger): Promise<SaveOutcome> => {
+    if (savingRef.current) return savingRef.current;
+    const saving = writeDocument(document, target, trigger);
+    savingRef.current = saving;
+    const clear = () => { if (savingRef.current === saving) savingRef.current = undefined; };
+    void saving.then(clear, clear);
+    return saving;
+  }, [writeDocument]);
 
   useEffect(() => {
     void (async () => {
@@ -168,12 +215,13 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
 
   useEffect(() => {
     const handler = (event: BeforeUnloadEvent) => {
-      if (!dirty) return;
+      // 即時保存の完了直後は、Reactの再描画より先にページを離れることがある。
+      if (!dirtyRef.current) return;
       event.preventDefault();
     };
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
-  }, [dirty]);
+  }, []);
 
   const changed = useCallback(() => {
     editGenerationRef.current += 1;
@@ -201,18 +249,28 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
 
   const saveNow = useCallback(async (trigger: SaveTrigger = 'manual'): Promise<SaveOutcome> => {
     const document = activeDocumentRef.current;
+    if (savingRef.current) {
+      const outcome = await savingRef.current;
+      if (outcome === 'failed') return outcome;
+      // 保存を待つ間に別の編み図へ移っていたら、その盤面は保存しない。
+      if (activeDocumentRef.current?.id !== document?.id) return 'pending';
+      if (!dirtyRef.current) return outcome;
+    }
+    const latestDocument = activeDocumentRef.current;
     const target = boardRef.current;
-    if (!dirtyRef.current || !document || !target) return 'idle';
-    return persist(document, target, trigger);
+    if (!dirtyRef.current || !latestDocument || !target) return 'idle';
+    return persist(latestDocument, target, trigger);
   }, [persist]);
 
-  const switchDocument = useCallback(async (document: ChartDocument, saveCurrent = true): Promise<SwitchOutcome> => {
+  const switchDocument = useCallback(async (document: ChartDocument, saveCurrent = true, remember = true): Promise<SwitchOutcome> => {
+    if (document.id === activeDocumentRef.current?.id) return 'switched';
     if (saveCurrent) {
       // 書き切れていないまま盤面を差し替えると、直前の編集がどこにも残らない。
       const outcome = await saveNow();
       if (outcome === 'failed' || outcome === 'pending') return outcome;
     }
     const nextBoard = boardFromDocument(document);
+    if (remember) await setSetting('activeDocumentId', document.id);
     activeDocumentRef.current = document;
     boardRef.current = nextBoard;
     backgroundRef.current = backgroundColorOf(document);
@@ -223,9 +281,28 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
     setBackgroundColorState(backgroundRef.current);
     setRevision((value) => value + 1);
     setDirty(false);
-    await setSetting('activeDocumentId', document.id);
     return 'switched';
   }, [saveNow, resetHistory]);
+
+  const activeSnapshot = useCallback(() => {
+    const document = activeDocumentRef.current;
+    const target = boardRef.current;
+    if (!document || !target) return undefined;
+    return { ...document, rows: target.rows, cols: target.cols,
+      cells: target.cells.slice().buffer as ArrayBuffer, backgroundColor: backgroundRef.current };
+  }, []);
+  const updateDocument = useCallback((document: ChartDocument) => {
+    setDocuments((current) => mergeSavedDocument(current, document));
+  }, []);
+  const removeDocument = useCallback((id: string) => {
+    setDocuments((current) => current.filter((document) => document.id !== id));
+  }, []);
+  const updateBlock = useCallback((block: PatternBlock) => {
+    setBlocks((current) => [block, ...current.filter((item) => item.id !== block.id)].sort((a, b) => b.createdAt - a.createdAt));
+  }, []);
+  const removeBlock = useCallback((id: string) => {
+    setBlocks((current) => current.filter((block) => block.id !== id));
+  }, []);
 
   const refreshDocuments = useCallback(async () => setDocuments(await listDocuments()), []);
   const refreshBlocks = useCallback(async () => setBlocks(await listBlocks()), []);
@@ -247,9 +324,27 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
     changed();
   }, [changed]);
 
+  const backupGeneration = useCallback(() => `${activeDocumentRef.current?.id}:${editGenerationRef.current}`, []);
+
+  const backupSnapshot = useCallback((): ChartDocument | undefined => {
+    const document = activeDocumentRef.current;
+    const target = boardRef.current;
+    if (!document || !target) return undefined;
+    return { ...document, backgroundColor: backgroundRef.current, rows: target.rows, cols: target.cols,
+      cells: target.cells.slice().buffer as ArrayBuffer, updatedAt: Date.now() };
+  }, []);
+
+  const markBackupExported = useCallback((generation: string) => {
+    if (backupGeneration() !== generation) return undefined;
+    exportedGenerationRef.current = generation;
+    // 書き出しを待つ間にこの世代の保存が済んでいれば、記録はその更新日時より前にしない。
+    return activeDocumentRef.current?.updatedAt ?? 0;
+  }, [backupGeneration]);
+
   return {
-    documents, activeDocument, board, backgroundColor, blocks, revision, dirty,
+    documents, activeDocument, board, backgroundColor, blocks, revision, dirty, saveFailed,
+    backupGeneration, backupSnapshot, markBackupExported,
     changed, commitEdit, canUndo, canRedo, undo, redo, saveNow, switchDocument, refreshDocuments, refreshBlocks, applyActiveDocumentName,
-    setBackgroundColor,
+    setBackgroundColor, activeSnapshot, updateDocument, removeDocument, updateBlock, removeBlock,
   };
 }

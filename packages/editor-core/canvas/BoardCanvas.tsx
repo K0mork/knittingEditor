@@ -1,8 +1,9 @@
 import { useEffect, useRef } from 'react';
-import type { Board, PatternBlock, Point, Rect } from '../model/Board';
+import { Board, type PatternBlock, type Point, type Rect } from '../model/Board';
 import { boardSurface, DEFAULT_BACKGROUND_COLOR } from '../model/boardColors';
 import { STITCH_BY_KEY, STITCHES } from '../stitches/catalog';
 import { drawCell } from '../stitches/drawCell';
+import { labelStride, showsLabel } from '../export/labels';
 import { strokeGrid, type GridLineStyle } from './strokeGrid';
 
 export type CanvasMode = 'draw' | 'erase' | 'select' | 'paste';
@@ -44,13 +45,13 @@ const clamp = (value: number, min: number, max: number) => Math.min(max, Math.ma
  * 盤面を画面の外へ動かして見失うことはなく、端のマスは中央に置いて編集できる。
  * 盤面が表示領域より小さいときも同じ規則にし、画面の端に張り付いて動かせなくならないようにする。
  */
-export function clampViewport(view: Viewport, board: Pick<Board, 'rows' | 'cols'>, canvas: { width: number; height: number }): Viewport {
-  const areaWidth = canvas.width - LABEL_SIZE;
-  const areaHeight = canvas.height - LABEL_SIZE;
+export function clampViewport(view: Viewport, board: Pick<Board, 'rows' | 'cols'>, canvas: { width: number; height: number }, band = LABEL_SIZE): Viewport {
+  const areaWidth = canvas.width - band;
+  const areaHeight = canvas.height - band;
   // 配置前や非表示で大きさが無いときは、中央を決められないので位置を変えない。
   if (areaWidth <= 0 || areaHeight <= 0) return view;
-  const centerX = LABEL_SIZE + areaWidth / 2;
-  const centerY = LABEL_SIZE + areaHeight / 2;
+  const centerX = band + areaWidth / 2;
+  const centerY = band + areaHeight / 2;
   const x = clamp(view.x, centerX - (board.cols - 0.5) * view.cell, centerX - 0.5 * view.cell);
   const y = clamp(view.y, centerY - (board.rows - 0.5) * view.cell, centerY - 0.5 * view.cell);
   return x === view.x && y === view.y ? view : { ...view, x, y };
@@ -66,6 +67,27 @@ export function boardGridStyles(cell: number, background: string = DEFAULT_BACKG
     minor: { color: surface.minorLine, width: 1 },
     major: { color: surface.majorLine, width: cell >= 12 ? 2 : 1 },
   };
+}
+
+export function canvasLabelMetrics(rootFontSize: number, labelWidth = 0) {
+  const fontSize = 11 * rootFontSize / 16;
+  return { fontSize, band: Math.max(LABEL_SIZE * rootFontSize / 16, labelWidth + 8) };
+}
+
+export function canvasCellAt(position: PointerPosition, view: Viewport, band = LABEL_SIZE): Point | undefined {
+  if (position.x < band || position.y < band) return undefined;
+  return { row: Math.floor((position.y - view.y) / view.cell), col: Math.floor((position.x - view.x) / view.cell) };
+}
+
+export function canvasLabels(total: number, first: number, last: number, origin: number, cell: number, extent: number, band: number, limit: number) {
+  const stride = labelStride(cell, extent, 4);
+  const labels: { number: number; position: number }[] = [];
+  for (let index = first; index <= last; index++) {
+    const number = total - index;
+    const position = origin + (index + 0.5) * cell;
+    if (showsLabel(number, stride) && position - extent / 2 >= band && position + extent / 2 <= limit) labels.push({ number, position });
+  }
+  return labels;
 }
 
 // 複数セルを占める記号は、起点セルが表示範囲の外にあっても一部が画面へかかる。
@@ -126,6 +148,10 @@ export function BoardCanvas(props: Props) {
   // 1本指のタップは指を離すまで確定しない。触れた瞬間に置くと、2本指ジェスチャの
   // 開始時に先に触れた指の位置へ記号が入ってしまうため。
   const pendingTapRef = useRef<Point | undefined>(undefined);
+  const provisionalRef = useRef<Board | undefined>(undefined);
+  const touchChangedRef = useRef(false);
+  const previousSelectionRef = useRef<Rect | undefined>(undefined);
+  const bandRef = useRef(LABEL_SIZE);
   const propsRef = useRef(props);
   propsRef.current = props;
   // 描くたびに計算済みスタイルを読まないよう、外観が変わったときだけ読み直す。
@@ -154,14 +180,22 @@ export function BoardCanvas(props: Props) {
     context.fillStyle = chrome.surround;
     context.fillRect(0, 0, width, height);
 
-    const { board, selection, pasteBlock, mode, background = DEFAULT_BACKGROUND_COLOR } = propsRef.current;
+    const { selection, pasteBlock, mode, background = DEFAULT_BACKGROUND_COLOR } = propsRef.current;
+    const board = provisionalRef.current ?? propsRef.current.board;
+    const rootFontSize = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    const fontSize = canvasLabelMetrics(rootFontSize).fontSize;
+    context.font = `${fontSize}px system-ui`;
+    const colExtent = context.measureText(String(board.cols)).width;
+    const rowExtent = context.measureText(String(board.rows)).width;
+    const band = canvasLabelMetrics(rootFontSize, rowExtent).band;
+    bandRef.current = band;
     const surface = boardSurface(background, 'screen');
     // 画面の大きさ（回転・可変ウィンドウ）や段数・列数、編み図が変わると、
     // 今の位置が範囲の外になることがあるので、描くたびに範囲へ戻す。
-    viewportRef.current = clampViewport(viewportRef.current, board, { width, height });
+    viewportRef.current = clampViewport(viewportRef.current, board, { width, height }, band);
     const view = viewportRef.current;
-    const firstCol = Math.max(0, Math.floor((-view.x + LABEL_SIZE) / view.cell));
-    const firstRow = Math.max(0, Math.floor((-view.y + LABEL_SIZE) / view.cell));
+    const firstCol = Math.max(0, Math.floor((-view.x + band) / view.cell));
+    const firstRow = Math.max(0, Math.floor((-view.y + band) / view.cell));
     const lastCol = Math.min(board.cols - 1, Math.ceil((width - view.x) / view.cell));
     const lastRow = Math.min(board.rows - 1, Math.ceil((height - view.y) / view.cell));
 
@@ -198,17 +232,17 @@ export function BoardCanvas(props: Props) {
     }
 
     context.fillStyle = chrome.labelBand;
-    context.fillRect(0, 0, width, LABEL_SIZE);
-    context.fillRect(0, 0, LABEL_SIZE, height);
+    context.fillRect(0, 0, width, band);
+    context.fillRect(0, 0, band, height);
     context.fillStyle = chrome.label;
-    context.font = '11px system-ui';
+    context.font = `${fontSize}px system-ui`;
     context.textAlign = 'center';
     context.textBaseline = 'middle';
-    for (let col = firstCol; col <= lastCol; col++) {
-      context.fillText(String(board.cols - col), view.x + (col + 0.5) * view.cell, LABEL_SIZE / 2);
+    for (const label of canvasLabels(board.cols, firstCol, lastCol, view.x, view.cell, colExtent, band, width)) {
+      context.fillText(String(label.number), label.position, band / 2);
     }
-    for (let row = firstRow; row <= lastRow; row++) {
-      context.fillText(String(board.rows - row), LABEL_SIZE / 2, view.y + (row + 0.5) * view.cell);
+    for (const label of canvasLabels(board.rows, firstRow, lastRow, view.y, view.cell, fontSize, band, height)) {
+      context.fillText(String(label.number), band / 2, label.position);
     }
   };
 
@@ -217,12 +251,16 @@ export function BoardCanvas(props: Props) {
     if (!canvas) return;
     const observer = new ResizeObserver(requestDraw);
     observer.observe(canvas);
+    observer.observe(document.documentElement);
+    const fontObserver = new MutationObserver(requestDraw);
+    fontObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['style', 'class'] });
     const scheme = window.matchMedia?.('(prefers-color-scheme: dark)');
     const updateChrome = () => { chromeRef.current = readCanvasChrome(); requestDraw(); };
     updateChrome();
     scheme?.addEventListener?.('change', updateChrome);
     return () => {
       observer.disconnect();
+      fontObserver.disconnect();
       scheme?.removeEventListener?.('change', updateChrome);
       cancelAnimationFrame(frameRef.current);
     };
@@ -234,7 +272,7 @@ export function BoardCanvas(props: Props) {
   const setViewport = (next: Viewport) => {
     const canvas = canvasRef.current;
     viewportRef.current = canvas
-      ? clampViewport(next, propsRef.current.board, { width: canvas.clientWidth, height: canvas.clientHeight })
+      ? clampViewport(next, propsRef.current.board, { width: canvas.clientWidth, height: canvas.clientHeight }, bandRef.current)
       : next;
     requestDraw();
   };
@@ -267,13 +305,16 @@ export function BoardCanvas(props: Props) {
     return { x: event.clientX - rect.left, y: event.clientY - rect.top };
   };
 
-  const cellAt = (position: PointerPosition): Point => {
-    const view = viewportRef.current;
-    return { row: Math.floor((position.y - view.y) / view.cell), col: Math.floor((position.x - view.x) / view.cell) };
+  const cellAt = (position: PointerPosition) => canvasCellAt(position, viewportRef.current, bandRef.current);
+
+  const changed = () => {
+    if (provisionalRef.current) touchChangedRef.current = true;
+    else propsRef.current.onChange();
   };
 
   const applyStroke = (from: Point, to: Point) => {
-    const { board, stitchKey, color } = propsRef.current;
+    const { stitchKey, color } = propsRef.current;
+    const board = provisionalRef.current ?? propsRef.current.board;
     const stitch = STITCH_BY_KEY.get(stitchKey);
     if (!stitch) return;
     let changed = false;
@@ -287,16 +328,22 @@ export function BoardCanvas(props: Props) {
         changed = true;
       }
     }
-    if (changed) propsRef.current.onChange();
+    if (changed) {
+      if (provisionalRef.current) touchChangedRef.current = true;
+      else propsRef.current.onChange();
+    }
   };
 
   const applyErase = (from: Point, to: Point) => {
-    const { board } = propsRef.current;
+    const board = provisionalRef.current ?? propsRef.current.board;
     let changed = false;
     for (const point of rasterLine(from, to)) {
       if (board.inBounds(point.row, point.col) && board.clearAt(point.row, point.col)) changed = true;
     }
-    if (changed) propsRef.current.onChange();
+    if (changed) {
+      if (provisionalRef.current) touchChangedRef.current = true;
+      else propsRef.current.onChange();
+    }
   };
 
   const handlePointerDown = (event: React.PointerEvent<HTMLCanvasElement>) => {
@@ -309,16 +356,28 @@ export function BoardCanvas(props: Props) {
       gestureBlockedRef.current = true;
       // 2本目が触れた時点で、1本目の保留タップは取り消す。
       pendingTapRef.current = undefined;
+      provisionalRef.current = undefined;
+      touchChangedRef.current = false;
+      if (props.mode === 'select') props.onSelectionChange(previousSelectionRef.current);
+      selectionStartRef.current = undefined;
+      requestDraw();
       const [a, b] = [...pointersRef.current.values()];
       gestureRef.current = {
-        distance: Math.hypot(a.x - b.x, a.y - b.y),
+        distance: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)),
         center: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
         viewport: { ...viewportRef.current },
       };
       return;
     }
+    if (pointersRef.current.size !== 1 || gestureBlockedRef.current) return;
+    previousSelectionRef.current = props.selection;
+    if (!cell) return;
+    if (event.pointerType === 'touch' && (props.mode === 'draw' || props.mode === 'erase')) {
+      provisionalRef.current = new Board(props.board.rows, props.board.cols, props.board.cells);
+      touchChangedRef.current = false;
+    }
     if (event.button === 2) {
-      if (props.board.clearAt(cell.row, cell.col)) props.onChange();
+      if ((provisionalRef.current ?? props.board).clearAt(cell.row, cell.col)) changed();
       return;
     }
     if (props.mode === 'select') {
@@ -340,7 +399,7 @@ export function BoardCanvas(props: Props) {
     const position = eventPosition(event);
     if (pointersRef.current.has(event.pointerId)) pointersRef.current.set(event.pointerId, position);
     const cell = cellAt(position);
-    if (props.mode === 'paste') {
+    if (props.mode === 'paste' && !gestureBlockedRef.current) {
       lastCellRef.current = cell;
       // 貼り付けはプレビューの位置で確定させる。
       if (pendingTapRef.current) pendingTapRef.current = cell;
@@ -358,7 +417,16 @@ export function BoardCanvas(props: Props) {
       return;
     }
     if (gestureBlockedRef.current) return;
-    if (!pointersRef.current.has(event.pointerId) || !lastCellRef.current) return;
+    if (!pointersRef.current.has(event.pointerId)) return;
+    if (!cell) {
+      lastCellRef.current = undefined;
+      pendingTapRef.current = undefined;
+      return;
+    }
+    if (!lastCellRef.current) {
+      if (!selectionStartRef.current && !provisionalRef.current) return;
+      lastCellRef.current = cell;
+    }
     if (props.mode === 'select' && selectionStartRef.current) {
       const start = selectionStartRef.current;
       props.onSelectionChange({ top: start.row, left: start.col, bottom: cell.row, right: cell.col });
@@ -378,7 +446,7 @@ export function BoardCanvas(props: Props) {
     if (pointersRef.current.size < 2) gestureRef.current = undefined;
 
     // 1本指で触れて離した場合だけ、保留していたタップを確定する。
-    const pendingTap = pendingTapRef.current;
+    const pendingTap = cellAt(eventPosition(event)) ? pendingTapRef.current : undefined;
     pendingTapRef.current = undefined;
     if (pendingTap && !gestureBlockedRef.current && event.type !== 'pointercancel') {
       if (props.mode === 'paste' && props.pasteBlock) {
@@ -390,10 +458,17 @@ export function BoardCanvas(props: Props) {
       }
     }
 
-    if (pointersRef.current.size === 0 && props.mode === 'select' && props.selection) {
+    if (pointersRef.current.size === 0 && !gestureBlockedRef.current && selectionStartRef.current && props.mode === 'select' && props.selection) {
       props.onSelectionChange(props.board.normalizeSelection(props.selection));
     }
     if (pointersRef.current.size === 0) {
+      if (provisionalRef.current && touchChangedRef.current && event.type !== 'pointercancel') {
+        const temporary = provisionalRef.current;
+        props.board.restore(temporary.rows, temporary.cols, temporary.cells);
+        props.onChange();
+      }
+      provisionalRef.current = undefined;
+      touchChangedRef.current = false;
       props.onEditEnd?.();
       gestureBlockedRef.current = false;
       lastCellRef.current = undefined;

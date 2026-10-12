@@ -3,6 +3,12 @@ import { STITCHES } from './catalog';
 import { drawGlyph, getGlyphDefinition, glyphPdfCommands, glyphSvg } from './glyphs';
 
 describe('glyph regression coverage', () => {
+  it('sizes every picker SVG to its symbol slot, including whiteout', () => {
+    for (const stitch of STITCHES) {
+      expect(glyphSvg(stitch.key), stitch.key).toMatch(/<svg\b[^>]*style="width:100%;height:100%"/);
+    }
+  });
+
   it('keeps a glyph definition and SVG for every persistent stitch ID', () => {
     expect(STITCHES).toHaveLength(26);
     for (const stitch of STITCHES.filter((item) => item.key !== 'erase')) {

@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 const FOCUSABLE_SELECTOR = 'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])';
 
+const modalStack: HTMLElement[] = [];
+
 /**
  * モーダル内へフォーカスを閉じ込め、Escapeで閉じ、閉じたあとは開く前の要素へ戻す。
  * 以前はiOS版だけが持っていたが、キーボード操作はWeb版でも同じように必要なので共通化した。
@@ -14,6 +16,7 @@ export function useModalFocus<T extends HTMLElement>(onEscape: () => void, initi
   useEffect(() => {
     const root = ref.current;
     if (!root) return;
+    modalStack.push(root);
     const previous = document.activeElement instanceof HTMLElement ? document.activeElement : undefined;
     const focusable = () => Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR))
       .filter((element) => !element.hidden && element.getClientRects().length > 0);
@@ -25,12 +28,22 @@ export function useModalFocus<T extends HTMLElement>(onEscape: () => void, initi
       if (target instanceof HTMLInputElement && target.type === 'text') target.select();
     });
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (modalStack[modalStack.length - 1] !== root || event.defaultPrevented) return;
       if (event.key === 'Escape') {
+        if (event.isComposing || event.keyCode === 229) return;
+        const target = event.target;
+        if (target instanceof HTMLElement) {
+          const dialog = target.closest('[role="dialog"], dialog');
+          if (dialog && dialog !== root) return;
+          // 外部の入力欄とネイティブの色選択は、それぞれ自身のEscape操作に任せる。
+          if (isEditableTarget(target) && (!root.contains(target) || (target instanceof HTMLInputElement && target.type === 'color'))) return;
+        }
         event.preventDefault();
+        event.stopPropagation();
         escapeRef.current();
         return;
       }
-      if (event.key !== 'Tab') return;
+      if (event.key !== 'Tab' || !root.contains(event.target as Node)) return;
       const elements = focusable();
       if (elements.length === 0) return;
       const first = elements[0];
@@ -43,11 +56,13 @@ export function useModalFocus<T extends HTMLElement>(onEscape: () => void, initi
         first.focus();
       }
     };
-    root.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('keydown', handleKeyDown);
     return () => {
       cancelAnimationFrame(frame);
-      root.removeEventListener('keydown', handleKeyDown);
-      previous?.focus();
+      document.removeEventListener('keydown', handleKeyDown);
+      const wasTopmost = modalStack[modalStack.length - 1] === root;
+      modalStack.splice(modalStack.indexOf(root), 1);
+      if (wasTopmost && previous?.isConnected) previous.focus();
     };
   }, [initialSelector]);
 
