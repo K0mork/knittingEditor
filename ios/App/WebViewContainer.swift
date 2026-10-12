@@ -1,4 +1,5 @@
 import Observation
+import Photos
 import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
@@ -126,8 +127,9 @@ final class WebViewModel {
     }
 
     /// 書き出しを保存・共有し終えたか、取りやめたかをWebへ返す（#122）。
-    func reportExportFinished(requestID: String, saved: Bool, status: NativeExportResult.Status? = nil) {
-        guard let webView, let script = NativeExportResult.script(requestID: requestID, saved: saved, status: status) else { return }
+    func reportExportFinished(requestID: String, saved: Bool, status: NativeExportResult.Status? = nil, message: String? = nil) {
+        guard let webView,
+              let script = NativeExportResult.script(requestID: requestID, saved: saved, status: status, message: message) else { return }
         webView.evaluateJavaScript(script, completionHandler: nil)
     }
 
@@ -279,13 +281,13 @@ struct WebViewContainer: UIViewRepresentable {
         /// テストでは保存画面を出さずに用途を設定し、閉じたときの扱いを確かめる。
         var pickerPurpose: PickerPurpose?
         /// 書き出しの結果をWebへ返す。テストでは差し替えて、返した結果を確かめる。
-        var reportExportResult: (_ requestID: String, _ saved: Bool, _ status: NativeExportResult.Status?) -> Void
+        var reportExportResult: (_ requestID: String, _ saved: Bool, _ status: NativeExportResult.Status?, _ message: String?) -> Void
 
         init(model: WebViewModel, reviewRequestTracker: ReviewRequestTracker? = nil) {
             self.model = model
             self.reviewRequestTracker = reviewRequestTracker ?? ReviewRequestTracker()
-            reportExportResult = { [weak model] requestID, saved, status in
-                model?.reportExportFinished(requestID: requestID, saved: saved, status: status)
+            reportExportResult = { [weak model] requestID, saved, status, message in
+                model?.reportExportFinished(requestID: requestID, saved: saved, status: status, message: message)
             }
         }
 
@@ -329,7 +331,7 @@ struct WebViewContainer: UIViewRepresentable {
                 model.presentError(bridgeErrorMessage(error))
                 // 検証できなかった書き出しも、Webが結果を待ち続けないよう取りやめとして返す。
                 if let requestID = NativeBridgeMessage.exportRequestID(body: message.body) {
-                    reportExportResult(requestID, false, nil)
+                    reportExportResult(requestID, false, nil, nil)
                 }
             }
         }
@@ -447,12 +449,12 @@ struct WebViewContainer: UIViewRepresentable {
             finishPendingExport(saved: false)
             guard let presenter = presenter() else {
                 model.presentError("保存画面を表示できませんでした")
-                if let requestID { reportExportResult(requestID, false, nil) }
+                if let requestID { reportExportResult(requestID, false, nil, nil) }
                 return
             }
             guard preparePendingExport(data: data, filename: filename, mimeType: mimeType, requestID: requestID) else {
                 model.presentError("出力ファイルを準備できませんでした")
-                if let requestID { reportExportResult(requestID, false, nil) }
+                if let requestID { reportExportResult(requestID, false, nil, nil) }
                 return
             }
 
@@ -480,8 +482,8 @@ struct WebViewContainer: UIViewRepresentable {
                         return
                     }
                     let activity = UIActivityViewController(activityItems: [pendingExportURL], applicationActivities: nil)
-                    activity.completionWithItemsHandler = { [weak self] _, completed, _, error in
-                        self?.finishSharing(completed: completed, error: error)
+                    activity.completionWithItemsHandler = { [weak self] activityType, completed, _, error in
+                        self?.finishSharing(completed: completed, error: error, activityType: activityType)
                     }
                     if let popover = activity.popoverPresentationController {
                         let sourceView = (self.webView as UIView?) ?? presenter.view!
@@ -528,10 +530,35 @@ struct WebViewContainer: UIViewRepresentable {
         }
 
         /// 共有シートを閉じたとき。共有を終えたら`completed`が真、取り消したら偽になる。
-        func finishSharing(completed: Bool, error: Error? = nil) {
+        func finishSharing(completed: Bool, error: Error? = nil, activityType: UIActivity.ActivityType? = nil) {
             model.isPresentingNativeUI = false
-            let status: NativeExportResult.Status = error != nil ? .error : (completed ? .completed : .cancelled)
-            finishPendingExport(saved: status == .completed, status: status)
+            guard let error else {
+                finishPendingExport(saved: completed, status: completed ? .completed : .cancelled)
+                return
+            }
+            finishPendingExport(
+                saved: false,
+                status: .error,
+                failureMessage: Self.shareFailureMessage(activityType: activityType, error: error)
+            )
+        }
+
+        nonisolated static let shareFailedMessage = "共有に失敗しました。もう一度共有を試してください。"
+        nonisolated static let photosAddDeniedMessage = "写真に保存できませんでした。設定アプリの「棒針編み図」→「写真」で追加を許可してから、もう一度お試しください。"
+
+        /// 共有に失敗したときの案内（#208）。写真への追加を拒否されると、iOSは権限画面を出し直さないため、
+        /// 「画像を保存」の失敗だけは設定アプリでの許可を案内する。
+        /// 拒否されたときの「画像を保存」は`ALAssetsLibraryErrorDomain`のエラーを返し、その元のエラーが`PHPhotosError.accessUserDenied`になる。
+        nonisolated static func shareFailureMessage(activityType: UIActivity.ActivityType?, error: Error) -> String {
+            guard activityType == .saveToCameraRoll else { return shareFailedMessage }
+            var current: NSError? = error as NSError
+            while let nsError = current {
+                if nsError.domain == PHPhotosErrorDomain, nsError.code == PHPhotosError.Code.accessUserDenied.rawValue {
+                    return photosAddDeniedMessage
+                }
+                current = nsError.userInfo[NSUnderlyingErrorKey] as? NSError
+            }
+            return shareFailedMessage
         }
 
         /// 画面全体を基準にすると、iPadでポップオーバーの配置先が無くなる（#158）。
@@ -565,14 +592,14 @@ struct WebViewContainer: UIViewRepresentable {
 
         /// 書き出しを終え、一時ファイルを消して結果をWebへ返す（#122）。
         /// 保存・共有を終えたときだけ`saved`を真にし、Webはそのときだけ最後のバックアップ日時を記録する。
-        private func finishPendingExport(saved: Bool, status: NativeExportResult.Status? = nil) {
+        private func finishPendingExport(saved: Bool, status: NativeExportResult.Status? = nil, failureMessage: String? = nil) {
             guard let pendingExport else { return }
             self.pendingExport = nil
             try? FileManager.default.removeItem(at: pendingExport.directory)
             if let requestID = pendingExport.requestID {
-                reportExportResult(requestID, saved, status)
+                reportExportResult(requestID, saved, status, failureMessage)
             } else if status == .error {
-                model.presentError("共有に失敗しました。もう一度共有を試してください。")
+                model.presentError(failureMessage ?? Self.shareFailedMessage)
             }
             // 書き出しを保存・共有し終えた作業の区切りで、App Storeの評価の依頼を検討する（#84）。
             if saved {

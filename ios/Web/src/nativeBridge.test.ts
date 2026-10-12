@@ -103,6 +103,23 @@ describe('native bridge', () => {
     }
   });
 
+  it('shows the message that native code attaches to a share error', async () => {
+    const notice = vi.fn();
+    const remove = listenNativeError(notice);
+    const photos = '写真に保存できませんでした。設定アプリの「棒針編み図」→「写真」で追加を許可してから、もう一度お試しください。';
+    try {
+      const denied = await startNativeExport();
+      finishNativeExport({ id: denied.id, saved: false, status: 'error', message: photos });
+      await expect(denied.outcome!.saved).resolves.toBe(false);
+      const malformed = await startNativeExport();
+      finishNativeExport({ id: malformed.id, saved: false, status: 'error', message: 1 });
+      await expect(malformed.outcome!.saved).resolves.toBe(false);
+      expect(notice.mock.calls).toEqual([[photos], ['共有に失敗しました。もう一度共有を試してください。']]);
+    } finally {
+      remove();
+    }
+  });
+
   it('matches each result to its own request and ignores unknown or malformed results', async () => {
     const postMessage = vi.fn();
     const first = await startNativeExport(postMessage);

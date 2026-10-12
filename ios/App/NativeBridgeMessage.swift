@@ -111,9 +111,11 @@ enum NativeExportResult {
 
     static let eventName = "knittingEditorNativeExportFinished"
 
-    static func script(requestID: String, saved: Bool, status: Status? = nil) -> String? {
+    /// `message`は失敗したときにWebが出す案内。無ければWebは既定の案内を出す。
+    static func script(requestID: String, saved: Bool, status: Status? = nil, message: String? = nil) -> String? {
         var detail: [String: Any] = ["id": requestID, "saved": saved]
         if let status { detail["status"] = status.rawValue }
+        if let message { detail["message"] = message }
         guard let jsonData = try? JSONSerialization.data(withJSONObject: detail, options: [.sortedKeys]),
               let json = String(data: jsonData, encoding: .utf8) else { return nil }
         return "window.dispatchEvent(new CustomEvent('\(eventName)',{detail:\(json)}));"

@@ -85,13 +85,14 @@ function listenExportFinished() {
   window.addEventListener(NATIVE_EXPORT_FINISHED_EVENT, (event) => {
     const detail = (event as CustomEvent<unknown>).detail;
     if (!detail || typeof detail !== 'object') return;
-    const { id, saved, status } = detail as { id?: unknown; saved?: unknown; status?: unknown };
+    const { id, saved, status, message } = detail as { id?: unknown; saved?: unknown; status?: unknown; message?: unknown };
     if (typeof id !== 'string' || !pendingExports.has(id)) return;
     // 失敗は取りやめと区別して通知するが、バックアップ日時の記録はどちらも行わない。
     settleExport(id, status === 'error' ? false : typeof saved === 'boolean' ? saved : undefined);
     if (status === 'error') {
+      // 写真への追加を拒否されたときなど、ネイティブ側が失敗の理由に合う案内を添えることがある（#208）。
       window.dispatchEvent(new CustomEvent('knittingEditorNativeError', {
-        detail: '共有に失敗しました。もう一度共有を試してください。',
+        detail: typeof message === 'string' && message ? message : '共有に失敗しました。もう一度共有を試してください。',
       }));
     }
   });

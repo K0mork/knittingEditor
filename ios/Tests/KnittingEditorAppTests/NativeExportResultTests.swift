@@ -1,3 +1,4 @@
+import Photos
 import UIKit
 import UniformTypeIdentifiers
 import XCTest
@@ -64,13 +65,15 @@ final class NativeExportResultTests: XCTestCase {
         let coordinator: WebViewContainer.Coordinator
         var reports: [(String, Bool)] = []
         var statuses: [NativeExportResult.Status?] = []
+        var messages: [String?] = []
 
         init() {
             let defaults = UserDefaults(suiteName: "NativeExportResultTests.\(UUID().uuidString)")!
             coordinator = WebViewContainer.Coordinator(model: model, reviewRequestTracker: ReviewRequestTracker(defaults: defaults))
-            coordinator.reportExportResult = { [unowned self] id, saved, status in
+            coordinator.reportExportResult = { [unowned self] id, saved, status, message in
                 self.reports.append((id, saved))
                 self.statuses.append(status)
+                self.messages.append(message)
             }
         }
 
@@ -145,10 +148,50 @@ final class NativeExportResultTests: XCTestCase {
             harness.coordinator.finishSharing(completed: true)
             harness.assertFinished([("export-1", false)], directory: directory)
             XCTAssertEqual(harness.statuses, [.error])
+            XCTAssertEqual(harness.messages, ["共有に失敗しました。もう一度共有を試してください。"])
         }
         XCTAssertEqual(
             NativeExportResult.script(requestID: "export-1", saved: false, status: .error),
             #"window.dispatchEvent(new CustomEvent('knittingEditorNativeExportFinished',{detail:{"id":"export-1","saved":false,"status":"error"}}));"#
+        )
+    }
+
+    /// 写真への追加を拒否されたときの「画像を保存」が返すエラー（Simulatorで確かめた形）。
+    private let photosAddDenied = NSError(
+        domain: "ALAssetsLibraryErrorDomain",
+        code: -1,
+        userInfo: [NSUnderlyingErrorKey: NSError(domain: PHPhotosErrorDomain, code: PHPhotosError.Code.accessUserDenied.rawValue)]
+    )
+
+    func testShareFailureMessageExplainsSettingsOnlyWhenPhotosAdditionWasDenied() {
+        let generic = "共有に失敗しました。もう一度共有を試してください。"
+        let photos = "写真に保存できませんでした。設定アプリの「棒針編み図」→「写真」で追加を許可してから、もう一度お試しください。"
+        let message = WebViewContainer.Coordinator.shareFailureMessage
+        XCTAssertEqual(message(.saveToCameraRoll, photosAddDenied), photos)
+        XCTAssertEqual(message(.saveToCameraRoll, NSError(domain: PHPhotosErrorDomain, code: PHPhotosError.Code.accessUserDenied.rawValue)), photos)
+        // 写真の保存でも、拒否以外の失敗は今までどおり。
+        XCTAssertEqual(message(.saveToCameraRoll, NSError(domain: "ALAssetsLibraryErrorDomain", code: -1)), generic)
+        XCTAssertEqual(message(.saveToCameraRoll, NSError(domain: PHPhotosErrorDomain, code: PHPhotosError.Code.accessRestricted.rawValue)), generic)
+        // 写真の保存以外は、同じエラーでも今までどおり。
+        XCTAssertEqual(message(.copyToPasteboard, photosAddDenied), generic)
+        XCTAssertEqual(message(nil, photosAddDenied), generic)
+        XCTAssertEqual(message(nil, NSError(domain: "test", code: 1)), generic)
+    }
+
+    @MainActor
+    func testDeniedPhotosSaveSendsItsMessageToWeb() throws {
+        let harness = Harness()
+        let directory = try harness.prepareExport()
+        harness.coordinator.finishSharing(completed: false, error: photosAddDenied, activityType: .saveToCameraRoll)
+        harness.assertFinished([("export-1", false)], directory: directory)
+        XCTAssertEqual(harness.statuses, [.error])
+        XCTAssertEqual(
+            harness.messages,
+            ["写真に保存できませんでした。設定アプリの「棒針編み図」→「写真」で追加を許可してから、もう一度お試しください。"]
+        )
+        XCTAssertEqual(
+            NativeExportResult.script(requestID: "export-1", saved: false, status: .error, message: "案内"),
+            #"window.dispatchEvent(new CustomEvent('knittingEditorNativeExportFinished',{detail:{"id":"export-1","message":"案内","saved":false,"status":"error"}}));"#
         )
     }
 

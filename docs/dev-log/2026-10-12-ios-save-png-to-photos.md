@@ -1,8 +1,9 @@
 # 2026-10-12 — iOSのPNG共有から写真へ保存できるようにする
 
 - 影響: Refs #208（実機での確認後に閉じる）。PNGの共有シートに「画像を保存」が出るよう、写真への追加専用の権限説明（`NSPhotoLibraryAddUsageDescription`、「編み図の画像を写真に保存するために使います。」）を設定した。写真の読み取り権限は求めない。PNGのファイルURLを渡す既存の共有と「ファイルに保存」は変えていない。
-- 主なファイル: `ios/App/Info.plist`、`ios/Tests/KnittingEditorAppTests/PhotoLibraryPermissionTests.swift`、`ios/knittingEditor.xcodeproj/project.pbxproj`（XcodeGenによるテストの登録）。`ios/project.yml`は既存のplistを参照するだけなので変えていない。
-- テスト: Swift単体テスト`PhotoLibraryPermissionTests`（2件）で、アプリの追加権限の説明文と、読み取り権限の説明がないことを確かめる。
+- 影響（拒否したときの案内）: 共有シートの「画像を保存」が写真への追加の拒否で失敗したときは、汎用の「共有に失敗しました。もう一度共有を試してください。」の代わりに「写真に保存できませんでした。設定アプリの「棒針編み図」→「写真」で追加を許可してから、もう一度お試しください。」を出す。iOSは一度拒否すると権限画面を出し直さず、Simulatorでは拒否後の共有シートから「画像を保存」自体が消えるため、設定アプリでの許可を案内する。判定は、共有先が`saveToCameraRoll`で、エラー（`ALAssetsLibraryErrorDomain`）またはその元のエラーが`PHPhotosError.accessUserDenied`のときだけ。ほかの失敗の文言は変えていない。Webが結果を待つ書き出しでは、ネイティブ側が選んだ文言を結果のイベントの`message`で渡し、Webはそれがあれば出す（無ければ今までどおりの汎用の文言）。
+- 主なファイル: `ios/App/Info.plist`、`ios/App/WebViewContainer.swift`（`shareFailureMessage`）、`ios/App/NativeBridgeMessage.swift`（結果の`message`）、`ios/Web/src/nativeBridge.ts`、`ios/Tests/KnittingEditorAppTests/PhotoLibraryPermissionTests.swift`、`ios/knittingEditor.xcodeproj/project.pbxproj`（XcodeGenによるテストの登録）。`ios/project.yml`は既存のplistを参照するだけなので変えていない。
+- テスト: Swift単体テスト`PhotoLibraryPermissionTests`（2件）で、アプリの追加権限の説明文と、読み取り権限の説明がないことを確かめる。`NativeExportResultTests`に、文言の選び方（写真の保存で拒否されたとき／拒否以外の失敗／ほかの共有先）と、拒否の文言がWebへの結果に載ることの2件を足し、既存の共有エラーのテストで汎用の文言が載ることも確かめる。iOS Webの`nativeBridge.test.ts`に、ネイティブが添えた文言を出し、文字列でなければ汎用の文言に戻すテストを足した。
 - 検証（Node v24.21.0）:
   - `npm run typecheck`、`npm test`（45ファイル・437件）、`npm run build`、`npm run check:dist`、`plutil -lint ios/App/Info.plist`、`git diff --check`: 成功。
   - `xcodegen generate --spec ios/project.yml`: 成功。生成した`project.pbxproj`はコミットしたものと同じ。
@@ -10,6 +11,12 @@
   - 同じSimulatorで、一時的なUIテスト（実行後に削除）により、「保存」→「PNGを保存」→「共有」の共有シートに「画像を保存」が出ること、押すと追加専用の権限画面に上の説明文が出ること、「許可」で写真ライブラリにPNGが保存されて盤面の内容が合っていること、「許可しない」でもアプリが落ちないことを確かめた。
   - 既存のUIテストのうち、PNG・PDFが「ファイルに保存」まで届くものと、共有シートを閉じて編集画面へ戻るもの（2件）: 成功。
   - `npm run test:e2e`（chromium-mobile、webkit-mobile、chromium-desktop）: 264件成功、6件スキップ、失敗0件。
-  - PRのCIに任せたもの: iPadのSimulatorテスト、app-update、unsigned Release Archive、オフライン同梱物の検査。
-  - 実機で残る確認: 初回の権限画面、許可後の写真への保存、拒否したときの動き、拒否後の「ファイルに保存」、iPadのポップオーバー。
-- デプロイ影響: Pagesはなし。次のアプリのビルドに権限の説明が入る。配布後に実機で写真への保存と「ファイルに保存」を確かめる。
+  - 拒否したときの案内（追加の変更）:
+    - iOS Webの`tsc -p tsconfig.app.json --noEmit`と`vitest run --config vite.config.ts`（11ファイル・103件）: 成功。
+    - iPhone 16（iOS 26.5）のSimulatorで`NativeExportResultTests`、`NativeBridgeMessageTests`、`PhotoLibraryPermissionTests`（計27件）: 成功。
+    - 同じSimulatorで、写真の権限を`xcrun simctl privacy … reset photos-add`で初期化してから、一時的なUIテスト（実行後に削除）で「保存」→「PNGを保存」→「共有」→「画像を保存」→「許可しない」を2回通した。どちらも拒否の直後に新しい案内が出た。続けてもう一度共有すると、共有シートには「画像を保存」が無く（「表示を増やす」の中にも無い）、2回目の失敗は起きない。
+    - `xcodegen generate --spec ios/project.yml`: 一時テストを削除したあとの`project.pbxproj`はコミットしたものと同じ。
+    - `npm run typecheck`、`npm test`（45ファイル・437件）、`git diff --check`: 成功。
+  - PRのCIに任せたもの: iPhone・iPadのSimulatorテストの一式、app-update、unsigned Release Archive、オフライン同梱物の検査。
+  - 実機で残る確認: 初回の権限画面、許可後の写真への保存、拒否したときの動きと案内、設定アプリで許可したあとの再保存、拒否後の「ファイルに保存」、iPadのポップオーバー。
+- デプロイ影響: Pagesはなし。次のアプリのビルドに権限の説明と、拒否したときの案内が入る。配布後に実機で写真への保存、拒否したときの案内、「ファイルに保存」を確かめる。
