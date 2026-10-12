@@ -938,8 +938,9 @@ final class KnittingEditorUITests: XCTestCase {
             .matching(NSPredicate(format: "label CONTAINS %@", "編み図編集盤面"))
             .firstMatch
         XCTAssertTrue(canvas.waitForExistence(timeout: 10), app.debugDescription)
-        let start = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.25, dy: 0.25))
-        let end = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.45, dy: 0.45))
+        // 最大文字では段数・目数の目盛りの帯が広がるので、帯の外側にある盤面の内側をなぞる。
+        let start = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.55, dy: 0.55))
+        let end = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.8))
         start.press(forDuration: 0.05, thenDragTo: end)
         let copy = app.buttons["コピーして貼付"]
         let clear = app.buttons["解除"]
