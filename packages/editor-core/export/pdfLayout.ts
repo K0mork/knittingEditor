@@ -1,9 +1,11 @@
+import type { ExportAnnotations } from './annotations';
+
 /**
  * PDFの用紙分割計算。出力設定の「推定ページ数」とPDF Workerの実際の分割が
  * 食い違わないよう、余白・フッター・セル寸法の扱いはここだけに置く。
  */
 
-export interface PdfLayoutOptions {
+export interface PdfLayoutOptions extends ExportAnnotations {
   layout: 'single' | 'tiled';
   orientation: 'portrait' | 'landscape';
   cellMillimeters: number;
@@ -36,6 +38,45 @@ export interface PdfPageLayout {
   pageCols: number;
   pageCount: number;
   tiles: PdfTile[];
+  legendPages: PdfLegendRow[][];
+}
+
+export const PDF_LEGEND_CELL_SIZE = 12;
+export const pdfLegendColumns = (pageWidth: number): number => pageWidth > 700 ? 4 : 3;
+
+export interface PdfLegendRow {
+  start: number;
+  count: number;
+  height: number;
+}
+
+export function pdfLegendRows(options: ExportAnnotations, pageWidth: number): PdfLegendRow[] {
+  if (!options.includeTitleAndLegend) return [];
+  const columns = pdfLegendColumns(pageWidth);
+  const count = options.legendCount ?? options.legendHeights?.length ?? 0;
+  const rows: PdfLegendRow[] = [];
+  for (let start = 0; start < count; start += columns) {
+    const heights = options.legendHeights?.slice(start, start + columns) ?? [2];
+    rows.push({ start, count: Math.min(columns, count - start), height: Math.max(1, ...heights) * PDF_LEGEND_CELL_SIZE + 8 });
+  }
+  return rows;
+}
+
+function pdfLegendPages(options: PdfLayoutOptions, pageWidth: number, pageHeight: number): PdfLegendRow[][] {
+  if (options.layout !== 'tiled' || !options.includeTitleAndLegend) return [];
+  const rows = pdfLegendRows(options, pageWidth);
+  if (rows.length === 0) return [];
+  const pages: PdfLegendRow[][] = [[]];
+  let remaining = pageHeight - PAGE_MARGIN * 2 - 24;
+  for (const row of rows) {
+    if (row.height > remaining) {
+      pages.push([]);
+      remaining = pageHeight - PAGE_MARGIN * 2 - 24;
+    }
+    pages[pages.length - 1].push(row);
+    remaining -= row.height;
+  }
+  return pages;
 }
 
 const A4_LONG_SIDE = 841.89;
@@ -80,7 +121,11 @@ function pdfGrid(rows: number, cols: number, options: PdfLayoutOptions): PdfGrid
   const rowLabelWidth = pdfLabelWidth(String(rows).length) + PDF_LABEL_GAP * 2;
   const colLabelHeight = PDF_LABEL_FONT_SIZE + PDF_LABEL_GAP * 2;
   const availableWidth = pageWidth - PAGE_MARGIN * 2 - rowLabelWidth * 2;
-  const availableHeight = pageHeight - PAGE_MARGIN * 2 - footer - colLabelHeight * 2;
+  // 分割時の題名は既存の上余白へ収め、盤面の分割・位置を変えない。
+  const titleHeight = options.includeTitleAndLegend && !tiled ? 24 : 0;
+  const legendHeight = !tiled && options.includeTitleAndLegend
+    ? pdfLegendRows(options, pageWidth).reduce((sum, row) => sum + row.height, 16) : 0;
+  const availableHeight = pageHeight - PAGE_MARGIN * 2 - footer - colLabelHeight * 2 - titleHeight - legendHeight;
   const cellSize = tiled
     ? options.cellMillimeters * POINTS_PER_MILLIMETER
     : Math.min(availableWidth / cols, availableHeight / rows);
@@ -110,13 +155,15 @@ export function pdfPageLayout(rows: number, cols: number, options: PdfLayoutOpti
     if (!tiled || row + grid.tileRows >= rows) break;
   }
 
+  const legendPages = pdfLegendPages(options, grid.pageWidth, grid.pageHeight);
   return {
     ...grid,
     margin: PAGE_MARGIN,
     pageRows: tiled ? axisPageCount(rows, grid.tileRows, grid.stepRows) : 1,
     pageCols: tiled ? axisPageCount(cols, grid.tileCols, grid.stepCols) : 1,
-    pageCount: tiles.length,
+    pageCount: tiles.length + legendPages.length,
     tiles,
+    legendPages,
   };
 }
 
@@ -127,6 +174,6 @@ function axisPageCount(length: number, capacity: number, step: number): number {
 /** 出力設定の推定表示用。タイルを組み立てずにページ数だけを求める。 */
 export function pdfPageCount(rows: number, cols: number, options: PdfLayoutOptions): number {
   if (options.layout === 'single') return 1;
-  const { tileRows, tileCols, stepRows, stepCols } = pdfGrid(rows, cols, options);
-  return axisPageCount(rows, tileRows, stepRows) * axisPageCount(cols, tileCols, stepCols);
+  const { tileRows, tileCols, stepRows, stepCols, pageWidth, pageHeight } = pdfGrid(rows, cols, options);
+  return axisPageCount(rows, tileRows, stepRows) * axisPageCount(cols, tileCols, stepCols) + pdfLegendPages(options, pageWidth, pageHeight).length;
 }

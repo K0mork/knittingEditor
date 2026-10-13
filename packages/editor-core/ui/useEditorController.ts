@@ -1,3 +1,4 @@
+import type { ExportAnnotations } from '../export/annotations';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { boardSizeBucket, countBucket, NO_ANALYTICS, type EditorAnalytics } from '../analytics';
 import { CANVAS_MODE_LABELS, type CanvasMode } from '../canvas/BoardCanvas';
@@ -71,7 +72,7 @@ export function useEditorController(options: EditorControllerOptions) {
   const [busy, setBusy] = useState<BusyTask>();
   const [initializationError, setInitializationError] = useState<string>();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { message, notify } = useNotifier();
+  const { message, notificationAction, notify } = useNotifier();
   const { panelRef, rememberTrigger } = usePanelFocus<HTMLElement>(panel !== undefined);
 
   const session = useEditorSession({
@@ -85,6 +86,7 @@ export function useEditorController(options: EditorControllerOptions) {
       setInitializationError(reason);
     },
     onSaveError: (_error, trigger) => notify(saveErrorMessage(trigger)),
+    onSaveConflict: (saved) => notify(`別のタブで変更されたため、この編集を「${saved.name}」として保存しました。`),
   });
   const {
     board, activeDocument, changed: markChanged, commitEdit, saveNow, switchDocument: switchSessionDocument,
@@ -249,13 +251,13 @@ export function useEditorController(options: EditorControllerOptions) {
     session.removeBlock(block.id);
   });
 
-  const runPngExport = async (cellSize: number) => {
+  const runPngExport = async (cellSize: number, options: ExportAnnotations = {}) => {
     if (!board || !activeDocument) return;
-    const validation = validatePngSize(board, cellSize);
+    const validation = validatePngSize(board, cellSize, options);
     if (!validation.valid) { notify(`${validation.reason}。PDF保存をおすすめします。`); return; }
     setBusy('PNGを生成中');
     try {
-      await platform.saveFile(await renderPng(board, cellSize, session.backgroundColor), `${activeDocument.name}.png`);
+      await platform.saveFile(await renderPng(board, cellSize, session.backgroundColor, { ...options, title: activeDocument.name }), `${activeDocument.name}.png`);
       analytics.track('chart_exported', { export_format: 'png', board_size_bucket: boardSizeBucket(board.rows, board.cols) });
     } catch (error) { reportFailure('png_export', error); }
     finally { setBusy(undefined); }
@@ -266,7 +268,7 @@ export function useEditorController(options: EditorControllerOptions) {
     notify('');
     setBusy('PDFを生成中');
     try {
-      await platform.saveFile(await renderPdf(board, pdfOptions, session.backgroundColor), `${activeDocument.name}.pdf`);
+      await platform.saveFile(await renderPdf(board, { ...pdfOptions, title: activeDocument.name }, session.backgroundColor), `${activeDocument.name}.pdf`);
       analytics.track('chart_exported', { export_format: 'pdf', pdf_layout: pdfOptions.layout, board_size_bucket: boardSizeBucket(board.rows, board.cols) });
     } catch (error) { reportFailure('pdf_export', error); }
     finally { setBusy(undefined); }
@@ -288,7 +290,7 @@ export function useEditorController(options: EditorControllerOptions) {
     if (document.id === activeDocument?.id && !(await saveBeforeManagement('編み図の名前を変更'))) return;
     const renamed = await renameDocument(document.id, name);
     session.updateDocument(renamed);
-    if (document.id === activeDocument?.id) applyActiveDocumentName(name);
+    if (session.activeSnapshot()?.id === renamed.id) applyActiveDocumentName(renamed.name, renamed.updatedAt);
   });
 
   const duplicateChart = (document: ChartDocument) => runManagementOperation('chart_duplicate', '編み図の複製', async () => {
@@ -363,7 +365,7 @@ export function useEditorController(options: EditorControllerOptions) {
     session,
     changed, strokeChanged, commitStroke,
     undo, redo,
-    notify, message,
+    notify, message, notificationAction,
     initializationError, busy,
     selectedStitch, currentStitch, selectStitch, stitchPickerOpen, setStitchPickerOpen,
     selectedColor, setSelectedColor, selectColor, colorPickerOpen, setColorPickerOpen,

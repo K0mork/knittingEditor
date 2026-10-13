@@ -114,6 +114,22 @@ export class Board {
     this.relayout(newRows, newCols, (row, col) => ({ row: row + rowOffset, col: col + colOffset }));
   }
 
+  /** 縮小で消える記号数。複数セルの記号も、起点を1回だけ数える。盤面は変更しない。 */
+  countStitchesRemovedByResize(newRows: number, newCols: number, rowOffset = 0, colOffset = 0): number {
+    Board.validateSize(newRows, newCols);
+    let removed = 0;
+    for (let index = 0; index < this.cells.length; index++) {
+      const value = this.cells[index];
+      if (!value) continue;
+      const definition = STITCH_BY_ID.get(cellStitchId(value));
+      if (!definition) continue;
+      const row = Math.floor(index / this.cols) + rowOffset;
+      const col = index % this.cols + colOffset;
+      if (row < 0 || col < 0 || row + definition.height > newRows || col + definition.width > newCols) removed++;
+    }
+    return removed;
+  }
+
   /**
    * 寸法とセル配列をまとめて差し替える。元に戻す・やり直すで使う。
    * `cells`は複製して持つので、呼び出し元は渡した配列を使い回してよい。
@@ -251,9 +267,11 @@ export class Board {
     const delta = insert ? 1 : -1;
     const nextRows = this.rows + (axis === 'row' ? delta : 0);
     const nextCols = this.cols + (axis === 'col' ? delta : 0);
-    this.relayout(nextRows, nextCols, (row, col) => {
+    this.relayout(nextRows, nextCols, (row, col, definition) => {
       const coordinate = axis === 'row' ? row : col;
-      if (!insert && coordinate === index) return undefined;
+      const span = axis === 'row' ? definition.height : definition.width;
+      if (!insert && coordinate <= index && index < coordinate + span) return undefined;
+      // 挿入線をまたぐ記号は起点と形を保ち、空きは記号の後ろにできる。
       if (coordinate < index) return { row, col };
       return axis === 'row' ? { row: row + delta, col } : { row, col: col + delta };
     });
@@ -263,15 +281,16 @@ export class Board {
    * 盤面の寸法を変え、各記号の起点を`move`の返す位置へ移す。`undefined`を返した記号と、
    * 移した先で盤面からはみ出す記号は捨てる。
    */
-  private relayout(nextRows: number, nextCols: number, move: (row: number, col: number) => Point | undefined): void {
+  private relayout(nextRows: number, nextCols: number, move: (row: number, col: number, definition: StitchDefinition) => Point | undefined): void {
     Board.validateSize(nextRows, nextCols);
     const next = new Uint32Array(nextRows * nextCols);
     for (let index = 0; index < this.cells.length; index++) {
       const value = this.cells[index];
       if (!value) continue;
-      const target = move(Math.floor(index / this.cols), index % this.cols);
       const definition = STITCH_BY_ID.get(cellStitchId(value));
-      if (!target || !definition) continue;
+      if (!definition) continue;
+      const target = move(Math.floor(index / this.cols), index % this.cols, definition);
+      if (!target) continue;
       const { row, col } = target;
       if (row >= 0 && col >= 0 && row + definition.height <= nextRows && col + definition.width <= nextCols) {
         next[row * nextCols + col] = value;

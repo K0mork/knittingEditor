@@ -1,4 +1,5 @@
-import type { Board } from '../model/Board';
+import { annotationHeights, usedStitches, type ExportAnnotations } from './annotations';
+import { packCell, type Board } from '../model/Board';
 import { boardSurface, DEFAULT_BACKGROUND_COLOR } from '../model/boardColors';
 import { drawCell } from '../stitches/drawCell';
 import { strokeGrid, type GridLineStyle } from '../canvas/strokeGrid';
@@ -55,10 +56,13 @@ export function pngLabelLayout(board: Board, cellSize: number): PngLabelLayout {
   };
 }
 
-export function validatePngSize(board: Board, cellSize: number): { width: number; height: number; valid: boolean; reason?: string } {
+const pngLegendRowHeight = (cellSize: number) => Math.max(20, cellSize) * 2 + 12;
+
+export function validatePngSize(board: Board, cellSize: number, options: ExportAnnotations = {}): { width: number; height: number; valid: boolean; reason?: string } {
   const { rowLabelWidth, colLabelHeight } = pngLabelLayout(board, cellSize);
-  const width = board.cols * cellSize + rowLabelWidth * 2;
-  const height = board.rows * cellSize + colLabelHeight * 2;
+  const { titleHeight, legendHeight } = annotationHeights({ ...options, legendCount: options.includeTitleAndLegend ? (options.legendCount ?? usedStitches(board.cells).length) : 0 }, 40, pngLegendRowHeight(cellSize));
+  const width = Math.max(board.cols * cellSize + rowLabelWidth * 2, options.includeTitleAndLegend ? Math.max(560, (Math.max(20, cellSize) * 6 + 200 + 36) * 2) : 0);
+  const height = board.rows * cellSize + colLabelHeight * 2 + titleHeight + legendHeight;
   if (width > PNG_MAX_SIDE || height > PNG_MAX_SIDE) return { width, height, valid: false, reason: `一辺が上限${PNG_MAX_SIDE}pxを超えます` };
   if (width * height > PNG_MAX_PIXELS) return { width, height, valid: false, reason: '画像のメモリ使用量が上限を超えます' };
   return { width, height, valid: true };
@@ -79,8 +83,9 @@ export function pngGridStyles(cellSize: number, background: string = DEFAULT_BAC
 /**
  * 盤面をPNGにする。地の色（`background`）は盤面のマスにだけ塗り、段・目番号の帯は白い紙のままにする。
  */
-export async function renderPng(board: Board, cellSize: number, background: string = DEFAULT_BACKGROUND_COLOR): Promise<Blob> {
-  const size = validatePngSize(board, cellSize);
+export async function renderPng(board: Board, cellSize: number, background: string = DEFAULT_BACKGROUND_COLOR, options: ExportAnnotations = {}): Promise<Blob> {
+  const legend = options.includeTitleAndLegend ? usedStitches(board.cells) : [];
+  const size = validatePngSize(board, cellSize, { ...options, legendCount: legend.length });
   if (!size.valid) throw new Error(`${size.reason}。PDF保存を利用してください。`);
   const canvas = document.createElement('canvas');
   canvas.width = size.width;
@@ -91,8 +96,10 @@ export async function renderPng(board: Board, cellSize: number, background: stri
   context.fillRect(0, 0, canvas.width, canvas.height);
   const labels = pngLabelLayout(board, cellSize);
   // 盤面の左上。四辺の番号の帯の内側に盤面を置く。
-  const left = labels.rowLabelWidth;
-  const top = labels.colLabelHeight;
+  const offsetX = (canvas.width - board.cols * cellSize - labels.rowLabelWidth * 2) / 2;
+  const left = offsetX + labels.rowLabelWidth;
+  const { titleHeight } = annotationHeights({ ...options, legendCount: legend.length }, 40);
+  const top = labels.colLabelHeight + titleHeight;
   const right = left + board.cols * cellSize;
   const bottom = top + board.rows * cellSize;
   context.font = `${labels.fontSize}px system-ui`;
@@ -103,15 +110,15 @@ export async function renderPng(board: Board, cellSize: number, background: stri
     const number = board.cols - col;
     if (!showsLabel(number, labels.colStride)) continue;
     const x = left + (col + 0.5) * cellSize;
-    context.fillText(String(number), x, top / 2);
-    context.fillText(String(number), x, bottom + top / 2);
+    context.fillText(String(number), x, titleHeight + labels.colLabelHeight / 2);
+    context.fillText(String(number), x, bottom + labels.colLabelHeight / 2);
   }
   for (let row = 0; row < board.rows; row++) {
     const number = board.rows - row;
     if (!showsLabel(number, labels.rowStride)) continue;
     const y = top + (row + 0.5) * cellSize;
-    context.fillText(String(number), left / 2, y);
-    context.fillText(String(number), right + left / 2, y);
+    context.fillText(String(number), offsetX + labels.rowLabelWidth / 2, y);
+    context.fillText(String(number), right + labels.rowLabelWidth / 2, y);
   }
   const surface = boardSurface(background, 'png');
   for (let row = 0; row < board.rows; row++) {
@@ -130,6 +137,25 @@ export async function renderPng(board: Board, cellSize: number, background: stri
       const value = board.valueAt(row, col);
       if (value) drawCell(context, value, left + col * cellSize, top + row * cellSize, cellSize);
     }
+  }
+  if (options.includeTitleAndLegend) {
+    context.fillStyle = '#111';
+    context.font = '20px system-ui';
+    context.textAlign = 'left';
+    context.fillText(options.title ?? '', 12, 20, canvas.width - 24);
+    legend.forEach((stitch, index) => {
+      const x = 12 + (index % 2) * (canvas.width / 2);
+      const legendCell = Math.max(20, cellSize);
+      const rowHeight = pngLegendRowHeight(cellSize);
+      const centerY = bottom + labels.colLabelHeight + 6 + Math.floor(index / 2) * rowHeight + (rowHeight - 12) / 2;
+      const y = centerY - stitch.height * legendCell / 2;
+      strokeGrid(context, { x, y, cell: legendCell, rows: stitch.height, cols: stitch.width, firstRow: 0, lastRow: stitch.height - 1, firstCol: 0, lastCol: stitch.width - 1 }, grid.minor, grid.minor);
+      drawCell(context, packCell(stitch.id, 0x111111), x, y, legendCell);
+      context.fillStyle = '#111';
+      context.font = '14px system-ui';
+      const nameX = x + legendCell * 6 + 12;
+      context.fillText(stitch.name, nameX, centerY, canvas.width / 2 - legendCell * 6 - 36);
+    });
   }
   return new Promise((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('PNG生成に失敗しました')), 'image/png'));
 }

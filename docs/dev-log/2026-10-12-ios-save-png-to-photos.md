@@ -1,0 +1,32 @@
+# 2026-10-12 — iOSのPNG共有から写真へ保存できるようにする
+
+- 影響: Refs #208（実機での確認後に閉じる）。PNGの共有シートに「画像を保存」が出るよう、写真への追加専用の権限説明（`NSPhotoLibraryAddUsageDescription`、「編み図の画像を写真に保存するために使います。」）を設定した。写真の読み取り権限は求めない。PNGのファイルURLを渡す既存の共有と「ファイルに保存」は変えていない。
+- 影響（拒否したときの案内）: 共有シートの「画像を保存」が写真への追加の拒否で失敗したときは、汎用の「共有に失敗しました。もう一度共有を試してください。」の代わりに「写真に保存できませんでした。設定アプリの「棒針編み図」→「写真」で追加を許可してから、もう一度お試しください。」を出す。iOSは一度拒否すると権限画面を出し直さず、Simulatorでは拒否後の共有シートから「画像を保存」自体が消えるため、設定アプリでの許可を案内する。判定は、共有先が`saveToCameraRoll`で、エラー（`ALAssetsLibraryErrorDomain`）またはその元のエラーが`PHPhotosError.accessUserDenied`のときだけ。ほかの失敗の文言は変えていない。Webが結果を待つ書き出しでは、ネイティブ側が選んだ文言を結果のイベントの`message`で渡し、Webはそれがあれば出す（無ければ今までどおりの汎用の文言）。
+- 影響（案内から使い方と設定アプリへ）: 上の拒否の案内は、ほかのトーストと同じく自動で消えるまま、「やり方を見る」ボタンを1つ添えた。押すと、保留中の編集を保存してから（既存の「使い方」と同じ経路）iOSの使い方の新しい節「写真への保存を許可する」（`/guide/#allow-photos`）を開く。節では、拒否すると確認が出直さないことと、「設定アプリを開く」→「アプリ」→「棒針編み図」→「写真」→「写真の追加のみ」の手順を説明し、「設定アプリを開く」（`app-settings:`）のリンクを置いた。このリンクは、ネイティブ側の`decidePolicyFor`がリンクを押されたとき（`linkActivated`）だけ`UIApplication.openSettingsURLString`で設定アプリを開き、それ以外の`app-settings:`や設定アプリのほかのURLは読み込まない。トーストのボタンは`useNotifier`の`notify`に省いてよい`action`（`{ label, run }`）を足したもので、使うのはこの案内だけ。ほかのトーストは変えていない。ネイティブは結果のイベントに`guideSection`を添え、Webはページ内の節の形（英小文字で始まる英数字と`-`）のときだけボタンを付ける。Web版の使い方は変えていない。設定アプリの表記はiOS 26.5のSimulatorで確かめた（このアプリのページは「“棒針編み図”にアクセスを許可」の下に「写真」があり、選択肢は「なし」と「写真の追加のみ」）。
+- 主なファイル: `ios/App/Info.plist`、`ios/App/WebViewContainer.swift`（`shareFailureMessage`）、`ios/App/NativeBridgeMessage.swift`（結果の`message`）、`ios/Web/src/nativeBridge.ts`、`ios/Web/src/App.tsx`、`ios/Web/public/guide/index.html`、`packages/editor-core/ui/hooks.ts`（トーストの`action`）、`packages/editor-core/ui/EditorView.tsx`、`packages/editor-core/styles/base.css`、`scripts/guide-content.test.mjs`、`ios/Tests/KnittingEditorAppTests/PhotoLibraryPermissionTests.swift`、`ios/knittingEditor.xcodeproj/project.pbxproj`（XcodeGenによるテストの登録）。`ios/project.yml`は既存のplistを参照するだけなので変えていない。
+- テスト: Swift単体テスト`PhotoLibraryPermissionTests`（2件）で、アプリの追加権限の説明文と、読み取り権限の説明がないことを確かめる。`NativeExportResultTests`に、文言の選び方（写真の保存で拒否されたとき／拒否以外の失敗／ほかの共有先）と、拒否の文言がWebへの結果に載ることの2件を足し、既存の共有エラーのテストで汎用の文言が載ることも確かめる。iOS Webの`nativeBridge.test.ts`に、ネイティブが添えた文言を出し、文字列でなければ汎用の文言に戻すテストを足した。
+- テスト（使い方と設定アプリ）: `hooks.test.tsx`（ボタン付きの通知が時間で消え、ボタンも一緒に消える）、`EditorView.test.tsx`（ボタンが付くのは`action`があるときだけで、次の通知へ引き継がない）、iOS Webの`nativeBridge.test.ts`（`guideSection`を渡す／形の合わない値や失敗以外では渡さない／文字列と`{ message, guideSection }`の両方を受け付ける）と`App.guide.test.tsx`（節が無ければ今までどおりのトースト、あれば「やり方を見る」で保存してから`/guide/#allow-photos`へ移る）、Swiftの`LocalWebSchemeHandlerTests.testGuideOpensThisAppsSettingsOnlyWhenTheLinkIsTapped`（`app-settings:`はリンクを押したときだけ設定アプリのURLで開く）と`NativeExportResultTests`（拒否のときだけ`guideSection`が載る）、`scripts/guide-content.test.mjs`（iOSの使い方に節と設定アプリのリンクが1つだけあり、Swiftが渡す節のIDと合う）。
+- 検証（Node v24.21.0）:
+  - `npm run typecheck`、`npm test`（45ファイル・437件）、`npm run build`、`npm run check:dist`、`plutil -lint ios/App/Info.plist`、`git diff --check`: 成功。
+  - `xcodegen generate --spec ios/project.yml`: 成功。生成した`project.pbxproj`はコミットしたものと同じ。
+  - iPhone 16（iOS 26.5）のSimulatorで`PhotoLibraryPermissionTests`と既存の`KnittingEditorUTTypeTests`（計6件）: 成功。ビルドしたアプリのInfo.plistに説明文が入り、読み取り権限は入っていないことを確かめた。
+  - 同じSimulatorで、一時的なUIテスト（実行後に削除）により、「保存」→「PNGを保存」→「共有」の共有シートに「画像を保存」が出ること、押すと追加専用の権限画面に上の説明文が出ること、「許可」で写真ライブラリにPNGが保存されて盤面の内容が合っていること、「許可しない」でもアプリが落ちないことを確かめた。
+  - 既存のUIテストのうち、PNG・PDFが「ファイルに保存」まで届くものと、共有シートを閉じて編集画面へ戻るもの（2件）: 成功。
+  - `npm run test:e2e`（chromium-mobile、webkit-mobile、chromium-desktop）: 264件成功、6件スキップ、失敗0件。
+  - 拒否したときの案内（追加の変更）:
+    - iOS Webの`tsc -p tsconfig.app.json --noEmit`と`vitest run --config vite.config.ts`（11ファイル・103件）: 成功。
+    - iPhone 16（iOS 26.5）のSimulatorで`NativeExportResultTests`、`NativeBridgeMessageTests`、`PhotoLibraryPermissionTests`（計27件）: 成功。
+    - 同じSimulatorで、写真の権限を`xcrun simctl privacy … reset photos-add`で初期化してから、一時的なUIテスト（実行後に削除）で「保存」→「PNGを保存」→「共有」→「画像を保存」→「許可しない」を2回通した。どちらも拒否の直後に新しい案内が出た。続けてもう一度共有すると、共有シートには「画像を保存」が無く（「表示を増やす」の中にも無い）、2回目の失敗は起きない。
+    - `xcodegen generate --spec ios/project.yml`: 一時テストを削除したあとの`project.pbxproj`はコミットしたものと同じ。
+    - `npm run typecheck`、`npm test`（45ファイル・437件）、`git diff --check`: 成功。
+  - 使い方と設定アプリへの案内（追加の変更、`origin/main`を取り込んだあと）:
+    - `npm run typecheck`、`npm test`（47ファイル・471件）、`npm run build`、`npm run check:dist`、`git diff --check`: 成功。
+    - iOS Webの`tsc -p tsconfig.app.json --noEmit`と`vitest run --config vite.config.ts`（11ファイル・107件）: 成功。
+    - `npm run test:e2e`: 1回目と2回目は、今回触れていないテストが1〜2件ずつ失敗した（webkit-mobileのPNGの太線のテストでサイズ表示を5秒以内に見つけられない、chromium-mobileの段数・列数の入力欄のテスト）。どちらもSimulatorを同時に動かしていて負荷が高いときで、失敗したテストだけを3回ずつ流すと全件成功した。Simulatorを止めてからの3回目は330件成功、6件スキップ、失敗0件。
+    - `xcodegen generate --spec ios/project.yml`: 一時テストを削除したあとの`project.pbxproj`はコミットしたものと同じ。
+    - iPhone 16（iOS 26.5）のSimulatorで`NativeExportResultTests`、`LocalWebSchemeHandlerTests`、`NativeBridgeMessageTests`、`PhotoLibraryPermissionTests`（計48件、うち機内モードの1件は既存どおりスキップ）と、既存のUIテスト`testGuideNavigationReturnsToUsableEditor`、`testGuideExternalLinkShowsNoPreview`: 成功。ビルドしたアプリに`ios/scripts/check-app-bundle.sh`: 成功。
+    - 同じSimulatorで、写真の権限を初期化してから一時的なUIテスト（実行後に削除）で「保存」→「PNGを保存」→「共有」→「画像を保存」→「許可しない」→ トーストの「やり方を見る」→ 使い方の「写真への保存を許可する」の節（見出しが画面の上半分に出る）→「設定アプリを開く」と進み、設定アプリ（`com.apple.Preferences`）が前面に来ることを確かめた（3回）。
+    - Simulatorでは、設定アプリは「設定」の最初の画面で開き、このアプリのページへは直接移らなかった（設定アプリが起動していないときも、起動済みのときも同じ）。そのため使い方では「アプリ」→「棒針編み図」→「写真」の順を書き、直接開いたときは「写真」から選ぶと添えた。その順にたどると、このアプリのページと「写真の追加のみ」が出ることを同じテストで確かめた。
+  - PRのCIに任せたもの: iPhone・iPadのSimulatorテストの一式、app-update、unsigned Release Archive、オフライン同梱物の検査。
+  - 実機で残る確認: 初回の権限画面、許可後の写真への保存、拒否したときの動きと案内、「やり方を見る」から使い方の節が開くこと、「設定アプリを開く」でこのアプリのページへ直接移るか（Simulatorでは「設定」の最初の画面だった）、設定アプリで許可したあとの再保存、拒否後の「ファイルに保存」、iPadのポップオーバー。
+- デプロイ影響: 共通のトースト（`packages/editor-core`）を変えたので、マージ後にPagesも再デプロイされる。Web版の見た目と動きは変わらない（ボタンを付ける通知はiOSだけ）ため、`smoke`のほかに追加の確認は不要。次のアプリのビルドに権限の説明と、拒否したときの案内、使い方の節が入る。配布後に実機で写真への保存、拒否したときの案内、「ファイルに保存」を確かめる。

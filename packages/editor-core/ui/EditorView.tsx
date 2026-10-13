@@ -149,7 +149,7 @@ export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, 
       <nav className="action-bar" aria-label="操作メニュー">
         {ACTION_BAR_PANELS.map((item) => <button key={item.panel} aria-controls="app-drawer" aria-expanded={panel === item.panel} onClick={() => editor.togglePanel(item.panel)}>{item.label}</button>)}
         {/* 上の道具列は狭い画面で余白が無いので、親指の届く操作メニューに置く。盤面には重ねない。 */}
-        <div className="history-tools" role="group" aria-label="編集履歴">
+        <div className={panel === 'grid' ? 'history-tools grid-panel-open' : 'history-tools'} role="group" aria-label="編集履歴">
           <button aria-label="元に戻す" title={history.undo} disabled={!session.canUndo} onClick={editor.undo}><HistoryIcon direction="undo" /><span className="history-label" aria-hidden="true">戻す</span></button>
           <button aria-label="やり直す" title={history.redo} disabled={!session.canRedo} onClick={editor.redo}><HistoryIcon direction="redo" /><span className="history-label" aria-hidden="true">やり直す</span></button>
         </div>
@@ -157,7 +157,14 @@ export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, 
     </main>
 
     {panel && <aside ref={editor.panelRef} id="app-drawer" className="drawer" aria-labelledby="app-drawer-title">
-      <div className="drawer-heading"><h2 id="app-drawer-title" tabIndex={-1}>{EDITOR_PANEL_TITLES[panel]}</h2><button onClick={editor.closePanel}>閉じる</button></div>
+      <div className="drawer-heading">
+        <h2 id="app-drawer-title" tabIndex={-1}>{EDITOR_PANEL_TITLES[panel]}</h2>
+        {panel === 'grid' && <div className="history-tools" role="group" aria-label="編集履歴">
+          <button aria-label="元に戻す" title={history.undo} disabled={!session.canUndo} onClick={editor.undo}><HistoryIcon direction="undo" /></button>
+          <button aria-label="やり直す" title={history.redo} disabled={!session.canRedo} onClick={editor.redo}><HistoryIcon direction="redo" /></button>
+        </div>}
+        <button onClick={editor.closePanel}>閉じる</button>
+      </div>
       {panel === 'documents' && <>
         <button className="primary" onClick={() => void editor.createNewDocument()}>新しい編み図</button>
         <DocumentList documents={session.documents} activeId={activeDocument.id}
@@ -180,7 +187,10 @@ export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, 
     <input ref={editor.fileInputRef} hidden type="file" accept=".knit,application/gzip" onChange={(event) => { void editor.restore(event.target.files?.[0]); event.target.value = ''; }} />
     {children}
     {editor.busy && <div className="busy" role="status" aria-live="polite"><span className="spinner" />{editor.busy}</div>}
-    {editor.message && <div className="toast" role="status" aria-live="polite" aria-atomic="true">{editor.message}</div>}
+    {editor.message && <div className="toast" role="status" aria-live="polite" aria-atomic="true">
+      {editor.message}
+      {editor.notificationAction && <button type="button" className="toast-action" onClick={editor.notificationAction.run}>{editor.notificationAction.label}</button>}
+    </div>}
     {footer}
   </div>;
 }

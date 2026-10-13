@@ -1,10 +1,11 @@
 /// <reference lib="webworker" />
+import { usedStitches } from './annotations';
 import { Zlib, strToU8, zlibSync } from 'fflate';
 import { STITCH_BY_ID, STITCHES } from '../stitches/catalog';
 import { GLYPH_CELL, glyphPdfCommands } from '../stitches/glyphs';
 import { cellColor, cellStitchId, parseColor } from '../model/Board';
 import { boardSurface, DEFAULT_BACKGROUND_COLOR } from '../model/boardColors';
-import { PDF_LABEL_FONT_SIZE, PDF_LABEL_GAP, pdfLabelWidth, pdfPageLayout, type PdfLayoutOptions, type PdfTile } from './pdfLayout';
+import { PDF_LEGEND_CELL_SIZE, pdfLegendColumns, pdfLegendRows, type PdfLegendRow, PDF_LABEL_FONT_SIZE, PDF_LABEL_GAP, pdfLabelWidth, pdfPageLayout, type PdfLayoutOptions, type PdfTile } from './pdfLayout';
 import { errorMessage } from '../util/errors';
 import { labelStride, showsLabel } from './labels';
 import { majorGridLines } from '../model/gridLines';
@@ -48,7 +49,23 @@ function compressChunks(chunks: Iterable<string>): Uint8Array {
   return concat(output);
 }
 
-function escapePdfText(value: string): string { return value.replaceAll('\\', '\\\\').replaceAll('(', '\\(').replaceAll(')', '\\)'); }
+/** CID 231〜325のASCIIは500、それ以外は既定の1000単位。 */
+export function pdfJapaneseTextWidth(value: string, size = 8): number {
+  return Array.from(value).reduce((width, character) => {
+    const code = character.codePointAt(0)!;
+    return width + (code >= 0x20 && code <= 0x7e ? 0.5 : 1);
+  }, 0) * size;
+}
+
+/** UniJIS-UCS2-HW-HはBMPの文字を2バイトのコードで指定する。 */
+export function pdfJapaneseText(value: string, x: number, y: number, size = 8): string {
+  const hex = Array.from({ length: value.length }, (_, index) => value.charCodeAt(index).toString(16).padStart(4, '0')).join('');
+  return `0 g BT /F2 ${size} Tf ${x.toFixed(3)} ${y.toFixed(3)} Td <${hex}> Tj ET\n`;
+}
+
+export function pdfPageRange(request: PdfRequest, tile: PdfTile, index: number, count: number): string {
+  return `${index + 1}/${count}ページ　段${request.rows - tile.row - tile.rows + 1}〜${request.rows - tile.row}　目${request.cols - tile.col - tile.cols + 1}〜${request.cols - tile.col}`;
+}
 
 /** 数字の高さの目安（em）。番号を帯の中で上下中央へ置くのに使う。 */
 const DIGIT_HEIGHT = 0.72;
@@ -137,12 +154,22 @@ function tileGrid(tile: PdfTile, request: PdfRequest, originX: number, originY: 
 
 export function buildPdf(request: PdfRequest): Uint8Array {
   const cells = new Uint32Array(request.cells);
-  const { pageWidth, pageHeight, margin, rowLabelWidth, colLabelHeight, cellSize, tiles } = pdfPageLayout(request.rows, request.cols, request);
+  const legend = request.includeTitleAndLegend ? usedStitches(cells) : [];
+  const options = { ...request, legendCount: legend.length, legendHeights: legend.map((stitch) => stitch.height) };
+  const titleHeight = request.includeTitleAndLegend && request.layout === 'single' ? 24 : 0;
+  const { pageWidth, pageHeight, margin, rowLabelWidth, colLabelHeight, cellSize, tiles, legendPages, pageCount } = pdfPageLayout(request.rows, request.cols, options);
 
   const objects: PdfObject[] = [];
   objects.push(ascii('<< /Type /Catalog /Pages 2 0 R >>'));
   objects.push(new Uint8Array());
   objects.push(ascii('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'));
+  let japaneseFontRef = 0;
+  if (request.includeTitleAndLegend || request.layout === 'tiled') {
+    japaneseFontRef = objects.length + 1;
+    objects.push(ascii(`<< /Type /Font /Subtype /Type0 /BaseFont /HeiseiKakuGo-W5 /Encoding /UniJIS-UCS2-HW-H /DescendantFonts [${japaneseFontRef + 1} 0 R] >>`));
+    objects.push(ascii(`<< /Type /Font /Subtype /CIDFontType0 /BaseFont /HeiseiKakuGo-W5 /CIDSystemInfo << /Registry (Adobe) /Ordering (Japan1) /Supplement 6 >> /FontDescriptor ${japaneseFontRef + 2} 0 R /DW 1000 /W [231 325 500] >>`));
+    objects.push(ascii('<< /Type /FontDescriptor /FontName /HeiseiKakuGo-W5 /Flags 4 /FontBBox [-92 -250 1010 922] /ItalicAngle 0 /Ascent 752 /Descent -221 /CapHeight 737 /StemV 80 >>'));
+  }
 
   const formRefs = new Map<number, number>();
   for (const stitch of STITCHES.filter((item) => item.renderKind === 'glyph')) {
@@ -156,9 +183,42 @@ export function buildPdf(request: PdfRequest): Uint8Array {
 
   const xObjectResources = [...formRefs].map(([id, ref]) => `/S${id} ${ref} 0 R`).join(' ');
   const pageRefs: number[] = [];
+  function titleCommands(tiled: boolean): string {
+    const title = request.title ?? '';
+    const size = Math.min(tiled ? 9 : 14, (pageWidth - margin * 2) / Math.max(1, pdfJapaneseTextWidth(title, 1)));
+    return pdfJapaneseText(title, margin, tiled ? pageHeight - 18 : pageHeight - margin - 16, size);
+  }
+
+  function* legendCommands(rows: PdfLegendRow[], top: number): Generator<string> {
+    const columns = pdfLegendColumns(pageWidth);
+    const columnWidth = (pageWidth - margin * 2) / columns;
+    for (const row of rows) {
+      for (let column = 0; column < row.count; column++) {
+        const stitch = legend[row.start + column];
+        const x = margin + column * columnWidth;
+        const height = stitch.height * PDF_LEGEND_CELL_SIZE;
+        const y = top - (row.height - 8 + height) / 2;
+        const glyph = glyphPdfCommands(stitch.key)!;
+        const scale = PDF_LEGEND_CELL_SIZE / GLYPH_CELL;
+        yield tileGrid({ row: 0, col: 0, rows: stitch.height, cols: stitch.width }, { ...request, rows: stitch.height, cols: stitch.width, background: DEFAULT_BACKGROUND_COLOR }, x, y, PDF_LEGEND_CELL_SIZE);
+        yield `0 g 0 G q ${scale} 0 0 ${scale} ${x} ${y + height - glyph.height * scale} cm /S${stitch.id} Do Q\n`;
+        const nameSize = Math.min(8, (columnWidth - 84) / pdfJapaneseTextWidth(stitch.name, 1));
+        yield pdfJapaneseText(stitch.name, x + 84, y + height / 2 - nameSize * (0.752 - 0.221) / 2, nameSize);
+      }
+      top -= row.height;
+    }
+  }
+
+  function addPage(commands: Iterable<string>): void {
+    const contentRef = objects.length + 1;
+    objects.push(streamObject('', compressChunks(commands)));
+    const pageRef = objects.length + 1;
+    pageRefs.push(pageRef);
+    objects.push(ascii(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /Font << /F1 3 0 R${japaneseFontRef ? ` /F2 ${japaneseFontRef} 0 R` : ''} >> /XObject << ${xObjectResources} >> >> /Contents ${contentRef} 0 R >>`));
+  }
   tiles.forEach((tile, pageIndex) => {
     const originX = margin + rowLabelWidth;
-    const originY = pageHeight - margin - colLabelHeight - tile.rows * cellSize;
+    const originY = pageHeight - margin - titleHeight - colLabelHeight - tile.rows * cellSize;
     function* pageCommands(): Generator<string> {
       yield tileBackground(tile, request, originX, originY, cellSize);
       yield tileGrid(tile, request, originX, originY, cellSize);
@@ -194,16 +254,23 @@ export function buildPdf(request: PdfRequest): Uint8Array {
         if (rowCommands) yield rowCommands;
       }
       yield 'Q\n';
+      if (request.includeTitleAndLegend) {
+        yield titleCommands(request.layout === 'tiled');
+        if (request.layout === 'single') yield* legendCommands(pdfLegendRows(options, pageWidth), originY - colLabelHeight - 8);
+      }
       if (request.layout === 'tiled') {
-        const label = `Page ${pageIndex + 1}/${tiles.length}  Rows ${request.rows - tile.row}-${request.rows - (tile.row + tile.rows - 1)}  Cols ${request.cols - tile.col}-${request.cols - (tile.col + tile.cols - 1)}`;
-        yield `0 g BT /F1 8 Tf ${margin} 10 Td (${escapePdfText(label)}) Tj ET\n`;
+        yield pdfJapaneseText(pdfPageRange(request, tile, pageIndex, pageCount), margin, 10);
       }
     }
-    const contentRef = objects.length + 1;
-    objects.push(streamObject('', compressChunks(pageCommands())));
-    const pageRef = objects.length + 1;
-    pageRefs.push(pageRef);
-    objects.push(ascii(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /Font << /F1 3 0 R >> /XObject << ${xObjectResources} >> >> /Contents ${contentRef} 0 R >>`));
+    addPage(pageCommands());
+  });
+  legendPages.forEach((rows, index) => {
+    function* commands(): Generator<string> {
+      yield titleCommands(false);
+      yield* legendCommands(rows, pageHeight - margin - 24);
+      yield pdfJapaneseText(`${tiles.length + index + 1}/${pageCount}ページ`, margin, 10);
+    }
+    addPage(commands());
   });
   objects[1] = ascii(`<< /Type /Pages /Kids [${pageRefs.map((ref) => `${ref} 0 R`).join(' ')}] /Count ${pageRefs.length} >>`);
 

@@ -1,6 +1,6 @@
 import { glyphSvg, getGlyphDefinition, type GlyphDefinition } from './glyphs';
 
-export const STITCH_CATALOG_VERSION = 3;
+export const STITCH_CATALOG_VERSION = 4;
 export type StitchCategory = 'basic' | 'decrease' | 'cable' | 'twist' | 'utility';
 export type StitchStandardStatus = 'jis' | 'jis-derived' | 'extension' | 'utility';
 
@@ -27,6 +27,8 @@ const definitions: DefinitionInput[] = [
   { id: 1, key: 'knit', name: '表目', width: 1, height: 1, consumes: 1, produces: 1, category: 'basic', standardStatus: 'jis', standardReference: 'JIS 2010' },
   { id: 2, key: 'purl', name: '裏目', width: 1, height: 1, consumes: 1, produces: 1, category: 'basic', standardStatus: 'jis', standardReference: 'JIS 2020' },
   { id: 3, key: 'yo', name: 'かけ目', width: 1, height: 1, consumes: 0, produces: 1, category: 'basic', standardStatus: 'jis', standardReference: 'JIS 2030' },
+  { id: 27, key: 'right_increase', name: '右増し目', width: 1, height: 1, consumes: 1, produces: 2, category: 'basic', standardStatus: 'jis', standardReference: 'JIS 2090' },
+  { id: 28, key: 'left_increase', name: '左増し目', width: 1, height: 1, consumes: 1, produces: 2, category: 'basic', standardStatus: 'jis', standardReference: 'JIS 2100' },
   { id: 4, key: 'right_up_two_one', name: '右上2目一度', width: 2, height: 1, consumes: 2, produces: 1, category: 'decrease', standardStatus: 'jis', standardReference: 'JIS 2040' },
   { id: 5, key: 'left_up_two_one', name: '左上2目一度', width: 2, height: 1, consumes: 2, produces: 1, category: 'decrease', standardStatus: 'jis', standardReference: 'JIS 2050' },
   { id: 26, key: 'purl_right_up_two_one', name: '裏目の右上2目一度', width: 2, height: 1, consumes: 2, produces: 1, category: 'decrease', standardStatus: 'jis-derived', standardReference: 'JIS 2040・備考2' },
@@ -47,6 +49,7 @@ const definitions: DefinitionInput[] = [
   { id: 20, key: 'right_up_three_cross', name: '右上3目交差', width: 6, height: 1, consumes: 6, produces: 6, category: 'cable', standardStatus: 'extension', standardReference: 'JIS交差記号の拡張' },
   { id: 21, key: 'left_up_three_cross', name: '左上3目交差', width: 6, height: 1, consumes: 6, produces: 6, category: 'cable', standardStatus: 'extension', standardReference: 'JIS交差記号の拡張' },
   { id: 22, key: 'slip_stitch', name: 'すべり目', width: 1, height: 2, consumes: 1, produces: 1, category: 'basic', standardStatus: 'jis', standardReference: 'JIS 2160' },
+  { id: 29, key: 'float_stitch', name: '浮き目', width: 1, height: 2, consumes: 1, produces: 1, category: 'basic', standardStatus: 'jis', standardReference: 'JIS 2170' },
   { id: 23, key: 'twist_stitch', name: 'ねじり目', width: 1, height: 1, consumes: 1, produces: 1, category: 'twist', standardStatus: 'jis', standardReference: 'JIS 2200' },
   { id: 24, key: 'purl_twist_stitch', name: 'ねじり裏目', width: 1, height: 1, consumes: 1, produces: 1, category: 'twist', standardStatus: 'jis-derived', standardReference: 'JIS 2200・備考2' },
   { id: 25, key: 'erase', name: '白くする', width: 1, height: 1, consumes: 1, produces: 1, category: 'utility', standardStatus: 'utility', standardReference: '補助・JIS外', renderKind: 'whiteout' },

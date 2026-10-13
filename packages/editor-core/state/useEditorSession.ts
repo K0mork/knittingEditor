@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Board, type PatternBlock } from '../model/Board';
 import { BoardHistory } from '../model/BoardHistory';
 import { backgroundColorOf } from '../model/boardColors';
+import { compareDocuments } from '../storage/documentOrder';
 import { errorMessage } from '../util/errors';
 import { boardFromDocument, listBlocks, listDocuments, recordBackup, saveDocument, setSetting, type ChartDocument } from '../storage/database';
 
@@ -40,6 +41,7 @@ export interface EditorSessionOptions {
   onInitialized?: (initialized: EditorSessionInit) => void;
   onInitializationError: (message: string) => void;
   onSaveError: (error: unknown, trigger: SaveTrigger) => void;
+  onSaveConflict?: (document: ChartDocument) => void;
 }
 
 export interface EditorSession {
@@ -87,7 +89,7 @@ export interface EditorSession {
   removeBlock: (id: string) => void;
   refreshDocuments: () => Promise<void>;
   refreshBlocks: () => Promise<void>;
-  applyActiveDocumentName: (name: string) => void;
+  applyActiveDocumentName: (name: string, updatedAt?: number) => void;
   /** 地の色を変える。盤面の編集と同じく自動保存するが、元に戻す履歴には積まない。 */
   setBackgroundColor: (color: string) => void;
 }
@@ -97,7 +99,7 @@ export function mergeSavedDocument(documents: ChartDocument[], saved: ChartDocum
   const merged = documents.some((item) => item.id === saved.id)
     ? documents.map((item) => (item.id === saved.id ? saved : item))
     : [...documents, saved];
-  return merged.sort((a, b) => b.updatedAt - a.updatedAt);
+  return merged.sort(compareDocuments);
 }
 
 /**
@@ -164,13 +166,19 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
       return 'failed';
     }
     setSaveFailed(false);
-    if (exportedGenerationRef.current === `${documentId}:${generation}`) {
+    if (saved.id !== documentId) optionsRef.current.onSaveConflict?.(saved);
+    if (saved.id === documentId && exportedGenerationRef.current === `${documentId}:${generation}`) {
       // 記録に失敗しても保存の失敗ではない。次に開いたとき勧めが出るだけになる。
       void recordBackup([documentId], saved.updatedAt).catch(() => undefined);
     }
     // 書き込んだ1件だけを一覧へ反映する。全件取得だと編集していない編み図の
     // セル配列まで読み直すことになり、保存済みの編み図が増えるほど重くなる。
-    setDocuments((current) => mergeSavedDocument(current, saved));
+    if (saved.id !== documentId) {
+      // 元の編み図は別タブの保存済み内容へ戻し、削除済みなら一覧からも消す。
+      const latest = await listDocuments().catch(() => undefined);
+      if (latest) setDocuments(latest);
+      else setDocuments((current) => mergeSavedDocument(current.filter((item) => item.id !== documentId), saved));
+    } else setDocuments((current) => mergeSavedDocument(current, saved));
     if (activeDocumentRef.current?.id !== documentId) return 'pending';
     activeDocumentRef.current = saved;
     setActiveDocument((current) => (current?.id === documentId ? saved : current));
@@ -211,7 +219,14 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
 
   useEffect(() => {
     if (!dirty || !activeDocument || !board) return;
-    const timer = window.setTimeout(() => { void persist(activeDocument, board, 'autosave'); }, options.autosaveDelayMs ?? AUTOSAVE_DELAY_MS);
+    // 描画時点の記録ではなく最新の記録で保存する。保存完了から再描画までの間に発火すると、
+    // 古い更新日時で保存して自分の保存を別のタブの変更と取り違えるため。
+    const timer = window.setTimeout(() => {
+      const latestDocument = activeDocumentRef.current;
+      const target = boardRef.current;
+      if (!dirtyRef.current || !latestDocument || !target) return;
+      void persist(latestDocument, target, 'autosave');
+    }, options.autosaveDelayMs ?? AUTOSAVE_DELAY_MS);
     return () => window.clearTimeout(timer);
   }, [dirty, revision, activeDocument, board, persist, options.autosaveDelayMs]);
 
@@ -309,13 +324,13 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
   const refreshDocuments = useCallback(async () => setDocuments(await listDocuments()), []);
   const refreshBlocks = useCallback(async () => setBlocks(await listBlocks()), []);
 
-  const applyActiveDocumentName = useCallback((name: string) => {
-    setActiveDocument((current) => {
-      if (!current) return current;
-      const renamed = { ...current, name };
-      activeDocumentRef.current = renamed;
-      return renamed;
-    });
+  const applyActiveDocumentName = useCallback((name: string, updatedAt?: number) => {
+    // 再描画を待たずにrefへ入れる。直後の保存が古い更新日時を使わないようにするため。
+    const current = activeDocumentRef.current;
+    if (!current) return;
+    const renamed = { ...current, name, updatedAt: updatedAt ?? current.updatedAt };
+    activeDocumentRef.current = renamed;
+    setActiveDocument(renamed);
   }, []);
 
   const setBackgroundColor = useCallback((color: string) => {

@@ -67,8 +67,10 @@ async function renderEditor(
     askConfirm: async () => false,
     ...options,
   };
+  let latest!: ReturnType<typeof useEditorController>;
   function Host() {
     const editor = useEditorController(controllerOptions);
+    latest = editor;
     return <EditorView
       editor={editor}
       renderTitle={(status) => <div className="app-title"><h1>題字</h1><p data-testid="status">{status}</p></div>}
@@ -93,10 +95,29 @@ async function renderEditor(
     return found;
   };
   const click = async (label: string) => { await act(async () => { button(label).click(); }); };
-  return { container, platform, button, click };
+  const notify: ReturnType<typeof useEditorController>['notify'] = (...args) => latest.notify(...args);
+  return { container, platform, button, click, notify };
 }
 
 describe('EditorView', () => {
+  it('adds a button to a toast only when the notification carries an action', async () => {
+    const { container, notify } = await renderEditor();
+    const run = vi.fn();
+    await act(async () => notify('写真に保存できませんでした。', { label: 'やり方を見る', run }));
+    const toast = container.querySelector('.toast')!;
+    expect(toast.getAttribute('role')).toBe('status');
+    expect(toast.textContent).toBe('写真に保存できませんでした。やり方を見る');
+    const action = toast.querySelector<HTMLButtonElement>('button.toast-action')!;
+    expect(action.type).toBe('button');
+    await act(async () => { action.click(); });
+    expect(run).toHaveBeenCalledOnce();
+
+    // 次の通知は、前の通知のボタンを引き継がない。
+    await act(async () => notify('元に戻しました'));
+    expect(container.querySelector('.toast')?.textContent).toBe('元に戻しました');
+    expect(container.querySelector('.toast-action')).toBeNull();
+  });
+
   it('shows stitch width in stitches and height in rows', async () => {
     const { container } = await renderEditor();
     await act(async () => { container.querySelector<HTMLButtonElement>('.stitch-tool')!.click(); });

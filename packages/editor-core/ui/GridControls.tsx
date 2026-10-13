@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import type { Board } from '../model/Board';
+import { useRef, useState } from 'react';
+import { Board } from '../model/Board';
 import { BACKGROUND_PRESETS } from '../model/boardColors';
 import { errorMessage } from '../util/errors';
 
@@ -21,7 +21,14 @@ export interface GridControlsProps {
 export function GridControls({ board, backgroundColor, onBackgroundColorChange, changed, askText, askConfirm, notify }: GridControlsProps) {
   const [rows, setRows] = useState(String(board.rows));
   const [cols, setCols] = useState(String(board.cols));
-  useEffect(() => { setRows(String(board.rows)); setCols(String(board.cols)); }, [board.rows, board.cols]);
+  const [dimensions, setDimensions] = useState({ board, rows: board.rows, cols: board.cols });
+  const resizing = useRef(false);
+  // 初回の受動effectで入力を戻さない。実寸法の変更（取り消しを含む）だけ同期する。
+  if (dimensions.board !== board || dimensions.rows !== board.rows || dimensions.cols !== board.cols) {
+    setDimensions({ board, rows: board.rows, cols: board.cols });
+    setRows(String(board.rows));
+    setCols(String(board.cols));
+  }
 
   const mutateStructure = (operation: () => void) => {
     try { operation(); changed(); }
@@ -41,9 +48,20 @@ export function GridControls({ board, backgroundColor, onBackgroundColorChange, 
     });
   };
 
-  // 段番号は下から数える。増減のどちらでも上端側で調整し、編み始め（段1）と
-  // 既存の段番号を保つ。増加だけ上端、減少は下端では往復で編み始めが消える。
-  const resize = () => mutateStructure(() => board.resize(Number(rows), Number(cols), Number(rows) - board.rows, 0));
+  const resizeBoard = async (nextRows: number, nextCols: number, rowOffset = 0, colOffset = 0) => {
+    if (resizing.current) return;
+    resizing.current = true;
+    try {
+      Board.validateSize(nextRows, nextCols);
+      const removed = board.countStitchesRemovedByResize(nextRows, nextCols, rowOffset, colOffset);
+      if (removed > 0 && !await askConfirm(`記号${removed}個が消えます。変更しますか？`)) return;
+      mutateStructure(() => board.resize(nextRows, nextCols, rowOffset, colOffset));
+    } catch (error) { notify(errorMessage(error)); }
+    finally { resizing.current = false; }
+  };
+
+  // 段は下、目は右から数える。上端・左端で増減して既存の番号を保つ。
+  const resize = () => void resizeBoard(Number(rows), Number(cols), Number(rows) - board.rows, Number(cols) - board.cols);
 
   return <div className="grid-controls">
     <div className="size-inputs"><label>段数<input type="number" min="1" max="1000" value={rows} onChange={(event) => setRows(event.target.value)} /></label><label>列数<input type="number" min="1" max="1000" value={cols} onChange={(event) => setCols(event.target.value)} /></label><button className="primary" onClick={resize}>変更</button></div>
