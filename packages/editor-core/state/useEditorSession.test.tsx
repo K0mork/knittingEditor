@@ -145,6 +145,28 @@ describe('useEditorSession', () => {
     await view.unmount();
   });
 
+  it('uses an injected delay without delaying explicit background or switch saves', async () => {
+    vi.useFakeTimers();
+    const view = await renderSession({ autosaveDelayMs: 3_600_000 });
+    try {
+      await act(async () => { view.session.changed(); });
+      await act(async () => { await vi.advanceTimersByTimeAsync(400); });
+      expect(mocks.saveDocument).not.toHaveBeenCalled();
+      await act(async () => { expect(await view.session.saveNow('background')).toBe('saved'); });
+      await act(async () => { view.session.changed(); });
+      await act(async () => { expect(await view.session.switchDocument(chart('b', 20))).toBe('switched'); });
+      expect(mocks.saveDocument).toHaveBeenCalledTimes(2);
+      await act(async () => { view.session.changed(); });
+      await act(async () => { await vi.advanceTimersByTimeAsync(3_599_999); });
+      expect(mocks.saveDocument).toHaveBeenCalledTimes(2);
+      await act(async () => { await vi.advanceTimersByTimeAsync(1); });
+      expect(mocks.saveDocument).toHaveBeenCalledTimes(3);
+    } finally {
+      await view.unmount();
+      vi.useRealTimers();
+    }
+  });
+
   it('autosaves the edited chart and clears the unsaved marker', async () => {
     const view = await renderSession();
     expect(view.session.activeDocument?.id).toBe('a');

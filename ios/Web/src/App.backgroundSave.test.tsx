@@ -32,6 +32,7 @@ describe('App background save registration', () => {
   let save: MockInstance<typeof storage.saveDocument>;
 
   beforeEach(async () => {
+    window.knittingEditorDebugConfiguration = { autosaveDelayMs: 3_600_000 };
     documentId = (await storage.createDocument('バックグラウンド保存', 4, 4)).id;
     container = document.createElement('div');
     document.body.append(container);
@@ -56,6 +57,7 @@ describe('App background save registration', () => {
     vi.useRealTimers();
     vi.restoreAllMocks();
     delete window.knittingEditorFlushPendingSave;
+    delete window.knittingEditorDebugConfiguration;
   });
 
   async function edit(row = 1, col = 2, color = '#123456') {
@@ -97,6 +99,7 @@ describe('App background save registration', () => {
 
   it.each(['function', 'event'] as const)('writes unsaved cells through the registered %s before autosave', async (entry) => {
     await edit();
+    await act(async () => { await vi.advanceTimersByTimeAsync(400); });
     expect(save).not.toHaveBeenCalled();
     expect((await storedBoard()).occupiedStitchCount).toBe(0);
     if (entry === 'function') {

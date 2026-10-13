@@ -40,6 +40,7 @@ export interface ConfirmOptions {
 }
 
 export interface EditorControllerOptions {
+  autosaveDelayMs?: number;
   /** 端末内データの読み出し。Web版は旧localStorageからの移行、iOS版はタイムアウトを挟む。 */
   initialize: () => Promise<EditorSessionInit>;
   platform: EditorPlatform;
@@ -76,6 +77,7 @@ export function useEditorController(options: EditorControllerOptions) {
 
   const session = useEditorSession({
     initialize: options.initialize,
+    autosaveDelayMs: options.autosaveDelayMs,
     onInitialized: (initialized) => analytics.track('editor_ready', {
       document_count_bucket: countBucket(initialized.documents.length),
     }),
