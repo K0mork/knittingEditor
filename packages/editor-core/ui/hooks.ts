@@ -86,7 +86,12 @@ export function usePanelFocus<T extends HTMLElement>(open: boolean) {
     const wasOpen = wasOpenRef.current;
     wasOpenRef.current = open;
     if (open) {
-      const frame = requestAnimationFrame(() => panelRef.current?.querySelector<HTMLElement>('h2')?.focus());
+      const frame = requestAnimationFrame(() => {
+        const panel = panelRef.current;
+        // フレームを待つ間に利用者が入力を始めたら、そのフォーカスを奪わない。
+        if (!panel || panel.contains(document.activeElement)) return;
+        panel.querySelector<HTMLElement>('h2')?.focus();
+      });
       return () => cancelAnimationFrame(frame);
     }
     if (wasOpen) {

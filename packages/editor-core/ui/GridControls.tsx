@@ -21,11 +21,11 @@ export interface GridControlsProps {
 export function GridControls({ board, backgroundColor, onBackgroundColorChange, changed, askText, askConfirm, notify }: GridControlsProps) {
   const [rows, setRows] = useState(String(board.rows));
   const [cols, setCols] = useState(String(board.cols));
-  const [dimensions, setDimensions] = useState({ board, rows: board.rows, cols: board.cols });
+  const [dimensions, setDimensions] = useState({ rows: board.rows, cols: board.cols });
   const resizing = useRef(false);
   // 初回の受動effectで入力を戻さない。実寸法の変更（取り消しを含む）だけ同期する。
-  if (dimensions.board !== board || dimensions.rows !== board.rows || dimensions.cols !== board.cols) {
-    setDimensions({ board, rows: board.rows, cols: board.cols });
+  if (dimensions.rows !== board.rows || dimensions.cols !== board.cols) {
+    setDimensions({ rows: board.rows, cols: board.cols });
     setRows(String(board.rows));
     setCols(String(board.cols));
   }
