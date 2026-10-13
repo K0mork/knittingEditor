@@ -1,0 +1,7 @@
+# 2026-10-13 — 盤面設定を開いた直後の寸法入力を維持
+
+- 影響: 盤面設定を開いた次のフレームで、既にパネル内の入力欄やボタンへ移ったフォーカスを見出しに戻さない。入力の選択と削除の間にこの処理が割り込むと、削除が入力欄に届かず初期値20が残る経路を防ぐ。同寸法の盤面オブジェクトへの差し替えでも入力中の値を維持し、実寸法が変わったときだけ同期する。対象はE2Eの「keeps cleared size inputs empty and applies dimensions on change」の不安定な失敗で、割り当てられたIssue番号はない（Closes指定なし）。
+- 主なファイル: `packages/editor-core/ui/hooks.ts`、`packages/editor-core/ui/GridControls.tsx`。
+- テスト: 新規 `packages/editor-core/ui/GridControls.input-sync.test.tsx`。段数・列数の選択後に保留したフレームを実行し、フォーカスと空の入力が維持されること、未操作時には見出しへ移ること、同寸法の差し替えと実寸法変更の同期を検証。既存E2Eは変更していない。
+- 検証: `npm ci`成功。`npx vitest run packages/editor-core/ui/GridControls.input-sync.test.tsx`は修正前3件失敗・1件成功、修正後4件成功。`npm run typecheck`成功、`npm test`572件成功、`npm run build`成功、`npm run check:dist`成功、`(cd ios/Web && ../../node_modules/.bin/tsc -p tsconfig.app.json --noEmit)`成功、`(cd ios/Web && ../../node_modules/.bin/vitest run --config vite.config.ts)`116件成功。`git diff --check`成功。sandboxではブラウザー・Simulatorを起動できないため、Chromium/WebKit E2E、画面写真、iOSビルド・Simulatorテストは検証担当とPR CIに委ねる。実ブラウザーで観測された失敗がこの経路だったか、および修正後の反復実行結果は未確認。
+- デプロイ影響: Pagesに反映され、iOSの次のアプリにも同梱される。配信後、盤面設定を開いた直後に段数・列数を消して入力できること、変更と取り消しで寸法が同期すること、通常の見出しへのフォーカスを確認する。
