@@ -205,6 +205,13 @@ struct WebViewContainer: UIViewRepresentable {
         )
         // 「使い方」の末尾に表示するバージョンとビルド番号を、同梱ページへ渡す（#84）。
         configuration.userContentController.addUserScript(AppVersionInfo.current.userScript)
+        #if DEBUG
+        if let source = DebugEditorConfiguration.userScriptSource(environment: ProcessInfo.processInfo.environment) {
+            configuration.userContentController.addUserScript(WKUserScript(
+                source: source, injectionTime: .atDocumentStart, forMainFrameOnly: true
+            ))
+        }
+        #endif
 
         // iOS 27ではゼロサイズのWKWebViewがWebKitプロセスの起動を待つことがある。
         // SwiftUIのレイアウト確定前にもローカルHTMLの読み込みを開始できるよう、

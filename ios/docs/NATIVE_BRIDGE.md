@@ -158,3 +158,11 @@ App Storeの評価は、StoreKitのシステムの依頼画面（`AppStore.reque
 ## 実機確認
 
 iPad Air（第5世代）は2026-09-22、iPhone 17は2026-10-09に、PNG・PDF・`.knit`のFiles保存、共有、`.knit`の復元を確認済みである。異常系は一部を確認済みだが、存在しないファイルは再現手順がなく未確認で、両端末での残りの確認とTestFlight提出ビルドによる最終往復が残る。詳細とリリース判定は`REAL_DEVICE_RELEASE_CHECKLIST.md`を正とする。
+
+## DEBUGの自動保存遅延（#196）
+
+XCUITestは起動前に`app.launchEnvironment["KNITTING_EDITOR_AUTOSAVE_DELAY_MS"] = "3600000"`を設定できる。単位はミリ秒で、0〜2147483647の整数だけを受け付ける。未指定・不正値は通常の400msのまま。1時間の指定で、テスト中の自動保存と、文書切替・Home移行の即時保存を区別する。即時保存の待ち時間は変えない。
+
+`DebugEditorConfiguration`とWebViewへの登録はともに`#if DEBUG`内にあり、Releaseには環境変数の読み取り・設定の注入を含めない。DEBUGネイティブはメインフレームの文書開始時に`window.knittingEditorDebugConfiguration = Object.freeze({ autosaveDelayMs: 3600000 })`を渡す。iOS Webはこの値だけを検証してcontroller/sessionへ渡し、URL・localStorage・Webの環境変数からは設定しない。通常のWeb版はこの設定を読まない。
+
+`testDocumentSwitchSavesWithoutAutosave`と`testHomeSavesWithoutAutosave`は編集後の「保存中」を確認し、切替・Home移行の後にDBから再起動復元する。前面へ戻るときも`inactive`を通って`flushPendingSave()`が呼ばれるため、Home移行のテストはアプリを前面へ戻さず、バックグラウンドのまま終了する。検証時には文書切替の`saveNow()`、ネイティブの`flushPendingSave()`経路（Home移行時には呼ばず、前面へ戻ったときだけ呼ぶ変更を含む）をそれぞれ一時的に外し、対応するテストが失敗することを確かめてから必ず戻す。実機でサスペンドまでに保存が完了する保証は別の確認とする。

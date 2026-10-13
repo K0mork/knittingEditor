@@ -33,6 +33,8 @@ export interface EditorSessionInit {
 }
 
 export interface EditorSessionOptions {
+  /** ホストが指定する自動保存の待ち時間。省略時は400ms。 */
+  autosaveDelayMs?: number;
   /** 端末内データの読み出し。Web版は旧localStorageからの移行、iOS版はタイムアウトを挟む。 */
   initialize: () => Promise<EditorSessionInit>;
   onInitialized?: (initialized: EditorSessionInit) => void;
@@ -209,9 +211,9 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
 
   useEffect(() => {
     if (!dirty || !activeDocument || !board) return;
-    const timer = window.setTimeout(() => { void persist(activeDocument, board, 'autosave'); }, AUTOSAVE_DELAY_MS);
+    const timer = window.setTimeout(() => { void persist(activeDocument, board, 'autosave'); }, options.autosaveDelayMs ?? AUTOSAVE_DELAY_MS);
     return () => window.clearTimeout(timer);
-  }, [dirty, revision, activeDocument, board, persist]);
+  }, [dirty, revision, activeDocument, board, persist, options.autosaveDelayMs]);
 
   useEffect(() => {
     const handler = (event: BeforeUnloadEvent) => {
