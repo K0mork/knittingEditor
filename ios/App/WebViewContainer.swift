@@ -260,7 +260,7 @@ struct WebViewContainer: UIViewRepresentable {
 
     @MainActor
     final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler, UIDocumentPickerDelegate,
-        UIAdaptivePresentationControllerDelegate {
+        UIPopoverPresentationControllerDelegate {
         static let messageHandlerName = "knittingEditor"
 
         /// `UIDocumentPickerViewController`は取り込みと書き出しの両方で
@@ -437,11 +437,25 @@ struct WebViewContainer: UIViewRepresentable {
 
         /// 下へスワイプして閉じたときも、メニューの項目を選べる状態へ戻す。
         func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
+            if presentationController.presentedViewController is UIActivityViewController {
+                // 共有結果と一時ファイルの後処理はcompletionWithItemsHandlerだけで確定する。
+                // ユーザーによるdismissalも、そのハンドラーから通知される。
+                return
+            }
             guard let picker = presentationController.presentedViewController as? UIDocumentPickerViewController else {
                 model.isPresentingNativeUI = false
                 return
             }
             documentPickerWasCancelled(picker)
+        }
+
+        func popoverPresentationController(
+            _ popoverPresentationController: UIPopoverPresentationController,
+            willRepositionPopoverTo rect: UnsafeMutablePointer<CGRect>,
+            in view: AutoreleasingUnsafeMutablePointer<UIView>
+        ) {
+            // 回転・Split View・可変ウィンドウでは、表示時の矩形を使い回さない。
+            rect.pointee = Self.shareAnchor(in: view.pointee.bounds)
         }
 
         private func importBackup(from url: URL) {
@@ -520,6 +534,7 @@ struct WebViewContainer: UIViewRepresentable {
                         self?.finishSharing(completed: completed, error: error, activityType: activityType)
                     }
                     if let popover = activity.popoverPresentationController {
+                        popover.delegate = self
                         let sourceView = (self.webView as UIView?) ?? presenter.view!
                         popover.sourceView = sourceView
                         popover.sourceRect = Self.shareAnchor(in: sourceView.bounds)
@@ -530,10 +545,6 @@ struct WebViewContainer: UIViewRepresentable {
             alert.addAction(UIAlertAction(title: "キャンセル", style: .cancel) { [weak self] _ in
                 self?.cancelExportOptions()
             })
-            if let popover = alert.popoverPresentationController {
-                popover.sourceView = webView
-                popover.sourceRect = webView?.bounds ?? .zero
-            }
             present(alert, from: presenter)
         }
 
