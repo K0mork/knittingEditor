@@ -10,7 +10,7 @@ export type CanvasMode = 'draw' | 'erase' | 'select' | 'paste';
 
 /** 画面の案内と読み上げで使うモード名。 */
 export const CANVAS_MODE_LABELS: Record<CanvasMode, string> = {
-  draw: '描画', erase: '消去', select: '範囲選択', paste: '貼り付け',
+  draw: '描画', erase: '消去', select: '範囲選択', paste: '貼付',
 };
 
 interface Props {

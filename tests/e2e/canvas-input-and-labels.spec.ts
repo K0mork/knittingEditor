@@ -13,6 +13,7 @@ for (const mode of ['描く', '消す', '範囲', 'paste']) {
       await page.getByRole('button', { name: '範囲', exact: true }).click();
       await canvas.click({ position: { x: 75, y: 75 } });
       await page.getByRole('button', { name: 'コピーして貼付', exact: true }).click();
+      await expect(page.getByRole('toolbar', { name: '貼付の操作' })).toBeVisible();
     } else if (mode === '消す') {
       // Fill the top-left cells, which the bands cover after scrolling at every viewport size.
       for (let row = 0; row < 3; row += 1) {

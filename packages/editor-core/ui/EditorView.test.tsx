@@ -96,7 +96,7 @@ async function renderEditor(
   };
   const click = async (label: string) => { await act(async () => { button(label).click(); }); };
   const notify: ReturnType<typeof useEditorController>['notify'] = (...args) => latest.notify(...args);
-  return { container, platform, button, click, notify };
+  return { container, platform, button, click, notify, editor: () => latest };
 }
 
 describe('EditorView', () => {
@@ -207,6 +207,18 @@ describe('EditorView', () => {
     expect(input.value).toBe('#d33c32');
   });
 
+  it('describes the limited color list as descending stitch usage', async () => {
+    const board = new Board(5, 5);
+    for (let index = 0; index < 25; index++) board.place(Math.floor(index / 5), index % 5, 'knit', `#${(index + 1).toString(16).padStart(6, '0')}`);
+    const document: ChartDocument = {
+      id: 'many-colors', name: '色の順序', rows: 5, cols: 5,
+      cells: board.cells.slice().buffer as ArrayBuffer, createdAt: 1, updatedAt: 1,
+    };
+    const { container } = await renderEditor({ initialize: async () => ({ documents: [document], activeId: document.id, blocks: [] }) });
+    await act(async () => { container.querySelector<HTMLButtonElement>('.color-tool')!.click(); });
+    expect(container.querySelector('.color-picker-note')?.textContent).toBe('記号の多い順に24色を表示しています。ほかに1色あります。');
+  });
+
   it('hides the gesture hint about ten seconds after opening', async () => {
     // IndexedDBのテスト実装が使うsetImmediateなどは本物のまま動かし、ヒントのタイマーだけを進める。
     vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout'] });
@@ -224,7 +236,7 @@ describe('EditorView', () => {
     }
   });
 
-  it('asks a mouse user to click the paste position', async () => {
+  it('shows only the paste band when choosing a block or restarting paste', async () => {
     const block = { id: 'paste-prompt-block', name: '貼り付け案内ブロック', rows: 1, cols: 1, anchors: [], createdAt: Date.now() };
     await saveBlock(block);
     try {
@@ -233,9 +245,59 @@ describe('EditorView', () => {
       const blockButton = Array.from(container.querySelectorAll<HTMLButtonElement>('.block-list button'))
         .find((item) => item.textContent?.startsWith(block.name));
       await act(async () => { blockButton!.click(); });
-      expect(container.querySelector('.toast')?.textContent).toBe('貼り付ける左上のセルをクリックしてください');
+      const expectBandWithoutToast = () => {
+        expect(container.querySelector('.paste-actions')?.textContent).toContain('貼付中：左上にするマスをタップ');
+        expect(container.querySelector('.toast')).toBeNull();
+      };
+      expectBandWithoutToast();
+      await click('やめる');
+      await click('貼付');
+      expectBandWithoutToast();
+      for (const modifier of [{ ctrlKey: true }, { metaKey: true }]) {
+        await click('やめる');
+        await act(async () => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'v', ...modifier })); });
+        expectBandWithoutToast();
+      }
     } finally {
       await deleteBlock(block.id);
+    }
+  });
+
+  it('shows only the paste band when copying a selection and preserves result notices', async () => {
+    const { container, click, editor } = await renderEditor();
+    await act(async () => { editor().setSelection({ top: 0, left: 0, bottom: 0, right: 0 }); });
+    await click('コピーして貼付');
+    expect(container.querySelector('.paste-actions')?.textContent).toContain('貼付中：左上にするマスをタップ');
+    expect(container.querySelector('.toast')).toBeNull();
+    await act(async () => { editor().handlePasteComplete(false); });
+    expect(container.querySelector('.toast')?.textContent).toBe('盤面からはみ出すため貼付できません');
+    expect(container.querySelector('.paste-actions')).not.toBeNull();
+    await act(async () => { editor().handlePasteComplete(true); });
+    expect(container.querySelector('.toast')?.textContent).toBe('ブロックを貼付しました');
+    expect(container.querySelector('.paste-actions')).toBeNull();
+  });
+
+  it('keeps the paste band after notices expire and lets the user stop', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      const block = { id: 'paste-band', name: '帯の確認', rows: 1, cols: 1, anchors: [], createdAt: 1 };
+      const { container, click, button } = await renderEditor({
+        initialize: async () => ({ ...await initializeStorage(), blocks: [block] }),
+      });
+      await click('ブロック');
+      await act(async () => { container.querySelector<HTMLButtonElement>('.block-list button')!.click(); });
+      expect(container.querySelector('.paste-actions')?.textContent).toContain('貼付中：左上にするマスをタップ');
+      expect(container.querySelector('.toast')).toBeNull();
+      await act(async () => { vi.advanceTimersByTime(15_000); });
+      expect(container.querySelector('.toast')).toBeNull();
+      expect(container.querySelector('.gesture-hint')?.getAttribute('aria-hidden')).toBe('true');
+      expect(container.querySelector('.paste-actions')).not.toBeNull();
+      await click('やめる');
+      expect(container.querySelector('.paste-actions')).toBeNull();
+      expect(button('描く').getAttribute('aria-pressed')).toBe('true');
+      expect(container.querySelector('canvas')?.getAttribute('aria-label')).toContain('描画モード');
+    } finally {
+      vi.useRealTimers();
     }
   });
 
@@ -266,9 +328,9 @@ describe('EditorView', () => {
 
   it('shows all backup actions in the save panel', async () => {
     const { container, click, button } = await renderEditor();
-    await click('保存');
-    expect(container.querySelector('#app-drawer-title')?.textContent).toBe('保存・出力');
-    for (const label of ['この編み図', '全データ', '復元']) expect(button(label)).toBeDefined();
+    await click('出力');
+    expect(container.querySelector('#app-drawer-title')?.textContent).toBe('出力');
+    for (const label of ['この編み図を書き出す', '全データを書き出す', 'バックアップから復元']) expect(button(label)).toBeDefined();
     await click('閉じる');
     expect(container.querySelector('#app-drawer-title')).toBeNull();
   });
@@ -276,8 +338,8 @@ describe('EditorView', () => {
   it('hands the current chart backup to the platform', async () => {
     const { platform, click } = await renderEditor();
 
-    await click('保存');
-    await click('この編み図');
+    await click('出力');
+    await click('この編み図を書き出す');
     await waitUntil(() => vi.mocked(platform.saveFile).mock.calls.length > 0);
     const [blob, filename] = vi.mocked(platform.saveFile).mock.calls[0];
     expect(filename).toBe('新しい編み図.knit');
@@ -305,13 +367,13 @@ describe('EditorView', () => {
     const input = container.querySelector<HTMLInputElement>('input[type="file"]')!;
     const pick = vi.spyOn(input, 'click');
 
-    await click('保存');
-    await click('復元');
+    await click('出力');
+    await click('バックアップから復元');
     expect(requestRestore).toHaveBeenCalledOnce();
     expect(pick).not.toHaveBeenCalled();
 
     requestRestore.mockReturnValue(false);
-    await click('復元');
+    await click('バックアップから復元');
     expect(pick).toHaveBeenCalledOnce();
   });
 

@@ -36,10 +36,10 @@ test('follows guide steps for a second chart, reusable block and all-data restor
   await page.getByRole('button', { name: '選択範囲をブロック保存', exact: true }).click();
   await page.locator('.block-list').getByRole('button', { name: /ガイドの模様/ }).click();
   await canvas.click({ position: { x: 195, y: 195 } });
-  await expect(page.getByText('ブロックを貼り付けました', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: '保存', exact: true }).click();
+  await expect(page.getByText('ブロックを貼付しました', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '出力', exact: true }).click();
   const download = page.waitForEvent('download');
-  await page.getByRole('button', { name: '全データ', exact: true }).click();
+  await page.getByRole('button', { name: '全データを書き出す', exact: true }).click();
   const backupPath = await (await download).path();
   expect(backupPath).not.toBeNull();
   await page.locator('input[type="file"]').setInputFiles(backupPath!);
