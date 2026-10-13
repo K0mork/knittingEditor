@@ -57,11 +57,11 @@ test('does not resurrect a chart deleted in another tab', async ({ page, context
   await open(other);
   const original = (await stored(page))[0];
   await page.getByRole('button', { name: '編み図', exact: true }).click();
-  await page.getByRole('button', { name: '複製', exact: true }).click();
+  await page.getByRole('button', { name: '新しい編み図を複製', exact: true }).click();
   await expect(page.locator('.document')).toHaveCount(2);
   page.once('dialog', (dialog) => dialog.accept());
   await page.locator('.document').filter({ has: page.locator('.document-name', { hasText: /^新しい編み図$/ }) })
-    .getByRole('button', { name: '削除', exact: true }).click();
+    .getByRole('button', { name: '新しい編み図を削除', exact: true }).click();
   await expect.poll(async () => (await stored(page)).some((item) => item.id === original.id)).toBe(false);
   await draw(other, 75);
   await expect(other.getByText(/別のタブで変更されたため、この編集を/)).toBeVisible();
