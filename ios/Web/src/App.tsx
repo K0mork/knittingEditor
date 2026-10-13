@@ -12,6 +12,7 @@ import {
   listenNativeBackupSelected, listenNativeCommand, listenNativeError, notifyNativeCommandState, notifyNativeReady, requestNativeBackupOpen,
 } from './nativeBridge';
 import { nativeCommandHandlers, nativeHistoryState, runNativeCommand, watchTextEditing } from './nativeCommands';
+import { nativeAutosaveDelayMs } from './nativeEditorConfiguration';
 import { iosPlatform } from './platform';
 
 declare global {
@@ -37,7 +38,7 @@ function initialize() {
 export default function App() {
   const { askText, askConfirm, dialog } = useAppDialog();
   // 分析は渡さない。アプリ版は製品イベントを一切送らない。
-  const editor = useEditorController({ initialize, platform: iosPlatform, askText, askConfirm });
+  const editor = useEditorController({ initialize, platform: iosPlatform, askText, askConfirm, autosaveDelayMs: nativeAutosaveDelayMs() });
   const { saveNow } = editor.session;
 
   // ネイティブ側からの通知は一度だけ購読し、最新の復元・通知処理をrefで参照する。
@@ -138,7 +139,6 @@ export default function App() {
     onGuideClick={openGuide}
     requestRestore={requestNativeBackupOpen}
     backupNote="アプリを削除すると端末内のデータも消えます。定期的にバックアップを保存してください。"
-    footer={<footer><span>© 2026 棒針編み図エディタ</span><a href="/guide/" onClick={openGuide}>使い方</a></footer>}
   >
     {dialog}
   </EditorView>;

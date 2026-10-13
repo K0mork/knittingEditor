@@ -47,6 +47,5 @@ export default function App() {
     </div>}
     backupNote="端末内データはブラウザ操作で消える場合があります。定期的にバックアップを書き出してください。"
     documentsNote={<a href="/privacy/">プライバシーポリシー（アクセス解析について）</a>}
-    footer={<footer><span>© 2026 棒針編み図エディタ</span><a href="/privacy/">プライバシーポリシー</a></footer>}
   >{shareDialog}</EditorView>;
 }

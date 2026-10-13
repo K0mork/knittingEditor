@@ -64,7 +64,7 @@ async function renderEditor(saved: boolean | undefined = undefined) {
       askText: async () => null,
       askConfirm: async () => false,
     });
-    return <EditorView editor={editor} renderTitle={(status) => <h1>{status}</h1>} backupNote="案内" footer={null} />;
+    return <EditorView editor={editor} renderTitle={(status) => <h1>{status}</h1>} backupNote="案内" />;
   }
   const container = document.createElement('div');
   document.body.append(container);

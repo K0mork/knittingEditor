@@ -27,7 +27,6 @@ export interface EditorViewProps {
   backupNote: ReactNode;
   /** 「編み図」パネルの一覧の後ろに置く案内。Web版はプライバシーポリシーへのリンクを渡し、iOS版は何も渡さない。 */
   documentsNote?: ReactNode;
-  footer: ReactNode;
   /** 盤面の上に重ねる環境固有の要素。iOS版のアプリ内ダイアログなど。 */
   children?: ReactNode;
 }
@@ -75,7 +74,7 @@ function GestureHint({ mode }: { mode: CanvasMode }) {
 }
 
 /** 編集画面の組み立て。Web版とiOS版で共通。 */
-export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, backupNote, documentsNote, footer, children }: EditorViewProps) {
+export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, backupNote, documentsNote, children }: EditorViewProps) {
   const { session, mode, panel, selection, copiedBlock } = editor;
   const history = historyTitles(useInputEnvironment());
   const { board, activeDocument, dirty } = session;
@@ -196,6 +195,5 @@ export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, 
       {editor.message}
       {editor.notificationAction && <button type="button" className="toast-action" onClick={editor.notificationAction.run}>{editor.notificationAction.label}</button>}
     </div>}
-    {footer}
   </div>;
 }

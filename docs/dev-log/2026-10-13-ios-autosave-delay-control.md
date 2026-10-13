@@ -1,0 +1,31 @@
+# 2026-10-13 — DEBUGの自動保存遅延をUIテストから指定する
+
+- 影響: #196を完了する。製品の挙動は変えない。DEBUGビルドのネイティブ側だけが環境変数`KNITTING_EDITOR_AUTOSAVE_DELAY_MS`を受け付け、文書開始時にiOS Webへ渡し、controller/sessionの自動保存の待ち時間に使う。未指定・不正値のときと、Web版・Release版では通常の400msのまま。文書切替・Home移行・手動の即時保存は変えない。ReleaseではSwiftの設定の読み取りと注入をコンパイルしない。
+- 主なファイル: `ios/App/DebugEditorConfiguration.swift`、`ios/App/WebViewContainer.swift`、`ios/Web/src/nativeEditorConfiguration.ts`、`ios/Web/src/App.tsx`、`packages/editor-core/state/useEditorSession.ts`、`packages/editor-core/ui/useEditorController.ts`、`ios/UITests/KnittingEditorUITests/KnittingEditorUITests.swift`、`ios/docs/NATIVE_BRIDGE.md`、`ios/knittingEditor.xcodeproj/project.pbxproj`（XcodeGenで新しいSwiftファイルを登録）。
+- テスト:
+  - Swiftの`DebugEditorConfigurationTests`（遅延値の検証）を追加。
+  - Vitestで、ネイティブ設定の値検証と、遅延中も切替・バックグラウンドの保存がすぐ動くことを確かめる。実DBを使うApp背景保存テストにも遅延を注入した。
+  - XCUITestを2件追加した。どちらも自動保存を1時間遅らせ、編集後に「保存中」であることを確かめてから保存経路を通す。
+    - `testDocumentSwitchSavesWithoutAutosave`: 再起動後に、AとBの名前・個数・消去/Undoによる配置位置を照合する。
+    - `testHomeSavesWithoutAutosave`: Homeへ移ったあと前面へ戻さず、バックグラウンドのまま終了する。前面へ戻るときも`inactive`を通って保存が走り、Home移行時の保存と区別できないためである。
+- 検証（Node 24、Xcode 27.0、iPhone 17 Simulator・iOS 26.5。マシンの負荷が高い状態）:
+  - Web: `npm run typecheck`、`npm run build`、`npm run check:dist`が成功。
+    - `npm test`は477件中475件成功。失敗した2件は時間上限を超えた既存テスト（`thumbnail.test.ts`の250ms、`pdf.worker.test.ts`の15000ms）で、今回の変更とは関係しない。この2ファイルを単独で再実行すると、18件・50件とも成功した。
+    - `npm run test:e2e`は1回目が339件成功・3件失敗（負荷による保存タイミングのずれと45秒の時間上限）・6件スキップ、2回目が342件成功・失敗0件・6件スキップ。Web版は遅延を渡さないので、1回目の失敗は今回の変更によるものではない。
+  - iOS Web: `(cd ios/Web && ../../node_modules/.bin/tsc -p tsconfig.app.json --noEmit)`が成功、`(cd ios/Web && ../../node_modules/.bin/vitest run --config vite.config.ts)`は123件成功。
+  - その他: `xcodegen generate --spec ios/project.yml`で`project.pbxproj`に追加の差分なし。`node scripts/check-pr-smoke-ui-tests.mjs`（11件）、`git diff --check`が成功。
+  - iPhoneのテスト: `xcodebuild build-for-testing`のあと、`xcodebuild test-without-building -only-testing:...`で実行した。
+    - `DebugEditorConfigurationTests`の2件と`testEditAndRelaunchRestoresLocalDocument`が成功。
+    - `testDocumentSwitchSavesWithoutAutosave`は3回成功（84〜144秒）。
+    - `testHomeSavesWithoutAutosave`は修正後の形で2回成功（61〜75秒）。
+    - PR smokeの11件は、1回目の実行で11件すべて成功した。Home移行のテストを直したあとの2回目は、変更と関係しない`testGuideNavigationReturnsToUsableEditor`が「戻る」リンクを押せる位置を判定できずに1件失敗した。単独で実行し直すと成功し、残りの10件は成功した。
+  - 故障注入（毎回元に戻し、戻したあとに成功することを確認した）:
+    - `switchDocument`の`saveNow()`を外すと、文書切替のテストが失敗した。
+    - `WebViewModel.flushPendingSave()`を空にすると、Home移行のテストが失敗した。
+    - `scenePhase`の保存を前面へ戻ったとき（`.active`）だけにすると、Home移行のテストが失敗した。前面へ戻してから終了していた修正前の形は、この変更でも成功してしまっていた。
+  - Release: `xcodebuild build -configuration Release -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO`が成功。
+    - アプリのバイナリには、環境変数名・注入するスクリプト・`DebugEditorConfiguration`のシンボルのどれもなかった（`strings`、`nm`で確認）。比較のため見たDEBUGビルドには両方の文字列があった。
+    - Web bundleには読み取り側だけが残り、ネイティブが注入しない限り値は未定義で400msのまま。
+  - iPad (A16)のテストは手元で実行せず、PRのCIと`Full iOS validation`に任せる。
+- PR smoke: 追加しない。新しいUIテストは1件あたり約1〜2.5分かかるため、全体の検証で実行する。
+- デプロイ影響: Web版の動作は変わらない。共通コードはPagesのビルドにも入るが、Web版は遅延を指定しない。iOSのReleaseにはテスト用の設定を含めない。マージ前にfeature branchで、マージ後に対象の変更を含むmainで、`Full iOS validation`の全ジョブ（iPhone・iPad、アプリ更新、Release Archive）の成功を確かめる。実機でサスペンドまでに保存が終わることの保証は、別途確かめる。

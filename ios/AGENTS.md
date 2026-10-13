@@ -105,9 +105,15 @@ ios/docs/            additional app design and release records
 - 検証終了後は全Simulatorをshutdownする。最新OS用に新規作成したデバイスはテストデータを`erase`して保持し、既存のCI基準デバイスはユーザーの明示なしに消去しない。
 - ランタイム自体、既存のユーザーデータ、実機データを容量都合で削除しない。XcodeBuildMCPの古い生成ログ・テスト成果物を整理する場合は、対象と保持する最新証跡を先に列挙し、復元可能なゴミ箱移動を優先する。
 
-Simulatorテスト（iPhone・iPad）、アプリ更新テスト、unsigned Release Archive、同梱物検査の一式はPRのCIで実行し、`ci-gate`がマージ前に必須とします。手元のXcodeはCIと異なることが多く、ローカルで通ってもCIで通る証拠にならないため、この一式をローカルで既定として繰り返しません。ローカルでは、push前に問題を見つけるための検査（`packages/`や`ios/Web/`を変えたらiOS Webの型検査とテスト、SwiftやXcodeGen・ビルド設定を変えたら`xcodegen generate`とアプリのビルド、変えたスクリプトやApp Store文書の静的検査、変更箇所を対象にしたテストの繰り返し）だけを行います。Simulatorの一式をローカルで回すのは、繰り返し実行や診断情報が必要な失敗の調査と、CIでは確かめられない変更に限ります。開発ログには、ローカルで行った検査とPRのCIに任せた検査を分けて書き、CIのiOS系ジョブをすべて確認してから完了と報告します（ルートの`AGENTS.md`のChange-specific Test Requirements）。
+PRの検証（`.github/workflows/ci.yml`）は、変更範囲に応じてWeb E2E（Chromium・WebKit）、iOS Webの型検査・Vitest、iPhone 17の全単体テストと`ios/UITests/pr-smoke-ui-tests.txt`のUIスモークテスト、Debugオフラインbundle検査を実行する。App Store文書・UIスモーク一覧の静的検査は常時実行し、必要なジョブを`ci-gate`で必須にする。
 
-具体的なCIコマンドと対象端末はルートの`.github/workflows/ci.yml`を正とします。Markdownだけの変更は`app_store_docs`による静的検査を行い、Web・Simulator・Archiveジョブは実行しません。
+全検証は別の`.github/workflows/ios-full.yml`で、関連するマージ後、毎晩（18:23 UTC）、手動実行時に行う。iPhone 17・iPad (A16)の全単体／UIテストとDebug bundle検査、両端末の`app_update`、unsigned Release Archiveとオフライン資産検査が対象で、Pagesのゲートには含めない。iPadのUI除外一覧は使わない。`main`・夜間の失敗は`bug`・`priority:P1`・`platform:ios`付きIssueを作成し、同名の未完了Issueがある場合は実行URLをコメントする。失敗は調査・修正する。
+
+iOS・共通コードの完了確認には、マージ後のコミット、または変更を含む後続の`main`コミットで全検証の成功が必要。同じブランチの古いrunはキャンセルされるため、連続マージ時は変更を含む最新コミットで確認する。夜間runもその変更を含む必要がある。保存・移行、Files・共有、iPadのレイアウト・キーボード・回転、Swift・ビルド設定・依存、スモーク対象外テストなどリスクの高い変更は、マージ前にもfeatureブランチで全検証を手動実行し、そのSHAの全ジョブの成功を確認する。
+
+ローカルでは、packages/やios/Web/の変更でiOS Webの型検査・テスト、Swift・XcodeGen・ビルド設定の変更でプロジェクト生成・アプリのビルド、変更したスクリプト・文書の静的検査と対象テストを行う。Simulatorの全検証をローカルで繰り返すのは、診断が必要な失敗の調査とCIで確認できない変更に限る。開発ログではローカル検査とPR・全検証CIに任せた検査を分ける。
+
+具体的なコマンドと端末は両ワークフローを正とする。Markdownだけの変更はapp_store_docsで文書・UIスモーク一覧を検査し、PRのWeb・Simulatorとマージ時の全検証は実行しない。夜間・手動の全検証は別途実行される。
 
 ## Generated Files and Secrets
 
@@ -158,7 +164,8 @@ runが現れない場合は、`gh pr view --json url,headRefOid,state`でPRがop
 
 runは、pushしたコミットのSHA（完全な40桁）と`ci.yml`で絞って選ぶ。`gh run list --limit 1`だけでは、CodeQLのrunや、別のブランチ・別のセッションのrunを拾い、他人の結果を見て完了と報告してしまう。
 
-- `changes`、`app_store_docs`、変更範囲に応じた`web`、`ios_web`、`ios`×2、`app_update`×2、`release_archive`、`ci-gate`を個別に確認する。Web影響のある`main`更新では`deploy`も確認する。`RUN: success`だけを見て済ませない。
+- `changes`、`app_store_docs`、変更範囲に応じた`web`、`ios_web`、`ios`（iPhone 17）、`ci-gate`を個別に確認する。Web影響のある`main`更新では`deploy`と`smoke`も確認する。`RUN: success`だけを見て済ませない。
+- マージ後は`gh run list --workflow ios-full.yml --commit <SHA>`で変更を含むコミットのrunを選び、`gh run view <id> --json headSha,conclusion,jobs`で`ios_full`×2、`app_update`×2、`release_archive`の成功を個別に確認する。PRゲートだけでiOS作業完了としない。
 - 失敗したら、そのpushで完了とせずに原因を特定して直す。`gh run view <id> --log-failed`で失敗ジョブのログを読む。ローカルで再現できない場合は、CI環境（macos-26、Xcode 26.6、iOS 26.5 Simulator）との差を疑う。
 - ローカルのSimulatorが通ってもCIが落ちることがある。過去の実例は次のとおりで、いずれもローカルでは再現しなかった。
   - 入力欄の中央タップでキャレットが先頭に入り、削除が効かず初期値が残った（Xcode 15.4 Simulator）。
