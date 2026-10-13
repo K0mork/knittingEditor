@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { Board, type PatternBlock, type Point, type Rect } from '../model/Board';
 import { boardSurface, DEFAULT_BACKGROUND_COLOR } from '../model/boardColors';
 import { STITCH_BY_KEY, STITCHES } from '../stitches/catalog';
@@ -56,6 +56,15 @@ export function clampViewport(view: Viewport, board: Pick<Board, 'rows' | 'cols'
   const y = clamp(view.y, centerY - (board.rows - 0.5) * view.cell, centerY - 0.5 * view.cell);
   return x === view.x && y === view.y ? view : { ...view, x, y };
 }
+/** 初回は倍率を変えず、編み始めの右下まで見える位置に寄せる。 */
+export function initialViewport(cell: number, board: Pick<Board, 'rows' | 'cols'>, canvas: { width: number; height: number }, band = LABEL_SIZE): Viewport {
+  return clampViewport({
+    x: Math.min(band + 8, canvas.width - 8 - board.cols * cell),
+    y: Math.min(band + 8, canvas.height - 8 - board.rows * cell),
+    cell,
+  }, board, canvas, band);
+}
+
 /**
  * 画面の罫線。10目・10段ごとの太線は、拡大しているときは太く、縮小しているときは濃さだけで区別する。
  * 最小の4pxまで縮小しても濃さで見分けられるので、通常の線も残してマスを数えられるようにする。
@@ -69,9 +78,29 @@ export function boardGridStyles(cell: number, background: string = DEFAULT_BACKG
   };
 }
 
+/**
+ * 番号の文字と帯の幅。帯は文字に合わせて広げるが、既定の1.5倍で止める。
+ * 止めたときは、最も長い段番号（labelWidthは既定の文字の大きさで測った幅）が帯に収まるまで文字を縮める。
+ */
 export function canvasLabelMetrics(rootFontSize: number, labelWidth = 0) {
   const fontSize = 11 * rootFontSize / 16;
-  return { fontSize, band: Math.max(LABEL_SIZE * rootFontSize / 16, labelWidth + 8) };
+  const band = Math.min(LABEL_SIZE * 1.5, Math.max(LABEL_SIZE * rootFontSize / 16, labelWidth + 8));
+  return { fontSize: labelWidth + 8 > band ? fontSize * (band - 8) / labelWidth : fontSize, band };
+}
+
+/**
+ * 実際の文字幅は大きさに正確には比例しないので、縮めた大きさで測り直し、
+ * 最も長い段番号の幅に8pxを足しても帯を超えなくなるまで縮める。
+ */
+export function fitCanvasLabels(rootFontSize: number, measure: (fontSize: number) => number) {
+  const metrics = canvasLabelMetrics(rootFontSize, measure(canvasLabelMetrics(rootFontSize).fontSize));
+  let fontSize = metrics.fontSize;
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const width = measure(fontSize);
+    if (width + 8 <= metrics.band) break;
+    fontSize = Math.min(fontSize * (metrics.band - 8) / width, fontSize - 0.25);
+  }
+  return { fontSize, band: metrics.band };
 }
 
 export function canvasCellAt(position: PointerPosition, view: Viewport, band = LABEL_SIZE): Point | undefined {
@@ -139,6 +168,9 @@ export function BoardCanvas(props: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const frameRef = useRef(0);
   const viewportRef = useRef<Viewport>({ x: LABEL_SIZE + 8, y: LABEL_SIZE + 8, cell: 30 });
+  const initializedBoardRef = useRef<Board | undefined>(undefined);
+  const pointerButtonsRef = useRef(new Map<number, number>());
+  const strokeStartedRef = useRef(false);
   const pointersRef = useRef(new Map<number, PointerPosition>());
   const gestureRef = useRef<{ distance: number; center: PointerPosition; viewport: Viewport } | undefined>(undefined);
   const gestureBlockedRef = useRef(false);
@@ -156,6 +188,26 @@ export function BoardCanvas(props: Props) {
   propsRef.current = props;
   // 描くたびに計算済みスタイルを読まないよう、外観が変わったときだけ読み直す。
   const chromeRef = useRef<CanvasChrome>(LIGHT_CANVAS_CHROME);
+
+  /** 番号の文字の大きさと帯の幅。最も長い段番号を実際の文字で測って決める。 */
+  const measureLabels = (context: CanvasRenderingContext2D, rows: number) => {
+    const rootFontSize = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    return fitCanvasLabels(rootFontSize, (size) => {
+      context.font = `${size}px system-ui`;
+      return context.measureText(String(rows)).width;
+    });
+  };
+
+  /**
+   * 初めて表示する編み図を、表示領域の大きさが分かった時点で編み始めの右下が見える位置に置く。
+   * 一度置いた編み図には二度と適用しないので、利用者が動かした位置や倍率は上書きしない。
+   */
+  const placeInitialViewport = (width: number, height: number, band: number) => {
+    const board = propsRef.current.board;
+    if (initializedBoardRef.current === board || width <= band || height <= band) return;
+    viewportRef.current = initialViewport(viewportRef.current.cell, board, { width, height }, band);
+    initializedBoardRef.current = board;
+  };
 
   const requestDraw = () => {
     cancelAnimationFrame(frameRef.current);
@@ -182,16 +234,14 @@ export function BoardCanvas(props: Props) {
 
     const { selection, pasteBlock, mode, background = DEFAULT_BACKGROUND_COLOR } = propsRef.current;
     const board = provisionalRef.current ?? propsRef.current.board;
-    const rootFontSize = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
-    const fontSize = canvasLabelMetrics(rootFontSize).fontSize;
+    const { fontSize, band } = measureLabels(context, board.rows);
     context.font = `${fontSize}px system-ui`;
     const colExtent = context.measureText(String(board.cols)).width;
-    const rowExtent = context.measureText(String(board.rows)).width;
-    const band = canvasLabelMetrics(rootFontSize, rowExtent).band;
     bandRef.current = band;
     const surface = boardSurface(background, 'screen');
     // 画面の大きさ（回転・可変ウィンドウ）や段数・列数、編み図が変わると、
     // 今の位置が範囲の外になることがあるので、描くたびに範囲へ戻す。
+    placeInitialViewport(width, height, band);
     viewportRef.current = clampViewport(viewportRef.current, board, { width, height }, band);
     const view = viewportRef.current;
     const firstCol = Math.max(0, Math.floor((-view.x + band) / view.cell));
@@ -265,6 +315,19 @@ export function BoardCanvas(props: Props) {
       cancelAnimationFrame(frameRef.current);
     };
   }, []);
+
+  // 初期位置は最初の描画（次のフレーム）を待たずに決める。描画より先に届いたスクロールや
+  // タッチが、後から初期位置で上書きされて失われたり、違うマスに入ったりしないようにする。
+  // 表示前で大きさが無いときは、描画のたびに置き直しを試みる。
+  useLayoutEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || initializedBoardRef.current === props.board || !canvas.clientWidth || !canvas.clientHeight) return;
+    const context = canvas.getContext('2d');
+    if (!context) return;
+    const { band } = measureLabels(context, props.board.rows);
+    bandRef.current = band;
+    placeInitialViewport(canvas.clientWidth, canvas.clientHeight, band);
+  }, [props.board]);
 
   useEffect(requestDraw, [props.board, props.background, props.revision, props.selection, props.mode, props.pasteBlock]);
 
@@ -350,6 +413,7 @@ export function BoardCanvas(props: Props) {
     event.currentTarget.setPointerCapture(event.pointerId);
     const position = eventPosition(event);
     pointersRef.current.set(event.pointerId, position);
+    pointerButtonsRef.current.set(event.pointerId, event.button);
     const cell = cellAt(position);
     lastCellRef.current = cell;
     if (pointersRef.current.size === 2) {
@@ -372,6 +436,7 @@ export function BoardCanvas(props: Props) {
     if (pointersRef.current.size !== 1 || gestureBlockedRef.current) return;
     previousSelectionRef.current = props.selection;
     if (!cell) return;
+    strokeStartedRef.current = true;
     if (event.pointerType === 'touch' && (props.mode === 'draw' || props.mode === 'erase')) {
       provisionalRef.current = new Board(props.board.rows, props.board.cols, props.board.cells);
       touchChangedRef.current = false;
@@ -418,13 +483,15 @@ export function BoardCanvas(props: Props) {
     }
     if (gestureBlockedRef.current) return;
     if (!pointersRef.current.has(event.pointerId)) return;
+    // 描くモードの右ボタンは押したマスを消すだけで、押したまま動かしても何もしない。
+    if (props.mode === 'draw' && pointerButtonsRef.current.get(event.pointerId) === 2) return;
     if (!cell) {
       lastCellRef.current = undefined;
       pendingTapRef.current = undefined;
       return;
     }
     if (!lastCellRef.current) {
-      if (!selectionStartRef.current && !provisionalRef.current) return;
+      if (!selectionStartRef.current && !strokeStartedRef.current) return;
       lastCellRef.current = cell;
     }
     if (props.mode === 'select' && selectionStartRef.current) {
@@ -442,13 +509,15 @@ export function BoardCanvas(props: Props) {
   };
 
   const handlePointerEnd = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    const button = pointerButtonsRef.current.get(event.pointerId);
+    pointerButtonsRef.current.delete(event.pointerId);
     pointersRef.current.delete(event.pointerId);
     if (pointersRef.current.size < 2) gestureRef.current = undefined;
 
     // 1本指で触れて離した場合だけ、保留していたタップを確定する。
     const pendingTap = cellAt(eventPosition(event)) ? pendingTapRef.current : undefined;
     pendingTapRef.current = undefined;
-    if (pendingTap && !gestureBlockedRef.current && event.type !== 'pointercancel') {
+    if (pendingTap && button !== 2 && !gestureBlockedRef.current && event.type !== 'pointercancel') {
       if (props.mode === 'paste' && props.pasteBlock) {
         props.onPasteComplete(props.board.pasteBlock(props.pasteBlock, pendingTap.row, pendingTap.col));
       } else if (props.mode === 'erase') {
@@ -471,6 +540,7 @@ export function BoardCanvas(props: Props) {
       touchChangedRef.current = false;
       props.onEditEnd?.();
       gestureBlockedRef.current = false;
+      strokeStartedRef.current = false;
       lastCellRef.current = undefined;
       selectionStartRef.current = undefined;
       strokeFootprintRef.current.clear();
@@ -488,8 +558,7 @@ export function BoardCanvas(props: Props) {
     <canvas
       ref={canvasRef}
       className={`board-canvas mode-${props.mode}`}
-      role="application"
-      tabIndex={0}
+      role="region"
       aria-label={`編み図編集盤面。${props.board.rows}段、${props.board.cols}目。記号${props.board.occupiedStitchCount}個。${modeLabel}モード。${selectionLabel}`}
       aria-describedby="board-instructions"
       onContextMenu={(event) => event.preventDefault()}

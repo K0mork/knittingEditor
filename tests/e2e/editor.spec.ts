@@ -113,6 +113,22 @@ async function clickBoardCenter(page: import('@playwright/test').Page) {
   await page.mouse.click(box!.x + label + (box!.width - label) / 2, box!.y + label + (box!.height - label) / 2);
 }
 
+/**
+ * 盤面を右下へ大きく動かし、左上のマスを表示領域の中央に置く（位置の制限でそこで止まる）。
+ * 初期位置は画面の大きさで変わる（狭い画面では右下の編み始めに寄せる）ので、画素を見るテストは先にこれで位置を決める。
+ * 戻り値は、上から2段目（縞のない段）・左端のマスの中央の、Canvas内のCSS座標。
+ */
+async function showTopLeftCellAtCenter(page: import('@playwright/test').Page) {
+  const canvas = page.getByLabel('編み図編集盤面');
+  await canvas.evaluate((element) => {
+    element.dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaX: -100_000, deltaY: -100_000 }));
+  });
+  const box = await canvas.boundingBox();
+  expect(box).not.toBeNull();
+  const label = 28;
+  return [label + (box!.width - label) / 2, label + (box!.height - label) / 2 + 30] as const;
+}
+
 /** 保存の観測だけを行う。呼び出し側で期待する内容までpollする。 */
 async function storedCells(page: Page) {
   return page.evaluate(async () => {
@@ -455,44 +471,79 @@ async function storedPackedCells(page: Page): Promise<number[]> {
   });
 }
 
-// 盤面の初期表示は左上に見出し28pxと余白8px（計36px）を置き、1マス30pxで描く。
-// 初期盤面は20×20マスで、記号は2行目（y = 36 + 30 + 15 = 81）に置く。
+/** `BoardCanvas.tsx`の既定の1マスの大きさ（初期表示では倍率を変えない）。 */
+const CELL = 30;
+
+/**
+ * 盤面を決まった位置に置き、左上のマス（0段目・0目）の中央のページ座標を返す。
+ * 初期位置は画面の大きさで変わる（収まらないときは右下の編み始めに寄せる）ので、`showTopLeftCellAtCenter`と同じく
+ * 大きく動かして左上のマスを表示領域の中央に置き、さらに3マス左上へずらして、使う7段×6目が狭い画面でも見えるようにする。
+ * 編み図を復元すると初期位置を置き直すので、そのあとにも呼ぶ。
+ */
+async function placeBoardOrigin(page: Page) {
+  const canvas = page.getByLabel('編み図編集盤面');
+  const shift = 3 * CELL;
+  await canvas.evaluate((element, shift) => {
+    element.dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaX: -100_000, deltaY: -100_000 }));
+    element.dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaX: shift, deltaY: shift }));
+  }, shift);
+  const box = (await canvas.boundingBox())!;
+  const label = 28;
+  return { x: box.x + label + (box.width - label) / 2 - shift, y: box.y + label + (box.height - label) / 2 - shift };
+}
+
+type BoardOrigin = { x: number; y: number };
+
+/** `row`段目・`col`目のマスの中央のページ座標。 */
+const cellCenter = (origin: BoardOrigin, row: number, col: number) => ({ x: origin.x + col * CELL, y: origin.y + row * CELL });
+
+// 初期盤面は20×20マスで、記号は1段目（上から2段目）の1・2（2目幅）・4目に置く。
 async function drawRealContent(page: Page) {
-  const box = (await page.getByLabel('編み図編集盤面').boundingBox())!;
+  const origin = await placeBoardOrigin(page);
   for (const [name, color, col] of [['表目', '#c83264', 1], ['右上2目一度', '#2468ac', 2], ['白くする', '#abcdef', 4]] as const) {
     await page.getByRole('button', { name: '編み目記号を選ぶ', exact: true }).click();
     await page.getByRole('button', { name: new RegExp(`^${name}(?:\\s|[0-9])`) }).click();
     await page.getByRole('button', { name: /^記号の色を選ぶ/ }).click();
     await page.locator('input[type="color"]').fill(color);
     await page.getByRole('button', { name: '閉じる', exact: true }).click();
-    await page.mouse.click(box.x + 36 + col * 30 + 15, box.y + 81);
+    const target = cellCenter(origin, 1, col);
+    await page.mouse.click(target.x, target.y);
   }
   const expected = new Array<number>(400).fill(0);
   for (const [key, color, col] of [['knit', 0xc83264, 1], ['right_up_two_one', 0x2468ac, 2], ['erase', 0xabcdef, 4]] as const) {
     expected[20 + col] = packCell(STITCH_BY_KEY.get(key)!.id, color) >>> 0;
   }
   await expect.poll(() => storedPackedCells(page)).toEqual(expected);
-  return { box, expected };
+  return { origin, expected };
 }
 
-async function selectRealContent(page: Page, box: { x: number; y: number }) {
+/** 1段目の1〜4目を範囲選択する。 */
+async function selectRealContent(page: Page, origin: BoardOrigin) {
   await page.getByRole('button', { name: '範囲', exact: true }).click();
-  await page.mouse.move(box.x + 81, box.y + 81);
+  const start = cellCenter(origin, 1, 1);
+  const end = cellCenter(origin, 1, 4);
+  await page.mouse.move(start.x, start.y);
   await page.mouse.down();
-  await page.mouse.move(box.x + 171, box.y + 81);
+  await page.mouse.move(end.x, end.y);
   await page.mouse.up();
 }
 
+/** 貼り付け先として`row`段目・`col`目（貼り付ける範囲の左上）をクリックする。 */
+async function clickCell(page: Page, origin: BoardOrigin, row: number, col: number) {
+  const target = cellCenter(origin, row, col);
+  await page.mouse.click(target.x, target.y);
+}
+
 test('copies colored symbols including a multi-cell stitch to new positions and undoes the paste', async ({ page }) => {
-  const { box, expected } = await drawRealContent(page);
-  await selectRealContent(page, box);
+  const { origin, expected } = await drawRealContent(page);
+  await selectRealContent(page, origin);
   await page.getByRole('button', { name: 'コピーして貼付' }).click();
-  await page.mouse.click(box.x + 81, box.y + 171);
+  await clickCell(page, origin, 4, 1);
   const first = [...expected];
   first.splice(4 * 20 + 1, 4, ...expected.slice(21, 25));
   await expect.poll(() => storedPackedCells(page)).toEqual(first);
   await page.getByRole('button', { name: '貼付', exact: true }).click();
-  await page.mouse.click(box.x + 81, box.y + 231);
+  await clickCell(page, origin, 6, 1);
   const second = [...first];
   second.splice(6 * 20 + 1, 4, ...expected.slice(21, 25));
   await expect.poll(() => storedPackedCells(page)).toEqual(second);
@@ -507,7 +558,7 @@ test('copies colored symbols including a multi-cell stitch to new positions and 
 test('exports real symbol pixels and restores a full backup block for pasting', async ({ page }) => {
   await page.addInitScript(() => Object.defineProperty(Navigator.prototype, 'canShare', { value: undefined, configurable: true }));
   await page.reload();
-  const { box, expected } = await drawRealContent(page);
+  const { origin, expected } = await drawRealContent(page);
   await page.getByRole('button', { name: '盤面', exact: true }).click();
   await page.getByRole('button', { name: '黒', exact: true }).click();
   await page.getByRole('button', { name: '閉じる', exact: true }).click();
@@ -535,7 +586,7 @@ test('exports real symbol pixels and restores a full backup block for pasting', 
   expect(pixels.white).toBe(400);
   expect(pixels.empty).toBe(0);
   await page.getByRole('button', { name: '閉じる', exact: true }).click();
-  await selectRealContent(page, box);
+  await selectRealContent(page, origin);
   await page.getByRole('button', { name: 'ブロック', exact: true }).click();
   page.once('dialog', (dialog) => dialog.accept('記号入りブロック'));
   await page.getByRole('button', { name: '選択範囲をブロック保存' }).click();
@@ -550,7 +601,8 @@ test('exports real symbol pixels and restores a full backup block for pasting', 
   await page.getByRole('button', { name: 'ブロック', exact: true }).click();
   await expect(page.locator('.block-list > div')).toHaveCount(2);
   await page.getByRole('button', { name: '記号入りブロック（復元）' }).click();
-  await page.mouse.click(box.x + 81, box.y + 171);
+  // 復元した編み図は初期位置に置き直されるので、もう一度位置を決めてから貼り付ける。
+  await clickCell(page, await placeBoardOrigin(page), 4, 1);
   const pasted = [...expected];
   pasted.splice(81, 4, ...expected.slice(21, 25));
   await expect.poll(() => storedPackedCells(page)).toEqual(pasted);
@@ -670,7 +722,7 @@ test('resizes to one million cells without creating cell DOM nodes', async ({ pa
 
 test('describes the board and the current mode for assistive technology', async ({ page }) => {
   const canvas = page.getByLabel('編み図編集盤面');
-  await expect(canvas).toHaveAttribute('role', 'application');
+  await expect(canvas).toHaveAttribute('role', 'region');
   await expect(canvas).toHaveAttribute('aria-label', /20段、20目。記号0個。描画モード。選択範囲なし/);
   await expect(page.locator('#board-instructions')).toHaveText(/現在は描画モードです/);
   await expect(canvas).toHaveAttribute('aria-describedby', 'board-instructions');
@@ -777,21 +829,20 @@ test('keeps the chosen board background after reload and exports it to PNG', asy
     const ratio = canvas.width / canvas.clientWidth;
     return Array.from(canvas.getContext('2d')!.getImageData(Math.round(cssX * ratio), Math.round(cssY * ratio), 1, 1).data.slice(0, 3));
   }, [x, y]);
-  // 盤面は左上の番号の帯（28px）から8px内側で始まり、1マス30px。上から2段目・左端のマスの中央を見る。
-  const groundPoint = [36 + 15, 36 + 30 + 15] as const;
-  await expect.poll(() => canvasPixel(...groundPoint)).toEqual([255, 255, 255]);
+  // 上から2段目・左端のマスの中央を見る。パネルの開閉や再読み込みの後は、位置を決め直してから見る。
+  await expect.poll(async () => canvasPixel(...await showTopLeftCellAtCenter(page))).toEqual([255, 255, 255]);
 
   await page.getByRole('button', { name: '盤面' }).click();
   await expect(page.getByRole('button', { name: '白', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('button', { name: '黒', exact: true }).click();
   await expect(page.getByRole('button', { name: '黒', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('button', { name: '閉じる' }).click();
-  await expect.poll(() => canvasPixel(...groundPoint)).toEqual([0x1e, 0x1e, 0x1e]);
+  await expect.poll(async () => canvasPixel(...await showTopLeftCellAtCenter(page))).toEqual([0x1e, 0x1e, 0x1e]);
 
   await expect(page.getByText('（保存中…）')).toHaveCount(0);
   await page.reload();
   await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
-  await expect.poll(() => canvasPixel(...groundPoint)).toEqual([0x1e, 0x1e, 0x1e]);
+  await expect.poll(async () => canvasPixel(...await showTopLeftCellAtCenter(page))).toEqual([0x1e, 0x1e, 0x1e]);
   await page.getByRole('button', { name: '盤面' }).click();
   await expect(page.getByRole('button', { name: '黒', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('button', { name: '閉じる' }).click();
@@ -821,8 +872,8 @@ test('follows the dark appearance around the board but keeps the chart ground', 
     return Array.from(canvas.getContext('2d')!.getImageData(Math.round(cssX * ratio), Math.round(cssY * ratio), 1, 1).data.slice(0, 3));
   }, [x, y]);
   const pageBackground = () => page.evaluate(() => getComputedStyle(document.documentElement).backgroundColor);
-  // 盤面は左上の番号の帯（28px）から8px内側で始まり、1マス30px。上から2段目・左端のマスの中央と、帯の左上の角を見る。
-  const groundPoint = [36 + 15, 36 + 30 + 15] as const;
+  // 上から2段目・左端のマスの中央と、帯の左上の角を見る。
+  const groundPoint = await showTopLeftCellAtCenter(page);
   const bandPoint = [4, 4] as const;
   /** 番号の帯は半透明で重ねるので、ブラウザによって各色が1ずれる。 */
   const near = (actual: number[], expected: number[]) => actual.every((value, index) => Math.abs(value - expected[index]) <= 2);
