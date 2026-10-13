@@ -2,7 +2,7 @@
 
 元のアイコンの緑・クリーム色の針・朱色の糸を、背景`background.svg`と前景`foreground.svg`に書き起こした。前景には針と糸のグループがあり、交差する部分の隙間を小サイズでも保つ。
 
-リポジトリルートでNode.js 24以降とPlaywright Chromiumを用意し、次を実行する。
+macOSで、Node.js 24以降、Playwright Chromium、macOS標準の`sips`を用意し、リポジトリルートで次を実行する。`generate-web-icons.mjs`は`sips`で縮小するため、macOS以外では実行できない。
 
 ```sh
 npm ci

@@ -14,10 +14,14 @@ let root: Root;
 let container: HTMLDivElement;
 let editor: EditorController;
 let source: database.ChartDocument;
+let confirmResult = true;
+const askConfirm = vi.fn(async () => confirmResult);
 let savedBlock: ReturnType<Board['createBlock']>;
 const quota = new DOMException('test quota', 'QuotaExceededError');
 
 beforeEach(async () => {
+  confirmResult = true;
+  askConfirm.mockClear();
   for (const document of await database.listDocuments()) await database.deleteDocument(document.id);
   for (const block of await database.listBlocks()) await database.deleteBlock(block.id);
   source = await database.createDocument('元の編み図', 4, 4);
@@ -32,7 +36,7 @@ beforeEach(async () => {
       initialize: async () => ({ documents: [source, other], activeId: source.id, blocks: [savedBlock] }),
       platform: { saveFile: async () => ({ saved: Promise.resolve(undefined) }) },
       askText: async () => '変更した名前',
-      askConfirm: async () => true,
+      askConfirm,
     });
     return null;
   }
@@ -183,6 +187,19 @@ describe('management failures', () => {
     await act(async () => { await editor.removeBlock(savedBlock); });
     expect(editor.session.blocks).toHaveLength(1);
     expect(await database.listBlocks()).toEqual(editor.session.blocks);
+  });
+
+  it('keeps a chart on cancellation and deletes only the confirmed chart', async () => {
+    const before = [...editor.session.documents];
+    confirmResult = false;
+    await act(async () => { await editor.deleteChart(source); });
+    expect(askConfirm).toHaveBeenLastCalledWith(`「${source.name}」を削除しますか？`, { destructive: true });
+    expect(editor.session.documents).toEqual(before);
+    expect(await database.listDocuments()).toHaveLength(2);
+    confirmResult = true;
+    await act(async () => { await editor.deleteChart(source); });
+    expect(editor.session.documents.map((chart) => chart.id)).toEqual(before.filter((chart) => chart.id !== source.id).map((chart) => chart.id));
+    expect(await database.listDocuments()).toEqual(editor.session.documents);
   });
 
   it('reflects successful rename and delete without another storage read', async () => {

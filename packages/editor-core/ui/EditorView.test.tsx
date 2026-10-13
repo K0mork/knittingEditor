@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { EditorAnalytics } from '../analytics';
 import { Board } from '../model/Board';
 import { SAVE_RESULT_UNKNOWN, type EditorPlatform } from '../platform';
@@ -19,6 +19,26 @@ beforeAll(() => {
   // jsdomにはResizeObserverとCanvas描画が無い。盤面の描画はこのテストの対象外。
   globalThis.ResizeObserver ??= class { observe() {} unobserve() {} disconnect() {} };
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
+});
+
+beforeEach(async () => {
+  // database.tsは接続を保持するため、DBを削除せず全ストアを空にする。
+  await initializeStorage();
+  const request = indexedDB.open('knitting-editor-v2');
+  const db = await new Promise<IDBDatabase>((resolve, reject) => {
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+  try {
+    const transaction = db.transaction(['documents', 'blocks', 'settings'], 'readwrite');
+    for (const store of ['documents', 'blocks', 'settings']) transaction.objectStore(store).clear();
+    await new Promise<void>((resolve, reject) => {
+      transaction.oncomplete = () => resolve();
+      transaction.onabort = () => reject(transaction.error);
+    });
+  } finally {
+    db.close();
+  }
 });
 
 /** `act`の中では描画がまとめて反映されるので、区切りながら条件が満たされるまで待つ。 */
@@ -77,6 +97,31 @@ async function renderEditor(
 }
 
 describe('EditorView', () => {
+  it('shows stitch width in stitches and height in rows', async () => {
+    const { container } = await renderEditor();
+    await act(async () => { container.querySelector<HTMLButtonElement>('.stitch-tool')!.click(); });
+    const size = (name: string) => [...container.querySelectorAll('.stitch-option')]
+      .find((item) => item.querySelector('.stitch-option-name')?.textContent === name)?.querySelector('small')?.textContent;
+    expect(size('すべり目')).toBe('2段×1目');
+    expect(size('右上3目交差')).toBe('1段×6目');
+  });
+
+  it('shows both units for a rectangular block and preserves document size order', async () => {
+    const block = { id: 'size-units-block', name: '寸法確認', rows: 2, cols: 5, anchors: [], createdAt: Date.now() };
+    await saveBlock(block);
+    try {
+      const { container, click } = await renderEditor();
+      await click('ブロック');
+      const row = [...container.querySelectorAll('.block-list > div')].find((item) => item.textContent?.startsWith(block.name));
+      expect(row?.querySelector('small')?.textContent).toBe('2段×5目');
+      await click('閉じる');
+      await click('編み図');
+      expect(container.querySelector('.document-list')?.textContent).toContain('20段×20目');
+    } finally {
+      await deleteBlock(block.id);
+    }
+  });
+
   it('renders the host title around the document status and reports analytics', async () => {
     const analytics: EditorAnalytics = { track: vi.fn(), trackFirstEdit: vi.fn() };
     const { container, click } = await renderEditor({ analytics });
@@ -142,7 +187,8 @@ describe('EditorView', () => {
   });
 
   it('hides the gesture hint about ten seconds after opening', async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
+    // IndexedDBのテスト実装が使うsetImmediateなどは本物のまま動かし、ヒントのタイマーだけを進める。
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout'] });
     try {
       const { container } = await renderEditor();
       const hint = () => container.querySelector('.gesture-hint');
@@ -197,6 +243,15 @@ describe('EditorView', () => {
     }
   });
 
+  it('shows all backup actions in the save panel', async () => {
+    const { container, click, button } = await renderEditor();
+    await click('保存');
+    expect(container.querySelector('#app-drawer-title')?.textContent).toBe('保存・出力');
+    for (const label of ['この編み図', '全データ', '復元']) expect(button(label)).toBeDefined();
+    await click('閉じる');
+    expect(container.querySelector('#app-drawer-title')).toBeNull();
+  });
+
   it('hands the current chart backup to the platform', async () => {
     const { platform, click } = await renderEditor();
 
@@ -239,7 +294,6 @@ describe('EditorView', () => {
     expect(pick).toHaveBeenCalledOnce();
   });
 
-  // 新しい編み図が開いたままになるので、盤面の初期状態に頼るテストより後に置く。
   it('undoes grid changes and forgets the history when another chart opens', async () => {
     const { container, button, click } = await renderEditor({ askText: async () => '別の編み図' });
     const boardLabel = () => container.querySelector('canvas')?.getAttribute('aria-label') ?? '';

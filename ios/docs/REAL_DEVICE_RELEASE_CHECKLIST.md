@@ -57,7 +57,7 @@ TEST_RUNNER_KNITTING_EDITOR_AIRPLANE_MODE=1 xcodebuild test \
   -only-testing:knittingEditorTests/LocalWebSchemeHandlerTests/testAirplaneModeServesEditorWithoutNetwork
 ```
 
-なお、オフライン要件そのものは別経路で裏付けている。生成バンドルの静的検査（外部URL・CDN・分析の不在、CIで毎回実行）、実機WebKitでの`fetch`／`XHR`／`WebSocket`／`EventSource`未使用の実測、Swift側に通信コードが無いこと。未確認なのは「機内モードで利用者が実際に使える」という最終確認だけである。
+なお、オフライン要件そのものは別経路で裏付けている。生成バンドルの静的検査（外部URL・CDN・分析の不在、CIで毎回実行）、実機WebKitでの`fetch`／`XHR`／`WebSocket`／`EventSource`未使用の実測、Swift側に通信コードが無いこと。利用者による機内モードの主要フローと通信監視は下記の記録で確認済みである。開発ツール経由の機内モード自動テストと、TestFlight提出ビルドでの再確認は残っている。
 
 - [x] 機内モードを有効にしてアプリを新規起動できる。（2026-09-22、iPad Air 第5世代。機内モード中にアプリを終了し、ホーム画面のアイコンから起動できることを確認）
 - [x] 新規編み図を作成し、26記号、Canvas描画、Blob生成、PNG保存、PDF保存を完了できる。（2026-09-22、iPad Air 第5世代。26記号は利用者が機内モード中に記号メニューで全種の表示を目視確認）
