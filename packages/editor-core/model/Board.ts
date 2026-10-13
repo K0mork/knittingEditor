@@ -114,6 +114,22 @@ export class Board {
     this.relayout(newRows, newCols, (row, col) => ({ row: row + rowOffset, col: col + colOffset }));
   }
 
+  /** 縮小で消える記号数。複数セルの記号も、起点を1回だけ数える。盤面は変更しない。 */
+  countStitchesRemovedByResize(newRows: number, newCols: number, rowOffset = 0, colOffset = 0): number {
+    Board.validateSize(newRows, newCols);
+    let removed = 0;
+    for (let index = 0; index < this.cells.length; index++) {
+      const value = this.cells[index];
+      if (!value) continue;
+      const definition = STITCH_BY_ID.get(cellStitchId(value));
+      if (!definition) continue;
+      const row = Math.floor(index / this.cols) + rowOffset;
+      const col = index % this.cols + colOffset;
+      if (row < 0 || col < 0 || row + definition.height > newRows || col + definition.width > newCols) removed++;
+    }
+    return removed;
+  }
+
   /**
    * 寸法とセル配列をまとめて差し替える。元に戻す・やり直すで使う。
    * `cells`は複製して持つので、呼び出し元は渡した配列を使い回してよい。
