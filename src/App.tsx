@@ -45,7 +45,7 @@ export default function App() {
       </div>
       <p className="app-document-name" aria-live="polite" aria-atomic="true">{documentStatus}</p>
     </div>}
-    backupNote="端末内データはブラウザ操作で消える場合があります。定期的に保存してください。"
+    backupNote="端末内データはブラウザ操作で消える場合があります。定期的にバックアップを書き出してください。"
     documentsNote={<a href="/privacy/">プライバシーポリシー（アクセス解析について）</a>}
   >{shareDialog}</EditorView>;
 }

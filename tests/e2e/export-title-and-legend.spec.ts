@@ -5,7 +5,7 @@ test('keeps empty tiled PDF page counts unchanged when title and legend are enab
   await page.addInitScript(() => Object.defineProperty(Navigator.prototype, 'canShare', { value: undefined, configurable: true }));
   await page.goto('/');
   await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
-  await page.getByRole('button', { name: '保存', exact: true }).click();
+  await page.getByRole('button', { name: '出力', exact: true }).click();
   await page.getByRole('combobox', { name: '構成' }).selectOption('tiled');
   const option = page.getByRole('checkbox', { name: '編み図名と記号の一覧を入れる' });
   let plainPages: number | undefined;
@@ -31,7 +31,7 @@ test('exports PNG and single/tiled PDF with the optional title and legend on and
   await expect(canvas).toBeVisible();
   const box = await canvas.boundingBox();
   await canvas.click({ position: { x: Math.min(75, box!.width - 10), y: Math.min(75, box!.height - 10) } });
-  await page.getByRole('button', { name: '保存', exact: true }).click();
+  await page.getByRole('button', { name: '出力', exact: true }).click();
   const option = page.getByRole('checkbox', { name: '編み図名と記号の一覧を入れる' });
   await expect(option).not.toBeChecked();
   let plainPng: Buffer | undefined;

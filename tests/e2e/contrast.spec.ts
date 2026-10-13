@@ -98,7 +98,7 @@ for (const colorScheme of ['light', 'dark'] as const) {
     await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
     const failures = await lowContrast(page, '編集画面');
 
-    for (const panel of ['盤面', 'ブロック', '保存']) {
+    for (const panel of ['盤面', 'ブロック', '出力']) {
       await page.getByRole('button', { name: panel, exact: true }).click();
       await expect(page.locator('.drawer')).toBeVisible();
       failures.push(...await lowContrast(page, panel));

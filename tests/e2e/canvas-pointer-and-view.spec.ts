@@ -34,15 +34,21 @@ test('right drag erases only its pressed cell and leaves left drawing and histor
   await page.getByRole('button', { name: '範囲', exact: true }).click();
   await page.mouse.click(x, y);
   await page.keyboard.press('ControlOrMeta+c');
-  // 貼り付けモードの案内は盤面の下部に重なるので、その上の段に貼り付ける。
-  const pasteY = y - 120;
-  const hitsCanvas = (pointX: number) => page.evaluate(([px, py]) => document.elementFromPoint(px, py)?.classList.contains('board-canvas') ?? false, [pointX, pasteY]);
-  expect(await hitsCanvas(x)).toBe(true);
-  await page.mouse.click(x, pasteY);
+  // 貼付帯が出た後の盤面位置を測り、案内に重ならない上の段へ貼付する。
+  const pastePoint = async () => {
+    await expect(page.getByRole('toolbar', { name: '貼付の操作' })).toBeVisible();
+    const current = (await canvas.boundingBox())!;
+    return { x: x + current.x - box.x, y: y + current.y - box.y - 120 };
+  };
+  let target = await pastePoint();
+  const hitsCanvas = (pointX: number) => page.evaluate(([px, py]) => document.elementFromPoint(px, py)?.classList.contains('board-canvas') ?? false, [pointX, target.y]);
+  expect(await hitsCanvas(target.x)).toBe(true);
+  await page.mouse.click(target.x, target.y);
   await expect(canvas).toHaveAttribute('aria-label', /記号4個/);
   await page.keyboard.press('ControlOrMeta+v');
-  expect(await hitsCanvas(x - 30)).toBe(true);
-  await page.mouse.click(x - 30, pasteY);
+  target = await pastePoint();
+  expect(await hitsCanvas(target.x - 30)).toBe(true);
+  await page.mouse.click(target.x - 30, target.y);
   await expect(canvas).toHaveAttribute('aria-label', /記号5個/);
 });
 

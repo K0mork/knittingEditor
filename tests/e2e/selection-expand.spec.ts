@@ -6,7 +6,7 @@ test('expands a released selection through a slip-stitch chain and copies the wh
   await expect(canvas).toBeVisible();
   await page.getByRole('button', { name: '編み目記号を選ぶ' }).click();
   await page.getByRole('dialog', { name: '編み目記号' }).getByRole('button', { name: /^すべり目/ }).click();
-  const box = await canvas.boundingBox();
+  let box = await canvas.boundingBox();
   expect(box).not.toBeNull();
   // 初期表示の原点36px、セル幅30px。1〜3行目に交互の列で2段の記号を置く。
   const point = (row: number, col: number) => ({
@@ -27,8 +27,11 @@ test('expands a released selection through a slip-stitch chain and copies the wh
   await page.mouse.up();
   await expect(canvas).toHaveAttribute('aria-label', /選択範囲は4段、2目/);
   await page.getByRole('button', { name: 'コピーして貼付' }).click();
+  // 貼付中は盤面の上に帯が出て盤面が下がるため、測り直してから貼付先をタップする。
+  await expect(page.getByRole('toolbar', { name: '貼付の操作' })).toBeVisible();
+  box = await canvas.boundingBox();
   const target = point(5, 2);
   await page.mouse.click(target.x, target.y);
-  await expect(page.getByText('ブロックを貼り付けました')).toBeVisible();
+  await expect(page.getByText('ブロックを貼付しました')).toBeVisible();
   await expect(canvas).toHaveAttribute('aria-label', /記号6個/);
 });

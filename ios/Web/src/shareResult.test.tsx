@@ -33,8 +33,8 @@ describe('native share result in the editor', () => {
     try {
       await act(async () => root.render(<App />));
       await waitUntil(() => container.querySelector('.app-shell') !== null);
-      await click('保存');
-      await click('この編み図');
+      await click('出力');
+      await click('この編み図を書き出す');
       await waitUntil(() => postMessage.mock.calls.some(([message]) => message.type === 'exportFile'));
       const { id } = postMessage.mock.calls.find(([message]) => message.type === 'exportFile')![0];
       const finish = () => window.dispatchEvent(new CustomEvent(NATIVE_EXPORT_FINISHED_EVENT, {

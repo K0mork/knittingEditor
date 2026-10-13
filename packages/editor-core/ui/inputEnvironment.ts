@@ -106,11 +106,6 @@ export function gestureHintText(mode: CanvasMode, environment: InputEnvironment)
   return `${action}：${modeLabel}　ホイール：移動　${modifier}＋ホイール：拡大`;
 }
 
-/** 貼り付けを始めたときの案内。 */
-export function pastePromptText(environment: InputEnvironment): string {
-  return `貼り付ける左上のセルを${environment.pointer === 'touch' ? 'タップ' : 'クリック'}してください`;
-}
-
 /** 元に戻す・やり直すのボタンの`title`。対応するショートカットは`useHistoryShortcuts`。 */
 export function historyTitles(environment: InputEnvironment): { undo: string; redo: string } {
   return environment.apple

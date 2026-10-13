@@ -24,7 +24,7 @@ for (const width of [390, 760, 1024, 1280]) {
       await expect(page.getByRole('toolbar', { name: '選択範囲の操作' })).toBeVisible();
       // 選択操作帯が縦の空きを使い切らず、選んだ範囲が見える高さの盤面が残る。
       expect((await canvas.boundingBox())!.height, '選択中も盤面が見える').toBeGreaterThanOrEqual(120);
-      for (const name of ['コピーして貼付', '解除', '盤面', 'ブロック', '保存']) {
+      for (const name of ['コピーして貼付', '解除', '盤面', 'ブロック', '出力']) {
         const button = page.getByRole('button', { name, exact: true });
         expect(await button.evaluate((element) => {
           const rect = element.getBoundingClientRect();

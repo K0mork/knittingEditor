@@ -30,10 +30,10 @@ export function createGuideNavigation({ save, notify, navigate }: GuideNavigatio
       } else if (outcome === 'timeout') {
         notify('保存の完了を2秒以内に確認できませんでした。少し待ってから、もう一度「使い方」を押してください。');
       } else {
-        notify('編集を保存できなかったため、使い方を開きませんでした。「保存」からバックアップを保存してください。');
+        notify('編集を保存できなかったため、使い方を開きませんでした。「出力」からバックアップを保存してください。');
       }
     } catch {
-      notify('編集を保存できなかったため、使い方を開きませんでした。「保存」からバックアップを保存してください。');
+      notify('編集を保存できなかったため、使い方を開きませんでした。「出力」からバックアップを保存してください。');
     } finally {
       if (timer !== undefined) clearTimeout(timer);
       waiting = false;

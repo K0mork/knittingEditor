@@ -356,9 +356,9 @@ test('creates a block and exports backup and PDF', async ({ page }) => {
   await expect(blockRow).toBeVisible();
 
   await page.getByRole('button', { name: '閉じる' }).click();
-  await page.getByRole('button', { name: '保存' }).click();
+  await page.getByRole('button', { name: '出力' }).click();
   const backupDownload = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'この編み図' }).click();
+  await page.getByRole('button', { name: 'この編み図を書き出す' }).click();
   const backup = await backupDownload;
   expect(backup.suggestedFilename()).toMatch(/\.knit$/);
 
@@ -369,7 +369,7 @@ test('creates a block and exports backup and PDF', async ({ page }) => {
   // 編み図名のあとに、読み上げ用の保存状態テキストが続く。
   await expect(page.locator('.app-document-name')).toContainText('新しい編み図（復元）');
 
-  await page.getByRole('button', { name: '保存' }).click();
+  await page.getByRole('button', { name: '出力' }).click();
   const pdfDownload = page.waitForEvent('download');
   await page.getByRole('button', { name: 'PDFを保存' }).click();
   expect((await pdfDownload).suggestedFilename()).toMatch(/\.pdf$/);
@@ -384,7 +384,7 @@ test('draws the ten-stitch major lines in the PNG at the numbered tens', async (
   await page.getByRole('button', { name: '変更' }).click();
   await page.getByRole('button', { name: '閉じる' }).click();
 
-  await page.getByRole('button', { name: '保存' }).click();
+  await page.getByRole('button', { name: '出力' }).click();
   // 25段×23目は既定の1セル24pxで、四辺の番号の帯も24px。
   await expect(page.getByText('600×648px')).toBeVisible();
   const download = page.waitForEvent('download');
@@ -434,7 +434,7 @@ test('hands PNG and PDF to the share sheet on iPhone Safari without leaving the 
   const editorUrl = page.url();
   const sharedFiles = () => page.evaluate(() => (window as unknown as { sharedFiles: Array<Array<[string, string]>> }).sharedFiles);
 
-  await page.getByRole('button', { name: '保存' }).click();
+  await page.getByRole('button', { name: '出力' }).click();
   await page.getByRole('button', { name: 'PNGを保存' }).click();
   const dialog = page.getByRole('dialog', { name: '「新しい編み図.png」の準備ができました' });
   await expect(dialog).toBeVisible();
@@ -489,10 +489,10 @@ async function placeBoardOrigin(page: Page) {
   }, shift);
   const box = (await canvas.boundingBox())!;
   const label = 28;
-  return { x: box.x + label + (box.width - label) / 2 - shift, y: box.y + label + (box.height - label) / 2 - shift };
+  return { x: box.x + label + (box.width - label) / 2 - shift, y: box.y + label + (box.height - label) / 2 - shift, canvasX: box.x, canvasY: box.y };
 }
 
-type BoardOrigin = { x: number; y: number };
+type BoardOrigin = { x: number; y: number; canvasX: number; canvasY: number };
 
 /** `row`段目・`col`目のマスの中央のページ座標。 */
 const cellCenter = (origin: BoardOrigin, row: number, col: number) => ({ x: origin.x + col * CELL, y: origin.y + row * CELL });
@@ -517,6 +517,31 @@ async function drawRealContent(page: Page) {
   return { origin, expected };
 }
 
+// 貼付帯によるレイアウト変更だけを反映し、盤面のスクロール位置は変えない。
+async function measurePasteOrigin(page: Page, origin: BoardOrigin): Promise<BoardOrigin> {
+  await expect(page.getByRole('toolbar', { name: '貼付の操作' })).toBeVisible();
+  const canvas = page.getByLabel('編み図編集盤面');
+  await expect(canvas).toHaveAttribute('aria-label', /貼付モード/);
+  // 帯のDOMが見えても、:hasによる行の変更とResizeObserver後の描画は未完了の場合がある。
+  // 同じ矩形が2フレーム続くまで待ち、帯を出し直した直後の古い座標を使わない。
+  await expect.poll(() => canvas.evaluate(async (element) => {
+    const rect = () => {
+      const { x, y, width, height } = element.getBoundingClientRect();
+      return [x, y, width, height];
+    };
+    let previous = rect();
+    for (let frame = 0; frame < 2; frame++) {
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      const current = rect();
+      if (current.some((value, index) => value !== previous[index])) return false;
+      previous = current;
+    }
+    return true;
+  })).toBe(true);
+  const box = (await canvas.boundingBox())!;
+  return { x: origin.x + box.x - origin.canvasX, y: origin.y + box.y - origin.canvasY, canvasX: box.x, canvasY: box.y };
+}
+
 /** 1段目の1〜4目を範囲選択する。 */
 async function selectRealContent(page: Page, origin: BoardOrigin) {
   await page.getByRole('button', { name: '範囲', exact: true }).click();
@@ -531,6 +556,11 @@ async function selectRealContent(page: Page, origin: BoardOrigin) {
 /** 貼り付け先として`row`段目・`col`目（貼り付ける範囲の左上）をクリックする。 */
 async function clickCell(page: Page, origin: BoardOrigin, row: number, col: number) {
   const target = cellCenter(origin, row, col);
+  // 直前の貼付の通知が消えてからクリックする。狭い画面では通知が貼付先のマスに重なる。
+  await expect(page.locator('.toast')).toHaveCount(0, { timeout: 10_000 });
+  // マスが帯や操作メニューの下に隠れていれば、保存待ちのタイムアウトではなくここで検出する。
+  expect(await page.getByLabel('編み図編集盤面').evaluate((element, point) =>
+    document.elementFromPoint(point.x, point.y) === element, target), `${row}段目・${col}目のクリック先が盤面`).toBe(true);
   await page.mouse.click(target.x, target.y);
 }
 
@@ -538,12 +568,12 @@ test('copies colored symbols including a multi-cell stitch to new positions and 
   const { origin, expected } = await drawRealContent(page);
   await selectRealContent(page, origin);
   await page.getByRole('button', { name: 'コピーして貼付' }).click();
-  await clickCell(page, origin, 4, 1);
+  await clickCell(page, await measurePasteOrigin(page, origin), 4, 1);
   const first = [...expected];
   first.splice(4 * 20 + 1, 4, ...expected.slice(21, 25));
   await expect.poll(() => storedPackedCells(page)).toEqual(first);
   await page.getByRole('button', { name: '貼付', exact: true }).click();
-  await clickCell(page, origin, 6, 1);
+  await clickCell(page, await measurePasteOrigin(page, origin), 6, 1);
   const second = [...first];
   second.splice(6 * 20 + 1, 4, ...expected.slice(21, 25));
   await expect.poll(() => storedPackedCells(page)).toEqual(second);
@@ -562,7 +592,7 @@ test('exports real symbol pixels and restores a full backup block for pasting', 
   await page.getByRole('button', { name: '盤面', exact: true }).click();
   await page.getByRole('button', { name: '黒', exact: true }).click();
   await page.getByRole('button', { name: '閉じる', exact: true }).click();
-  await page.getByRole('button', { name: '保存', exact: true }).click();
+  await page.getByRole('button', { name: '出力', exact: true }).click();
   const pngDownload = page.waitForEvent('download');
   await page.getByRole('button', { name: 'PNGを保存' }).click();
   const png = readFileSync((await (await pngDownload).path())!);
@@ -592,17 +622,17 @@ test('exports real symbol pixels and restores a full backup block for pasting', 
   await page.getByRole('button', { name: '選択範囲をブロック保存' }).click();
   await expect(page.locator('.block-list').getByRole('button', { name: /^記号入りブロック\s/ })).toBeVisible();
   await page.getByRole('button', { name: '閉じる', exact: true }).click();
-  await page.getByRole('button', { name: '保存', exact: true }).click();
+  await page.getByRole('button', { name: '出力', exact: true }).click();
   const backupDownload = page.waitForEvent('download');
-  await page.getByRole('button', { name: '全データ', exact: true }).click();
+  await page.getByRole('button', { name: '全データを書き出す', exact: true }).click();
   await page.locator('input[type="file"]').setInputFiles((await (await backupDownload).path())!);
   await expect(page.locator('.app-document-name')).toContainText('新しい編み図（復元）');
   await expect.poll(() => storedPackedCells(page)).toEqual(expected);
   await page.getByRole('button', { name: 'ブロック', exact: true }).click();
   await expect(page.locator('.block-list > div')).toHaveCount(2);
+  const restoredOrigin = await placeBoardOrigin(page);
   await page.getByRole('button', { name: '記号入りブロック（復元）' }).click();
-  // 復元した編み図は初期位置に置き直されるので、もう一度位置を決めてから貼り付ける。
-  await clickCell(page, await placeBoardOrigin(page), 4, 1);
+  await clickCell(page, await measurePasteOrigin(page, restoredOrigin), 4, 1);
   const pasted = [...expected];
   pasted.splice(81, 4, ...expected.slice(21, 25));
   await expect.poll(() => storedPackedCells(page)).toEqual(pasted);
@@ -847,7 +877,7 @@ test('keeps the chosen board background after reload and exports it to PNG', asy
   await expect(page.getByRole('button', { name: '黒', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('button', { name: '閉じる' }).click();
 
-  await page.getByRole('button', { name: '保存' }).click();
+  await page.getByRole('button', { name: '出力' }).click();
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'PNGを保存' }).click();
   const png = readFileSync((await (await download).path())!);
@@ -949,7 +979,7 @@ test('reports a PDF worker load failure and clears it when retry succeeds', asyn
   await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
   const workerUrl = /\/pdf\.worker(?:\.ts|-[\w-]+\.js)(?:\?.*)?$/;
   await page.route(workerUrl, (route) => route.fulfill({ status: 404, body: '' }));
-  await page.getByRole('button', { name: '保存', exact: true }).click();
+  await page.getByRole('button', { name: '出力', exact: true }).click();
   const exportButton = page.getByRole('button', { name: 'PDFを保存', exact: true });
   await exportButton.click();
   await expect(page.locator('.toast')).toContainText('PDFを生成できませんでした。ページを再読み込みして、もう一度お試しください。');
@@ -970,7 +1000,7 @@ test('exports an exactly fitting tiled PDF as one estimated and actual page', as
   await page.getByLabel('列数').fill('37');
   await page.getByRole('button', { name: '変更', exact: true }).click();
   await page.getByRole('button', { name: '閉じる', exact: true }).click();
-  await page.getByRole('button', { name: '保存', exact: true }).click();
+  await page.getByRole('button', { name: '出力', exact: true }).click();
   await page.getByLabel('構成').selectOption('tiled');
   await page.getByLabel('用紙').selectOption('portrait');
   await page.getByLabel('セル寸法').fill('5');

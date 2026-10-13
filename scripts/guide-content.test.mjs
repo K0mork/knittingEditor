@@ -12,7 +12,7 @@ for (const path of guides) {
     const text = document.querySelector('main').textContent;
 
     it('explains chart management, reusable blocks and backup scope before restoring', () => {
-      for (const label of ['新しい編み図', '名称', '複製', '削除', '選択範囲をブロック保存', 'この編み図', '全データ', '（復元）']) {
+      for (const label of ['新しい編み図', '名称', '複製', '削除', '選択範囲をブロック保存', 'この編み図を書き出す', '全データを書き出す', '（復元）']) {
         expect(text).toContain(`「${label}」`);
       }
       expect(text).toContain('保存済みブロックは含まれません');

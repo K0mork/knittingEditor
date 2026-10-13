@@ -40,7 +40,7 @@ const MODE_BUTTONS: Array<{ mode: CanvasMode; label: string }> = [
 const ACTION_BAR_PANELS: Array<{ panel: EditorPanel; label: string }> = [
   { panel: 'grid', label: '盤面' },
   { panel: 'blocks', label: 'ブロック' },
-  { panel: 'export', label: '保存' },
+  { panel: 'export', label: '出力' },
 ];
 
 /**
@@ -100,9 +100,9 @@ export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, 
           <span>色</span>
           <span className="color-tool-swatch" aria-hidden="true" style={{ backgroundColor: editor.selectedColor }} />
         </button>
-        <button className="stitch-tool" aria-label="編み目記号を選ぶ" aria-haspopup="dialog" aria-expanded={editor.stitchPickerOpen} onClick={(event) => openPicker(event, editor.setStitchPickerOpen)}>
+        <button className="stitch-tool" aria-label="編み目記号を選ぶ" aria-describedby="current-stitch-name" aria-haspopup="dialog" aria-expanded={editor.stitchPickerOpen} onClick={(event) => openPicker(event, editor.setStitchPickerOpen)}>
           <span aria-hidden="true" dangerouslySetInnerHTML={{ __html: editor.currentStitch.svg }} />
-          <span className="stitch-tool-name">{editor.currentStitch.name}</span>
+          <span id="current-stitch-name" className="stitch-tool-name">{editor.currentStitch.name}</span>
           <span className="stitch-tool-chevron" aria-hidden="true">⌄</span>
         </button>
         {MODE_BUTTONS.map((item) => modeButton(item.mode, item.label, () => editor.chooseMode(item.mode)))}
@@ -124,6 +124,11 @@ export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, 
         onSelect={editor.selectStitch}
       />}
 
+      {mode === 'paste' && <div className="selection-actions paste-actions" role="toolbar" aria-label="貼付の操作">
+        <span>貼付中：左上にするマスをタップ</span>
+        <button onClick={() => editor.chooseMode('draw')}>やめる</button>
+      </div>}
+
       {selection && <div className="selection-actions" role="toolbar" aria-label="選択範囲の操作">
         <button className="primary" onClick={editor.copySelection}>コピーして貼付</button>
         <button onClick={editor.clearSelection}>解除</button>
@@ -131,7 +136,7 @@ export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, 
 
       {/* 保存の失敗は勧めと同じ段に出し、勧めより優先する。どちらも手を止めたときだけ出し入れする。 */}
       {editor.backupReminder.saveFailureShown && <section className="backup-reminder" aria-label="保存の失敗">
-        <p role="alert">端末内への保存に失敗しています。「保存」から.knitのバックアップを書き出してください。</p>
+        <p role="alert">端末内への保存に失敗しています。「出力」から.knitのバックアップを書き出してください。</p>
       </section>}
       {/* ドロワーや処理中の表示と重なるときは出さない。 */}
       {!editor.backupReminder.saveFailureShown && editor.backupReminder.kind && !panel && !editor.busy && <BackupReminderBar kind={editor.backupReminder.kind}

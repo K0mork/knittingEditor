@@ -40,10 +40,10 @@ window.dispatchEvent(new CustomEvent('knittingEditorNativeCommand', { detail: 'u
 | メニュー | 項目 | キー | `detail` | Web側の処理 |
 |---|---|---|---|---|
 | ファイル | 新しい編み図… | ⌘N | `newDocument` | 「編み図」パネルの「新しい編み図」 |
-| ファイル | 開く…（iPadOSが足す項目） | ⌘O | `restoreBackup` | 「復元」。`openBackup`でDocument Pickerを開く |
-| ファイル | この編み図をバックアップ… | ⌘S | `exportBackup` | 「この編み図」の`.knit`書き出し |
-| ファイル | 全データをバックアップ… | ⌥⌘S | `exportAllBackup` | 「全データ」の`.knit`書き出し |
-| ファイル | PNGで書き出す… | ⇧⌘E | `exportPng` | 「PNGを保存」。画素数は保存・出力パネルを初めて開いたときの既定値 |
+| ファイル | 開く…（iPadOSが足す項目） | ⌘O | `restoreBackup` | 「バックアップから復元」。`openBackup`でDocument Pickerを開く |
+| ファイル | この編み図をバックアップ… | ⌘S | `exportBackup` | 「この編み図を書き出す」の`.knit`書き出し |
+| ファイル | 全データをバックアップ… | ⌥⌘S | `exportAllBackup` | 「全データを書き出す」の`.knit`書き出し |
+| ファイル | PNGで書き出す… | ⇧⌘E | `exportPng` | 「PNGを保存」。画素数は出力パネルを初めて開いたときの既定値 |
 | ファイル | PDFで書き出す… | ⌘P | `exportPdf` | 「PDFを保存」。全体を1ページ・A4縦（パネルの既定値） |
 | 編集 | 元に戻す | ⌘Z | `undo` | 操作メニューの「元に戻す」 |
 | 編集 | やり直す | ⇧⌘Z | `redo` | 操作メニューの「やり直す」 |

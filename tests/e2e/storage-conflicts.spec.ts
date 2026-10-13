@@ -78,7 +78,7 @@ test('restores original update order and keeps equal-date order after reload', a
     { name: '同時A', updatedAt: 200, createdAt: 20 },
   ].map((item) => ({ ...item, rows: 1, cols: 1, cells: 'AAAAAA==' }));
   const buffer = Buffer.from(gzipSync(strToU8(JSON.stringify({ format: 'knitting-editor', version: 2, documents, blocks: [] }))));
-  await page.getByRole('button', { name: '保存', exact: true }).click();
+  await page.getByRole('button', { name: '出力', exact: true }).click();
   await page.locator('input[type="file"]').setInputFiles({ name: 'dates.knit', mimeType: 'application/gzip', buffer });
   await expect(page.getByText('4件の編み図を復元しました')).toBeVisible();
   async function assertOrder() {
@@ -120,10 +120,10 @@ test('does not write an all-data backup beyond the restore limit', async ({ page
   await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
   let downloads = 0;
   page.on('download', () => { downloads += 1; });
-  await page.getByRole('button', { name: '保存', exact: true }).click();
+  await page.getByRole('button', { name: '出力', exact: true }).click();
   const status = page.getByText('この編み図はまだバックアップしていません。');
   await expect(status).toBeVisible();
-  await page.getByRole('button', { name: '全データ', exact: true }).click();
+  await page.getByRole('button', { name: '全データを書き出す', exact: true }).click();
   await expect(page.getByText('バックアップの上限を超えています。編み図を個別に書き出すか、不要な編み図を削除してください。')).toBeVisible();
   await page.waitForTimeout(500);
   expect(downloads).toBe(0);

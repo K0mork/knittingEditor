@@ -26,11 +26,11 @@ async function ageChart(page: Page, ageDays: number, changed = true) {
 
 /**
  * 記録を読み終えても帯が出ていないことを確かめる。
- * 保存パネルに日時が出れば日時と「あとで」の記録を読み終えている。帯を出すかはその時点で決まるので、
+ * 出力パネルに日時が出れば日時と「あとで」の記録を読み終えている。帯を出すかはその時点で決まるので、
  * パネルを閉じた同じ描画で帯が無ければ、待ち時間に頼らずに「出ない」と言える。
  */
 async function expectNoReminderOnceLoaded(page: Page) {
-  await page.getByRole('button', { name: '保存', exact: true }).click();
+  await page.getByRole('button', { name: '出力', exact: true }).click();
   const drawer = page.locator('#app-drawer');
   await expect(drawer).toContainText(/この編み図(の最後のバックアップ：|はまだバックアップしていません。)/);
   await drawer.getByRole('button', { name: '閉じる' }).click();
@@ -72,17 +72,17 @@ async function setSetting(page: Page, key: string, value: number) {
 }
 
 test('shows the last backup date after exporting and keeps it after a reload', async ({ page }) => {
-  await page.getByRole('button', { name: '保存', exact: true }).click();
+  await page.getByRole('button', { name: '出力', exact: true }).click();
   const drawer = page.locator('#app-drawer');
   await expect(drawer).toContainText('この編み図はまだバックアップしていません。');
 
   const download = page.waitForEvent('download');
-  await drawer.getByRole('button', { name: 'この編み図' }).click();
+  await drawer.getByRole('button', { name: 'この編み図を書き出す' }).click();
   expect((await download).suggestedFilename()).toBe('新しい編み図.knit');
   await expect(drawer).toContainText(/この編み図の最後のバックアップ：\d{4}年\d{1,2}月\d{1,2}日 \d{1,2}:\d{2}/);
 
   await page.reload();
-  await page.getByRole('button', { name: '保存', exact: true }).click();
+  await page.getByRole('button', { name: '出力', exact: true }).click();
   await expect(page.locator('#app-drawer')).toContainText(/この編み図の最後のバックアップ：\d{4}年/);
 });
 
@@ -125,7 +125,7 @@ test('suggests a backup for a week-old chart without covering the board', async 
   await page.reload();
   await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
   await expectNoReminderOnceLoaded(page);
-  await page.getByRole('button', { name: '保存', exact: true }).click();
+  await page.getByRole('button', { name: '出力', exact: true }).click();
   await expect(page.locator('#app-drawer')).toContainText('この編み図の最後のバックアップ：');
 });
 
@@ -205,11 +205,11 @@ test('records the backup only after the file is shared on iPhone Safari', async 
   await expect(reminder).toBeVisible();
   expect(await shared()).toEqual([]);
   expect(await readSetting(page, `lastBackupAt:${await chartId(page)}`)).toBeUndefined();
-  await page.getByRole('button', { name: '保存', exact: true }).click();
+  await page.getByRole('button', { name: '出力', exact: true }).click();
   await expect(page.locator('#app-drawer')).toContainText('この編み図はまだバックアップしていません。');
 
   // 共有を終えたら記録し、帯を消す。
-  await page.locator('#app-drawer').getByRole('button', { name: 'この編み図' }).click();
+  await page.locator('#app-drawer').getByRole('button', { name: 'この編み図を書き出す' }).click();
   await dialog.getByRole('button', { name: '共有・保存' }).click();
   await expect(dialog).toBeHidden();
   expect(await shared()).toEqual(['新しい編み図.knit']);
@@ -224,10 +224,10 @@ test('keeps the backup date at or after the autosave of the exported edits', asy
   // 自動保存（400ms後）より先に書き出す。操作のたびに待つと、遅い環境では保存が先に済んでしまう。
   const exportedUnsaved = await page.evaluate(async () => {
     const button = (name: string) => Array.from(document.querySelectorAll('button')).find((item) => item.textContent === name);
-    button('保存')!.click();
-    while (!button('この編み図')) await new Promise((resolve) => requestAnimationFrame(resolve));
+    button('出力')!.click();
+    while (!button('この編み図を書き出す')) await new Promise((resolve) => requestAnimationFrame(resolve));
     const unsaved = document.querySelector('.app-document-name')!.textContent!.includes('保存中');
-    button('この編み図')!.click();
+    button('この編み図を書き出す')!.click();
     return unsaved;
   });
   expect(exportedUnsaved).toBe(true);

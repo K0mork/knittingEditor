@@ -83,7 +83,7 @@ final class KnittingEditorUITests: XCTestCase {
         ).firstMatch
         XCTAssertTrue(version.waitForExistence(timeout: 10), app.debugDescription)
         back.tap()
-        let save = app.buttons["保存"]
+        let save = app.buttons["出力"]
         if !save.waitForExistence(timeout: 10), back.exists {
             scrollWebViewUntilHittable(back, in: app)
             back.tap()
@@ -183,7 +183,7 @@ final class KnittingEditorUITests: XCTestCase {
 
     /// 盤面の外では、WKWebView由来のWebページ特有の挙動を出さない（#81）。
     ///
-    /// 対策前は、見出しやツールバーのピンチで画面全体が拡大され（「保存」が約2倍になって
+    /// 対策前は、見出しやツールバーのピンチで画面全体が拡大され（「出力」が約2倍になって
     /// 画面外へ出た）、見出し・ラベル・ボタン・リンクの長押しで文字が選択されて
     /// 「Copy」「Look Up」などのメニューが出た。入力欄の文字選択は
     /// `testDocumentDialogRemainsUsableAfterFocusingInput`で確かめる。
@@ -194,7 +194,7 @@ final class KnittingEditorUITests: XCTestCase {
         let webView = app.webViews.firstMatch
         XCTAssertTrue(webView.waitForExistence(timeout: Self.editorAppearanceTimeout))
         let heading = webView.staticTexts["棒針編み図エディタ"].firstMatch
-        let save = app.buttons["保存"]
+        let save = app.buttons["出力"]
         XCTAssertTrue(save.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
         XCTAssertTrue(heading.waitForExistence(timeout: 10), app.debugDescription)
         let documentName = documentNameText(below: heading, in: webView)
@@ -211,7 +211,7 @@ final class KnittingEditorUITests: XCTestCase {
         toolbar.pinch(withScale: 3.0, velocity: 2.0)
         heading.doubleTap()
         assertFrameUnchanged(of: heading, from: headingFrame, in: app, note: "見出し")
-        assertFrameUnchanged(of: save, from: saveFrame, in: app, note: "保存")
+        assertFrameUnchanged(of: save, from: saveFrame, in: app, note: "出力")
 
         for (name, element) in [
             ("見出し", heading),
@@ -439,7 +439,7 @@ final class KnittingEditorUITests: XCTestCase {
         assertPrimaryControlsAreUsable(in: app)
         assertWithinWindow(app.buttons["編み図"], in: app)
 
-        for panel in ["盤面", "ブロック", "保存"] {
+        for panel in ["盤面", "ブロック", "出力"] {
             app.buttons[panel].tap()
             let close = app.buttons["閉じる"]
             XCTAssertTrue(close.waitForExistence(timeout: 10), "\(panel)パネルを開けない window=\(window): \(app.debugDescription)")
@@ -596,9 +596,9 @@ final class KnittingEditorUITests: XCTestCase {
         return XCTWaiter.wait(for: [focused], timeout: timeout) == .completed
     }
 
-    /// 保存パネルから出力を始め、ファイルの保存先を選ぶ画面が出るまでの秒数を返す。
+    /// 出力パネルから出力を始め、ファイルの保存先を選ぶ画面が出るまでの秒数を返す。
     private func measureExport(button name: String, in app: XCUIApplication) -> TimeInterval {
-        let save = app.buttons["保存"]
+        let save = app.buttons["出力"]
         XCTAssertTrue(save.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
         save.tap()
         let export = app.buttons[name]
@@ -714,12 +714,12 @@ final class KnittingEditorUITests: XCTestCase {
         )
     }
 
-    /// 保存パネルからネイティブの復元Pickerを開き、取り消して編集へ戻る。
+    /// 出力パネルからネイティブの復元Pickerを開き、取り消して編集へ戻る。
     func testRestorePickerDismissesBackToEditor() {
         let app = XCUIApplication()
         app.launch()
-        let restore = app.buttons["復元"]
-        let save = app.buttons["保存"]
+        let restore = app.buttons["バックアップから復元"]
+        let save = app.buttons["出力"]
         XCTAssertTrue(save.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
         openSavePanel(with: save, showing: restore, in: app)
         restore.tap()
@@ -728,7 +728,7 @@ final class KnittingEditorUITests: XCTestCase {
         let dismissal = dismissSystemSheet(in: app)
         assertDisappears(picker, from: app, note: dismissal)
         assertBecomesHittable(app.webViews.firstMatch, in: app, note: dismissal)
-        // 選択画面を閉じても保存・出力パネルは開いたまま残る。iPhoneではパネルが下の「保存」を覆うので、
+        // 選択画面を閉じても出力パネルは開いたまま残る。iPhoneではパネルが下の「出力」を覆うので、
         // パネルを閉じてから編集画面の操作へ戻れることを確かめる。
         let close = app.buttons["閉じる"]
         assertBecomesHittable(close, in: app, note: dismissal)
@@ -747,11 +747,11 @@ final class KnittingEditorUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
-        let save = app.buttons["保存"]
+        let save = app.buttons["出力"]
         XCTAssertTrue(save.waitForExistence(timeout: Self.editorAppearanceTimeout))
         save.tap()
 
-        let currentDocument = app.buttons["この編み図"]
+        let currentDocument = app.buttons["この編み図を書き出す"]
         XCTAssertTrue(currentDocument.waitForExistence(timeout: Self.editorAppearanceTimeout))
         currentDocument.tap()
 
@@ -792,10 +792,10 @@ final class KnittingEditorUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
-        let save = app.buttons["保存"]
+        let save = app.buttons["出力"]
         XCTAssertTrue(save.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
         if landscape { rotateToLandscape(app) }
-        let exports = landscape ? ["PNGを保存"] : ["PNGを保存", "PDFを保存", "この編み図", "全データ"]
+        let exports = landscape ? ["PNGを保存"] : ["PNGを保存", "PDFを保存", "この編み図を書き出す", "全データを書き出す"]
         for export in exports {
             let step = "\(export)-\(landscape ? "横" : "縦")"
             let button = app.buttons[export]
@@ -820,7 +820,7 @@ final class KnittingEditorUITests: XCTestCase {
             assertDisappears(sheet, from: app, note: "\(step) \(dismissal)")
 
             app.buttons["閉じる"].tap()
-            assertDisappears(app.buttons["この編み図"], from: app, note: step)
+            assertDisappears(app.buttons["この編み図を書き出す"], from: app, note: step)
             app.buttons["盤面"].tap()
             let rowsUp = app.buttons["上に段"]
             XCTAssertTrue(rowsUp.waitForExistence(timeout: 10), "\(step): \(app.debugDescription)")
@@ -841,8 +841,8 @@ final class KnittingEditorUITests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
         createDocument(named: name, in: app)
-        app.buttons["保存"].tap()
-        for format in ["PNGを保存", "PDFを保存", "この編み図"] {
+        app.buttons["出力"].tap()
+        for format in ["PNGを保存", "PDFを保存", "この編み図を書き出す"] {
             let export = app.buttons[format]
             XCTAssertTrue(export.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
             export.tap()
@@ -939,6 +939,76 @@ final class KnittingEditorUITests: XCTestCase {
         app.buttons["キャンセル"].tap()
     }
 
+    func testNarrowToolbarKeepsLongStitchAndPasteBandUsable() {
+        XCUIDevice.shared.orientation = .portrait
+        let app = XCUIApplication()
+        app.launch()
+        let picker = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label == %@", "編み目記号を選ぶ")).firstMatch
+        XCTAssertTrue(picker.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+        picker.tap()
+        // 記号の選択肢は`aria-pressed`を持つため、XCUITestではスイッチとして見える。
+        let stitch = app.switches.matching(NSPredicate(format: "label BEGINSWITH %@", "右上2目交差")).firstMatch
+        XCTAssertTrue(stitch.waitForExistence(timeout: 10), app.debugDescription)
+        assertHittableAfterScrolling(stitch, in: app)
+        stitch.tap()
+        let range = app.switches["範囲"]
+        XCTAssertTrue(range.isHittable, app.debugDescription)
+        assertWithinWindow(range, in: app)
+        range.tap()
+        let canvas = app.webViews.firstMatch.otherElements
+            .matching(NSPredicate(format: "label CONTAINS %@", "編み図編集盤面")).firstMatch
+        let start = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.35, dy: 0.35))
+        let end = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.55, dy: 0.55))
+        start.press(forDuration: 0.05, thenDragTo: end)
+        let copy = app.buttons["コピーして貼付"]
+        XCTAssertTrue(copy.waitForExistence(timeout: 10), app.debugDescription)
+        copy.tap()
+        let stop = app.buttons["やめる"]
+        XCTAssertTrue(stop.waitForExistence(timeout: 10), app.debugDescription)
+        let paste = app.switches["貼付"]
+        assertWithinWindow(paste, in: app)
+        XCTAssertTrue(paste.isHittable, app.debugDescription)
+        // 案内と操作ヒントの期限を過ぎても、盤面の上の帯は残る。
+        Thread.sleep(forTimeInterval: 12)
+        let band = app.staticTexts["貼付中：左上にするマスをタップ"]
+        XCTAssertTrue(band.exists, app.debugDescription)
+        XCTAssertLessThanOrEqual(stop.frame.maxY, canvas.frame.minY)
+        add(screenshotAttachment(named: "狭幅・長い記号名と貼付中の帯"))
+        stop.tap()
+        XCTAssertTrue(waitForDisappearance(of: stop, timeout: 10), app.debugDescription)
+        XCTAssertEqual(app.switches["描く"].value as? String, "1")
+    }
+
+    func testLandscapeExportPanelUsesRightColumn() {
+        let app = XCUIApplication()
+        app.launch()
+        let output = app.buttons["出力"]
+        XCTAssertTrue(output.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+        rotateToLandscape(app)
+        defer { XCUIDevice.shared.orientation = .portrait }
+        output.tap()
+        let close = app.buttons["閉じる"]
+        XCTAssertTrue(close.waitForExistence(timeout: 10), app.debugDescription)
+        let window = app.windows.firstMatch.frame
+        // 下からのシートでも「閉じる」は右上に出るため、全幅になる本文のボタンの左端で右列かを確かめる。
+        let png = app.buttons["PNGを保存"]
+        XCTAssertTrue(png.waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertGreaterThan(png.frame.minX, window.midX, app.debugDescription)
+        XCTAssertLessThan(close.frame.minY, window.midY, app.debugDescription)
+        for label in ["PNGを保存", "PDFを保存", "この編み図を書き出す", "全データを書き出す", "バックアップから復元"] {
+            assertHittableAfterScrolling(app.buttons[label], in: app)
+        }
+        add(screenshotAttachment(named: "横向き・出力パネルの右列"))
+        close.tap()
+        app.buttons["編み図"].tap()
+        XCTAssertTrue(close.waitForExistence(timeout: 10), app.debugDescription)
+        let newDocument = app.buttons["新しい編み図"]
+        XCTAssertTrue(newDocument.waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertGreaterThan(newDocument.frame.minX, window.midX, app.debugDescription)
+        XCTAssertLessThan(close.frame.minY, window.midY, app.debugDescription)
+    }
+
     func testCoreEditorControlsExposeAccessibleNamesAndState() {
         let app = XCUIApplication()
         app.launch()
@@ -955,7 +1025,7 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertEqual(app.switches["描く"].value as? String, "1")
         XCTAssertEqual(app.switches["消す"].value as? String, "0")
         XCTAssertEqual(app.switches["範囲"].value as? String, "0")
-        XCTAssertTrue(app.buttons["保存"].exists)
+        XCTAssertTrue(app.buttons["出力"].exists)
 
         let canvas = webView.otherElements
             .matching(NSPredicate(format: "label CONTAINS %@", "編み図編集盤面"))
@@ -971,11 +1041,11 @@ final class KnittingEditorUITests: XCTestCase {
             .firstMatch
             .waitForExistence(timeout: 10), webView.debugDescription)
 
-        app.buttons["保存"].tap()
-        XCTAssertTrue(app.staticTexts["保存・出力"].waitForExistence(timeout: 10), app.debugDescription)
+        app.buttons["出力"].tap()
+        XCTAssertTrue(app.staticTexts["出力"].waitForExistence(timeout: 10), app.debugDescription)
         XCTAssertTrue(app.buttons["閉じる"].isHittable, app.debugDescription)
         app.buttons["閉じる"].tap()
-        XCTAssertTrue(app.buttons["保存"].isHittable, app.debugDescription)
+        XCTAssertTrue(app.buttons["出力"].isHittable, app.debugDescription)
 
         stitchPicker.tap()
         XCTAssertTrue(app.staticTexts["編み目記号"].waitForExistence(timeout: 10))
@@ -991,12 +1061,12 @@ final class KnittingEditorUITests: XCTestCase {
         openDocumentsPanel(in: app)
         XCTAssertTrue(app.buttons["閉じる"].isHittable, app.debugDescription)
         app.buttons["閉じる"].tap()
-        let save = app.buttons["保存"]
+        let save = app.buttons["出力"]
         XCTAssertTrue(save.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
         save.tap()
         assertHittableAfterScrolling(app.buttons["PNGを保存"], in: app)
         assertHittableAfterScrolling(app.buttons["PDFを保存"], in: app)
-        assertHittableAfterScrolling(app.buttons["この編み図"], in: app)
+        assertHittableAfterScrolling(app.buttons["この編み図を書き出す"], in: app)
     }
 
     /// iPhone・iPad、可変幅で選択操作帯が操作メニューを覆わないことを確認する。
@@ -1018,7 +1088,7 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertTrue(copy.waitForExistence(timeout: 10), app.debugDescription)
         XCTAssertTrue(copy.isHittable, app.debugDescription)
         XCTAssertTrue(clear.isHittable, app.debugDescription)
-        for name in ["盤面", "ブロック", "保存"] {
+        for name in ["盤面", "ブロック", "出力"] {
             let button = app.buttons[name]
             XCTAssertTrue(button.isHittable, app.debugDescription)
             XCTAssertFalse(copy.frame.intersects(button.frame), "コピー帯が\(name)を覆う")
@@ -1029,7 +1099,7 @@ final class KnittingEditorUITests: XCTestCase {
         add(screenshotAttachment(named: "最大文字・選択操作帯と操作列"))
         clear.tap()
         XCTAssertTrue(waitForDisappearance(of: copy, timeout: 10), app.debugDescription)
-        for name in ["盤面", "ブロック", "保存"] {
+        for name in ["盤面", "ブロック", "出力"] {
             XCTAssertTrue(app.buttons[name].isHittable, app.debugDescription)
         }
         add(screenshotAttachment(named: "最大文字・選択解除後"))
@@ -1335,7 +1405,7 @@ final class KnittingEditorUITests: XCTestCase {
     }
 
     private func assertPrimaryControlsAreUsable(in app: XCUIApplication) {
-        for name in ["編み図", "盤面", "ブロック", "保存"] {
+        for name in ["編み図", "盤面", "ブロック", "出力"] {
             let button = app.buttons[name]
             // WebViewの器は中身より先に現れるため、起動用の上限で待つ（出れば直ちに終わる）。
             XCTAssertTrue(
@@ -1467,7 +1537,7 @@ final class KnittingEditorUITests: XCTestCase {
         app.otherElements["ActivityListView"]
     }
 
-    /// 「保存」で保存パネルを開く。
+    /// 「出力」で出力パネルを開く。
     ///
     /// 起動直後は「編み図」と同じく最初のタップが効かないことがある（#44）。パネルが
     /// 開いていない（「閉じる」が無い）ときだけ押し直す。
@@ -1498,7 +1568,7 @@ final class KnittingEditorUITests: XCTestCase {
     /// 共有シートの枠の外で、いちばん広い余白の中央をタップする。
     ///
     /// iOS 26の共有シートには閉じるボタンが無く、iPhoneでも枠外（`PopoverDismissRegion`）の
-    /// タップで閉じる。ラベルで「閉じる」を探すと背後の保存パネルのボタンに当たり、
+    /// タップで閉じる。ラベルで「閉じる」を探すと背後の出力パネルのボタンに当たり、
     /// 横向きではその位置がシートの内側に入って閉じられない。
     private func tapOutside(_ sheet: XCUIElement, in app: XCUIApplication) {
         let window = app.windows.firstMatch
