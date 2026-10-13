@@ -1086,28 +1086,39 @@ final class KnittingEditorUITests: XCTestCase {
             XCTFail("パネルの閉じるボタンが見つからない: \(app.debugDescription)")
             return
         }
-        for _ in 0..<maximumScrolls {
-            waitUntilStill(element)
+        for scrolls in 0...maximumScrolls {
             let bounds = app.windows.firstMatch.frame
             // ヘッダーの下余白も避け、ボタン全体が見えるまでスクロールする。
             let top = max(bounds.minY, close.frame.maxY + 8)
             let visible = CGRect(x: bounds.minX, y: top, width: bounds.width, height: max(0, bounds.maxY - top))
                 .insetBy(dx: 2, dy: 2)
             let frame = element.frame
-            if element.isHittable && visible.contains(frame) { return }
+            if visible.contains(frame) && element.isHittable { return }
             guard visible.height > frame.height, visible.width > frame.width else {
                 XCTFail("操作対象がパネルに収まらない frame=\(frame) visible=\(visible): \(app.debugDescription)")
                 return
             }
-            // 小さくゆっくり動かし、指を止めてから離す。行き過ぎた場合は逆方向へ戻す。
-            let distance = min(60, visible.height * 0.25)
+            guard scrolls < maximumScrolls else { break }
+            // 残りの距離に合わせてゆっくり動かす。行き過ぎた場合は逆方向へ戻す。
             let direction: CGFloat = frame.minY < visible.minY ? 1 : -1
+            let remaining = direction > 0 ? visible.minY - frame.minY : frame.maxY - visible.maxY
+            let distance = max(40, min(remaining + 8, visible.height * 0.6))
             // iPadの右側パネルでもパネル内をドラッグするため、対象ボタンの横位置を使う。
             let dragX = min(max(frame.midX, visible.minX), visible.maxX)
             let start = app.coordinate(withNormalizedOffset: .zero)
                 .withOffset(CGVector(dx: dragX, dy: visible.midY - direction * distance / 2))
             let end = start.withOffset(CGVector(dx: 0, dy: direction * distance))
-            start.press(forDuration: 0.05, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.2)
+            start.press(forDuration: 0.05, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.1)
+            // predicateの約1秒刻みの待機を避け、ドラッグ後だけ短く位置を確認する。
+            let deadline = Date().addingTimeInterval(1)
+            var previous = element.frame
+            for _ in 0..<6 {
+                guard Date() < deadline else { break }
+                Thread.sleep(forTimeInterval: 0.15)
+                let current = element.frame
+                if current == previous { break }
+                previous = current
+            }
         }
         XCTFail("スクロールしても操作対象がパネル内に見えない: \(app.debugDescription)")
     }
