@@ -278,6 +278,100 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertTrue(supportLink.exists, app.debugDescription)
     }
 
+    /// 自動保存を1時間遅らせ、文書切替だけで直前の編集がDBへ残ることを確かめる。
+    func testDocumentSwitchSavesWithoutAutosave() {
+        let app = XCUIApplication()
+        app.launchEnvironment["KNITTING_EDITOR_AUTOSAVE_DELAY_MS"] = "3600000"
+        app.launch()
+        let suffix = UUID().uuidString.prefix(8)
+        let first = "切替A-\(suffix)"
+        let second = "切替B-\(suffix)"
+        createDocument(named: first, in: app)
+        createDocument(named: second, in: app)
+        selectSaveProbeDocument(first, in: app)
+        let canvas = saveProbeCanvas(count: 0, in: app)
+        canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.4, dy: 0.4)).tap()
+        _ = saveProbeCanvas(count: 1, in: app)
+        assertSaveProbeIsDirty(in: app)
+        selectSaveProbeDocument(second, in: app)
+        let secondCanvas = saveProbeCanvas(count: 0, in: app)
+        secondCanvas.coordinate(withNormalizedOffset: CGVector(dx: 0.6, dy: 0.6)).tap()
+        saveProbeCanvas(count: 1, in: app)
+            .coordinate(withNormalizedOffset: CGVector(dx: 0.7, dy: 0.6)).tap()
+        _ = saveProbeCanvas(count: 2, in: app)
+        assertSaveProbeIsDirty(in: app)
+        selectSaveProbeDocument(first, in: app)
+        _ = saveProbeCanvas(count: 1, in: app)
+        // 切替後の表示だけでなく、WebViewを作り直してDBから読み直す。
+        app.terminate()
+        app.launch()
+        waitForDocumentSave(named: first, in: app.webViews.firstMatch)
+        _ = saveProbeCanvas(count: 1, in: app)
+        assertSaveProbePosition(count: 1, dx: 0.4, dy: 0.4, in: app)
+        selectSaveProbeDocument(second, in: app)
+        _ = saveProbeCanvas(count: 2, in: app)
+        assertSaveProbePosition(count: 2, dx: 0.6, dy: 0.6, in: app)
+        assertSaveProbePosition(count: 2, dx: 0.7, dy: 0.6, in: app)
+    }
+
+    /// 自動保存を1時間遅らせ、Home移行時の保存だけで直前の編集がDBへ残ることを確かめる。
+    /// 前面へ戻さず、バックグラウンドのまま終了してから再起動する。
+    func testHomeSavesWithoutAutosave() {
+        let app = XCUIApplication()
+        app.launchEnvironment["KNITTING_EDITOR_AUTOSAVE_DELAY_MS"] = "3600000"
+        app.launch()
+        let name = "Home保存-\(UUID().uuidString.prefix(8))"
+        createDocument(named: name, in: app)
+        saveProbeCanvas(count: 0, in: app)
+            .coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        _ = saveProbeCanvas(count: 1, in: app)
+        assertSaveProbeIsDirty(in: app)
+        XCUIDevice.shared.press(.home)
+        XCTAssertTrue(
+            app.wait(for: .runningBackgroundSuspended, timeout: 30) || app.state == .runningBackground,
+            app.debugDescription
+        )
+        // 復帰すると`inactive`を通って保存がもう一度走るため、前面へ戻さずに終了する。
+        // Home移行時に書き込めていなければ、再起動後のDBに編集は残らない。
+        app.terminate()
+        app.launch()
+        waitForDocumentSave(named: name, in: app.webViews.firstMatch)
+        _ = saveProbeCanvas(count: 1, in: app)
+    }
+
+    private func assertSaveProbePosition(count: Int, dx: CGFloat, dy: CGFloat, in app: XCUIApplication) {
+        app.switches["消す"].tap()
+        saveProbeCanvas(count: count, in: app)
+            .coordinate(withNormalizedOffset: CGVector(dx: dx, dy: dy)).tap()
+        _ = saveProbeCanvas(count: count - 1, in: app)
+        app.buttons["元に戻す"].tap()
+        _ = saveProbeCanvas(count: count, in: app)
+        app.switches["描く"].tap()
+    }
+
+    private func assertSaveProbeIsDirty(in app: XCUIApplication) {
+        XCTAssertTrue(app.webViews.firstMatch.staticTexts
+            .matching(NSPredicate(format: "label CONTAINS %@", "保存中"))
+            .firstMatch.waitForExistence(timeout: 10), app.debugDescription)
+    }
+
+    private func saveProbeCanvas(count: Int, in app: XCUIApplication) -> XCUIElement {
+        let canvas = app.webViews.firstMatch.otherElements
+            .matching(NSPredicate(format: "label CONTAINS %@", "記号\(count)個"))
+            .firstMatch
+        XCTAssertTrue(canvas.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+        return canvas
+    }
+
+    private func selectSaveProbeDocument(_ name: String, in app: XCUIApplication) {
+        _ = openDocumentsPanel(in: app)
+        let button = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", name + "、")).firstMatch
+        XCTAssertTrue(button.waitForExistence(timeout: 10), app.debugDescription)
+        button.tap()
+        let title = app.webViews.firstMatch.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", name)).firstMatch
+        XCTAssertTrue(title.waitForExistence(timeout: 10), app.debugDescription)
+    }
+
     func testEditAndRelaunchRestoresLocalDocument() {
         let app = XCUIApplication()
         app.launch()
