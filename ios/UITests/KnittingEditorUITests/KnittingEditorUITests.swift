@@ -282,6 +282,8 @@ final class KnittingEditorUITests: XCTestCase {
 
     /// 自動保存を1時間遅らせ、文書切替だけで直前の編集がDBへ残ることを確かめる。
     func testDocumentSwitchSavesWithoutAutosave() {
+        // 2文書の作成・切替・再起動を1本で行うため、遅いランナーでは既定の3分に近づく。
+        executionTimeAllowance = 240
         let app = XCUIApplication()
         app.launchEnvironment["KNITTING_EDITOR_AUTOSAVE_DELAY_MS"] = "3600000"
         app.launch()
@@ -290,16 +292,17 @@ final class KnittingEditorUITests: XCTestCase {
         let second = "切替B-\(suffix)"
         createDocument(named: first, in: app)
         createDocument(named: second, in: app)
+        // 名前入力のキーボードが閉じたあとのレイアウトで、別の文書を開く。
+        _ = positionSaveProbeCanvas(count: 0, in: app)
         selectSaveProbeDocument(first, in: app)
-        let canvas = saveProbeCanvas(count: 0, in: app)
-        canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.4, dy: 0.4)).tap()
+        let canvas = positionSaveProbeCanvas(count: 0, in: app)
+        saveProbeCell(row: 8, col: 12, on: canvas).tap()
         _ = saveProbeCanvas(count: 1, in: app)
         assertSaveProbeIsDirty(in: app)
         selectSaveProbeDocument(second, in: app)
-        let secondCanvas = saveProbeCanvas(count: 0, in: app)
-        secondCanvas.coordinate(withNormalizedOffset: CGVector(dx: 0.6, dy: 0.6)).tap()
-        saveProbeCanvas(count: 1, in: app)
-            .coordinate(withNormalizedOffset: CGVector(dx: 0.7, dy: 0.6)).tap()
+        let secondCanvas = positionSaveProbeCanvas(count: 0, in: app)
+        saveProbeCell(row: 12, col: 14, on: secondCanvas).tap()
+        saveProbeCell(row: 12, col: 15, on: saveProbeCanvas(count: 1, in: app)).tap()
         _ = saveProbeCanvas(count: 2, in: app)
         assertSaveProbeIsDirty(in: app)
         selectSaveProbeDocument(first, in: app)
@@ -309,11 +312,15 @@ final class KnittingEditorUITests: XCTestCase {
         app.launch()
         waitForDocumentSave(named: first, in: app.webViews.firstMatch)
         _ = saveProbeCanvas(count: 1, in: app)
-        assertSaveProbePosition(count: 1, dx: 0.4, dy: 0.4, in: app)
+        // 起動中のサイズではなく、表示が落ち着いたサイズで初期位置を決め直す。
+        _ = positionSaveProbeCanvas(count: 1, in: app)
+        selectSaveProbeDocument(second, in: app)
+        selectSaveProbeDocument(first, in: app)
+        assertSaveProbePosition(count: 1, row: 8, col: 12, in: app)
         selectSaveProbeDocument(second, in: app)
         _ = saveProbeCanvas(count: 2, in: app)
-        assertSaveProbePosition(count: 2, dx: 0.6, dy: 0.6, in: app)
-        assertSaveProbePosition(count: 2, dx: 0.7, dy: 0.6, in: app)
+        assertSaveProbePosition(count: 2, row: 12, col: 14, in: app)
+        assertSaveProbePosition(count: 2, row: 12, col: 15, in: app)
     }
 
     /// 自動保存を1時間遅らせ、Home移行時の保存だけで直前の編集がDBへ残ることを確かめる。
@@ -341,11 +348,73 @@ final class KnittingEditorUITests: XCTestCase {
         _ = saveProbeCanvas(count: 1, in: app)
     }
 
-    private func assertSaveProbePosition(count: Int, dx: CGFloat, dy: CGFloat, in app: XCUIApplication) {
+    private func positionSaveProbeCanvas(count: Int, in app: XCUIApplication) -> XCUIElement {
+        let canvas = saveProbeCanvas(count: count, in: app)
+        var previous = CGRect.null
+        var stableSince = Date()
+        let stable = XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in
+                guard canvas.exists, !app.keyboards.firstMatch.exists,
+                      !app.buttons["閉じる"].exists else {
+                    previous = .null
+                    stableSince = Date()
+                    return false
+                }
+                let frame = canvas.frame
+                if frame != previous || frame.isEmpty {
+                    previous = frame
+                    stableSince = Date()
+                    return false
+                }
+                return Date().timeIntervalSince(stableSince) >= 1
+            },
+            object: canvas
+        )
+        let result = XCTWaiter.wait(for: [stable], timeout: 10)
+        if result != .completed {
+            add(screenshotAttachment(named: "保存検証の盤面が安定しない"))
+        }
+        XCTAssertEqual(result, .completed, app.debugDescription)
+        return canvas
+    }
+
+    // BoardCanvas.initialViewport/clampViewportと同じ変換で、20×20、既定30pxの
+    // セルの中心を指定する。画面サイズに対する割合では同じセルを指定できない。
+    private func saveProbeCell(row: Int, col: Int, on canvas: XCUIElement) -> XCUICoordinate {
+        let size = canvas.frame.size
+        let band: CGFloat = 28
+        let cell: CGFloat = 30
+        let cells: CGFloat = 20
+        func origin(_ extent: CGFloat) -> CGFloat {
+            let center = (extent + band) / 2
+            let initial = min(band + 8, extent - 8 - cells * cell)
+            return min(center - cell / 2, max(center - (cells - 0.5) * cell, initial))
+        }
+        let point = CGVector(dx: origin(size.width) + (CGFloat(col) + 0.5) * cell,
+                             dy: origin(size.height) + (CGFloat(row) + 0.5) * cell)
+        XCTAssertTrue(point.dx > band && point.dx < size.width
+                      && point.dy > band && point.dy < size.height,
+                      "セルが表示範囲外 row=\(row) col=\(col) frame=\(canvas.frame)")
+        return canvas.coordinate(withNormalizedOffset: .zero).withOffset(point)
+    }
+
+    private func assertSaveProbePosition(count: Int, row: Int, col: Int, in app: XCUIApplication) {
+        let canvas = positionSaveProbeCanvas(count: count, in: app)
         app.switches["消す"].tap()
-        saveProbeCanvas(count: count, in: app)
-            .coordinate(withNormalizedOffset: CGVector(dx: dx, dy: dy)).tap()
-        _ = saveProbeCanvas(count: count - 1, in: app)
+        let eraseMode = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "label CONTAINS %@", "消去モード"),
+            object: canvas
+        )
+        XCTAssertEqual(XCTWaiter.wait(for: [eraseMode], timeout: 10), .completed, app.debugDescription)
+        _ = positionSaveProbeCanvas(count: count, in: app)
+        saveProbeCell(row: row, col: col, on: canvas).tap()
+        let erased = app.webViews.firstMatch.otherElements
+            .matching(NSPredicate(format: "label CONTAINS %@", "記号\(count - 1)個")).firstMatch
+        let didErase = erased.waitForExistence(timeout: 10)
+        if !didErase {
+            add(screenshotAttachment(named: "保存検証のセル消去に失敗"))
+        }
+        XCTAssertTrue(didErase, "row=\(row) col=\(col) frame=\(canvas.frame): \(app.debugDescription)")
         app.buttons["元に戻す"].tap()
         _ = saveProbeCanvas(count: count, in: app)
         app.switches["描く"].tap()
