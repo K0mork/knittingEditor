@@ -100,16 +100,22 @@ export function usePanelFocus<T extends HTMLElement>(open: boolean) {
 
 export const NOTIFICATION_DURATION_MS = 4500;
 
-/** 一定時間で消えるトースト。続けて通知したときは前のタイマーを捨てる。 */
+/** トーストに添えるボタン。押したときの処理は呼び出し側が決める。 */
+export interface NotificationAction {
+  label: string;
+  run: () => void;
+}
+
+/** 一定時間で消えるトースト。続けて通知したときは前のタイマーとボタンを捨てる。 */
 export function useNotifier() {
-  const [message, setMessage] = useState('');
+  const [notification, setNotification] = useState<{ message: string; action?: NotificationAction }>({ message: '' });
   const timeoutRef = useRef<number | undefined>(undefined);
 
-  const notify = useCallback((text: string) => {
-    setMessage(text);
+  const notify = useCallback((text: string, action?: NotificationAction) => {
+    setNotification({ message: text, action });
     if (timeoutRef.current !== undefined) window.clearTimeout(timeoutRef.current);
     timeoutRef.current = window.setTimeout(() => {
-      setMessage('');
+      setNotification({ message: '' });
       timeoutRef.current = undefined;
     }, NOTIFICATION_DURATION_MS);
   }, []);
@@ -118,7 +124,7 @@ export function useNotifier() {
     if (timeoutRef.current !== undefined) window.clearTimeout(timeoutRef.current);
   }, []);
 
-  return { message, notify };
+  return { message: notification.message, notificationAction: notification.action, notify };
 }
 
 export interface ClipboardShortcutOptions {

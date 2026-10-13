@@ -41,6 +41,25 @@ for (const path of guides) {
         for (const link of links.filter((link) => !link.closest('header'))) expect(link.textContent).toContain('戻る');
         for (const link of links) expect(link.textContent).not.toContain('編み図を作成する');
       });
+
+      it('explains how to allow Photos in the section that the denied-save toast opens', () => {
+        // 写真への追加を拒否したときのトーストの「やり方を見る」は、アプリが渡す節のIDでこの節を開く（#208）。
+        const swift = readFileSync(new URL('ios/App/WebViewContainer.swift', root), 'utf8');
+        const sections = [...swift.matchAll(/guideSection: "([^"]+)"/g)].map((match) => match[1]);
+        expect(sections).toEqual(['allow-photos']);
+        const heading = document.getElementById('allow-photos');
+        expect(heading?.textContent).toBe('写真への保存を許可する');
+        let section = '';
+        const settingsLinks = [];
+        for (let node = heading.nextElementSibling; node && !/^H[23]$/.test(node.tagName); node = node.nextElementSibling) {
+          section += node.textContent;
+          if (node.matches('a[href]')) settingsLinks.push(node);
+        }
+        for (const label of ['画像を保存', '許可しない', '設定アプリを開く', 'アプリ', '棒針編み図', '写真', '写真の追加のみ']) expect(section).toContain(`「${label}」`);
+        expect(settingsLinks.map((link) => [link.getAttribute('href'), link.textContent])).toEqual([['app-settings:', '設定アプリを開く']]);
+        // 設定アプリを開くリンクは、この節だけに置く。
+        expect(document.querySelectorAll('a[href^="app-settings:"]').length).toBe(1);
+      });
     }
   });
 }

@@ -180,7 +180,10 @@ export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, 
     <input ref={editor.fileInputRef} hidden type="file" accept=".knit,application/gzip" onChange={(event) => { void editor.restore(event.target.files?.[0]); event.target.value = ''; }} />
     {children}
     {editor.busy && <div className="busy" role="status" aria-live="polite"><span className="spinner" />{editor.busy}</div>}
-    {editor.message && <div className="toast" role="status" aria-live="polite" aria-atomic="true">{editor.message}</div>}
+    {editor.message && <div className="toast" role="status" aria-live="polite" aria-atomic="true">
+      {editor.message}
+      {editor.notificationAction && <button type="button" className="toast-action" onClick={editor.notificationAction.run}>{editor.notificationAction.label}</button>}
+    </div>}
     {footer}
   </div>;
 }
