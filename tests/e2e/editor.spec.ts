@@ -260,7 +260,7 @@ test('selects a stitch from the visual palette and places white-out data', async
   await page.getByRole('button', { name: '編み目記号を選ぶ' }).click();
   const picker = page.getByRole('dialog', { name: '編み目記号' });
   await expect(picker).toBeVisible();
-  await expect(picker.locator('.stitch-option-symbol svg')).toHaveCount(26);
+  await expect(picker.locator('.stitch-option-symbol svg')).toHaveCount(29);
   await expect(picker.getByRole('button', { name: /裏目の右上2目一度/ })).toBeVisible();
   await picker.getByRole('button', { name: /白くする/ }).click();
   await expect(page.locator('.stitch-tool-name')).toHaveText('白くする');

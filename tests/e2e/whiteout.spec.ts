@@ -12,7 +12,7 @@ for (const width of [390, 820, 1280]) {
       await page.evaluate((size) => { document.documentElement.style.fontSize = `${size}px`; }, fontSize);
       await page.getByRole('button', { name: '編み目記号を選ぶ' }).click();
       const options = page.getByRole('dialog', { name: '編み目記号' }).locator('.stitch-option');
-      await expect(options).toHaveCount(26);
+      await expect(options).toHaveCount(29);
       for (const option of await options.all()) {
         await option.scrollIntoViewIfNeeded();
         const bounds = await option.evaluate((element) => {

@@ -3,6 +3,9 @@ import { STITCHES, STITCH_BY_KEY, stitchSvg } from './catalog';
 import { getGlyphDefinition, glyphPdfCommands } from './glyphs';
 
 const EXPECTED_IDS = {
+  right_increase: 27,
+  left_increase: 28,
+  float_stitch: 29,
   knit: 1,
   purl: 2,
   yo: 3,
@@ -61,6 +64,9 @@ const EXPECTED_METADATA = [
   [24, 'purl_twist_stitch', 1, 1, 1, 1, 'twist', 'jis-derived', 'JIS 2200・備考2'],
   [25, 'erase', 1, 1, 1, 1, 'utility', 'utility', '補助・JIS外'],
   [26, 'purl_right_up_two_one', 2, 1, 2, 1, 'decrease', 'jis-derived', 'JIS 2040・備考2'],
+  [27, 'right_increase', 1, 1, 1, 2, 'basic', 'jis', 'JIS 2090'],
+  [28, 'left_increase', 1, 1, 1, 2, 'basic', 'jis', 'JIS 2100'],
+  [29, 'float_stitch', 1, 2, 1, 1, 'basic', 'jis', 'JIS 2170'],
 ] as const;
 
 describe('stitch catalog', () => {
