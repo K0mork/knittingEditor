@@ -79,7 +79,7 @@ SIMULATOR_UDID=<booted-simulator-udid> ios/scripts/simulate-app-update.sh "iPhon
 - `packages/editor-core/stitches/glyphs.ts`: Canvas、SVG、PDFに共通するベクター記号
 - `packages/editor-core/export/`: PNG、1ページPDF、A4分割PDF
 - `packages/editor-core/storage/database.ts`: IndexedDB、`.knit` v2のエンコード・検証
-- `packages/editor-core/ui/`: 編集画面（`useEditorController.ts`・`EditorView.tsx`）、編み図管理、盤面編集、ブロック、出力画面。環境差分はダイアログ・ファイル受け渡し・分析・見出しとフッターを引数で受け取る
+- `packages/editor-core/ui/`: 編集画面（`useEditorController.ts`・`EditorView.tsx`）、編み図管理、盤面編集、ブロック、出力画面。環境差分はダイアログ・ファイル受け渡し・分析・見出しを引数で受け取る
 
 次はアプリ用に差し替えます。
 
@@ -152,7 +152,9 @@ SwiftDataへの移行は初回リリース後の選択肢とします。初回�
 - iPhoneとiPadの代表Simulatorで実行する。
 - ジェスチャー、Apple Pencil、巨大PNG/PDF、メモリ圧迫は実機で確認する。
 - オフライン試験では通信を遮断し、全必須機能を操作する。
-- `.github/workflows/ci.yml`でWebテスト、Swiftテスト、iPhone／iPad SimulatorのXCUITest、生成アプリバンドルの外部参照検査を実行する。
+- PRの検証（`.github/workflows/ci.yml`）は、変更範囲に応じてWeb E2E（Chromium・WebKit）、iOS Webの型検査・Vitest、iPhone 17の全単体テストと`ios/UITests/pr-smoke-ui-tests.txt`のUIスモークテスト、Debugオフラインbundle検査を実行する。App Store文書・UIスモーク一覧の静的検査は常時実行し、必要なジョブを`ci-gate`で必須にする。
+- 全検証は別の`.github/workflows/ios-full.yml`で、関連するマージ後、毎晩（18:23 UTC）、手動実行時に行う。iPhone 17・iPad (A16)の全単体／UIテストとDebug bundle検査、両端末の`app_update`、unsigned Release Archiveとオフライン資産検査が対象で、Pagesのゲートには含めない。iPadのUI除外一覧は使わない。`main`・夜間の失敗は`bug`・`priority:P1`・`platform:ios`付きIssueを作成し、同名の未完了Issueがある場合は実行URLをコメントする。失敗は調査・修正する。
+- iOS・共通コードの完了確認には、マージ後のコミット、または変更を含む後続の`main`コミットで全検証の成功が必要。同じブランチの古いrunはキャンセルされるため、連続マージ時は変更を含む最新コミットで確認する。夜間runもその変更を含む必要がある。保存・移行、Files・共有、iPadのレイアウト・キーボード・回転、Swift・ビルド設定・依存、スモーク対象外テストなどリスクの高い変更は、マージ前にもfeatureブランチで全検証を手動実行し、そのSHAの全ジョブの成功を確認する。
 
 ### 互換性
 
@@ -169,7 +171,7 @@ SwiftDataへの移行は初回リリース後の選択肢とします。初回�
 以下がすべて満たされるまでApp Store提出を行いません。
 
 - `SPECIFICATION.md`のP0要件を満たす。
-- 全自動テストと指定実機確認が成功する。
+- PRのci-gateに加え、変更を含むマージ後のコミットまたは後続のmainコミットでFull iOS validationの全端末テスト・更新復元・Release Archiveが成功し、指定実機確認も成功する。
 - オフライン試験で外部通信が発生しない。
 - Web版との`.knit`往復試験が成功する。
 - 1000×1000盤面で編集・保存が破綻しない。

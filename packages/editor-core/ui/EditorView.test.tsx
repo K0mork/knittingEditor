@@ -75,7 +75,6 @@ async function renderEditor(
       editor={editor}
       renderTitle={(status) => <div className="app-title"><h1>題字</h1><p data-testid="status">{status}</p></div>}
       backupNote="案内"
-      footer={<footer>フッター</footer>}
       {...view}
     />;
   }
@@ -149,7 +148,7 @@ describe('EditorView', () => {
 
     expect(container.querySelector('h1')?.textContent).toBe('題字');
     expect(container.querySelector('[data-testid="status"]')?.textContent).toBe('新しい編み図、保存済み');
-    expect(container.querySelector('footer')?.textContent).toBe('フッター');
+    expect(container.querySelector('footer')).toBeNull();
     expect(analytics.track).toHaveBeenCalledWith('editor_ready', { document_count_bucket: '1' });
 
     await click('盤面');

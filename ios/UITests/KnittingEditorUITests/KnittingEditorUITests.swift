@@ -72,7 +72,9 @@ final class KnittingEditorUITests: XCTestCase {
         // タップ位置が画面の外（y=3275）で計算されて外れ、使い方ページのまま残った（#95）。
         // 自分でページを送り、押せる位置に来てから叩く。使い方ページのまま（リンクが残って
         // いる）ときに限って押し直し、最後まで戻らなければ失敗にする。
-        let back = app.links["棒針編み図エディタへ戻る"]
+        let returnLinks = app.links.matching(identifier: "編集画面へ戻る")
+        XCTAssertEqual(returnLinks.count, 3, app.debugDescription)
+        let back = returnLinks.element(boundBy: 2)
         XCTAssertTrue(back.waitForExistence(timeout: 10), app.debugDescription)
         scrollWebViewUntilHittable(back, in: app)
         // ページの末尾に、アプリから渡したバージョンとビルド番号が出る（#84）。

@@ -24,6 +24,12 @@
 
 ルートの`package.json`と`package-lock.json`をworkspaceの唯一のNode依存定義とする。iOSの`ios/scripts/build-web.sh`はルート依存を使って`ios/Web`をビルドし、`ios/AppResources/Web/`へコピーする。
 
-`.github/workflows/ci.yml`は変更範囲を判定し、Web・共通コード・iOSの検証を必要な範囲で実行する。Markdownはどちらのビルド入力でもないため重い検証を起こさず、App Store提出文書の検査は変更範囲によらず常に実行する`app_store_docs`が受け持つ。常に実行される`ci-gate`が、`app_store_docs`の結果、変更範囲判定そのものの失敗、必要なジョブのskip・失敗・キャンセルを検査する。範囲を判定できないときは判定側がWeb・iOSの両方をtrueにして通す。Webまたは共通コードの`main`更新では、関連テスト成功後にPages artifactをデプロイし、iOS専用更新では再公開しない。
+`.github/workflows/ci.yml`は変更範囲を判定し、Web・共通コード・iOSの検証を必要な範囲で実行する。Markdownはどちらのビルド入力でもないため重い検証を起こさず、App Store提出文書とUIスモーク一覧の検査は変更範囲によらず常に実行する`app_store_docs`が受け持つ。常に実行される`ci-gate`が、`app_store_docs`の結果、変更範囲判定そのものの失敗、必要なジョブのskip・失敗・キャンセルを検査する。範囲を判定できないときは判定側がWeb・iOSの両方をtrueにして通す。Webまたは共通コードの`main`更新では、関連テスト成功後にPages artifactをデプロイし、iOS専用更新では再公開しない。
 
-本番公開後は、`CI and deploy Pages`の`web`と`deploy`、`https://knittingeditor.com/`のHTTPS応答、主要編集、PNG/PDF、`.knit`入出力を確認し、マージしたPRへのコメントで報告する（ルートの`AGENTS.md`の「Deployment Procedure」）。
+PRの検証（`.github/workflows/ci.yml`）は、変更範囲に応じてWeb E2E（Chromium・WebKit）、iOS Webの型検査・Vitest、iPhone 17の全単体テストと`ios/UITests/pr-smoke-ui-tests.txt`のUIスモークテスト、Debugオフラインbundle検査を実行する。App Store文書・UIスモーク一覧の静的検査は常時実行し、必要なジョブを`ci-gate`で必須にする。
+
+全検証は別の`.github/workflows/ios-full.yml`で、関連するマージ後、毎晩（18:23 UTC）、手動実行時に行う。iPhone 17・iPad (A16)の全単体／UIテストとDebug bundle検査、両端末の`app_update`、unsigned Release Archiveとオフライン資産検査が対象で、Pagesのゲートには含めない。iPadのUI除外一覧は使わない。`main`・夜間の失敗は`bug`・`priority:P1`・`platform:ios`付きIssueを作成し、同名の未完了Issueがある場合は実行URLをコメントする。失敗は調査・修正する。
+
+iOS・共通コードの完了確認には、マージ後のコミット、または変更を含む後続の`main`コミットで全検証の成功が必要。同じブランチの古いrunはキャンセルされるため、連続マージ時は変更を含む最新コミットで確認する。夜間runもその変更を含む必要がある。保存・移行、Files・共有、iPadのレイアウト・キーボード・回転、Swift・ビルド設定・依存、スモーク対象外テストなどリスクの高い変更は、マージ前にもfeatureブランチで全検証を手動実行し、そのSHAの全ジョブの成功を確認する。
+
+本番公開後は、`CI and deploy Pages`の必要なゲートジョブと`deploy`・`smoke`、`https://knittingeditor.com/`のHTTPS応答、主要編集、PNG/PDF、`.knit`入出力を確認し、マージしたPRへのコメントで報告する（ルートの`AGENTS.md`の「Deployment Procedure」）。

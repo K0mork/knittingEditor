@@ -1,0 +1,10 @@
+# 2026-10-13 — 編集画面フッターとiOS仕様・CI説明の整合
+
+- 影響: 常に非表示だった編集画面のフッターを削除した（Closes #206）。記号選択は標準区分を表示せず、カテゴリ・名称・大きさ（段×目）・プレビューを仕様とした（Closes #214）。iOSガイド末尾のリンクを「編集画面へ戻る」に統一した。CI文書はPRのWeb・iOS Web・文書／スモーク一覧・iPhone全単体＋UIスモークと、別ワークフローのマージ後／夜間／手動のiPhone・iPad全検証を分けた。過去の検証記録は保持した。
+- 主なファイル: src/App.tsx、ios/Web/src/App.tsx、packages/editor-core/ui/EditorView.tsx、packages/editor-core/styles/base.css、ios/Web/public/guide/index.html、ios/SPECIFICATION.md、ios/AGENTS.md、ios/DEVELOPMENT.md、ios/README.md、ios/docs/WEB_SYNC.md、ios/docs/APP_STORE_CHECKLIST.md、docs/ARCHITECTURE.md。
+- テスト: EditorView.test.tsxでフッター不在を確認。BackupReminderBar.test.tsxの削除したpropsを修正。guideFooter.test.tsを追加し、下部ボタンとフッターの文言・リンク先の一致を確認。editor-footer.spec.tsを追加し、編集画面フッター不在・ガイドフッター維持・帰還を確認。XCUITestのtestGuideNavigationReturnsToUsableEditorは同名3リンクの末尾を指定するよう更新。
+- 検証（Node v24.10.0）: `npm run typecheck`、`npm run build`、`npm run check:dist`、`(cd ios/Web && ../../node_modules/.bin/tsc -p tsconfig.app.json --noEmit)`、`(cd ios/Web && ../../node_modules/.bin/vitest run --config vite.config.ts)`（13ファイル117件）、`sh ios/scripts/check-app-store-docs.sh`、`node scripts/check-pr-smoke-ui-tests.mjs`（11件の存在確認）、`git diff --check`が成功。カタログv4の29記号と、StitchPickerのカテゴリ・名称・段×目・プレビューをソースで照合した。
+- 単体テスト: 最新のmainを取り込んだ後の`npm test -- --maxWorkers=4`は全件成功。並列数を絞らない`npm test`では、変更していない`thumbnail.test.ts`（250ms）と`pdf.worker.test.ts`（15000ms）の処理時間の上限を高負荷時に超えて2件失敗した。対象コードと上限値は変更していない。
+- E2E: 最新のmainを取り込んだ後の`npx playwright test --workers=4`は422件成功・6件スキップ・1件失敗。失敗は`editor.spec.ts`の「keeps cleared size inputs empty and applies dimensions on change」（chromium-mobile）で、変更していないorigin/mainでもchromium-desktopの6回中1回失敗する既存の断続的な失敗のため、別に調べる。`npx playwright test tests/e2e/editor-footer.spec.ts tests/e2e/guide-content.spec.ts`は全プロジェクトで9件成功。
+- iOS: `xcodebuild test -only-testing:knittingEditorUITests/KnittingEditorUITests/testGuideNavigationReturnsToUsableEditor`をiPhone 17とiPad (A16)のSimulatorで実行し、両方成功。両端末の全テスト、app-update、Release Archiveは、マージ後のFull iOS validationで確かめる。
+- デプロイ影響: Web共通UI・CSSは次回Pages配信、iOSは次回同梱bundleに反映される。CI設定の変更はなし。配信後はHTTPSの編集画面からガイドを開いて戻れることとフッター不在を確認し、iOSガイド末尾の文言と復帰も確認する。
