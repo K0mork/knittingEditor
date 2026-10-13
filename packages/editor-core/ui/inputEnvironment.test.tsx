@@ -2,7 +2,7 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  detectInputEnvironment, gestureHintText, getInputEnvironment, historyTitles, noteHardwareKeyboard, pastePromptText,
+  detectInputEnvironment, gestureHintText, getInputEnvironment, historyTitles, noteHardwareKeyboard,
   resetInputEnvironment, useInputEnvironment, type InputEnvironment,
 } from './inputEnvironment';
 
@@ -51,12 +51,7 @@ describe('guidance text', () => {
     expect(gestureHintText('draw', touch)).toBe('1本指：描画　2本指：移動・拡大');
     expect(gestureHintText('erase', windowsMouse)).toBe('ドラッグ：消去　ホイール：移動　Ctrl＋ホイール：拡大');
     expect(gestureHintText('select', macMouse)).toBe('ドラッグ：範囲選択　ホイール：移動　⌘＋ホイール：拡大');
-    expect(gestureHintText('paste', macMouse)).toBe('クリック：貼り付け　ホイール：移動　⌘＋ホイール：拡大');
-  });
-
-  it('asks to tap or click the paste position', () => {
-    expect(pastePromptText(touch)).toBe('貼り付ける左上のセルをタップしてください');
-    expect(pastePromptText(windowsMouse)).toBe('貼り付ける左上のセルをクリックしてください');
+    expect(gestureHintText('paste', macMouse)).toBe('クリック：貼付　ホイール：移動　⌘＋ホイール：拡大');
   });
 
   it('shows only the shortcuts of the current platform', () => {

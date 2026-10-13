@@ -64,7 +64,7 @@ async function renderEditor(saved: boolean | undefined = undefined) {
       askText: async () => null,
       askConfirm: async () => false,
     });
-    return <EditorView editor={editor} renderTitle={(status) => <h1>{status}</h1>} backupNote="案内" footer={null} />;
+    return <EditorView editor={editor} renderTitle={(status) => <h1>{status}</h1>} backupNote="案内" />;
   }
   const container = document.createElement('div');
   document.body.append(container);
@@ -92,7 +92,7 @@ describe('backup reminder', () => {
     // 記録の読み込みを待つ間に出ないことも含めて、少し待ってから確かめる。
     await act(async () => { await new Promise((resolve) => setTimeout(resolve, 50)); });
     expect(reminder()).toBeNull();
-    await click('保存');
+    await click('出力');
     await waitUntil(() => panelText().includes('この編み図はまだバックアップしていません。'));
   });
 
@@ -109,7 +109,7 @@ describe('backup reminder', () => {
     const recorded = await getLastBackupAt(document.id);
     expect(recorded).toBeGreaterThan(Date.now() - 60_000);
 
-    await click('保存');
+    await click('出力');
     expect(panelText()).toContain('この編み図の最後のバックアップ：');
     expect(container.querySelector('.backup-reminder')).toBeNull();
   });
@@ -126,7 +126,7 @@ describe('backup reminder', () => {
     await act(async () => { await new Promise((resolve) => setTimeout(resolve, 50)); });
     expect(reminder()).not.toBeNull();
     expect(await getLastBackupAt(document.id)).toBeUndefined();
-    await click('保存');
+    await click('出力');
     expect(panelText()).toContain('この編み図はまだバックアップしていません。');
   });
 

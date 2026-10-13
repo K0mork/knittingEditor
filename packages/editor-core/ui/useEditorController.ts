@@ -15,13 +15,12 @@ import {
 } from '../storage/database';
 import { errorMessage } from '../util/errors';
 import { useClipboardShortcuts, useHistoryShortcuts, useNotifier, usePanelFocus } from './hooks';
-import { getInputEnvironment, pastePromptText } from './inputEnvironment';
 
 export type BusyTask = 'PNGを生成中' | 'PDFを生成中' | 'バックアップを処理中';
 export type EditorPanel = 'documents' | 'grid' | 'blocks' | 'export';
 
 export const EDITOR_PANEL_TITLES: Record<EditorPanel, string> = {
-  documents: '編み図', grid: '盤面設定', blocks: 'ブロック', export: '保存・出力',
+  documents: '編み図', grid: '盤面設定', blocks: 'ブロック', export: '出力',
 };
 
 // 保存の書き込み中に次の編集が入ると、直前の変更が盤面にしか無い状態になる。
@@ -186,8 +185,7 @@ export function useEditorController(options: EditorControllerOptions) {
     setPasteBlock(block);
     setMode('paste');
     setSelection(undefined);
-    notify(pastePromptText(getInputEnvironment()));
-  }, [notify]);
+  }, []);
 
   const copySelection = useCallback(() => {
     if (!board || !selection) return;
@@ -197,12 +195,12 @@ export function useEditorController(options: EditorControllerOptions) {
   const choosePasteBlock = (block: PatternBlock) => { startPaste(block); setPanel(undefined); };
 
   const handlePasteComplete = (ok: boolean) => {
-    if (!ok) { notify('盤面からはみ出すため貼り付けできません'); return; }
+    if (!ok) { notify('盤面からはみ出すため貼付できません'); return; }
     changed();
     setMode('draw');
     setPasteBlock(undefined);
     analytics.track('block_pasted');
-    notify('ブロックを貼り付けました');
+    notify('ブロックを貼付しました');
   };
 
   const pasteCopiedBlock = useCallback(() => { if (copiedBlock) startPaste(copiedBlock); }, [copiedBlock, startPaste]);

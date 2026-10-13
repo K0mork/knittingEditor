@@ -121,7 +121,7 @@ final class KeyboardCommandUITests: XCTestCase {
         let app = XCUIApplication()
         if disableAnimations { app.launchArguments.append("-uiTestingDisableAnimations") }
         app.launch()
-        XCTAssertTrue(app.buttons["保存"].waitForExistence(timeout: Self.timeout), app.debugDescription)
+        XCTAssertTrue(app.buttons["出力"].waitForExistence(timeout: Self.timeout), app.debugDescription)
         // メニューの項目は、編集画面が`webReady`を送って準備中の表示が消えるまで選べない。
         XCTAssertTrue(
             waitForDisappearance(of: app.descendants(matching: .any)["editorLoadingOverlay"], timeout: Self.timeout),

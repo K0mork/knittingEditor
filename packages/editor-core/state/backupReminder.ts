@@ -56,14 +56,14 @@ export function formatBackupDateTime(time: number): string {
   return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 ${date.getHours()}:${pad(date.getMinutes())}`;
 }
 
-/** 保存・出力パネルのバックアップ欄に出す、開いている編み図の書き出し状況。 */
+/** 出力パネルのバックアップ欄に出す、開いている編み図の書き出し状況。 */
 export function backupStatusText(lastBackupAt: number | undefined): string {
   return lastBackupAt === undefined
     ? 'この編み図はまだバックアップしていません。'
     : `この編み図の最後のバックアップ：${formatBackupDateTime(lastBackupAt)}`;
 }
 
-/** 勧めの文言。狭い画面でも1〜2行に収まる長さにし、理由は保存・出力パネルの案内文に任せる。 */
+/** 勧めの文言。狭い画面でも1〜2行に収まる長さにし、理由は出力パネルの案内文に任せる。 */
 export function backupReminderText(kind: BackupReminderKind, lastBackupAt: number | undefined): string {
   if (kind === 'never' || lastBackupAt === undefined) return 'この編み図はまだバックアップしていません。';
   const date = new Date(lastBackupAt);

@@ -7,7 +7,7 @@ import type { NativeCommand } from './nativeBridge';
 export type NativeCommandHandlers = Record<NativeCommand, () => void>;
 
 /**
- * メニューから書き出すPDFの設定。保存・出力パネルを初めて開いたときの既定値と同じにする。
+ * メニューから書き出すPDFの設定。出力パネルを初めて開いたときの既定値と同じにする。
  * 分割や用紙の向きを変えたいときは、パネルから書き出す。
  */
 export const MENU_PDF_OPTIONS: PdfLayoutOptions = { layout: 'single', orientation: 'portrait', cellMillimeters: 5 };

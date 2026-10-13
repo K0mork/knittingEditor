@@ -146,7 +146,7 @@ KNITTING_EDITOR_DEVELOPMENT_TEAM=XXXXXXXXXX ios/scripts/measure-large-board.sh <
 
 - [x] アプリからPNG、PDF、`.knit`をFilesへ保存する。（2026-09-22、iPad Air 第5世代。機内モードで3種すべてを「このiPad内」へ保存）
 - [x] 共有シートからAirDropまたは別の共有先へ送る。（2026-09-22、iPad Air 第5世代。`.knit`とPNGを共有シートから送り、編集画面へ復帰することを確認）
-- [x] Files、AirDrop、メール等から`.knit`をアプリで開き、同じ編み図へ復元する。（2026-09-22、iPad Air 第5世代。Filesから開く`onOpenURL`経路で復元し、13:09:56と13:10:28に編み図が作成されたことを端末内IndexedDBで実測。アプリ内「復元」のDocument Picker経路も別途成立）
+- [x] Files、AirDrop、メール等から`.knit`をアプリで開き、同じ編み図へ復元する。（2026-09-22、iPad Air 第5世代。Filesから開く`onOpenURL`経路で復元し、13:09:56と13:10:28に編み図が作成されたことを端末内IndexedDBで実測。アプリ内「バックアップから復元」のDocument Picker経路も別途成立）
 - [ ] キャンセル、上書き、存在しないファイル、不正形式、巨大解凍データでアプリがクラッシュしない。（保存シートのキャンセルはiPhone・iPad実機とSimulatorで自動検証済み。2026-10-09にiPhone 17で、上書き保存、不正形式（でたらめなデータの`.knit`）、巨大解凍データ（解凍後300MBの`.knit`）を確かめ、どれもクラッシュせずに理由が表示された。不正形式の理由が英語だったので日本語にした（PR #147）。存在しないファイルは、再現する手順が無く未確認）
 - [x] iPhoneとiPadの双方で同じ往復を行う。（iPadは2026-09-22に保存・共有・両方の取り込み経路が成立。iPhone 17は2026-10-09に、PNG・PDF・`.knit`を「このiPhone内」へ保存し、Filesの`.knit`から復元、MacからAirDropで受け取った`.knit`の復元、共有シートからMacへのAirDropの送信を確かめた）
 

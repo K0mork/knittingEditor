@@ -52,7 +52,7 @@ cd Web
 
 `main`への変更は、利用者がレビューしたPRのマージだけで行います（直接pushとforce pushはルールセットで禁止し、マージには`ci-gate`の成功が必要です）。マージ後、`.github/workflows/ci.yml`が変更範囲に応じたWeb・iOS検証を実行します。Webまたは共通コードに影響する変更では、Web検証とiOS検証の成功後に、生成した`dist/`だけをGitHub Pagesへ公開します。公開後は`smoke`ジョブが、本番のHTMLが配信した成果物と一致することと、主要な資産・`CNAME`・HTTPSへの転送を確認します（手元では`npm run check:live`）。iOS専用変更ではPagesを再公開しません。公開先は[knittingeditor.com](https://knittingeditor.com/)です。
 
-編み図はブラウザ内に保存されるため、重要なデータは「保存」メニューから定期的に`.knit`バックアップを取得してください。
+編み図はブラウザ内に保存されるため、重要なデータは「出力」メニューから定期的に`.knit`バックアップを取得してください。
 
 未完了の作業はWeb版・iOS版とも[GitHub Issues](https://github.com/K0mork/knittingEditor/issues)で管理します。iOS版の初回リリースに必要な実機検証・署名・TestFlight・App Store提出の作業は、マイルストーン[iOS 1.0](https://github.com/K0mork/knittingEditor/milestone/1)にまとめています。
 

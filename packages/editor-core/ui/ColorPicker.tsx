@@ -49,7 +49,7 @@ export function ColorPicker({ board, revision, selectedColor, onSelect, onChange
             onClick={() => onSelect(item.hex)}
           />)}
         </div>}
-      {hidden > 0 && <p className="color-picker-note">使っている順に{USED_COLOR_LIMIT}色を表示しています。ほかに{hidden}色あります。</p>}
+      {hidden > 0 && <p className="color-picker-note">記号の多い順に{USED_COLOR_LIMIT}色を表示しています。ほかに{hidden}色あります。</p>}
       <h3>ほかの色</h3>
       <label className="color-picker-custom">
         <input type="color" value={selectedColor} onChange={(event) => onChange(event.target.value)} />

@@ -27,12 +27,12 @@ test('exports and restores the latest cells while storage keeps failing', async 
   await expect(canvas).toHaveAttribute('aria-label', /記号2個/);
   await expect(notice).toHaveCount(0);
   expect((await canvas.boundingBox())!.y).toBe(box.y);
-  await expect(notice.getByRole('alert')).toHaveText('端末内への保存に失敗しています。「保存」から.knitのバックアップを書き出してください。', { timeout: 10_000 });
+  await expect(notice.getByRole('alert')).toHaveText('端末内への保存に失敗しています。「出力」から.knitのバックアップを書き出してください。', { timeout: 10_000 });
   await page.waitForTimeout(5_000);
   await expect(notice).toBeVisible();
-  await page.getByRole('button', { name: '保存', exact: true }).click();
+  await page.getByRole('button', { name: '出力', exact: true }).click();
   const pending = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'この編み図', exact: true }).click();
+  await page.getByRole('button', { name: 'この編み図を書き出す', exact: true }).click();
   const file = await pending;
   const path = (await file.path())!;
   const payload = JSON.parse(gunzipSync(await readFile(path)).toString());
@@ -67,9 +67,9 @@ test('keeps the exported generation unrecorded when undo runs during file handof
   const box = (await page.getByLabel('編み図編集盤面').boundingBox())!;
   await page.mouse.click(box.x + 75, box.y + 75);
   await expect(page.getByRole('button', { name: '元に戻す', exact: true })).toBeEnabled();
-  await page.getByRole('button', { name: '保存', exact: true }).click();
+  await page.getByRole('button', { name: '出力', exact: true }).click();
   const download = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'この編み図', exact: true }).click();
+  await page.getByRole('button', { name: 'この編み図を書き出す', exact: true }).click();
   await download;
   await expect(page.locator('#app-drawer')).toContainText('この編み図はまだバックアップしていません。');
 });
@@ -102,9 +102,9 @@ test('updates the busy indicator and handles events during a twenty-chart backup
       state.ticks++;
     }, 10);
   });
-  await page.getByRole('button', { name: '保存', exact: true }).click();
+  await page.getByRole('button', { name: '出力', exact: true }).click();
   const download = page.waitForEvent('download');
-  await page.getByRole('button', { name: '全データ', exact: true }).click();
+  await page.getByRole('button', { name: '全データを書き出す', exact: true }).click();
   await expect(page.locator('.busy')).toHaveText('バックアップを処理中');
   const file = await download;
   const ticks = await page.evaluate(() => (window as unknown as { backupTicks: { busyTicks: number; maxGap: number } }).backupTicks);
@@ -132,8 +132,8 @@ test('keeps the shared generation unrecorded when undo runs while the iPhone sha
   const box = (await canvas.boundingBox())!;
   await page.mouse.click(box.x + 75, box.y + 75);
   await expect(canvas).toHaveAttribute('aria-label', /記号1個/);
-  await page.getByRole('button', { name: '保存', exact: true }).click();
-  await page.locator('#app-drawer').getByRole('button', { name: 'この編み図' }).click();
+  await page.getByRole('button', { name: '出力', exact: true }).click();
+  await page.locator('#app-drawer').getByRole('button', { name: 'この編み図を書き出す' }).click();
   const dialog = page.getByRole('dialog', { name: '「新しい編み図.knit」の準備ができました' });
   await expect(dialog).toBeVisible();
   // 確認ダイアログを開いたまま元に戻すと、渡すファイルは今の盤面のバックアップではなくなる。
