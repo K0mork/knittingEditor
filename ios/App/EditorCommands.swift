@@ -118,6 +118,20 @@ struct EditorCommands: Commands {
 final class AppDelegate: UIResponder, UIApplicationDelegate {
     weak var model: WebViewModel?
 
+    #if DEBUG
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+        // 文字のundo/redo後にUIKitのアニメーション完了通知が来ないSimulator向け。
+        // この引数を付けたUIテストだけに適用し、Releaseの動作は変えない。
+        if ProcessInfo.processInfo.arguments.contains("-uiTestingDisableAnimations") {
+            UIView.setAnimationsEnabled(false)
+        }
+        return true
+    }
+    #endif
+
     override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
         if action == #selector(open(_:)) { return model?.canPerform(.restoreBackup) ?? false }
         return super.canPerformAction(action, withSender: sender)
