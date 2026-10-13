@@ -138,7 +138,6 @@ export default function App() {
     onGuideClick={openGuide}
     requestRestore={requestNativeBackupOpen}
     backupNote="アプリを削除すると端末内のデータも消えます。定期的にバックアップを保存してください。"
-    footer={<footer><span>© 2026 棒針編み図エディタ</span><a href="/guide/" onClick={openGuide}>使い方</a></footer>}
   >
     {dialog}
   </EditorView>;
