@@ -57,11 +57,12 @@ final class KeyboardCommandUITests: XCTestCase {
     /// 入力欄で文字を打っている間の⌘Z・⇧⌘Zは、盤面ではなく入力中の文字を取り消し・やり直す。
     /// 標準の「取り消す」をメニューで置き換えたため、盤面に戻せる編集が無いときもメニューを通す。
     func testUndoAndRedoShortcutsEditTextFieldInsteadOfBoard() {
-        let app = launchEditor()
+        let app = launchEditor(disableAnimations: true)
 
         // 盤面に戻せる編集が無いとき。起動直後は履歴が空。
         XCTAssertFalse(app.buttons["元に戻す"].isEnabled, app.debugDescription)
         assertTypingUndoAndRedo(in: app)
+        XCTAssertFalse(app.buttons["元に戻す"].isEnabled, app.debugDescription)
 
         // 盤面に戻せる編集があるとき。文字だけが戻り、盤面は戻らない。
         let canvas = createEmptyDocument(named: "文字の取り消し", in: app)
@@ -116,8 +117,9 @@ final class KeyboardCommandUITests: XCTestCase {
 
     // MARK: - 補助
 
-    private func launchEditor() -> XCUIApplication {
+    private func launchEditor(disableAnimations: Bool = false) -> XCUIApplication {
         let app = XCUIApplication()
+        if disableAnimations { app.launchArguments.append("-uiTestingDisableAnimations") }
         app.launch()
         XCTAssertTrue(app.buttons["出力"].waitForExistence(timeout: Self.timeout), app.debugDescription)
         // メニューの項目は、編集画面が`webReady`を送って準備中の表示が消えるまで選べない。
@@ -149,6 +151,7 @@ final class KeyboardCommandUITests: XCTestCase {
             let reached = XCTNSPredicateExpectation(predicate: predicate, object: object)
             if XCTWaiter.wait(for: [reached], timeout: Self.timeout / Double(attempts)) == .completed { return true }
         }
+        add(screenshot(named: "ショートカット失敗-\(key)-\(modifiers.rawValue)"))
         return false
     }
 
