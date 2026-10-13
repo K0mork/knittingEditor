@@ -985,15 +985,37 @@ final class KnittingEditorUITests: XCTestCase {
         maximumScrolls: Int = 24
     ) {
         XCTAssertTrue(element.waitForExistence(timeout: 10), app.debugDescription)
-        let dragStart = app.coordinate(withNormalizedOffset: CGVector(dx: 0.75, dy: 0.78))
-        let dragEnd = app.coordinate(withNormalizedOffset: CGVector(dx: 0.75, dy: 0.62))
+        // WebViewのisHittableは、スクロール領域のクリップや固定ヘッダーを考慮しない。
+        // 開いているパネルの閉じるボタンは1つだけ。パネル名やロール表記には依存しない。
+        let close = app.buttons["閉じる"]
+        guard close.waitForExistence(timeout: 10) else {
+            XCTFail("パネルの閉じるボタンが見つからない: \(app.debugDescription)")
+            return
+        }
         for _ in 0..<maximumScrolls {
-            if element.isHittable {
+            waitUntilStill(element)
+            let bounds = app.windows.firstMatch.frame
+            // ヘッダーの下余白も避け、ボタン全体が見えるまでスクロールする。
+            let top = max(bounds.minY, close.frame.maxY + 8)
+            let visible = CGRect(x: bounds.minX, y: top, width: bounds.width, height: max(0, bounds.maxY - top))
+                .insetBy(dx: 2, dy: 2)
+            let frame = element.frame
+            if element.isHittable && visible.contains(frame) { return }
+            guard visible.height > frame.height, visible.width > frame.width else {
+                XCTFail("操作対象がパネルに収まらない frame=\(frame) visible=\(visible): \(app.debugDescription)")
                 return
             }
-            dragStart.press(forDuration: 0.05, thenDragTo: dragEnd)
+            // 小さくゆっくり動かし、指を止めてから離す。行き過ぎた場合は逆方向へ戻す。
+            let distance = min(60, visible.height * 0.25)
+            let direction: CGFloat = frame.minY < visible.minY ? 1 : -1
+            // iPadの右側パネルでもパネル内をドラッグするため、対象ボタンの横位置を使う。
+            let dragX = min(max(frame.midX, visible.minX), visible.maxX)
+            let start = app.coordinate(withNormalizedOffset: .zero)
+                .withOffset(CGVector(dx: dragX, dy: visible.midY - direction * distance / 2))
+            let end = start.withOffset(CGVector(dx: 0, dy: direction * distance))
+            start.press(forDuration: 0.05, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.2)
         }
-        XCTAssertTrue(element.isHittable, app.debugDescription)
+        XCTFail("スクロールしても操作対象がパネル内に見えない: \(app.debugDescription)")
     }
 
     /// 保存シートを閉じる。
