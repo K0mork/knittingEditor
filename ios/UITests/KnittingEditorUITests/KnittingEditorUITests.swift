@@ -857,6 +857,56 @@ final class KnittingEditorUITests: XCTestCase {
         assertShareSheetsDismissBackToEditor(landscape: true)
     }
 
+    func testShareSheetStaysUsableAfterRotatingWhileOpen() {
+        XCUIDevice.shared.orientation = .portrait
+        defer { XCUIDevice.shared.orientation = .portrait }
+
+        let app = XCUIApplication()
+        app.launch()
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
+        let save = app.buttons["出力"]
+        XCTAssertTrue(save.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+        let png = app.buttons["PNGを保存"]
+        openSavePanel(with: save, showing: png, in: app)
+        assertHittableAfterScrolling(png, in: app)
+        waitUntilStill(png)
+        png.tap()
+        let share = app.buttons["共有"]
+        XCTAssertTrue(share.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+        share.tap()
+
+        let sheet = shareSheet(in: app)
+        XCTAssertTrue(sheet.waitForExistence(timeout: 20), app.debugDescription)
+        let copy = sheet.cells.matching(NSPredicate(format: "label IN %@", ["Copy", "コピー"])).firstMatch
+        XCTAssertTrue(copy.waitForExistence(timeout: 20), app.debugDescription)
+        XCTAssertTrue(waitForHittable(copy, timeout: 20), app.debugDescription)
+
+        // 共有シートを開き直さず、表示中の回転と再配置を検証する。
+        rotateToLandscape(app)
+        waitUntilStill(sheet, timeout: 20)
+        XCTAssertTrue(sheet.exists, app.debugDescription)
+        XCTAssertTrue(copy.waitForExistence(timeout: 20), app.debugDescription)
+        XCTAssertTrue(waitForHittable(copy, timeout: 20), app.debugDescription)
+        waitUntilStill(copy, timeout: 20)
+        XCTAssertTrue(copy.exists, app.debugDescription)
+        XCTAssertTrue(copy.isHittable, app.debugDescription)
+        let windowFrame = app.windows.firstMatch.frame
+        XCTAssertTrue(windowFrame.contains(copy.frame), "コピー項目がウィンドウ外にある copy=\(copy.frame) window=\(windowFrame): \(app.debugDescription)")
+        add(screenshotAttachment(named: "共有-PNG-表示中に横向きへ回転"))
+
+        let dismissal = dismissShareSheet(sheet, in: app)
+        assertDisappears(sheet, from: app, note: dismissal)
+        // 既存の共有終了テストと同じく、編集画面への最初のタップは押し直さない。
+        app.buttons["閉じる"].tap()
+        assertDisappears(app.buttons["この編み図を書き出す"], from: app, note: dismissal)
+        app.buttons["盤面"].tap()
+        let rowsUp = app.buttons["上に段"]
+        XCTAssertTrue(rowsUp.waitForExistence(timeout: 10), app.debugDescription)
+        waitUntilStill(rowsUp)
+        app.buttons["閉じる"].tap()
+        assertDisappears(rowsUp, from: app, note: dismissal)
+    }
+
     private func assertShareSheetsDismissBackToEditor(landscape: Bool) {
         let app = XCUIApplication()
         app.launch()

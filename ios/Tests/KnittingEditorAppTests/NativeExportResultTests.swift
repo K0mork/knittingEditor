@@ -261,6 +261,89 @@ final class NativeExportResultTests: XCTestCase {
     }
 
     @MainActor
+    func testSharePopoverRepositionUsesCurrentBoundsAndKeepsSourceView() throws {
+        let harness = Harness()
+        let sourceView = UIView(frame: CGRect(x: 0, y: 0, width: 1366, height: 1024))
+        let activity = UIActivityViewController(activityItems: ["chart.knit"], applicationActivities: nil)
+        let popover = try XCTUnwrap(activity.popoverPresentationController)
+        popover.sourceView = sourceView
+        var rect = WebViewContainer.Coordinator.shareAnchor(in: sourceView.bounds)
+        popover.sourceRect = rect
+
+        // 表示後の縮小と、boundsの原点が変わる場合の両方を検証する。
+        for bounds in [CGRect(x: 0, y: 0, width: 320, height: 1024), CGRect(x: 20, y: 30, width: 320, height: 768)] {
+            sourceView.bounds = bounds
+            var view = sourceView
+            harness.coordinator.popoverPresentationController(popover, willRepositionPopoverTo: &rect, in: &view)
+
+            XCTAssertEqual(rect, CGRect(x: bounds.midX, y: bounds.midY, width: 1, height: 1))
+            XCTAssertTrue(bounds.contains(rect))
+            XCTAssertTrue(view === sourceView)
+            XCTAssertTrue(popover.sourceView === sourceView)
+        }
+    }
+
+    @MainActor
+    func testSharePopoverDismissalKeepsExportPendingWithoutReportingResult() throws {
+        let harness = Harness()
+        let directory = try harness.prepareExport()
+        defer { harness.coordinator.finishSharing(completed: false) }
+        // 誤ってdocumentPickerWasCancelledを呼ぶと、この用途が消える。
+        harness.coordinator.pickerPurpose = .importBackup
+        let pendingURL = try XCTUnwrap(harness.coordinator.pendingExport?.url)
+        let activity = UIActivityViewController(activityItems: ["chart.knit"], applicationActivities: nil)
+        let popover = try XCTUnwrap(activity.popoverPresentationController)
+
+        harness.coordinator.presentationControllerDidDismiss(popover)
+        harness.coordinator.presentationControllerDidDismiss(popover)
+
+        XCTAssertTrue(harness.reports.isEmpty)
+        XCTAssertTrue(harness.statuses.isEmpty)
+        XCTAssertEqual(harness.coordinator.pendingExport?.directory, directory)
+        XCTAssertEqual(harness.coordinator.pendingExport?.url, pendingURL)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: pendingURL.path))
+        XCTAssertTrue(harness.model.isPresentingNativeUI)
+        XCTAssertEqual(harness.coordinator.pickerPurpose, .importBackup)
+    }
+
+    @MainActor
+    func testShareCompletionAfterPopoverDismissalReportsCompletionOrErrorOnce() throws {
+        for status in [NativeExportResult.Status.completed, .error] {
+            let harness = Harness()
+            let directory = try harness.prepareExport()
+            harness.coordinator.pickerPurpose = .importBackup
+            let activity = UIActivityViewController(activityItems: ["chart.knit"], applicationActivities: nil)
+            let popover = try XCTUnwrap(activity.popoverPresentationController)
+
+            harness.coordinator.presentationControllerDidDismiss(popover)
+            XCTAssertTrue(harness.reports.isEmpty)
+            XCTAssertNotNil(harness.coordinator.pendingExport)
+            // エラーがある場合はcompletedが真でも.errorを優先する。
+            harness.coordinator.finishSharing(completed: true, error: status == .error ? NSError(domain: "test", code: 1) : nil)
+            harness.coordinator.presentationControllerDidDismiss(popover)
+            harness.coordinator.finishSharing(completed: true)
+
+            harness.assertFinished([("export-1", status == .completed)], directory: directory)
+            XCTAssertEqual(harness.statuses, [status])
+            XCTAssertEqual(harness.coordinator.pickerPurpose, .importBackup)
+        }
+    }
+
+    @MainActor
+    func testDocumentPickerPresentationDismissalStillCancelsExport() throws {
+        let harness = Harness()
+        let directory = try harness.prepareExport()
+        harness.coordinator.pickerPurpose = .exportFile
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.data])
+        let presentation = UIPresentationController(presentedViewController: picker, presenting: nil)
+
+        harness.coordinator.presentationControllerDidDismiss(presentation)
+
+        harness.assertFinished([("export-1", false)], directory: directory)
+        XCTAssertNil(harness.coordinator.pickerPurpose)
+    }
+
+    @MainActor
     func testCancellingConfirmationAlertReportsNotSaved() throws {
         let harness = Harness()
         let directory = try harness.prepareExport()
