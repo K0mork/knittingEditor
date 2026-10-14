@@ -805,6 +805,153 @@ final class KnittingEditorUITests: XCTestCase {
         assertBecomesHittable(save, in: app, note: dismissal)
     }
 
+    /// 使い方（#197）の「ブロックを保存して貼る」「全データを書き出して復元する」を、画面の操作で確かめる。
+    ///
+    /// 範囲を選んでブロック保存し、保存したブロックを選んで貼付先をタップすると貼付される。
+    /// 「全データを書き出す」を「ファイルに保存」で端末へ保存し、「バックアップから復元」で選ぶと、
+    /// 既存の編み図は残ったまま「（復元）」の付いた編み図とブロックが追加され、復元した先頭の編み図へ切り替わる。
+    func testBlockSaveAndFullBackupRestoreFollowGuide() {
+        executionTimeAllowance = 240
+        let app = XCUIApplication()
+        app.launch()
+        let suffix = UUID().uuidString.prefix(8)
+        let target = "ガイド貼付先-\(suffix)"
+        let chart = "ガイド確認-\(suffix)"
+        let blockName = "ブロック確認-\(suffix)"
+        createDocument(named: target, in: app)
+        createDocument(named: chart, in: app)
+
+        // 3マスを描く。
+        _ = positionSaveProbeCanvas(count: 0, in: app)
+        let cells = [(8, 12), (8, 13), (9, 12)]
+        for (index, cell) in cells.enumerated() {
+            let canvas = positionSaveProbeCanvas(count: index, in: app)
+            saveProbeCell(row: cell.0, col: cell.1, on: canvas).tap()
+            _ = saveProbeCanvas(count: index + 1, in: app)
+        }
+
+        // 「範囲」で囲み、「ブロック」→「選択範囲をブロック保存」で名前を付けて保存する。
+        let range = app.switches["範囲"]
+        XCTAssertTrue(range.waitForExistence(timeout: 10), app.debugDescription)
+        range.tap()
+        let canvas = positionSaveProbeCanvas(count: 3, in: app)
+        let start = saveProbeCell(row: 7, col: 11, on: canvas)
+        let end = saveProbeCell(row: 10, col: 14, on: canvas)
+        start.press(forDuration: 0.05, thenDragTo: end)
+        let blocks = app.buttons["ブロック"]
+        XCTAssertTrue(blocks.waitForExistence(timeout: 10), app.debugDescription)
+        blocks.tap()
+        let saveBlock = app.buttons["選択範囲をブロック保存"]
+        XCTAssertTrue(saveBlock.waitForExistence(timeout: 10), app.debugDescription)
+        add(screenshotAttachment(named: "範囲を選んだブロックパネル"))
+        saveBlock.tap()
+        let nameField = app.textFields["入力"]
+        XCTAssertTrue(nameField.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+        replaceText(blockName, in: nameField, app: app)
+        confirmDialog(closing: nameField, in: app)
+        let blockButton = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", blockName)).firstMatch
+        XCTAssertTrue(blockButton.waitForExistence(timeout: 10), app.debugDescription)
+
+        // 別の編み図へ切り替え、保存したブロックを選んで貼付先をタップする。
+        // タップしたマスがブロックの左上になり、貼付が済むと通常の入力に戻る。
+        selectSaveProbeDocument(target, in: app)
+        _ = positionSaveProbeCanvas(count: 0, in: app)
+        blocks.tap()
+        let pasteBlock = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", blockName)).firstMatch
+        XCTAssertTrue(pasteBlock.waitForExistence(timeout: 10), app.debugDescription)
+        pasteBlock.tap()
+        let pasteBand = app.staticTexts["貼付中：左上にするマスをタップ"]
+        XCTAssertTrue(pasteBand.waitForExistence(timeout: 10), app.debugDescription)
+        // 「ブロック」の開閉で盤面の表示位置が変わるため、横位置は盤面幅の42%、縦位置は上端から190ptを狙う。
+        // 貼付されなければ盤面中央を2回目の候補にする。収まらないと「盤面からはみ出す」と通知される。
+        let pasteCanvas = positionSaveProbeCanvas(count: 0, in: app)
+        let pasteOffsetsFromCanvasTopLeft = [CGVector(dx: pasteCanvas.frame.width * 0.42, dy: 190),
+                            CGVector(dx: pasteCanvas.frame.width * 0.5, dy: pasteCanvas.frame.height * 0.5)]
+        for point in pasteOffsetsFromCanvasTopLeft where pasteBand.exists {
+            pasteCanvas.coordinate(withNormalizedOffset: .zero).withOffset(point).tap()
+            _ = XCTWaiter.wait(for: [XCTNSPredicateExpectation(
+                predicate: NSPredicate(format: "exists == false"), object: pasteBand)], timeout: 5)
+        }
+        waitForStitchCount(3, on: saveProbeCanvas(count: 3, in: app), in: app)
+        XCTAssertFalse(pasteBand.exists, app.debugDescription)
+        XCTAssertEqual(app.switches["描く"].value as? String, "1")
+        add(screenshotAttachment(named: "ブロックを貼付した盤面"))
+
+        // 「全データを書き出す」を「ファイルに保存」で、システムの保存先の選択が開いた場所へ保存する。
+        let save = app.buttons["出力"]
+        XCTAssertTrue(save.waitForExistence(timeout: 10), app.debugDescription)
+        let allData = app.buttons["全データを書き出す"]
+        openSavePanel(with: save, showing: allData, in: app)
+        allData.tap()
+        let fileSave = app.buttons["ファイルに保存"]
+        XCTAssertTrue(fileSave.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+        fileSave.tap()
+        assertDisappears(fileSave, from: app)
+        let exportPicker = SystemSheet.element(in: app)
+        XCTAssertTrue(exportPicker.waitForExistence(timeout: 20), app.debugDescription)
+        // 保存先はシステムの前回の場所に依存する。iPhoneでの確認時は「このiPhone内」が開いた。
+        let saveInPicker = app.buttons.matching(NSPredicate(format: "label IN %@", ["保存", "Save"])).firstMatch
+        XCTAssertTrue(saveInPicker.waitForExistence(timeout: 20), app.debugDescription)
+        add(screenshotAttachment(named: "全データの保存先の選択"))
+        saveInPicker.tap()
+        // 前回の実行で同じ名前のファイルが残っているときは、確認が出るので置き換える。
+        let replace = app.buttons.matching(NSPredicate(format: "label IN %@", ["置き換え", "Replace"])).firstMatch
+        let exportFinishedOrReplaceAppeared = XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in !exportPicker.exists || replace.exists },
+            object: exportPicker
+        )
+        let exportWaitResult = XCTWaiter.wait(for: [exportFinishedOrReplaceAppeared], timeout: 20)
+        XCTAssertEqual(exportWaitResult, .completed, app.debugDescription)
+        if exportPicker.exists && replace.exists {
+            replace.tap()
+            assertDisappears(exportPicker, from: app)
+        }
+
+        // 「バックアップから復元」で、いま保存したファイルを選ぶ。
+        let restore = app.buttons["バックアップから復元"]
+        if !restore.exists { openSavePanel(with: save, showing: restore, in: app) }
+        restore.tap()
+        let restorePicker = SystemSheet.element(in: app)
+        XCTAssertTrue(restorePicker.waitForExistence(timeout: 20), app.debugDescription)
+        // 選択画面は別プロセスで表示され、restorePickerの子孫としては取れない。アプリ全体から探す。
+        let backupFile = app.cells
+            .matching(NSPredicate(format: "identifier BEGINSWITH %@", "knitting-editor-backup")).firstMatch
+        let backupFileHittable = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == true AND hittable == true"), object: backupFile
+        )
+        XCTAssertEqual(XCTWaiter.wait(for: [backupFileHittable], timeout: 20), .completed, app.debugDescription)
+        add(screenshotAttachment(named: "復元するファイルの選択"))
+        backupFile.tap()
+        assertDisappears(restorePicker, from: app)
+
+        // この手順では最後に更新した貼付先が先頭となり、その復元した編み図へ切り替わって貼付した3マスが入っている。
+        let webView = app.webViews.firstMatch
+        let restoredTitle = webView.staticTexts
+            .matching(NSPredicate(format: "label BEGINSWITH %@", target + "（復元）")).firstMatch
+        XCTAssertTrue(restoredTitle.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+        _ = saveProbeCanvas(count: 3, in: app)
+        add(screenshotAttachment(named: "復元後に開いた編み図"))
+
+        // 既存の編み図は上書きされず、「（復元）」の付いた編み図が別に追加されている。
+        _ = openDocumentsPanel(in: app)
+        for name in [target, chart, target + "（復元）", chart + "（復元）"] {
+            let item = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", name + "、")).firstMatch
+            XCTAssertTrue(item.waitForExistence(timeout: 10), "\(name)が一覧に無い: \(app.debugDescription)")
+        }
+        add(screenshotAttachment(named: "復元後の編み図の一覧"))
+        app.buttons["閉じる"].tap()
+
+        // 保存済みブロックも、元のブロックを残したまま「（復元）」を付けて追加されている。
+        blocks.tap()
+        let restoredBlock = app.buttons
+            .matching(NSPredicate(format: "label BEGINSWITH %@", blockName + "（復元）")).firstMatch
+        XCTAssertTrue(restoredBlock.waitForExistence(timeout: 10), app.debugDescription)
+        let originalBlock = app.buttons.matching(NSPredicate(
+            format: "label BEGINSWITH %@ AND NOT (label BEGINSWITH %@)", blockName, blockName + "（復元）")).firstMatch
+        XCTAssertTrue(originalBlock.exists, app.debugDescription)
+        add(screenshotAttachment(named: "復元後のブロックの一覧"))
+    }
+
     /// `.knit`の書き出しがシステムの保存UIまで到達し、閉じたあと編集画面へ戻れることを確認する。
     ///
     /// iOS 27のDocument Pickerは別プロセスのUIで「キャンセル」ボタンを持たず、
