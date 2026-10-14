@@ -913,13 +913,8 @@ final class KnittingEditorUITests: XCTestCase {
         restore.tap()
         let restorePicker = SystemSheet.element(in: app)
         XCTAssertTrue(restorePicker.waitForExistence(timeout: 20), app.debugDescription)
-        // 選択画面は別プロセスで表示され、restorePickerの子孫としては取れない。アプリ全体から探す。
-        let backupFile = app.cells
-            .matching(NSPredicate(format: "identifier BEGINSWITH %@", "knitting-editor-backup")).firstMatch
-        let backupFileHittable = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "exists == true AND hittable == true"), object: backupFile
-        )
-        XCTAssertEqual(XCTWaiter.wait(for: [backupFileHittable], timeout: 20), .completed, app.debugDescription)
+        add(screenshotAttachment(named: "復元の選択画面を開いた直後"))
+        guard let backupFile = backupFileInOnDeviceLocation(in: app) else { return }
         add(screenshotAttachment(named: "復元するファイルの選択"))
         backupFile.tap()
         assertDisappears(restorePicker, from: app)
@@ -1713,6 +1708,44 @@ final class KnittingEditorUITests: XCTestCase {
             element.isHittable,
             "スワイプ\(swipes)回で押せる位置に来ない frame=\(element.frame): \(app.debugDescription)"
         )
+    }
+
+    /// 「最近使った項目」に依存せず、端末内に保存したバックアップを選べる状態まで待つ。
+    private func backupFileInOnDeviceLocation(in app: XCUIApplication) -> XCUIElement? {
+        // 選択画面は別プロセスで表示されるため、シートの子孫ではなくアプリ全体から探す。
+        let location = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label IN %@", ["このiPhone内", "このiPad内", "On My iPhone", "On My iPad"]))
+            .firstMatch
+        // iPadではサイドバーに保存場所が出る場合があるので、先に直接探す。
+        if !waitForHittable(location, timeout: 2) {
+            let browse = app.buttons
+                .matching(NSPredicate(format: "label IN %@", ["ブラウズ", "Browse"])).firstMatch
+            if waitForHittable(browse, timeout: 5) {
+                browse.tap()
+                // もう一度押すと「ブラウズ」の先頭へ戻り、保存場所の一覧が出る。
+                if !waitForHittable(location, timeout: 3), browse.isHittable {
+                    browse.tap()
+                }
+            }
+        }
+        guard waitForHittable(location, timeout: 10) else {
+            add(screenshotAttachment(named: "復元の端末内保存場所が見つからない"))
+            XCTFail("復元の端末内保存場所を選べない: \(app.debugDescription)")
+            return nil
+        }
+        location.tap()
+
+        let backupFile = app.cells
+            .matching(NSPredicate(format: "identifier BEGINSWITH %@", "knitting-editor-backup")).firstMatch
+        let backupFileHittable = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == true AND hittable == true"), object: backupFile
+        )
+        guard XCTWaiter.wait(for: [backupFileHittable], timeout: 30) == .completed else {
+            add(screenshotAttachment(named: "復元のバックアップが見つからない"))
+            XCTFail("端末内のバックアップを選べない: \(app.debugDescription)")
+            return nil
+        }
+        return backupFile
     }
 
     private func waitForHittable(_ element: XCUIElement, timeout: TimeInterval) -> Bool {
