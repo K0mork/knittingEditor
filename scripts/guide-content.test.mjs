@@ -22,6 +22,20 @@ for (const path of guides) {
       expect(text).toContain('選んだ色にかかわらず白く描かれます');
     });
 
+    it('describes where a block lands, how copies are named and what restoring adds', () => {
+      for (const phrase of ['元の名前の末尾に「のコピー」を付けた編み図', '一覧に残った先頭の編み図が開きます', '「補助」にある記号', 'ブロックの左上になり', '収まらないときは貼付されません', '保存済みブロックも名前に「（復元）」を付けて追加されます']) {
+        expect(text).toContain(phrase);
+      }
+      // バックアップの範囲は、復元の手順より前に読める。
+      expect(text.indexOf('保存済みブロックは含まれません')).toBeGreaterThan(0);
+      expect(text.indexOf('保存済みブロックは含まれません')).toBeLessThan(text.indexOf('「バックアップから復元」'));
+      // 手順の見出しは、記号を選ぶ前に編み図の管理を置く順序を保つ。
+      const headings = [...document.querySelectorAll('main h2')].map((heading) => heading.textContent);
+      expect(headings.indexOf('編み図を増やす・切り替える')).toBeGreaterThan(-1);
+      expect(headings.indexOf('編み図を増やす・切り替える')).toBeLessThan(headings.findIndex((heading) => heading.includes('編み目記号と色')));
+      expect(headings.some((heading) => heading.includes('バックアップ'))).toBe(true);
+    });
+
     it('explains right-side chart input and reading without changing numbering', () => {
       for (const explanation of ['表側から見た記号', '右下が1段め・1目め', '段は下から上へ、目は右から左へ', '奇数段は右から左へ、偶数段は左から右へ', '偶数段も表から見た「表目」を入力', '輪編み', '作り目を1段めと数え、次の2段めを裏側を見て編む', '作り目を描くと、最初に編む段は2段めになります']) {
         expect(text).toContain(explanation);
@@ -34,6 +48,10 @@ for (const path of guides) {
         expect(text).not.toMatch(/Files|PCでは/);
         expect(text).toContain('「ファイル」アプリ');
         expect(text).toContain('プリントの項目が表示される環境では');
+        expect(text).toContain('「ファイルを保存」の確認');
+        for (const label of ['ファイルに保存', '共有', 'キャンセル']) expect(text).toContain(`「${label}」`);
+        // プリントは環境によって表示が違うので、必ず出るとは書かない。
+        expect(text).not.toMatch(/プリントを(選|押)/);
         expect(document.querySelectorAll('code').length).toBeGreaterThan(0);
         const links = [...document.querySelectorAll('a')].filter((link) => ['/', '/index.html'].includes(link.getAttribute('href')));
         expect(links.length).toBe(4);
