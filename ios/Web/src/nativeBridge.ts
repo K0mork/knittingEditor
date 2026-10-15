@@ -24,7 +24,7 @@ interface NativeBridgeMessage {
  */
 export const NATIVE_COMMANDS = [
   'newDocument', 'restoreBackup', 'exportBackup', 'exportAllBackup', 'exportPng', 'exportPdf', 'undo', 'redo', 'openGuide',
-  'toggleEraser',
+  'toggleEraser', 'zoomIn', 'zoomOut',
 ] as const;
 export type NativeCommand = typeof NATIVE_COMMANDS[number];
 
@@ -212,4 +212,18 @@ export function listenNativeCommand(listener: (command: NativeCommand) => void):
   };
   window.addEventListener('knittingEditorNativeCommand', handler);
   return () => window.removeEventListener('knittingEditorNativeCommand', handler);
+}
+
+/** 間接ピンチの倍率と画面内座標。SwiftとWebの両側で数値を検証する。 */
+export function listenNativeZoom(listener: (zoom: { factor: number; x: number; y: number }) => void): () => void {
+  const handler = (event: Event) => {
+    const detail: unknown = (event as CustomEvent<unknown>).detail;
+    if (!detail || typeof detail !== 'object') return;
+    const { factor, x, y } = detail as Record<string, unknown>;
+    if (typeof factor !== 'number' || !Number.isFinite(factor) || factor <= 0 ||
+        typeof x !== 'number' || !Number.isFinite(x) || typeof y !== 'number' || !Number.isFinite(y)) return;
+    listener({ factor, x, y });
+  };
+  window.addEventListener('knittingEditorNativeZoom', handler);
+  return () => window.removeEventListener('knittingEditorNativeZoom', handler);
 }

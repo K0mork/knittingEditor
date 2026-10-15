@@ -97,11 +97,12 @@ export function useInputEnvironment(): InputEnvironment {
 }
 
 /** 盤面の右下に出す操作のヒント。 */
-export function gestureHintText(mode: CanvasMode, environment: InputEnvironment): string {
+export function gestureHintText(mode: CanvasMode, environment: InputEnvironment, pointerZoomGesture?: 'pinch'): string {
   const modeLabel = CANVAS_MODE_LABELS[mode];
   if (environment.pointer === 'touch') return `1本指：${modeLabel}　2本指：移動・拡大`;
   // 貼り付けはドラッグではなく、置く位置をクリックして確定する。
   const action = mode === 'paste' ? 'クリック' : 'ドラッグ';
+  if (pointerZoomGesture === 'pinch') return `${action}：${modeLabel}　スクロール：移動　ピンチ：拡大`;
   const modifier = environment.apple ? '⌘' : 'Ctrl';
   return `${action}：${modeLabel}　ホイール：移動　${modifier}＋ホイール：拡大`;
 }

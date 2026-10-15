@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  NATIVE_EXPORT_FINISHED_EVENT, listenNativeError, listenNativeBackupSelected, notifyNativeReady, requestNativeBackupOpen, saveBlobWithNativeBridge,
+  listenNativeZoom, NATIVE_EXPORT_FINISHED_EVENT, listenNativeError, listenNativeBackupSelected, notifyNativeReady, requestNativeBackupOpen, saveBlobWithNativeBridge,
 } from './nativeBridge';
 
 function finishNativeExport(detail: unknown) {
@@ -202,4 +202,18 @@ describe('native bridge', () => {
     expect(listener).toHaveBeenCalledWith({ filename: 'chart.knit', dataBase64: 'H4sI' });
     remove();
   });
+});
+
+it('validates native zoom numbers and removes the listener', () => {
+  const listener = vi.fn();
+  const remove = listenNativeZoom(listener);
+  const send = (detail: unknown) => window.dispatchEvent(new CustomEvent('knittingEditorNativeZoom', { detail }));
+  send({ factor: 1.0312, x: 412.5, y: 300 });
+  for (const detail of [null, 'zoom', {}, { factor: '1', x: 1, y: 2 },
+    ...[0, -1, NaN, Infinity].map(factor => ({ factor, x: 1, y: 2 })),
+    { factor: 1, x: NaN, y: 2 }, { factor: 1, x: 1, y: Infinity }]) send(detail);
+  expect(listener).toHaveBeenCalledExactlyOnceWith({ factor: 1.0312, x: 412.5, y: 300 });
+  remove();
+  send({ factor: 1, x: 1, y: 2 });
+  expect(listener).toHaveBeenCalledTimes(1);
 });

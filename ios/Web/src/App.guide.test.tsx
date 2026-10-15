@@ -24,6 +24,7 @@ vi.mock('@knitting-editor/editor-core/ui/guideNavigation', async (importOriginal
 });
 vi.mock('./nativeBridge', () => ({
   listenNativeCommand: (listener: (command: NativeCommand) => void) => { mocks.command = listener; return () => {}; },
+  listenNativeZoom: () => () => {},
   listenNativeBackupSelected: () => () => {},
   listenNativeError: (listener: (message: string, guideSection?: string) => void) => { mocks.nativeError = listener; return () => {}; },
   notifyNativeCommandState: () => {}, notifyNativeReady: () => {}, requestNativeBackupOpen: () => false,

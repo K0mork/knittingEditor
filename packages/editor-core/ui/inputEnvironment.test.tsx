@@ -47,6 +47,12 @@ describe('detectInputEnvironment', () => {
 });
 
 describe('guidance text', () => {
+  it('uses pinch guidance only when the host requests it', () => {
+    expect(gestureHintText('draw', macMouse, 'pinch')).toBe('ドラッグ：描画　スクロール：移動　ピンチ：拡大');
+    expect(gestureHintText('paste', macMouse, 'pinch')).toBe('クリック：貼付　スクロール：移動　ピンチ：拡大');
+    expect(gestureHintText('draw', touch, 'pinch')).toBe('1本指：描画　2本指：移動・拡大');
+    expect(gestureHintText('draw', macMouse)).toBe('ドラッグ：描画　ホイール：移動　⌘＋ホイール：拡大');
+  });
   it('describes finger gestures for touch and wheel gestures for a mouse or trackpad', () => {
     expect(gestureHintText('draw', touch)).toBe('1本指：描画　2本指：移動・拡大');
     expect(gestureHintText('erase', windowsMouse)).toBe('ドラッグ：消去　ホイール：移動　Ctrl＋ホイール：拡大');

@@ -31,7 +31,7 @@ Swiftはファイル種別、ファイル名、Base64、128 MiBの上限を検�
 
 ## メニューバーとキーボードショートカット
 
-iPadのメニューバーと、⌘キーの長押しで出るショートカットの一覧へ、編集画面の操作を載せる（#80）。項目はSwiftUIの`.commands`（`App/EditorCommands.swift`の`EditorCommands`）で定義し、選ばれたらSwiftは次のCustomEventをWebViewへ送るだけにする。操作の中身は画面のボタンと同じWeb側の処理で、Swiftに複製しない。
+iPadのメニューバーへ編集画面の操作を載せる（#80）。iPadOS 26以降は、ショートカットもメニューバーで確認する。項目はSwiftUIの`.commands`（`App/EditorCommands.swift`の`EditorCommands`）で定義し、選ばれたらSwiftは次のCustomEventをWebViewへ送るだけにする。操作の中身は画面のボタンと同じWeb側の処理で、Swiftに複製しない。
 
 ```js
 window.dispatchEvent(new CustomEvent('knittingEditorNativeCommand', { detail: 'undo' }));
@@ -47,6 +47,8 @@ window.dispatchEvent(new CustomEvent('knittingEditorNativeCommand', { detail: 'u
 | ファイル | PDFで書き出す… | ⌘P | `exportPdf` | 「PDFを保存」。全体を1ページ・A4縦（パネルの既定値） |
 | 編集 | 元に戻す | ⌘Z | `undo` | 操作メニューの「元に戻す」 |
 | 編集 | やり直す | ⇧⌘Z | `redo` | 操作メニューの「やり直す」 |
+| 表示 | 拡大 | ⌘+ | `zoomIn` | 表示中の盤面の中央を基準に1.25倍 |
+| 表示 | 縮小 | ⌘− | `zoomOut` | 同じ中央を基準に0.8倍 |
 | ヘルプ | 棒針編み図の使い方 | ⇧⌘H | `openGuide` | 「使い方」。保留中の保存を書き込んでから移る |
 
 ⌘Oの「開く…」はアプリの項目ではない。`LSSupportsOpeningDocumentsInPlace`を有効にすると（「`.knit`登録」の節）、iPadOSが「ファイル」メニューの先頭に「開く…」（⌘O、`open:`）と「最近使った項目を開く」を足し、外すことも名前を変えることもできない。`EditorCommands`に同じ⌘Oの項目を置くと、その項目を含むグループがまるごとメニューから外れ、⌘Nの「新しい編み図…」も効かなくなった（iOS 26.5のSimulator、#149）。そこで復元の項目は置かず、`AppDelegate`（`UIApplicationDelegateAdaptor`）が`open:`を受けて`restoreBackup`を送る。選べるかどうかは他の項目と同じ`canPerform`に従う。
@@ -55,6 +57,16 @@ Web側は`ios/Web/src/nativeBridge.ts`の`listenNativeCommand`で受け、`NATIV
 
 - 元に戻す・やり直すは、Web版のキー操作（`useHistoryShortcuts`）と同じ扱いにする。入力欄（`packages/editor-core/ui/hooks.ts`の`isEditableTarget`。Web版と同じ判定を共有する）にフォーカスがある間は、盤面ではなく入力中の文字に効かせる（`document.execCommand('undo')`・`('redo')`）。それ以外では、出力や復元の処理中や、アプリ内ダイアログ・記号の一覧を開いている間も盤面に効かせる。
 - ほかの操作は、出力や復元の処理中（`busy`）と、アプリ内ダイアログや記号の一覧（`aria-modal="true"`）を開いている間は始めない。
+
+### トラックパッドのピンチ（Swift → Web）
+
+実機のiPadOS 27.0.1では、WKWebViewはトラックパッドのピンチをページへ渡さず、⌘を押しながらスクロールしてもwheelのmetaKeyが立たなかった。このため⌘＋スクロールは実装せず、`App/TrackpadZoom.swift`の`UIPinchGestureRecognizer`で`UIEvent.type == .transform`だけを受け取る。指のタッチは受け取らず、同時認識を許し、既存の指のピンチを妨げない。
+
+```js
+window.dispatchEvent(new CustomEvent('knittingEditorNativeZoom', { detail: { factor: 1.0312, x: 412.5, y: 300 } }));
+```
+
+`factor`は前回のscaleに対する増分、`x`・`y`はWebView内の位置（固定viewportのCSS px）。Swift・Webとも有限数だけを認め、factorは正数に限る。Webは盤面の外の座標を無視する。メニューと同じく、編集画面の準備前・ネイティブ画面表示中は送らず、Web側も処理中・モーダル表示中は適用しない。履歴の有無には依存しない。メニューは`.toolbar`の後へ配置して「表示」にまとめ、共通の`BOARD_ZOOM_FACTOR`を使う。
 
 ### Apple Pencilのダブルタップ
 

@@ -1,7 +1,7 @@
 import type { ExportAnnotations } from '../export/annotations';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { boardSizeBucket, countBucket, NO_ANALYTICS, type EditorAnalytics } from '../analytics';
-import { CANVAS_MODE_LABELS, type CanvasMode } from '../canvas/BoardCanvas';
+import { CANVAS_MODE_LABELS, type CanvasMode, type BoardZoom } from '../canvas/BoardCanvas';
 import { renderPdf, renderPng, validatePngSize } from '../export/exporters';
 import type { PdfLayoutOptions } from '../export/pdfLayout';
 import type { PatternBlock, Rect } from '../model/Board';
@@ -40,6 +40,8 @@ export interface ConfirmOptions {
 
 export interface EditorControllerOptions {
   autosaveDelayMs?: number;
+  /** ポインタ操作の案内。省略すると修飾キー＋ホイールを案内する。 */
+  pointerZoomGesture?: 'pinch';
   /** 端末内データの読み出し。Web版は旧localStorageからの移行、iOS版はタイムアウトを挟む。 */
   initialize: () => Promise<EditorSessionInit>;
   platform: EditorPlatform;
@@ -70,6 +72,8 @@ export function useEditorController(options: EditorControllerOptions) {
   const [panel, setPanel] = useState<EditorPanel>();
   const [busy, setBusy] = useState<BusyTask>();
   const [initializationError, setInitializationError] = useState<string>();
+  const boardZoomRef = useRef<BoardZoom>(null);
+  const zoomBoard = useCallback((...args: Parameters<BoardZoom['zoom']>) => boardZoomRef.current?.zoom(...args), []);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { message, notificationAction, notify } = useNotifier();
   const { panelRef, rememberTrigger } = usePanelFocus<HTMLElement>(panel !== undefined);
@@ -372,6 +376,7 @@ export function useEditorController(options: EditorControllerOptions) {
   );
 
   return {
+    boardZoomRef, zoomBoard, pointerZoomGesture: options.pointerZoomGesture,
     session,
     changed, strokeChanged, commitStroke,
     undo, redo,

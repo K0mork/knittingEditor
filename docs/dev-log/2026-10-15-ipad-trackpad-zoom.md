@@ -1,0 +1,23 @@
+# 2026-10-15 — iPadのトラックパッドのピンチと「表示」メニューで盤面を拡大縮小する
+
+- 影響: iPad版で、トラックパッドのピンチと⌘＋スクロールでは盤面を拡大縮小できなかった（#21、#80の実機確認で発見）。iPad Air 第5世代（iPadOS 27.0.1）で入力イベントを記録すると、WKWebViewはトラックパッドのピンチをページへまったく渡さず（`gesture*`、`ctrlKey`付きwheel、タッチ・ポインタのどれも来ない）、⌘を押しながらのスクロールもwheelの`metaKey`がfalseのままだった。ネイティブの`UIPinchGestureRecognizer`と`UIPanGestureRecognizer`には、ピンチの倍率と⌘が届いていた。iPadOSの慣習に合わせて、次のようにした。
+  - トラックパッドのピンチ: `UIEvent.type == .transform`だけを受け取る認識器をWebViewに付け、倍率の増分とポインタの位置を`knittingEditorNativeZoom`でWeb側へ送り、ポインタの位置を中心に盤面を拡大縮小する。指のタッチは受け取らず、指のピンチ・描画は今までどおりWeb側で扱う。
+  - 「表示」メニューに「拡大」（⌘+）と「縮小」（⌘−）を足し、表示中の盤面の中央を基準に1.25倍・0.8倍にする。マウスだけを使う人もキーボードとメニューで拡大縮小できる。
+  - ⌘＋スクロールの拡大は、ページから⌘を判別できないため、iPad版では扱わない。マウス・トラックパッドを使っているときの案内を「ドラッグ：描画　スクロール：移動　ピンチ：拡大」にした。Web版の案内と⌘／Ctrl＋ホイールの拡大は変わらない。
+  - iPadOS 26以降は⌘キーの長押しで出ていたショートカットの一覧がメニューバーに置き換わったため、#80の「⌘キーの長押しで一覧が出る」は、メニューバーに項目とショートカットが出ることで確かめた。
+- 主なファイル: `ios/App/TrackpadZoom.swift`（追加）、`ios/App/WebViewContainer.swift`、`ios/App/EditorCommands.swift`、`ios/Web/src/nativeBridge.ts`、`ios/Web/src/nativeCommands.ts`、`ios/Web/src/App.tsx`、`packages/editor-core/canvas/BoardCanvas.tsx`（拡大の計算を`zoomViewportAt`に切り出し、ホストから倍率を変える`zoomBoard`を追加）、`packages/editor-core/ui/useEditorController.ts`、`packages/editor-core/ui/EditorView.tsx`、`packages/editor-core/ui/inputEnvironment.ts`、`ios/docs/NATIVE_BRIDGE.md`、`ios/docs/WEB_SYNC.md`、`ios/docs/REAL_DEVICE_RELEASE_CHECKLIST.md`、`ios/Web/public/guide/index.html`
+- テスト:
+  - Swift単体テスト`TrackpadZoomTests`を追加した。送るスクリプトの数値の書き方、不正な倍率・座標を送らないこと、編集画面の準備前とネイティブ画面の表示中は送らないこと、指のタッチを止めず・遅らせず、ほかの認識器と同時に動くことを確かめる。`EditorCommandsTests`の命令名の一覧に`zoomIn`・`zoomOut`を足した。
+  - Vitest: `packages/editor-core/canvas/BoardCanvas.test.ts`（拡大の中心が動かないこと、倍率の上限・下限、不正な値、盤面の外の位置を無視すること、表示の中央を基準にした拡大）、`packages/editor-core/ui/inputEnvironment.test.tsx`（iOS版の案内とWeb版の案内）、`ios/Web/src/nativeBridge.test.ts`（イベントの検証）、`ios/Web/src/nativeCommands.test.ts`（メニューの拡大・縮小と、処理中・モーダル表示中に動かないこと）、`ios/Web/src/App.zoom.test.tsx`（追加。イベントからの拡大と止める条件）。
+  - Playwright: `tests/e2e/canvas-pointer-and-view.spec.ts`で、⌘／Ctrl＋ホイールの倍率を従来の式どおりの値で確かめ、Web版では`knittingEditorNativeZoom`で倍率が変わらないことを足した。
+- 検証:
+  - 実装はCodex（gpt-6.1-sol、推論medium）が行い、差分をリーダー（Claude）が読んで確かめた。
+  - 手元（Node 26.8.1。Node 24は手元に無い。CIはNode 24）で、`npm run typecheck`、`npm run build`、`npm run check:dist`、`git diff --check`が成功した。`npm test`は61ファイル・586件のうち、処理時間を測る2件（`PDF worker > keeps a dense one-million-cell PDF compact`、`renderThumbnail > builds the thumbnail of a full 1000×1000 board in a single quick pass`）が、E2EとXcodeのテストを同時に動かしていた間だけ時間の上限を超えて失敗した。負荷が下がってから2ファイルを流し直し、70件すべて成功した。
+  - `(cd ios/Web && ../../node_modules/.bin/tsc -p tsconfig.app.json --noEmit)`は成功。`(cd ios/Web && ../../node_modules/.bin/vitest run --config vite.config.ts)`は15ファイル・132件成功。
+  - `npm run test:e2e`（chromium-desktop・chromium-mobile・webkit-mobile）: 442件成功、6件スキップ（もとから条件付きでスキップされるテスト）、2件失敗（chromium-mobileの`storage-conflicts.spec.ts:98`と`straddling-stitch-removal.spec.ts:26`。どちらも今回の変更と関係しない操作で、Xcodeのテストと同時に動かしていた）。その2件と`canvas-pointer-and-view.spec.ts`を流し直し、36件すべて成功した。
+  - `xcodegen generate --spec ios/project.yml`で`project.pbxproj`を作り直した。
+  - `xcodebuild test -project ios/knittingEditor.xcodeproj -scheme knittingEditor -destination 'id=<iPad (A16) Simulator, iOS 27.0>' CODE_SIGNING_ALLOWED=NO -only-testing:knittingEditorTests -only-testing:knittingEditorUITests/KeyboardCommandUITests`: 単体テスト103件（1件スキップ）と、キーボード操作のUIテスト4件がすべて成功した。
+  - 実機: このブランチを無料Personal Teamで署名してiPad Air 第5世代（iPadOS 27.0.1、有線）へ入れ、利用者がトラックパッド付きのキーボードで次を確かめ、すべて期待どおりだった。ピンチアウト・ピンチインでポインタの位置を中心に拡大縮小し、記号が入らない。2本指スクロールでの移動は変わらない。「表示」メニューに「拡大」（⌘+）・「縮小」（⌘−）があり、メニューとキーボードの両方で中央を基準に拡大縮小する。画面を指でつまむピンチと、指での描画・消去は変わらない。案内が「ドラッグ：描画　スクロール：移動　ピンチ：拡大」になる。
+  - 同じ日に、変更前の`main`（`b5ab406`）で、トラックパッドのクリック・ドラッグでの描画と消去、範囲選択と貼り付け、2本指スクロールでの移動、記号の一覧と出力パネルの操作、メニューバーの全項目とショートカットを確かめた（#21、#80）。
+  - 確かめていないこと: マウス（機材が無い）。iPhoneでの動作（トラックパッドの扱いはiPadだけ。メニューの追加はiPhoneでは表示されない）。iOSのSimulator全体（iPhone・iPad）、更新の復元、unsigned Release Archive、オフライン同梱物の検査はPR CIとFull iOS validationで確認する。
+- デプロイ影響: Pagesでは`packages/editor-core`の変更が配信されるが、Web版の表示と操作は変わらない（案内とホイールの拡大は従来どおり）。iOSアプリへ同梱される編集画面とネイティブのメニューが変わる。TestFlight／App Storeへの提出は行っていない。

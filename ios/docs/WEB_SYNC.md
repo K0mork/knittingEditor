@@ -66,3 +66,5 @@ iOS・共通コードの完了確認には、マージ後のコミット、ま�
 Web版で生成した`.knit`をiOS版で読み込み、iOS側のブリッジ出力をWeb版で読み込む双方向試験を維持する。
 
 永続記号ID 1〜29、`STITCH_CATALOG_VERSION`、IndexedDBのDB名、アプリの固定originは、既存fixtureとの互換性を確認せずに変更しない。
+
+トラックパッドの拡大案内は、iOSホストが`useEditorController`へ`pointerZoomGesture: 'pinch'`を渡す。Webホストは省略して従来の修飾キー＋ホイールの案内を保つ。盤面の倍率変更は共通の`zoomBoard` APIで行い、ネイティブイベントの受信・検証はiOS Webだけに置く。
