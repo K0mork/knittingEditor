@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { ThumbnailCache, thumbnailSize } from '../model/thumbnail';
 import type { ChartDocument } from '../storage/database';
-import { DOCUMENT_ACTION_LABELS, documentAccessibleName, documentActionName, formatUpdatedAt, msUntilNextDay } from './documentListText';
+import {
+  DOCUMENT_ACTION_LABELS, deleteSelectedLabel, documentAccessibleName, documentActionName, documentSelectName, formatUpdatedAt, msUntilNextDay,
+} from './documentListText';
 
 /** 一覧を閉じて開き直しても作り直さないよう、縮小画像はモジュールで1つの置き場に覚える。 */
 const thumbnailCache = new ThumbnailCache();
@@ -68,29 +70,53 @@ export interface DocumentListProps {
   onRename: (document: ChartDocument) => void;
   onDuplicate: (document: ChartDocument) => void;
   onDelete: (document: ChartDocument) => void;
+  /** チェック欄で選んだ編み図をまとめて削除する。確認と、最低1件を残す判断は呼び出し側で行う。 */
+  onDeleteMany: (documents: ChartDocument[]) => void;
 }
 
-/** 編み図パネルの一覧。縮小画像・名前・寸法・更新日時と、名前変更・複製・削除のボタンを並べる。 */
-export function DocumentList({ documents, activeId, onOpen, onRename, onDuplicate, onDelete }: DocumentListProps) {
+/**
+ * 編み図パネルの一覧。チェック欄・縮小画像・名前・寸法・更新日時と、名前変更・複製・削除のボタンを並べる。
+ * チェック欄で1件以上選ぶと、まとめて削除するバーを一覧の下に出す（#268）。
+ */
+export function DocumentList({ documents, activeId, onOpen, onRename, onDuplicate, onDelete, onDeleteMany }: DocumentListProps) {
   useEffect(() => { thumbnailCache.retain(documents.map((document) => document.id)); }, [documents]);
   useDayChange();
+  const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(() => new Set());
+  // 削除や復元で無くなった編み図は、選択から外れたものとして扱う。
+  const selected = documents.filter((document) => selectedIds.has(document.id));
+  const allSelected = selected.length === documents.length;
+  const toggle = (id: string) => setSelectedIds((current) => {
+    const next = new Set(current);
+    if (!next.delete(id)) next.add(id);
+    return next;
+  });
   const now = Date.now();
-  return <ul className="document-list">{documents.map((document) => {
-    const active = document.id === activeId;
-    return <li className={active ? 'document active' : 'document'} key={document.id}>
-      <button className="document-open" aria-label={documentAccessibleName(document, now)} aria-current={active || undefined} onClick={() => onOpen(document)}>
-        <span className="document-thumbnail-frame"><DocumentThumbnail document={document} /></span>
-        <span className="document-text">
-          <span className="document-name">{document.name}</span>
-          <small>{document.rows}段×{document.cols}目</small>
-          <small><time dateTime={new Date(document.updatedAt).toISOString()}>更新 {formatUpdatedAt(document.updatedAt, now)}</time></small>
-        </span>
-      </button>
-      <div className="document-actions">
-        <button aria-label={documentActionName('rename', document.name)} onClick={() => onRename(document)}>{DOCUMENT_ACTION_LABELS.rename}</button>
-        <button aria-label={documentActionName('duplicate', document.name)} onClick={() => onDuplicate(document)}>{DOCUMENT_ACTION_LABELS.duplicate}</button>
-        <button aria-label={documentActionName('delete', document.name)} disabled={documents.length === 1} onClick={() => onDelete(document)}>{DOCUMENT_ACTION_LABELS.delete}</button>
-      </div>
-    </li>;
-  })}</ul>;
+  return <>
+    <ul className="document-list">{documents.map((document) => {
+      const active = document.id === activeId;
+      return <li className={active ? 'document active' : 'document'} key={document.id}>
+        <label className="document-select">
+          <input type="checkbox" aria-label={documentSelectName(document.name)} checked={selectedIds.has(document.id)} onChange={() => toggle(document.id)} />
+        </label>
+        <button className="document-open" aria-label={documentAccessibleName(document, now)} aria-current={active || undefined} onClick={() => onOpen(document)}>
+          <span className="document-thumbnail-frame"><DocumentThumbnail document={document} /></span>
+          <span className="document-text">
+            <span className="document-name">{document.name}</span>
+            <small>{document.rows}段×{document.cols}目</small>
+            <small><time dateTime={new Date(document.updatedAt).toISOString()}>更新 {formatUpdatedAt(document.updatedAt, now)}</time></small>
+          </span>
+        </button>
+        <div className="document-actions">
+          <button aria-label={documentActionName('rename', document.name)} onClick={() => onRename(document)}>{DOCUMENT_ACTION_LABELS.rename}</button>
+          <button aria-label={documentActionName('duplicate', document.name)} onClick={() => onDuplicate(document)}>{DOCUMENT_ACTION_LABELS.duplicate}</button>
+          <button aria-label={documentActionName('delete', document.name)} disabled={documents.length === 1} onClick={() => onDelete(document)}>{DOCUMENT_ACTION_LABELS.delete}</button>
+        </div>
+      </li>;
+    })}</ul>
+    {selected.length > 0 && <div className="document-selection" role="group" aria-label="選んだ編み図">
+      <p>{selected.length}件を選択中{allSelected && '。1件は残してください'}</p>
+      <button onClick={() => setSelectedIds(new Set())}>選択を解除</button>
+      <button className="danger" disabled={allSelected} onClick={() => onDeleteMany(selected)}>{deleteSelectedLabel(selected.length)}</button>
+    </div>}
+  </>;
 }

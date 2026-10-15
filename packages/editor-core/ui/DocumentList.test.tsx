@@ -43,7 +43,7 @@ function chart(id: string, name: string, updatedAt: number, cells: number[] = [0
 }
 
 function render(props: Partial<DocumentListProps> & Pick<DocumentListProps, 'documents'>) {
-  const handlers = { onOpen: vi.fn(), onRename: vi.fn(), onDuplicate: vi.fn(), onDelete: vi.fn() };
+  const handlers = { onOpen: vi.fn(), onRename: vi.fn(), onDuplicate: vi.fn(), onDelete: vi.fn(), onDeleteMany: vi.fn() };
   container ??= document.body.appendChild(document.createElement('div'));
   root ??= createRoot(container);
   act(() => root!.render(<DocumentList activeId={props.documents[0].id} {...handlers} {...props} />));
@@ -162,5 +162,39 @@ describe('DocumentList', () => {
     render({ documents: [chart('a', 'ケーブル', 1), chart('b', '縄編み', 2)] });
     expect(actions(1).map(({ name }) => name)).toEqual(['縄編みの名称を変更', '縄編みを複製', '縄編みを削除']);
     expect(container!.querySelector('button[aria-label^="地模様"]')).toBeNull();
+  });
+
+  it('selects charts with checkboxes and deletes them together, keeping at least one', () => {
+    const documents = [chart('a', 'ケーブル', 3), chart('b', '地模様', 2), chart('c', '縄編み', 1)];
+    const handlers = render({ documents });
+    const checkbox = (name: string) => container!.querySelector<HTMLInputElement>(`input[type="checkbox"][aria-label="${name}を選ぶ"]`)!;
+    const bar = () => container!.querySelector<HTMLElement>('[role="group"][aria-label="選んだ編み図"]');
+    const barButton = (text: string) => [...bar()!.querySelectorAll('button')].find((button) => button.textContent === text)!;
+    expect(container!.querySelectorAll('input[type="checkbox"]')).toHaveLength(3);
+    // 何も選んでいないときは、まとめて削除するバーを出さない。
+    expect(bar()).toBeNull();
+
+    act(() => checkbox('ケーブル').click());
+    act(() => checkbox('縄編み').click());
+    expect(checkbox('ケーブル').checked).toBe(true);
+    expect(checkbox('地模様').checked).toBe(false);
+    expect(bar()!.querySelector('p')!.textContent).toBe('2件を選択中');
+    act(() => barButton('2件を削除').click());
+    expect(handlers.onDeleteMany).toHaveBeenCalledWith([documents[0], documents[2]]);
+
+    // 全件を選ぶと、1件は残すので削除できない。
+    act(() => checkbox('地模様').click());
+    expect(bar()!.querySelector('p')!.textContent).toBe('3件を選択中。1件は残してください');
+    expect(barButton('3件を削除').disabled).toBe(true);
+
+    // 削除などで一覧から消えた編み図は、選んだ件数に数えない。
+    render({ documents: [documents[1]] });
+    expect(bar()!.querySelector('p')!.textContent).toBe('1件を選択中。1件は残してください');
+    render({ documents: [documents[1], chart('d', '新しい編み図', 4)] });
+    expect(barButton('1件を削除').disabled).toBe(false);
+
+    act(() => barButton('選択を解除').click());
+    expect(bar()).toBeNull();
+    expect(checkbox('地模様').checked).toBe(false);
   });
 });

@@ -173,7 +173,8 @@ export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, 
         <button className="primary" onClick={() => void editor.createNewDocument()}>新しい編み図</button>
         <DocumentList documents={session.documents} activeId={activeDocument.id}
           onOpen={(document) => void editor.switchDocument(document)} onRename={(document) => void editor.renameChart(document)}
-          onDuplicate={(document) => void editor.duplicateChart(document)} onDelete={(document) => void editor.deleteChart(document)} />
+          onDuplicate={(document) => void editor.duplicateChart(document)} onDelete={(document) => void editor.deleteChart(document)}
+          onDeleteMany={(documents) => void editor.deleteCharts(documents)} />
         {documentsNote && <p className="documents-note">{documentsNote}</p>}
       </>}
       {panel === 'grid' && <GridControls board={board} backgroundColor={session.backgroundColor} onBackgroundColorChange={session.setBackgroundColor} changed={editor.changed} askText={editor.askText} askConfirm={editor.askConfirm} notify={editor.notify} />}

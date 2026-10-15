@@ -70,3 +70,13 @@ export function documentActionName(action: DocumentAction, name: string): string
     case 'delete': return `${name}を${DOCUMENT_ACTION_LABELS.delete}`;
   }
 }
+
+/** 行のチェック欄の読み上げ名。どの編み図を選ぶのかを含める（#268）。 */
+export function documentSelectName(name: string): string {
+  return `${name}を選ぶ`;
+}
+
+/** まとめて削除するボタンの表示。件数を含め、押す前に何件消えるかが分かるようにする。 */
+export function deleteSelectedLabel(count: number): string {
+  return `${count}件を削除`;
+}
