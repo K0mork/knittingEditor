@@ -154,4 +154,21 @@ describe('native menu commands', () => {
     expect(requestRestore).toHaveBeenCalledTimes(1);
     expect(openGuide).toHaveBeenCalledTimes(1);
   });
+
+  it('switches between drawing and erasing on an Apple Pencil double tap', () => {
+    const editor = { session: { board: new Board(20, 20) }, mode: 'draw', chooseMode: vi.fn() };
+    const handlers = () => nativeCommandHandlers(editor as unknown as Parameters<typeof nativeCommandHandlers>[0], { requestRestore: vi.fn(), openGuide: vi.fn() });
+    expect(isNativeCommand('toggleEraser')).toBe(true);
+    // 描く・範囲・貼付からは消すへ、消すからは描くへ。
+    for (const [mode, next] of [['draw', 'erase'], ['erase', 'draw'], ['select', 'erase'], ['paste', 'erase']] as const) {
+      editor.mode = mode;
+      editor.chooseMode.mockClear();
+      handlers().toggleEraser();
+      expect(editor.chooseMode).toHaveBeenCalledWith(next);
+    }
+    // ダイアログや処理中は、ほかの操作と同じく切り替えない。
+    const fake = fakeHandlers();
+    expect(runNativeCommand('toggleEraser', fake, { busy: true })).toBe('blocked');
+    expect(fake.toggleEraser).not.toHaveBeenCalled();
+  });
 });

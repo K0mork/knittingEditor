@@ -13,7 +13,7 @@ export type NativeCommandHandlers = Record<NativeCommand, () => void>;
 export const MENU_PDF_OPTIONS: PdfLayoutOptions = { layout: 'single', orientation: 'portrait', cellMillimeters: 5 };
 
 type CommandEditor = Pick<EditorController,
-  'session' | 'createNewDocument' | 'backup' | 'runPngExport' | 'runPdfExport' | 'undo' | 'redo'>;
+  'session' | 'createNewDocument' | 'backup' | 'runPngExport' | 'runPdfExport' | 'undo' | 'redo' | 'mode' | 'chooseMode'>;
 
 /** ネイティブのメニュー項目を、画面のボタンと同じ編集画面の操作へ対応づける。 */
 export function nativeCommandHandlers(editor: CommandEditor, actions: {
@@ -35,6 +35,9 @@ export function nativeCommandHandlers(editor: CommandEditor, actions: {
     undo: editor.undo,
     redo: editor.redo,
     openGuide: actions.openGuide,
+    // Apple Pencilのダブルタップ（#269）。「消す」なら「描く」へ、それ以外（描く・範囲・貼付）なら「消す」へ。
+    // 画面の「描く」「消す」ボタンと同じく、選択範囲と貼付を解除する。
+    toggleEraser: () => { editor.chooseMode(editor.mode === 'erase' ? 'draw' : 'erase'); },
   };
 }
 
