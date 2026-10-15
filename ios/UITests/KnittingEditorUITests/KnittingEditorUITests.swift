@@ -1449,7 +1449,8 @@ final class KnittingEditorUITests: XCTestCase {
         assertPrimaryControlsAreUsable(in: app)
     }
 
-    /// 文字サイズを最大（アクセシビリティXXXL）にして起動し、WebViewが出るまで待つ。
+    /// 文字サイズを最大（アクセシビリティXXXL）にして起動し、編集画面が`webReady`を送り、
+    /// 準備中の表示が消えるまで待ってからWebの内容を探す（#64）。
     private func launchWithAccessibilityExtraExtraExtraLarge() -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments += [
@@ -1458,6 +1459,10 @@ final class KnittingEditorUITests: XCTestCase {
         ]
         app.launch()
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
+        XCTAssertTrue(
+            waitForDisappearance(of: app.descendants(matching: .any)["editorLoadingOverlay"], timeout: Self.editorAppearanceTimeout),
+            app.debugDescription
+        )
         return app
     }
 
