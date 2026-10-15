@@ -1,0 +1,24 @@
+# 2026-10-15 — Apple Pencilのダブルタップで描くと消すを切り替える
+
+- 影響: iPad版で、Apple Pencil（ダブルタップに対応する機種）をダブルタップすると、描くと消すが切り替わるようにした（#269）。
+  - 編集画面のWebViewに`UIPencilInteraction`を付けた。iPadの設定（設定 > Apple Pencil の「ダブルタップ」）が「現在のツールと消しゴムを切り替え」か「現在のツールと最後に使用したツールを切り替え」のときだけ、メニューの項目と同じ`knittingEditorNativeCommand`で`toggleEraser`を送る。「オフ」やカラーパレットの表示などでは何もしない。
+  - Web側は「消す」なら「描く」へ、それ以外（描く・範囲・貼付）なら「消す」へ、画面のボタンと同じ処理で切り替える。編集画面の準備ができる前、保存画面などを出している間、処理中、ダイアログや記号の一覧を開いている間は切り替えない。キーボードの操作ではないので、ほかの命令と違い、キーボードがあるとはみなさない。
+  - 対応OSは17.0からで、`UIPencilInteraction(delegate:)`と`pencilInteraction(_:didReceiveTap:)`は17.5以降にしかないため、インタラクションは作ってから受け手を設定し、17.4までは`pencilInteractionDidTap(_:)`で受ける。
+  - iOS版の「使い方」と`ios/docs/NATIVE_BRIDGE.md`に書いた。メニューには載せていない。
+- 主なファイル: `ios/App/PencilDoubleTap.swift`、`ios/App/EditorCommands.swift`、`ios/App/WebViewContainer.swift`、`ios/Web/src/nativeBridge.ts`、`ios/Web/src/nativeCommands.ts`、`ios/Web/src/App.tsx`、`ios/Web/public/guide/index.html`、`ios/docs/NATIVE_BRIDGE.md`、`ios/knittingEditor.xcodeproj/project.pbxproj`（XcodeGenが新しいファイルを登録した分だけ）
+- テスト:
+  - Swift単体テスト`PencilDoubleTapTests`を追加した。iPadの設定ごとに送る命令（消しゴム・直前の道具なら`toggleEraser`、オフ・カラーパレット・17.5以降の設定なら何もしない）と、編集画面が命令を受け付けるときだけ送ることを確かめる。`EditorCommandsTests`の命令名の一覧に`toggleEraser`を足した。
+  - iOS WebのVitest（`nativeCommands.test.ts`）に、描く・範囲・貼付から消すへ、消すから描くへ切り替わること、処理中は切り替えないことを足した。
+  - Apple Pencilの入力はXCUITestで作れないため、UIテストは追加していない。
+- 検証:
+  - iOS Web: `tsc -p tsconfig.app.json --noEmit`と`vitest run --config vite.config.ts`（14ファイル、130件）が成功した。
+  - Xcode 27.0で`xcodegen generate`のあと、iPad (A16) Simulator（iOS 26.5）で`xcodebuild test -only-testing:knittingEditorTests … CODE_SIGNING_ALLOWED=NO`を実行し、単体テスト99件（1件は既定どおりスキップ）が成功した。
+  - `scripts/guide-content.test.mjs`、`scripts/japanese-punctuation.test.mjs`、`ios/scripts/check-app-store-docs.sh`、`node scripts/check-pr-smoke-ui-tests.mjs`、`git diff --check`が成功した。
+  - 実機: このブランチを無料Personal Teamで署名してiPad Air 第5世代（iPadOS 27.0.1）へ入れ、利用者がApple Pencilで次を確かめ、すべて期待どおりだった。
+    - 設定が既定（現在のツールと消しゴムを切り替え）のとき、「描く」でダブルタップすると「消す」に、もう一度で「描く」に戻る。
+    - 「範囲」でダブルタップすると「消す」になる。
+    - 新しい編み図の名前入力のダイアログを開いている間は切り替わらない。
+    - 設定を「オフ」にすると切り替わらない。
+    - 設定を「現在のツールと最後に使用したツールを切り替え」にしても、描く⇔消すが切り替わる。
+  - iOSのUIテストとiPhoneでの確認は手元で実行しておらず、PRのCIと`ios-full.yml`に任せる。Webと共有コードは変えていないため、Webの確認は実行していない。
+- デプロイ影響: Pagesはなし。iOSアプリへの同梱時に反映する。配布後は、Apple Pencil（第2世代以降）のダブルタップで描く⇔消すが切り替わること、設定が「オフ」のときは何もしないことを確かめる。

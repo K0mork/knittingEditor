@@ -18,9 +18,13 @@ interface NativeBridgeMessage {
   canRedo?: boolean;
 }
 
-/** メニューバーとキーボードショートカットからネイティブ側が送る操作。`App/EditorCommands.swift`と対応する。 */
+/**
+ * メニューバーとキーボードショートカット、Apple Pencilのダブルタップ（`toggleEraser`）からネイティブ側が送る操作。
+ * `App/EditorCommands.swift`と対応する。
+ */
 export const NATIVE_COMMANDS = [
   'newDocument', 'restoreBackup', 'exportBackup', 'exportAllBackup', 'exportPng', 'exportPdf', 'undo', 'redo', 'openGuide',
+  'toggleEraser',
 ] as const;
 export type NativeCommand = typeof NATIVE_COMMANDS[number];
 

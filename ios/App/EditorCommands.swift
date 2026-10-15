@@ -16,6 +16,8 @@ enum EditorCommand: String, CaseIterable, Sendable {
     case undo
     case redo
     case openGuide
+    /// Apple Pencilのダブルタップで、描くと消すを切り替える（#269）。メニューには載せない。
+    case toggleEraser
 
     static let eventName = "knittingEditorNativeCommand"
 

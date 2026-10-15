@@ -241,6 +241,12 @@ struct WebViewContainer: UIViewRepresentable {
         webView.isOpaque = false
         webView.backgroundColor = AppColors.editorPageBackground
         webView.scrollView.backgroundColor = AppColors.editorPageBackground
+        // Apple Pencilのダブルタップで描く⇔消すを切り替える（#269）。`UIPencilInteraction`は受け手を
+        // 弱参照で持つので、受け手はCoordinatorが保持する。
+        // `init(delegate:)`はiOS 17.5以降なので、作ってから受け手を設定する。
+        let pencilInteraction = UIPencilInteraction()
+        pencilInteraction.delegate = context.coordinator.pencilDoubleTap
+        webView.addInteraction(pencilInteraction)
         model.attach(webView)
         context.coordinator.attach(webView)
         webView.load(URLRequest(url: LocalWebSchemeHandler.indexURL))
@@ -290,6 +296,8 @@ struct WebViewContainer: UIViewRepresentable {
         private weak var webView: WKWebView?
         private(set) var pendingExport: PendingExport?
         private let reviewRequestTracker: ReviewRequestTracker
+        /// WebViewに付けた`UIPencilInteraction`の受け手。インタラクションは受け手を弱参照で持つ。
+        let pencilDoubleTap: PencilDoubleTapHandler
         /// テストでは保存画面を出さずに用途を設定し、閉じたときの扱いを確かめる。
         var pickerPurpose: PickerPurpose?
         /// 書き出しの結果をWebへ返す。テストでは差し替えて、返した結果を確かめる。
@@ -300,6 +308,7 @@ struct WebViewContainer: UIViewRepresentable {
         init(model: WebViewModel, reviewRequestTracker: ReviewRequestTracker? = nil) {
             self.model = model
             self.reviewRequestTracker = reviewRequestTracker ?? ReviewRequestTracker()
+            pencilDoubleTap = PencilDoubleTapHandler(model: model)
             reportExportResult = { [weak model] requestID, saved, status, notice in
                 model?.reportExportFinished(requestID: requestID, saved: saved, status: status, notice: notice)
             }

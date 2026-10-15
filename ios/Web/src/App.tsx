@@ -111,7 +111,8 @@ export default function App() {
     const removeCommandListener = listenNativeCommand((command) => {
       // ショートカットはメニューバーが先に受け取り、ページの`keydown`へ届かない。
       // 記号の一覧の「Escapeで閉じます。」などを出せるよう、キーボードがあるとみなす。
-      noteHardwareKeyboard();
+      // Apple Pencilのダブルタップはキーボードの操作ではないので除く。
+      if (command !== 'toggleEraser') noteHardwareKeyboard();
       runNativeCommand(command, commandsRef.current, { busy: busyRef.current !== undefined });
     });
     return () => {

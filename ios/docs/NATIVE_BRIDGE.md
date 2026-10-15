@@ -56,6 +56,15 @@ Web側は`ios/Web/src/nativeBridge.ts`の`listenNativeCommand`で受け、`NATIV
 - 元に戻す・やり直すは、Web版のキー操作（`useHistoryShortcuts`）と同じ扱いにする。入力欄（`packages/editor-core/ui/hooks.ts`の`isEditableTarget`。Web版と同じ判定を共有する）にフォーカスがある間は、盤面ではなく入力中の文字に効かせる（`document.execCommand('undo')`・`('redo')`）。それ以外では、出力や復元の処理中や、アプリ内ダイアログ・記号の一覧を開いている間も盤面に効かせる。
 - ほかの操作は、出力や復元の処理中（`busy`）と、アプリ内ダイアログや記号の一覧（`aria-modal="true"`）を開いている間は始めない。
 
+### Apple Pencilのダブルタップ
+
+Apple Pencil（ダブルタップに対応する機種）のダブルタップで、描くと消すを切り替える（#269）。`App/PencilDoubleTap.swift`の`PencilDoubleTapHandler`を受け手にした`UIPencilInteraction`を編集画面のWebViewに付け、メニューの項目と同じ`knittingEditorNativeCommand`で`toggleEraser`を送る。メニューには載せない。
+
+- iPadの設定（設定 > Apple Pencil の「ダブルタップ」、`UIPencilInteraction.preferredTapAction`）に従う。「現在のツールと消しゴムを切り替え」と「現在のツールと最後に使用したツールを切り替え」のときだけ送り、「オフ」やカラーパレットの表示など、そのほかの設定では何もしない。このアプリの道具は描くと消すが中心で、直前の道具はほぼ必ずもう一方になるため、2つの設定を同じ扱いにする。
+- Web側は「消す」なら「描く」へ、それ以外（描く・範囲・貼付）なら「消す」へ切り替える。画面の「描く」「消す」ボタンと同じ`chooseMode`を使うので、選択範囲と貼付は解除される。
+- ほかの操作と同じく、編集画面の準備ができる前、保存画面などを出している間（`canPerform`）、出力や復元の処理中、ダイアログや記号の一覧を開いている間は切り替えない。キーボードの操作ではないので、ほかの命令と違い、キーボードがあるとはみなさない。
+- `UIPencilInteraction(delegate:)`と`pencilInteraction(_:didReceiveTap:)`はiOS 17.5以降にしかない。対応OSは17.0からなので、インタラクションは作ってから受け手を設定し、17.4までは`pencilInteractionDidTap(_:)`で受ける。
+
 標準の「取り消す」「やり直す」（UIKitの`undo:`・`redo:`）はWeb側の編集履歴に届かないため、`CommandGroup(replacing: .undoRedo)`で置き換える。選べる状態のメニュー項目にショートカットが合うと、UIKitがキーを受け取り、WebViewの`keydown`へは届かない。このため⌘Z・⇧⌘ZはWeb側のキー操作（`useHistoryShortcuts`）と二重には実行されない（`KeyboardCommandUITests`で、1回の⌘Zで1件だけ戻ることを確かめている）。項目を選べないとき（戻せる編集が無いときなど）は、キーはWebViewの`keydown`へ届く。
 
 置き換えたことで、入力欄の文字の取り消しに使われていた標準のキー割り当ても無くなる。項目を選べないときに入力欄で⌘Zを押すと、キーは`keydown`へ届くが、`useHistoryShortcuts`は入力欄では何もしないため、文字が戻らない。そこでWebは入力欄にフォーカスがある間、`commandState`の`canUndo`・`canRedo`を盤面の履歴にかかわらず`true`にして送る（`nativeHistoryState`・`watchTextEditing`）。入力欄での⌘Z・⇧⌘Zは常にメニューを通り、`runNativeCommand`から`execCommand`で入力中の文字を取り消す・やり直す。WKWebViewで効くことは、新しい編み図のダイアログで文字を打ち、盤面に戻せる編集が無いときとあるときの両方で`KeyboardCommandUITests`が確かめている。
