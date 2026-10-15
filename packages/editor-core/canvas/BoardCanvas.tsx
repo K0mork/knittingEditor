@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef, useImperativeHandle, type Ref } from 'react';
 import { Board, type PatternBlock, type Point, type Rect } from '../model/Board';
 import { boardSurface, DEFAULT_BACKGROUND_COLOR } from '../model/boardColors';
 import { STITCH_BY_KEY, STITCHES } from '../stitches/catalog';
@@ -13,7 +13,15 @@ export const CANVAS_MODE_LABELS: Record<CanvasMode, string> = {
   draw: '描画', erase: '消去', select: '範囲選択', paste: '貼付',
 };
 
+/** ホストから盤面の表示だけを変更する。座標を省略すると表示領域の中央。 */
+export interface BoardZoom {
+  zoom: (factor: number, clientPosition?: { x: number; y: number }) => void;
+}
+
+export const BOARD_ZOOM_FACTOR = 1.25;
+
 interface Props {
+  zoomRef?: Ref<BoardZoom>;
   board: Board;
   /** 盤面の地の色（`#rrggbb`）。縞と罫線の色もここから作る。 */
   background?: string;
@@ -39,6 +47,17 @@ const MIN_CELL_SIZE = 4;
 const MAX_CELL_SIZE = 72;
 const clampCellSize = (cell: number) => Math.min(MAX_CELL_SIZE, Math.max(MIN_CELL_SIZE, cell));
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+/** 指定位置にあるマス内の点を固定したまま倍率を変える。 */
+export function zoomViewportAt(view: Viewport, position: PointerPosition, factor: number): Viewport {
+  if (!Number.isFinite(factor) || factor <= 0 || !Number.isFinite(position.x) || !Number.isFinite(position.y)) return view;
+  const cell = clampCellSize(view.cell * factor);
+  return {
+    x: position.x - (position.x - view.x) / view.cell * cell,
+    y: position.y - (position.y - view.y) / view.cell * cell,
+    cell,
+  };
+}
 
 /**
  * 盤面の位置を、端のマスの中心が表示領域（段・目の番号の帯を除いた部分）の中央に来るところまでに収める。
@@ -340,6 +359,21 @@ export function BoardCanvas(props: Props) {
     requestDraw();
   };
 
+  useImperativeHandle(props.zoomRef, () => ({
+    zoom(factor, clientPosition) {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return;
+      // client座標を盤面内へ変換する。道具列など盤面の外の位置は受け付けない。
+      if (clientPosition && (clientPosition.x < rect.left || clientPosition.x >= rect.right || clientPosition.y < rect.top || clientPosition.y >= rect.bottom)) return;
+      const position = clientPosition
+        ? { x: clientPosition.x - rect.left, y: clientPosition.y - rect.top }
+        : { x: (bandRef.current + canvas.clientWidth) / 2, y: (bandRef.current + canvas.clientHeight) / 2 };
+      setViewport(zoomViewportAt(viewportRef.current, position, factor));
+    },
+  }), []);
+
   // ReactのonWheelはpassiveで登録されるためpreventDefaultが効かず、
   // トラックパッドのピンチが盤面ではなくページ全体を拡大してしまう。
   useEffect(() => {
@@ -351,10 +385,7 @@ export function BoardCanvas(props: Props) {
       const position = { x: event.clientX - rect.left, y: event.clientY - rect.top };
       const view = viewportRef.current;
       if (event.ctrlKey || event.metaKey) {
-        const worldX = (position.x - view.x) / view.cell;
-        const worldY = (position.y - view.y) / view.cell;
-        const cell = clampCellSize(view.cell * Math.exp(-event.deltaY * 0.002));
-        setViewport({ x: position.x - worldX * cell, y: position.y - worldY * cell, cell });
+        setViewport(zoomViewportAt(view, position, Math.exp(-event.deltaY * 0.002)));
       } else {
         setViewport({ ...view, x: view.x - event.deltaX, y: view.y - event.deltaY });
       }

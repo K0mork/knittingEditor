@@ -1,9 +1,9 @@
-import { act, createElement } from 'react';
+import { act, createElement, createRef, type RefObject } from 'react';
 import { createRoot } from 'react-dom/client';
 import { describe, expect, it, vi } from 'vitest';
 import { Board } from '../model/Board';
 import { STITCHES } from '../stitches/catalog';
-import { BoardCanvas, type CanvasMode, canvasCellAt, canvasLabelMetrics, canvasLabels, fitCanvasLabels, initialViewport, clampViewport, glyphSearchStart, LABEL_SIZE, LIGHT_CANVAS_CHROME, readCanvasChrome } from './BoardCanvas';
+import { zoomViewportAt, type BoardZoom, BoardCanvas, type CanvasMode, canvasCellAt, canvasLabelMetrics, canvasLabels, fitCanvasLabels, initialViewport, clampViewport, glyphSearchStart, LABEL_SIZE, LIGHT_CANVAS_CHROME, readCanvasChrome } from './BoardCanvas';
 
 describe('glyphSearchStart', () => {
   it('includes off-screen anchors whose multi-cell glyph overlaps the viewport', () => {
@@ -168,7 +168,7 @@ describe('initialViewport', () => {
 
 // 描画APIは使わず、Reactの実際のポインタ処理を検証する。
 
-function pointerTest(mode: CanvasMode, run: (board: Board, send: (type: string, x: number, y: number, button: number, buttons: number) => void, canvas: HTMLCanvasElement) => void) {
+function pointerTest(mode: CanvasMode, run: (board: Board, send: (type: string, x: number, y: number, button: number, buttons: number) => void, canvas: HTMLCanvasElement) => void, zoomRef?: RefObject<BoardZoom | null>) {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });
   vi.stubGlobal('requestAnimationFrame', () => 1);
@@ -178,7 +178,7 @@ function pointerTest(mode: CanvasMode, run: (board: Board, send: (type: string, 
   const root = createRoot(host);
   const board = new Board(20, 20);
   act(() => root.render(createElement(BoardCanvas, {
-    board, revision: 0, mode, stitchKey: 'knit', color: '#000000',
+    zoomRef, board, revision: 0, mode, stitchKey: 'knit', color: '#000000',
     onChange: () => {}, onSelectionChange: () => {}, onPasteComplete: () => {},
   })));
   const canvas = host.querySelector('canvas')!;
@@ -286,5 +286,49 @@ describe('initial view timing', () => {
       // 上書きした大きさを消し、HTMLElementの本来の定義へ戻す。
       for (const key of Object.keys(size)) delete (HTMLCanvasElement.prototype as unknown as Record<string, unknown>)[key];
     }
+  });
+});
+
+describe('zoomViewportAt', () => {
+  const view = { x: -40, y: 10, cell: 30 };
+  const position = { x: 240, y: 180 };
+  it('keeps the world point under the anchor and reverses an incremental zoom', () => {
+    const zoomed = zoomViewportAt(view, position, 1.25);
+    expect(zoomed.cell).toBe(37.5);
+    expect((position.x - zoomed.x) / zoomed.cell).toBeCloseTo((position.x - view.x) / view.cell);
+    expect((position.y - zoomed.y) / zoomed.cell).toBeCloseTo((position.y - view.y) / view.cell);
+    expect(zoomViewportAt(zoomed, position, 0.8)).toEqual(view);
+  });
+  it('clamps cell size while keeping the anchor', () => {
+    for (const [factor, cell] of [[100, 72], [0.001, 4]]) {
+      const next = zoomViewportAt(view, position, factor);
+      expect(next.cell).toBe(cell);
+      expect((position.x - next.x) / next.cell).toBeCloseTo((position.x - view.x) / view.cell);
+    }
+  });
+  it('rejects invalid factors and positions', () => {
+    for (const factor of [0, -1, NaN, Infinity]) expect(zoomViewportAt(view, position, factor)).toBe(view);
+    expect(zoomViewportAt(view, { x: Infinity, y: 1 }, 1.25)).toBe(view);
+  });
+});
+
+describe('host board zoom', () => {
+  it.each(['point', 'center'] as const)('zooms around a client %s without editing the board', (anchor) => {
+    const zoomRef = createRef<BoardZoom>();
+    pointerTest('draw', (board, send, canvas) => {
+      Object.defineProperty(canvas, 'clientWidth', { value: 400, configurable: true });
+      Object.defineProperty(canvas, 'clientHeight', { value: 400, configurable: true });
+      vi.spyOn(canvas, 'getBoundingClientRect').mockReturnValue({ left: 100, top: 150, right: 500, bottom: 550, width: 400, height: 400 } as DOMRect);
+      zoomRef.current!.zoom(2, anchor === 'point' ? { x: 250, y: 300 } : undefined);
+      expect(board.cells.some(Boolean)).toBe(false);
+      // 盤面外からのズームは無視する。
+      zoomRef.current!.zoom(0.5, { x: 99, y: 300 });
+      const local = anchor === 'point' ? 230 : 330;
+      send('pointerdown', 100 + local, 150 + local, 0, 1);
+      send('pointerup', 100 + local, 150 + local, 0, 0);
+      const cell = anchor === 'point' ? 5 : 7;
+      expect([...board.cells.keys()].filter(index => board.cells[index])).toEqual([cell * board.cols + cell]);
+    }, zoomRef);
+    expect(zoomRef.current).toBeNull();
   });
 });

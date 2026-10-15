@@ -1,3 +1,4 @@
+import { BOARD_ZOOM_FACTOR } from '@knitting-editor/editor-core/canvas/BoardCanvas';
 import { defaultPngCellSize } from '@knitting-editor/editor-core/export/exporters';
 import type { PdfLayoutOptions } from '@knitting-editor/editor-core/export/pdfLayout';
 import { isEditableTarget } from '@knitting-editor/editor-core/ui/hooks';
@@ -13,7 +14,7 @@ export type NativeCommandHandlers = Record<NativeCommand, () => void>;
 export const MENU_PDF_OPTIONS: PdfLayoutOptions = { layout: 'single', orientation: 'portrait', cellMillimeters: 5 };
 
 type CommandEditor = Pick<EditorController,
-  'session' | 'createNewDocument' | 'backup' | 'runPngExport' | 'runPdfExport' | 'undo' | 'redo' | 'mode' | 'chooseMode'>;
+  'session' | 'createNewDocument' | 'backup' | 'runPngExport' | 'runPdfExport' | 'undo' | 'redo' | 'mode' | 'chooseMode' | 'zoomBoard'>;
 
 /** ネイティブのメニュー項目を、画面のボタンと同じ編集画面の操作へ対応づける。 */
 export function nativeCommandHandlers(editor: CommandEditor, actions: {
@@ -32,6 +33,8 @@ export function nativeCommandHandlers(editor: CommandEditor, actions: {
       if (board) void editor.runPngExport(defaultPngCellSize(board));
     },
     exportPdf: () => { void editor.runPdfExport(MENU_PDF_OPTIONS); },
+    zoomIn: () => editor.zoomBoard(BOARD_ZOOM_FACTOR),
+    zoomOut: () => editor.zoomBoard(1 / BOARD_ZOOM_FACTOR),
     undo: editor.undo,
     redo: editor.redo,
     openGuide: actions.openGuide,
@@ -58,7 +61,7 @@ export function runNativeCommand(command: NativeCommand, handlers: NativeCommand
     if (typeof doc.execCommand === 'function') doc.execCommand(command);
     return 'textEditing';
   }
-  if (!history && (state.busy || doc.querySelector('[aria-modal="true"]'))) return 'blocked';
+  if (!history && nativeInteractionBlocked(state, doc)) return 'blocked';
   handlers[command]();
   return 'performed';
 }
@@ -99,4 +102,9 @@ export function watchTextEditing(listener: (editing: boolean) => void, doc: Docu
     doc.removeEventListener('focusout', scheduleCheck);
     if (timer !== undefined) window.clearTimeout(timer);
   };
+}
+
+/** メニューと間接ピンチで共通の、編集画面の操作を始めない条件。 */
+export function nativeInteractionBlocked(state: { busy: boolean }, doc: Document = document): boolean {
+  return state.busy || doc.querySelector('[aria-modal="true"]') !== null;
 }

@@ -60,7 +60,7 @@ describe('native menu commands', () => {
   it('keeps a dialog in front: only undo and redo pass through, as with the web shortcuts', () => {
     document.body.innerHTML = '<section role="dialog" aria-modal="true"><button>決定</button></section>';
     const handlers = fakeHandlers();
-    const blocked: NativeCommand[] = ['newDocument', 'restoreBackup', 'exportBackup', 'exportAllBackup', 'exportPng', 'exportPdf', 'openGuide'];
+    const blocked: NativeCommand[] = ['newDocument', 'restoreBackup', 'exportBackup', 'exportAllBackup', 'exportPng', 'exportPdf', 'openGuide', 'zoomIn', 'zoomOut'];
     for (const command of blocked) expect(runNativeCommand(command, handlers, { busy: false })).toBe('blocked');
     expect(runNativeCommand('undo', handlers, { busy: false })).toBe('performed');
     expect(handlers.undo).toHaveBeenCalledTimes(1);
@@ -130,11 +130,15 @@ describe('native menu commands', () => {
       runPdfExport: vi.fn(async () => {}),
       undo: vi.fn(),
       redo: vi.fn(),
+      zoomBoard: vi.fn(),
     };
     const requestRestore = vi.fn();
     const openGuide = vi.fn();
     const handlers = nativeCommandHandlers(editor as unknown as Parameters<typeof nativeCommandHandlers>[0], { requestRestore, openGuide });
 
+    handlers.zoomIn();
+    handlers.zoomOut();
+    expect(editor.zoomBoard.mock.calls).toEqual([[1.25], [0.8]]);
     handlers.exportPng();
     expect(editor.runPngExport).toHaveBeenCalledWith(defaultPngCellSize(board));
     handlers.exportPdf();

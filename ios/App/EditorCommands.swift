@@ -18,6 +18,8 @@ enum EditorCommand: String, CaseIterable, Sendable {
     case openGuide
     /// Apple Pencilのダブルタップで、描くと消すを切り替える（#269）。メニューには載せない。
     case toggleEraser
+    case zoomIn
+    case zoomOut
 
     static let eventName = "knittingEditorNativeCommand"
 
@@ -68,7 +70,7 @@ extension WebViewModel {
     }
 }
 
-/// iPadのメニューバーと、⌘キーの長押しで出るショートカットの一覧に載せる項目。
+/// iPadのメニューバーに載せる項目。iPadOS 26以降は、ここでショートカットも確認できる。
 ///
 /// キーの割り当ては、iPadOSの慣習（⌘N・⌘O・⌘S・⌘Z・⇧⌘Z）と、Web版のキー操作（⌘Z・⇧⌘Z）に合わせる。
 /// 復元（⌘O）はここに置かない。「ファイル」アプリから`.knit`を開けるよう`LSSupportsOpeningDocumentsInPlace`を
@@ -97,6 +99,11 @@ struct EditorCommands: Commands {
         CommandGroup(replacing: .undoRedo) {
             item("元に戻す", .undo, "z")
             item("やり直す", .redo, "z", modifiers: [.command, .shift])
+        }
+        // `.toolbar`は標準の「表示」メニュー内の配置先。盤面の倍率もここにまとめる。
+        CommandGroup(after: .toolbar) {
+            item("拡大", .zoomIn, KeyEquivalent("+"))
+            item("縮小", .zoomOut, KeyEquivalent("-"))
         }
         CommandGroup(replacing: .help) {
             item("棒針編み図の使い方", .openGuide, "h", modifiers: [.command, .shift])

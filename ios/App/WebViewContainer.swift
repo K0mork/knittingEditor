@@ -247,6 +247,7 @@ struct WebViewContainer: UIViewRepresentable {
         let pencilInteraction = UIPencilInteraction()
         pencilInteraction.delegate = context.coordinator.pencilDoubleTap
         webView.addInteraction(pencilInteraction)
+        context.coordinator.trackpadZoom.attach(to: webView)
         model.attach(webView)
         context.coordinator.attach(webView)
         webView.load(URLRequest(url: LocalWebSchemeHandler.indexURL))
@@ -298,6 +299,7 @@ struct WebViewContainer: UIViewRepresentable {
         private let reviewRequestTracker: ReviewRequestTracker
         /// WebViewに付けた`UIPencilInteraction`の受け手。インタラクションは受け手を弱参照で持つ。
         let pencilDoubleTap: PencilDoubleTapHandler
+        let trackpadZoom: TrackpadZoomHandler
         /// テストでは保存画面を出さずに用途を設定し、閉じたときの扱いを確かめる。
         var pickerPurpose: PickerPurpose?
         /// 書き出しの結果をWebへ返す。テストでは差し替えて、返した結果を確かめる。
@@ -309,6 +311,7 @@ struct WebViewContainer: UIViewRepresentable {
             self.model = model
             self.reviewRequestTracker = reviewRequestTracker ?? ReviewRequestTracker()
             pencilDoubleTap = PencilDoubleTapHandler(model: model)
+            trackpadZoom = TrackpadZoomHandler(model: model)
             reportExportResult = { [weak model] requestID, saved, status, notice in
                 model?.reportExportFinished(requestID: requestID, saved: saved, status: status, notice: notice)
             }

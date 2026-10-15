@@ -110,8 +110,13 @@ test('initial narrow view draws stitch 1 and row 1 labels and retains zoom on re
     if (columns.length < 2) return 0;
     return (columns[1].x - columns[0].x) / (Number(columns[0].text) - Number(columns[1].text));
   });
-  await expect.poll(cellSize).toBeGreaterThan(30);
+  await expect.poll(cellSize).toBeCloseTo(30 * Math.exp(0.2), 5);
   const zoomedCellSize = await cellSize();
+  // iOSホスト専用のイベントは、Web版の表示倍率を変えない。
+  await page.evaluate(() => window.dispatchEvent(new CustomEvent('knittingEditorNativeZoom', {
+    detail: { factor: 1.25, x: 200, y: 300 },
+  })));
+  await expect.poll(cellSize).toBeCloseTo(zoomedCellSize, 5);
   // 回転相当の幅変更後にも編集盤面と名前が維持される。
   await page.setViewportSize({ width: 844, height: 390 });
   await expect(canvas).toHaveAttribute('aria-label', /20段、20目/);

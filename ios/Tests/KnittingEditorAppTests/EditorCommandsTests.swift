@@ -8,7 +8,7 @@ final class EditorCommandsTests: XCTestCase {
     func testCommandNamesMatchWebBridge() {
         XCTAssertEqual(EditorCommand.allCases.map(\.rawValue), [
             "newDocument", "restoreBackup", "exportBackup", "exportAllBackup",
-            "exportPng", "exportPdf", "undo", "redo", "openGuide", "toggleEraser",
+            "exportPng", "exportPdf", "undo", "redo", "openGuide", "toggleEraser", "zoomIn", "zoomOut",
         ])
     }
 

@@ -63,14 +63,14 @@ function HistoryIcon({ direction }: { direction: 'undo' | 'redo' }) {
 export const GESTURE_HINT_DURATION_MS = 10_000;
 
 /** 盤面の右下に出す操作のヒント。開いてから`GESTURE_HINT_DURATION_MS`で消える。 */
-function GestureHint({ mode }: { mode: CanvasMode }) {
+function GestureHint({ pointerZoomGesture, mode }: { mode: CanvasMode; pointerZoomGesture?: 'pinch' }) {
   const environment = useInputEnvironment();
   const [visible, setVisible] = useState(true);
   useEffect(() => {
     const timer = window.setTimeout(() => setVisible(false), GESTURE_HINT_DURATION_MS);
     return () => window.clearTimeout(timer);
   }, []);
-  return <div className={visible ? 'gesture-hint' : 'gesture-hint is-hidden'} aria-hidden={!visible || undefined}>{gestureHintText(mode, environment)}</div>;
+  return <div className={visible ? 'gesture-hint' : 'gesture-hint is-hidden'} aria-hidden={!visible || undefined}>{gestureHintText(mode, environment, pointerZoomGesture)}</div>;
 }
 
 /** 編集画面の組み立て。Web版とiOS版で共通。 */
@@ -143,9 +143,9 @@ export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, 
         lastBackupAt={editor.backupReminder.lastBackupAt} onBackup={() => void editor.backup(false)} onSnooze={editor.backupReminder.snooze} />}
 
       <section className="canvas-wrap">
-        <BoardCanvas board={board} background={session.backgroundColor} revision={session.revision} stitchKey={editor.selectedStitch} color={editor.selectedColor} mode={mode}
+        <BoardCanvas zoomRef={editor.boardZoomRef} board={board} background={session.backgroundColor} revision={session.revision} stitchKey={editor.selectedStitch} color={editor.selectedColor} mode={mode}
           selection={selection} pasteBlock={editor.pasteBlock} onChange={editor.strokeChanged} onEditEnd={editor.commitStroke} onSelectionChange={editor.setSelection} onPasteComplete={editor.handlePasteComplete} />
-        <GestureHint mode={mode} />
+        <GestureHint mode={mode} pointerZoomGesture={editor.pointerZoomGesture} />
       </section>
 
       <p className="visually-hidden" role="status" aria-live="polite" aria-atomic="true">{editor.modeLabel}モード。{selection ? '選択範囲あり' : '選択範囲なし'}</p>

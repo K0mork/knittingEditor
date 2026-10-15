@@ -9,9 +9,9 @@ import { useAppDialog } from './AppDialog';
 import { withTimeout } from './async';
 import { useNotifyWhenEditorShown } from './editorReady';
 import {
-  listenNativeBackupSelected, listenNativeCommand, listenNativeError, notifyNativeCommandState, notifyNativeReady, requestNativeBackupOpen,
+  listenNativeBackupSelected, listenNativeCommand, listenNativeZoom, listenNativeError, notifyNativeCommandState, notifyNativeReady, requestNativeBackupOpen,
 } from './nativeBridge';
-import { nativeCommandHandlers, nativeHistoryState, runNativeCommand, watchTextEditing } from './nativeCommands';
+import { nativeCommandHandlers, nativeInteractionBlocked, nativeHistoryState, runNativeCommand, watchTextEditing } from './nativeCommands';
 import { nativeAutosaveDelayMs } from './nativeEditorConfiguration';
 import { iosPlatform } from './platform';
 
@@ -38,7 +38,7 @@ function initialize() {
 export default function App() {
   const { askText, askConfirm, dialog } = useAppDialog();
   // 分析は渡さない。アプリ版は製品イベントを一切送らない。
-  const editor = useEditorController({ initialize, platform: iosPlatform, askText, askConfirm, autosaveDelayMs: nativeAutosaveDelayMs() });
+  const editor = useEditorController({ initialize, pointerZoomGesture: 'pinch', platform: iosPlatform, askText, askConfirm, autosaveDelayMs: nativeAutosaveDelayMs() });
   const { saveNow } = editor.session;
 
   // ネイティブ側からの通知は一度だけ購読し、最新の復元・通知処理をrefで参照する。
@@ -86,6 +86,8 @@ export default function App() {
   });
   const commandsRef = useRef(commands);
   commandsRef.current = commands;
+  const zoomRef = useRef(editor.zoomBoard);
+  zoomRef.current = editor.zoomBoard;
   const busyRef = useRef(editor.busy);
   busyRef.current = editor.busy;
 
@@ -108,6 +110,9 @@ export default function App() {
         run: () => { void navigateToGuideRef.current(new URL(`/guide/#${guideSection}`, window.location.href).href); },
       });
     });
+    const removeZoomListener = listenNativeZoom(({ factor, x, y }) => {
+      if (!nativeInteractionBlocked({ busy: busyRef.current !== undefined })) zoomRef.current(factor, { x, y });
+    });
     const removeCommandListener = listenNativeCommand((command) => {
       // ショートカットはメニューバーが先に受け取り、ページの`keydown`へ届かない。
       // 記号の一覧の「Escapeで閉じます。」などを出せるよう、キーボードがあるとみなす。
@@ -119,6 +124,7 @@ export default function App() {
       removeBackupListener();
       removeErrorListener();
       removeCommandListener();
+      removeZoomListener();
     };
   }, []);
 
