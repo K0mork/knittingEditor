@@ -686,6 +686,75 @@ final class KnittingEditorUITests: XCTestCase {
         return seconds
     }
 
+    /// 1000×1000の盤面でPNGの1セルの画素数を最大（60px）にすると、上限を超える理由と
+    /// PDF保存のすすめが出て、「PNGを保存」が押せなくなる。アプリは落ちない（#24）。
+    /// 最小に戻すと、表示が消えて保存できるようになる。
+    func testOversizedPngExplainsLimitAndDisablesSave() {
+        let app = XCUIApplication()
+        app.launch()
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+        createDocument(named: "PNG上限確認", in: app)
+        _ = resizeBoard(rows: 1000, cols: 1000, in: app)
+
+        app.buttons["出力"].tap()
+        let slider = app.sliders.matching(NSPredicate(format: "label BEGINSWITH %@", "1セルの画素数")).firstMatch
+        assertHittableAfterScrolling(slider, in: app)
+        let png = app.buttons["PNGを保存"]
+        let limit = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "一辺が上限16384pxを超えます")).firstMatch
+        let recommend = app.staticTexts["この盤面はPDF保存をおすすめします。"]
+
+        dragPngCellSize(slider, to: 60, in: app)
+        XCTAssertTrue(limit.waitForExistence(timeout: 10), "上限を超える理由が出ない: \(app.debugDescription)")
+        XCTAssertTrue(recommend.exists, "PDF保存のすすめが出ない: \(app.debugDescription)")
+        XCTAssertTrue(png.exists, app.debugDescription)
+        XCTAssertFalse(png.isEnabled, "上限を超えても「PNGを保存」が押せる: \(app.debugDescription)")
+        add(screenshotAttachment(named: "PNGの上限超過"))
+
+        dragPngCellSize(slider, to: 2, in: app)
+        XCTAssertTrue(waitForDisappearance(of: limit, timeout: 10), "最小に戻しても上限の表示が消えない: \(app.debugDescription)")
+        XCTAssertFalse(recommend.exists, "最小に戻してもPDF保存のすすめが残る: \(app.debugDescription)")
+        XCTAssertTrue(png.isEnabled, "最小に戻しても「PNGを保存」が押せない: \(app.debugDescription)")
+        XCTAssertEqual(app.state, .runningForeground)
+        app.buttons["閉じる"].tap()
+    }
+
+    /// 出力パネルの「1セルの画素数」を端の値（2pxか60px）までドラッグする。
+    ///
+    /// WebViewのスライダーはつまみの位置の属性が取れず、`adjust(toNormalizedSliderPosition:)`が
+    /// 失敗する（iPad実機で確認）。今の値からつまみの位置を求め、スライダーの外までドラッグする。
+    private func dragPngCellSize(_ slider: XCUIElement, to end: Int, in app: XCUIApplication) {
+        let range = 2...60
+        for _ in 0..<3 {
+            guard let current = pngCellSize(of: slider) else { break }
+            if current == end { return }
+            let frame = slider.frame
+            // つまみは左右の端から半径ぶん内側を動く。
+            let inset = min(frame.height / 2, 14)
+            let ratio = CGFloat(current - range.lowerBound) / CGFloat(range.upperBound - range.lowerBound)
+            let origin = slider.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0.5))
+            let thumb = origin.withOffset(CGVector(dx: inset + ratio * (frame.width - inset * 2), dy: 0))
+            let target = origin.withOffset(CGVector(dx: end == range.upperBound ? frame.width + 12 : -12, dy: 0))
+            thumb.press(forDuration: 0.2, thenDragTo: target)
+            let deadline = Date().addingTimeInterval(5)
+            while pngCellSize(of: slider) != end, Date() < deadline {
+                Thread.sleep(forTimeInterval: 0.2)
+            }
+        }
+        XCTAssertEqual(pngCellSize(of: slider), end, "1セルの画素数を\(end)pxにできない: \(app.debugDescription)")
+    }
+
+    /// 「1セルの画素数」の今の値。
+    ///
+    /// スライダーの名前は「1セルの画素数 7px」のように値を含む。横の値の表示は、iOS 26.5のWebKitでは
+    /// 「7」と「px」の2つの要素に分かれるため使わない。名前から読めないときは、スライダーの値（`7.00`）を使う。
+    private func pngCellSize(of slider: XCUIElement) -> Int? {
+        let label = slider.label
+        if let range = label.range(of: "[0-9]+(?=px$)", options: .regularExpression) {
+            return Int(label[range])
+        }
+        return (slider.value as? String).flatMap(Double.init).map { Int($0.rounded()) }
+    }
+
     /// App Storeスクリーンショット用に、画面を埋める大きさの盤面を用意する。
     ///
     /// 撮影対象のSimulatorに対して実行し、終了後に`xcrun simctl io <udid> screenshot`で撮る。
