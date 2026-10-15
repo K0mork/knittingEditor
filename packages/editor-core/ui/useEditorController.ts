@@ -10,7 +10,7 @@ import { useBackupReminder } from '../state/useBackupReminder';
 import { useEditorSession, type EditorSessionInit, type SaveTrigger } from '../state/useEditorSession';
 import { STITCHES, type StitchDefinition } from '../stitches/catalog';
 import {
-  createDocument, deleteBlock, deleteDocument, duplicateDocument, exportBackup, importBackup,
+  createDocument, deleteBlock, deleteDocuments, duplicateDocument, exportBackup, importBackup,
   renameDocument, saveBlock, type ChartDocument,
 } from '../storage/database';
 import { errorMessage } from '../util/errors';
@@ -163,8 +163,12 @@ export function useEditorController(options: EditorControllerOptions) {
     setColorPickerOpen(false);
   };
 
-  const switchDocument = useCallback(async (document: ChartDocument, saveCurrent = true, remember = true) => {
-    if (document.id === activeDocument?.id) { setPanel(undefined); return; }
+  /**
+   * 編み図を切り替える。一覧から選んだときはパネルを閉じて盤面を見せる。
+   * 削除に伴う切り替えでは`keepPanel`を立て、続けて一覧を操作できるよう開いたままにする（#267）。
+   */
+  const switchDocument = useCallback(async (document: ChartDocument, saveCurrent = true, remember = true, keepPanel = false) => {
+    if (document.id === activeDocument?.id) { if (!keepPanel) setPanel(undefined); return; }
     let outcome;
     try { outcome = await switchSessionDocument(document, saveCurrent, remember); }
     catch {
@@ -177,7 +181,7 @@ export function useEditorController(options: EditorControllerOptions) {
     if (outcome !== 'switched') return;
     setSelection(undefined);
     setMode('draw');
-    setPanel(undefined);
+    if (!keepPanel) setPanel(undefined);
   }, [switchSessionDocument, activeDocument?.id, notify]);
 
   const startPaste = useCallback((block: PatternBlock) => {
@@ -299,17 +303,25 @@ export function useEditorController(options: EditorControllerOptions) {
     notify('編み図を複製しました');
   });
 
-  const deleteChart = (document: ChartDocument) => runManagementOperation('chart_delete', '編み図の削除', async () => {
-    if (!(await askConfirm(`「${document.name}」を削除しますか？`, { destructive: true }))) return;
-    const remaining = session.documents.filter((item) => item.id !== document.id);
-    if (!remaining.length) return;
-    const active = document.id === activeDocument?.id;
+  /**
+   * 選んだ編み図をまとめて削除する。編み図は最低1件残す。開いている編み図を含むときは残りの
+   * 先頭へ切り替え、続けて操作できるよう一覧は開いたままにする（#267、#268）。
+   */
+  const deleteCharts = (targets: readonly ChartDocument[]) => runManagementOperation('chart_delete', '編み図の削除', async () => {
+    const ids = new Set(targets.map((document) => document.id));
+    const remaining = session.documents.filter((item) => !ids.has(item.id));
+    if (!ids.size || !remaining.length) return;
+    const title = ids.size === 1 ? `「${targets[0].name}」を削除しますか？` : `選んだ${ids.size}件の編み図を削除しますか？`;
+    if (!(await askConfirm(title, { destructive: true }))) return;
+    const active = activeDocument !== undefined && ids.has(activeDocument.id);
     if (active && !(await saveBeforeManagement('編み図を削除'))) return;
     // 削除が失敗したら、開いている編み図も一覧も変えない。
-    await deleteDocument(document.id, active ? remaining[0].id : undefined);
-    session.removeDocument(document.id);
-    if (active) await switchDocument(remaining[0], false, false);
+    await deleteDocuments([...ids], active ? remaining[0].id : undefined);
+    for (const id of ids) session.removeDocument(id);
+    if (active) await switchDocument(remaining[0], false, false, true);
   });
+
+  const deleteChart = (document: ChartDocument) => deleteCharts([document]);
 
   const backup = async (all: boolean) => {
     if (!activeDocument) return;
@@ -375,7 +387,7 @@ export function useEditorController(options: EditorControllerOptions) {
     askText, askConfirm,
     saveSelectionAsBlock, removeBlock,
     runPngExport, runPdfExport,
-    createNewDocument, switchDocument, renameChart, duplicateChart, deleteChart,
+    createNewDocument, switchDocument, renameChart, duplicateChart, deleteChart, deleteCharts,
     backup, restore, backupReminder,
   };
 }

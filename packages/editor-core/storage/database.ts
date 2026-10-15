@@ -158,12 +158,21 @@ async function finishTransaction(transaction: { done: Promise<void>; abort: () =
 }
 
 export async function deleteDocument(id: string, nextActiveId?: string): Promise<void> {
+  await deleteDocuments([id], nextActiveId);
+}
+
+/**
+ * 編み図をまとめて削除する。1つのトランザクションで消すので、途中で失敗したら1件も消えない。
+ */
+export async function deleteDocuments(ids: readonly string[], nextActiveId?: string): Promise<void> {
   const db = await database();
   // 最後のバックアップ日時も一緒に消し、消した編み図の記録を設定に残さない。
   const transaction = db.transaction(['documents', 'settings'], 'readwrite');
   await finishTransaction(transaction, async () => {
-    await transaction.objectStore('documents').delete(id);
-    await transaction.objectStore('settings').delete(lastBackupKey(id));
+    for (const id of ids) {
+      await transaction.objectStore('documents').delete(id);
+      await transaction.objectStore('settings').delete(lastBackupKey(id));
+    }
     if (nextActiveId) await transaction.objectStore('settings').put({ key: 'activeDocumentId', value: nextActiveId });
   });
 }

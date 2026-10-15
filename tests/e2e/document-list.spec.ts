@@ -122,12 +122,60 @@ test('finds each chart\'s rename, duplicate and delete buttons by the chart name
     return dialog.accept();
   });
   await page.getByRole('button', { name: '新しい編み図を削除', exact: true }).click();
-  // 開いている編み図を消すと残りの編み図へ切り替わり、パネルが閉じる。
+  // 開いている編み図を消すと残りの編み図へ切り替わり、続けて操作できるよう一覧は開いたまま（#267）。
   await expect(page.locator('.app-document-name')).toContainText('縄編み');
-  await openDocuments(page);
+  await expect(page.locator('.document-list')).toBeVisible();
   await expect(page.locator('.document')).toHaveCount(1);
   await expect(page.locator('.document-name')).toHaveText('縄編み');
   await expect(page.getByRole('button', { name: '縄編みを削除', exact: true })).toBeDisabled();
+});
+
+test('deletes the charts chosen with the checkboxes together and keeps the list open', async ({ page }) => {
+  await openDocuments(page);
+  for (const name of ['縄編み', '地模様']) {
+    page.once('dialog', (dialog) => dialog.accept(name));
+    await page.getByRole('button', { name: '新しい編み図', exact: true }).click();
+    await expect(page.locator('.app-document-name')).toContainText(name);
+    await openDocuments(page);
+  }
+  await expect(page.locator('.document')).toHaveCount(3);
+  const bar = page.getByRole('group', { name: '選んだ編み図' });
+  await expect(bar).toHaveCount(0);
+
+  // 開いている「地模様」を含めて2件を選ぶ。
+  await page.getByRole('checkbox', { name: '地模様を選ぶ' }).check();
+  await page.getByRole('checkbox', { name: '新しい編み図を選ぶ' }).check();
+  await expect(bar).toContainText('2件を選択中');
+  await expect(bar).toBeInViewport();
+
+  // 確認を断ると、何も消えず選択も残る。
+  page.once('dialog', (dialog) => {
+    expect(dialog.message()).toBe('選んだ2件の編み図を削除しますか？');
+    return dialog.dismiss();
+  });
+  await bar.getByRole('button', { name: '2件を削除' }).click();
+  await expect(page.locator('.document')).toHaveCount(3);
+  await expect(page.getByRole('checkbox', { name: '地模様を選ぶ' })).toBeChecked();
+
+  page.once('dialog', (dialog) => dialog.accept());
+  await bar.getByRole('button', { name: '2件を削除' }).click();
+  await expect(page.locator('.document')).toHaveCount(1);
+  await expect(page.locator('.document-name')).toHaveText('縄編み');
+  // 開いていた編み図が消えたので残りへ切り替わり、一覧は開いたまま。
+  await expect(page.locator('.app-document-name')).toContainText('縄編み');
+  await expect(page.locator('.document-list')).toBeVisible();
+  await expect(bar).toHaveCount(0);
+
+  // 最後の1件は選んでも削除できない。
+  await page.getByRole('checkbox', { name: '縄編みを選ぶ' }).check();
+  await expect(bar).toContainText('1件を選択中。1件は残してください');
+  await expect(bar.getByRole('button', { name: '1件を削除' })).toBeDisabled();
+
+  // 再読み込みしても、消した編み図は戻らない。
+  await page.reload();
+  await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
+  await openDocuments(page);
+  await expect(page.locator('.document-name')).toHaveText(['縄編み']);
 });
 
 test('fits the thumbnail of a large, tall board inside its frame without distorting it', async ({ page }) => {

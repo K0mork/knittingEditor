@@ -119,7 +119,7 @@ describe('management failures', () => {
     ['createDocument', '編み図の作成', () => editor.createNewDocument()],
     ['renameDocument', '編み図の名前変更', () => editor.renameChart(source)],
     ['duplicateDocument', '編み図の複製', () => editor.duplicateChart(source)],
-    ['deleteDocument', '編み図の削除', () => editor.deleteChart(source)],
+    ['deleteDocuments', '編み図の削除', () => editor.deleteChart(source)],
     ['saveBlock', 'ブロックの保存', () => editor.saveSelectionAsBlock()],
     ['deleteBlock', 'ブロックの削除', () => editor.removeBlock(savedBlock)],
   ] as const)('catches %s rejection and preserves the data and list', async (method, label, action) => {
@@ -200,6 +200,43 @@ describe('management failures', () => {
     await act(async () => { await editor.deleteChart(source); });
     expect(editor.session.documents.map((chart) => chart.id)).toEqual(before.filter((chart) => chart.id !== source.id).map((chart) => chart.id));
     expect(await database.listDocuments()).toEqual(editor.session.documents);
+  });
+
+  it('keeps the chart list open after deleting the open chart but closes it when opening a chart', async () => {
+    await act(async () => { editor.togglePanel('documents'); });
+    await act(async () => { await editor.deleteChart(source); });
+    expect(editor.session.activeDocument?.id).not.toBe(source.id);
+    expect(editor.panel).toBe('documents');
+    const created = await database.createDocument('追加の編み図', 4, 4);
+    await act(async () => { editor.session.updateDocument(created); });
+    await act(async () => { await editor.switchDocument(created); });
+    expect(editor.session.activeDocument?.id).toBe(created.id);
+    expect(editor.panel).toBeUndefined();
+  });
+
+  it('deletes several confirmed charts at once and keeps at least one', async () => {
+    const third = await database.createDocument('三つ目の編み図', 4, 4);
+    await act(async () => { editor.session.updateDocument(third); editor.togglePanel('documents'); });
+    const [other] = editor.session.documents.filter((chart) => chart.id !== source.id && chart.id !== third.id);
+
+    // 全件は消さない。確認も出さない。
+    await act(async () => { await editor.deleteCharts(editor.session.documents); });
+    expect(askConfirm).not.toHaveBeenCalled();
+    expect(await database.listDocuments()).toHaveLength(3);
+
+    confirmResult = false;
+    await act(async () => { await editor.deleteCharts([source, third]); });
+    expect(askConfirm).toHaveBeenLastCalledWith('選んだ2件の編み図を削除しますか？', { destructive: true });
+    expect(await database.listDocuments()).toHaveLength(3);
+
+    confirmResult = true;
+    await act(async () => { await editor.deleteCharts([source, third]); });
+    expect(editor.session.documents.map((chart) => chart.id)).toEqual([other.id]);
+    expect(await database.listDocuments()).toEqual(editor.session.documents);
+    // 開いていた編み図を消したので、残りへ切り替える。一覧は開いたまま。
+    expect(editor.session.activeDocument?.id).toBe(other.id);
+    expect(await database.getSetting('activeDocumentId')).toBe(other.id);
+    expect(editor.panel).toBe('documents');
   });
 
   it('reflects successful rename and delete without another storage read', async () => {

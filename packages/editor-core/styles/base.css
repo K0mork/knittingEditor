@@ -199,7 +199,13 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 .document-list { padding: 0; margin-bottom: 0; list-style: none; }
 .documents-note { margin: 14px 2px 0; font-size: .85rem; }
 .documents-note a { color: var(--link); }
-.document { min-width: 0; display: grid; gap: 6px; border: 1px solid var(--border); border-radius: 12px; padding: 6px; }
+/* 左端のチェック欄は2段にまたがり、縮小画像と名前のボタン・下の段のボタンは右の列に置く（#268）。 */
+.document { min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px; border: 1px solid var(--border); border-radius: 12px; padding: 6px; }
+.document-select { grid-row: span 2; display: grid; place-items: center; min-width: var(--compact-tap-size); cursor: pointer; }
+.document-select input { width: 22px; height: 22px; margin: 0; accent-color: var(--accent); cursor: pointer; }
+/* 選んだ件数と削除ボタンは、一覧が長くてもパネルの下端に残す。パネルの下余白の分だけ下へずらす。 */
+.document-selection { position: sticky; bottom: calc(-20px - env(safe-area-inset-bottom)); z-index: 1; display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 8px; margin-top: 12px; padding: 10px 2px calc(20px + env(safe-area-inset-bottom)); border-top: 1px solid var(--border); background: var(--paper); }
+.document-selection p { margin: 0; font-size: .85rem; }
 .document.active { border-color: var(--accent); background: var(--selected); }
 .document > button, .block-list div > button:first-child { text-align: left; border: 0; background: transparent; }
 .document small, .block-list small { display: block; color: var(--muted); }
