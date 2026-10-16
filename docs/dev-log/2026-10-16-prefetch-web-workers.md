@@ -1,0 +1,22 @@
+# 2026-10-16 — Web版のWorkerを先読みして、配信更新後もPDF保存とバックアップを使えるようにする
+
+- 影響: Web版で、ページを開いたまま新しい版がデプロイされると、そのタブでは「PDFを保存」とバックアップの書き出し・復元が押すたびに失敗していた（#278）。Workerのファイル名にはビルドごとのハッシュが付き、デプロイで古いファイルが消えるため、古いタブからは起動できなかった。バックアップは失敗しても通知が空で、何も表示されなかった。
+  - Web本番版だけ、ページの読み込み後にPDF・バックアップのWorkerの中身を先読みして保持し、使うときはその中身の`blob:` URLから起動する。タスクごとに起動し、終わったら終了してURLを解放する今の作りは変えない。
+  - 先読みが済んでいない・失敗したとき、`blob:`からの起動に失敗したときは、同梱ファイルのURLから起動する（従来の動き）。それも失敗し、そのURLが404を返すときは「サイトが更新されました」と知らせ、再読み込みのボタンを出す。端末内への保存に失敗している最中は、再読み込みで未保存の編集が消えるので再読み込みを勧めず、先にPNGを保存するよう案内する。
+  - Workerは起動すると準備完了を知らせ、そのあとでデータを渡す。準備完了の前の失敗だけを起動の失敗として次の方法へ切り替え、処理中に落ちた場合はやり直さない。バックアップのデータはコピーせずに渡す。`blob:`からの起動だけ、準備完了を15秒待って起動の失敗とみなす。URLからの起動と処理時間には上限を設けない。
+  - バックアップの失敗で通知が空にならないようにした。PDFの一般的な失敗の文言から「ページを再読み込みして」を外した（再読み込みで直る場合は上の案内を出す）。
+  - Web版のCSPの`worker-src`に`blob:`を足した。インラインのスクリプトは引き続き許さない。
+  - iOS版は先読みせず、同梱URLから起動する（実行時に通信APIを呼ばない方針のまま）。開発サーバーも先読みしない。
+- 主なファイル: `packages/editor-core/util/workerStarter.ts`、`packages/editor-core/export/exporters.ts`、`packages/editor-core/export/pdf.worker.ts`、`packages/editor-core/storage/backupTask.ts`、`packages/editor-core/storage/backup.worker.ts`、`packages/editor-core/ui/useEditorController.ts`、`src/main.tsx`、`scripts/content-security-policy.mjs`、`ios/docs/WEB_SYNC.md`
+- テスト:
+  - 単体テスト: `workerStarter.test.ts`（先読みと`blob:`起動・URL解放、先読みしないときに`fetch`を呼ばないこと、起動失敗からの切り替え、準備完了の前後での失敗の扱い、`blob:`起動だけの待ち時間、404・200・通信失敗の区別）、`backupTask.test.ts`（バッファをコピーせずに渡すこと、空でない失敗の文言）、`exporters.test.ts`、`useEditorController.test.tsx`（保存の状態に応じた案内）、`content-security-policy.test.mjs`。
+  - E2E: `tests/e2e/prefetch-web-workers.spec.ts`を追加（先読みのあとでWorkerのURLを404にしても、PDF保存とバックアップの書き出し・復元が成功する。Workerを読めないときの案内が、保存が正常なときと失敗しているときで正しく分かれる）。`tests/e2e/editor.spec.ts`の「PDFのWorkerの読み込み失敗」のテストは、先読みで成功するようになったため、通信失敗（404ではない）で一般的な失敗の文言が出て、再試行で成功する確認に変えた。
+- 検証: Node.js v26.8.1で実行した（CIはNode 24）。
+  - CIの同梱通信API検査への修正: このブランチで手動起動した`ios-full.yml`の`release_archive`が、`ios/scripts/check-app-bundle.sh`の「同梱Web資産に通信APIを含めない」検査で失敗した。共有の`workerStarter.ts`に`fetch`があり、iOS版では呼ばないもののiOSの同梱ファイルに含まれていたため。通信処理をWeb版だけの`src/workerPrefetch.ts`へ移し、共有コードには読み込み処理を外から渡す形にした。`npm run typecheck`、`npm test`（64ファイル、618件）、`npm run build`、`npm run check:dist`、iOS Webの`tsc -p tsconfig.app.json --noEmit`・`vitest run --config vite.config.ts`（15ファイル、132件）・`vite build`が成功。`ios/Web/dist`に`check-app-bundle.sh`と同じ正規表現で通信APIを検索して一致なし（grep終了コード1）、Webの主バンドルにはfetchローダーが残ることを確認。`ios/scripts/build-web.sh`の出力（`ios/AppResources/Web`）にも同じ検索で一致がなかった。修正後に`npm run test:e2e`を流し直し、453件成功、6件スキップ（既存）だった。iOS版はこの修正で動きが変わらないため、Simulatorのテストは流し直していない（PRのCIと`ios-full.yml`で確かめる）。
+  - `npm run typecheck`、`npm test`（63ファイル、612件）、`npm run build`、`npm run check:dist`がすべて成功した。
+  - `npm run test:e2e`は、450件成功、6件スキップ（既存）、`editor.spec.ts`の上記1件が3プロジェクトで失敗した。テストを直したあと、そのテストと`prefetch-web-workers.spec.ts`を`npx playwright test tests/e2e/editor.spec.ts:976 tests/e2e/prefetch-web-workers.spec.ts`で流し、3プロジェクトの12件がすべて成功した。製品コードはこの間に変えていない。
+  - `(cd ios/Web && ../../node_modules/.bin/tsc -p tsconfig.app.json --noEmit)`、`(cd ios/Web && ../../node_modules/.bin/vitest run --config vite.config.ts)`（15ファイル、132件）、`(cd ios/Web && ../../node_modules/.bin/vite build)`が成功した。Web・iOSの両ビルドで、PDF・バックアップのWorkerが他のファイルを読み込まない1ファイルとして出力され、第三者ライセンスの一覧にfflateが残り、Webだけに`worker-src 'self' blob:`が入っていることを確かめた。
+  - iPhone 17 Simulator（iOS 26.5）で`xcodebuild ... test -only-testing:knittingEditorTests`を流し、103件が成功（1件は機内モードが必要なためスキップ）した。PDF・バックアップを使うUIテスト`testBackslashDocumentNameReachesAllNativeExportActions`・`testBackupExportSheetDismissesBackToEditor`・`testBlockSaveAndFullBackupRestoreFollowGuide`も同じSimulatorで成功した（`testLargeBoardSavesAndRestores`は手動の準備が要るためスキップされた）。iPadとiOSの全UIテストはPRのCIと`ios-full.yml`に任せる。
+  - 事前の調査として、iOS 26.5 Simulatorの`knitting-local:`のページで、`blob:`から起動したWorkerがPDFとバックアップを作れることを、一時的なテストで確かめた（コミットしていない）。iOS版はこの経路を使わない。
+  - 狭い画面（Pixel 7）と広い画面（Desktop Chrome）で、Workerを読めないときの2種類の案内の表示を画面写真で確かめた。
+- デプロイ影響: Pagesへ配信される（JavaScriptとCSPが変わる）。配信後、`https://knittingeditor.com/`でPDF保存とバックアップの書き出しが使えることを確かめる。このPRの配信の時点で既に開いていたタブは、まだ先読みしていないので、1度だけ従来どおり失敗しうる。

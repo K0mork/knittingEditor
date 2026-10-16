@@ -1,3 +1,5 @@
+import * as exporters from '../export/exporters';
+import { WorkerVersionError } from '../util/workerStarter';
 import 'fake-indexeddb/auto';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
@@ -249,5 +251,25 @@ describe('management failures', () => {
     expect(editor.session.activeDocument?.id).toBe(editor.session.documents[0].id);
     expect(await database.getSetting('activeDocumentId')).toBe(editor.session.activeDocument?.id);
     expect(await database.listDocuments()).toEqual(editor.session.documents);
+  });
+});
+
+describe('worker version notification', () => {
+  it.each([false, true])('offers reload only when local saving is healthy: saveFailed=%s', async (failed) => {
+    if (failed) {
+      vi.spyOn(database, 'saveDocument').mockRejectedValue(quota);
+      await edit();
+      await act(async () => { await editor.session.saveNow(); });
+      expect(editor.session.saveFailed).toBe(true);
+    }
+    vi.spyOn(exporters, 'renderPdf').mockRejectedValue(new WorkerVersionError());
+    await act(async () => { await editor.runPdfExport({ layout: 'single', orientation: 'portrait', cellMillimeters: 5 }); });
+    expect(editor.message).toContain('サイトが更新されました');
+    if (failed) {
+      expect(editor.message).toContain('PNG');
+      expect(editor.message).toContain('未保存の編集が失われます');
+      expect(editor.notificationAction).toBeUndefined();
+      expect(editor.message).not.toContain('再読み込みすると、もう一度');
+    } else expect(editor.notificationAction?.label).toBe('再読み込み');
   });
 });

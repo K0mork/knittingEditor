@@ -975,14 +975,16 @@ test('shows stitch and rectangular block dimensions with both units', async ({ p
 
 test('reports a PDF worker load failure and clears it when retry succeeds', async ({ page }) => {
   await page.addInitScript(() => Object.defineProperty(Navigator.prototype, 'canShare', { value: undefined, configurable: true }));
+  const workerUrl = /\/pdf\.worker(?:\.ts|-[\w-]+\.js)(?:\?.*)?$/;
+  // 先読みと更新確認のHEADも通信失敗にして、404とは区別する。
+  await page.route(workerUrl, (route) => route.abort());
   await page.reload();
   await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
-  const workerUrl = /\/pdf\.worker(?:\.ts|-[\w-]+\.js)(?:\?.*)?$/;
-  await page.route(workerUrl, (route) => route.fulfill({ status: 404, body: '' }));
   await page.getByRole('button', { name: '出力', exact: true }).click();
   const exportButton = page.getByRole('button', { name: 'PDFを保存', exact: true });
   await exportButton.click();
-  await expect(page.locator('.toast')).toContainText('PDFを生成できませんでした。ページを再読み込みして、もう一度お試しください。');
+  await expect(page.locator('.toast')).toContainText('PDFを生成できませんでした。もう一度お試しください。');
+  await expect(page.locator('.toast').getByRole('button', { name: '再読み込み', exact: true })).toHaveCount(0);
   await expect(exportButton).toBeEnabled();
   await expect(page.getByText('PDFを生成中', { exact: true })).not.toBeVisible();
   await page.unroute(workerUrl);

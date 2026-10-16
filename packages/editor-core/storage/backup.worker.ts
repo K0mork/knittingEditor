@@ -1,6 +1,7 @@
 import { decodeBackup, encodeBackup } from './backupCodec';
 import type { BackupTask } from './backupTask';
 
+self.postMessage({ ready: true });
 self.onmessage = (event: MessageEvent<BackupTask>) => {
   try {
     const task = event.data;

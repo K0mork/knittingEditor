@@ -1,3 +1,4 @@
+import { WorkerVersionError } from '../util/workerStarter';
 import type { ExportAnnotations } from '../export/annotations';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { boardSizeBucket, countBucket, NO_ANALYTICS, type EditorAnalytics } from '../analytics';
@@ -95,6 +96,8 @@ export function useEditorController(options: EditorControllerOptions) {
     board, activeDocument, changed: markChanged, commitEdit, saveNow, switchDocument: switchSessionDocument,
     refreshDocuments, refreshBlocks, applyActiveDocumentName,
   } = session;
+  const saveFailedRef = useRef(session.saveFailed);
+  saveFailedRef.current = session.saveFailed;
   const backupReminder = useBackupReminder(activeDocument, session.saveFailed && session.dirty);
   const { countEdit } = backupReminder;
 
@@ -136,7 +139,15 @@ export function useEditorController(options: EditorControllerOptions) {
   /** 失敗を記録して利用者へ伝える。出力やバックアップの`catch`で使う。 */
   const reportFailure = (operation: string, error: unknown) => {
     analytics.track('operation_failed', { operation_name: operation });
-    notify(errorMessage(error));
+    if (error instanceof WorkerVersionError) {
+      if (saveFailedRef.current) {
+        notify('サイトが更新されました。端末内への保存に失敗しているため、再読み込みすると未保存の編集が失われます。先にPNGを保存してください。');
+      } else {
+        notify('サイトが更新されました。ページを再読み込みすると、もう一度お使いいただけます。', {
+          label: '再読み込み', run: () => window.location.reload(),
+        });
+      }
+    } else notify(errorMessage(error));
   };
 
   const togglePanel = (nextPanel: EditorPanel) => {
