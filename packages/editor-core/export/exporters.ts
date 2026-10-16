@@ -1,3 +1,5 @@
+import pdfWorkerUrl from './pdf.worker.ts?worker&url';
+import { createWorkerTask } from '../util/workerStarter';
 import { annotationHeights, usedStitches, type ExportAnnotations } from './annotations';
 import { packCell, type Board } from '../model/Board';
 import { boardSurface, DEFAULT_BACKGROUND_COLOR } from '../model/boardColors';
@@ -160,20 +162,20 @@ export async function renderPng(board: Board, cellSize: number, background: stri
   return new Promise((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('PNG生成に失敗しました')), 'image/png'));
 }
 
-const PDF_WORKER_ERROR = 'PDFを生成できませんでした。ページを再読み込みして、もう一度お試しください。';
+const PDF_WORKER_ERROR = 'PDFを生成できませんでした。もう一度お試しください。';
+const pdfTask = createWorkerTask(pdfWorkerUrl);
+export const prefetchPdfWorker = pdfTask.preload;
 
 export async function renderPdf(board: Board, options: PdfLayoutOptions, background: string = DEFAULT_BACKGROUND_COLOR): Promise<Blob> {
-  const worker = new Worker(new URL('./pdf.worker.ts', import.meta.url), { type: 'module' });
-  const cells = board.cells.buffer.slice(0);
-  return new Promise((resolve, reject) => {
-    worker.onmessage = (event: MessageEvent<{ ok: boolean; pdf?: ArrayBuffer; error?: string }>) => {
-      worker.terminate();
-      if (event.data.ok && event.data.pdf) resolve(new Blob([event.data.pdf], { type: 'application/pdf' }));
-      else reject(new Error(event.data.error?.trim() || PDF_WORKER_ERROR));
-    };
-    worker.onerror = (event) => { worker.terminate(); reject(new Error(event.message?.trim() || PDF_WORKER_ERROR)); };
+  let result!: Blob;
+  await pdfTask.run<{ ok: boolean; pdf?: ArrayBuffer; error?: string }>((worker) => {
+    const cells = board.cells.buffer.slice(0);
     worker.postMessage({ rows: board.rows, cols: board.cols, cells, background, ...options }, [cells]);
-  });
+  }, (data) => {
+    if (!data.ok || !data.pdf) throw new Error(data.error?.trim() || PDF_WORKER_ERROR);
+    result = new Blob([data.pdf], { type: 'application/pdf' });
+  }, PDF_WORKER_ERROR);
+  return result;
 }
 
 export function downloadBlob(blob: Blob, filename: string): void {

@@ -26,7 +26,7 @@ describe('CONTENT_SECURITY_POLICY', () => {
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https://*.google-analytics.com https://*.googletagmanager.com",
       "connect-src 'self' https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com",
-      "worker-src 'self'",
+      "worker-src 'self' blob:",
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",

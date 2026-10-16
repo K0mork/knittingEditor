@@ -123,9 +123,9 @@ describe('renderPdf worker failures', () => {
     return terminate;
   }
 
-  it.each([undefined, '', '   '])('explains reload and retry for an empty error message (%s)', async (message) => {
+  it.each([undefined, '', '   '])('explains retry without recommending reload for an empty error message (%s)', async (message) => {
     const terminate = mockWorker((worker) => worker.onerror?.call(worker, message === undefined ? new Event('error') as ErrorEvent : { message } as ErrorEvent));
-    await expect(renderPdf(new Board(1, 1), options)).rejects.toThrow('PDFを生成できませんでした。ページを再読み込みして、もう一度お試しください。');
+    await expect(renderPdf(new Board(1, 1), options)).rejects.toThrow('PDFを生成できませんでした。もう一度お試しください。');
     expect(terminate).toHaveBeenCalledOnce();
   });
 
