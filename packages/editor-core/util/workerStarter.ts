@@ -1,3 +1,8 @@
+export interface WorkerLoader {
+  download(url: string): Promise<Blob | undefined>;
+  isMissing(url: string): Promise<boolean>;
+}
+
 /** Webホストが明示的に有効にしたWorkerだけ、配信更新に備えて内容を保持する。 */
 export class WorkerVersionError extends Error {
   constructor() { super('サイトが更新されました。'); this.name = 'WorkerVersionError'; }
@@ -6,15 +11,14 @@ export class WorkerVersionError extends Error {
 class WorkerStartError extends Error {}
 
 export function createWorkerTask(url: string) {
-  let enabled = false;
+  let loader: WorkerLoader | undefined;
   let prefetch: Promise<void> | undefined;
   let contents: Blob | undefined;
-  const preload = () => {
-    enabled = true;
+  const preload = (webLoader: WorkerLoader) => {
+    loader ??= webLoader;
     return prefetch ??= (async () => {
       try {
-        const response = await fetch(url);
-        if (response.ok) contents = new Blob([await response.text()], { type: 'text/javascript' });
+        contents = await loader.download(url);
       } catch { /* オフライン時は利用時のURL起動へ戻す。 */ }
     })();
   };
@@ -74,9 +78,9 @@ export function createWorkerTask(url: string) {
       await attempt();
     } catch (error) {
       if (!(error instanceof WorkerStartError)) throw error;
-      if (enabled) {
+      if (loader) {
         try {
-          if ((await fetch(url, { method: 'HEAD', cache: 'no-store' })).status === 404) throw new WorkerVersionError();
+          if (await loader.isMissing(url)) throw new WorkerVersionError();
         } catch (checkError) { if (checkError instanceof WorkerVersionError) throw checkError; }
       }
       throw new Error(error instanceof Error && error.message.trim() ? error.message : fallback);
