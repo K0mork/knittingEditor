@@ -1,3 +1,4 @@
+import { NO_ANALYTICS } from '../analytics';
 import * as exporters from '../export/exporters';
 import { WorkerVersionError } from '../util/workerStarter';
 import 'fake-indexeddb/auto';
@@ -309,5 +310,62 @@ it('reports the original initialization error category', async () => {
   await act(async () => { root.render(<FailedProbe />); });
   expect(track).toHaveBeenCalledWith('operation_failed', {
     operation_name: 'editor_init', failure_reason: 'storage_quota',
+  });
+});
+
+
+describe('save failure analytics', () => {
+  it.each(['autosave', 'manual', 'background'] as const)('records %s failures once until a successful write', async (trigger) => {
+    const save = vi.spyOn(database, 'saveDocument').mockRejectedValue(quota);
+    await edit();
+    await act(async () => { await editor.session.saveNow(trigger); });
+    expect(track.mock.calls.filter(([name]) => name === 'save_failed')).toEqual([
+      ['save_failed', { save_trigger: trigger, failure_reason: 'storage_quota' }],
+    ]);
+    expect(editor.message).toContain('保存');
+    await edit();
+    await act(async () => {
+      await editor.session.saveNow('autosave');
+      await editor.session.saveNow('manual');
+      await editor.session.saveNow('background');
+    });
+    expect(track.mock.calls.filter(([name]) => name === 'save_failed')).toHaveLength(1);
+    save.mockRestore();
+    // 成功と次の失敗の間に再描画がなくても抑制を解除する。
+    await act(async () => {
+      await editor.session.saveNow();
+      expect(track.mock.calls.filter(([name]) => name === 'save_failed')).toHaveLength(1);
+      editor.session.changed();
+      vi.spyOn(database, 'saveDocument').mockRejectedValue(new Error('送らない文面'));
+      await editor.session.saveNow('manual');
+    });
+    expect(track.mock.calls.filter(([name]) => name === 'save_failed')).toEqual([
+      ['save_failed', { save_trigger: trigger, failure_reason: 'storage_quota' }],
+      ['save_failed', { save_trigger: 'manual', failure_reason: 'unknown' }],
+    ]);
+  });
+
+  it('keeps the default NO_ANALYTICS path silent and preserves save notifications', async () => {
+    function OfflineProbe() {
+      editor = useEditorController({
+        initialize: async () => ({ documents: [source], activeId: source.id, blocks: [] }),
+        platform: { saveFile: async () => ({ saved: Promise.resolve(undefined) }) },
+        askText: async () => null,
+        askConfirm,
+      });
+      return null;
+    }
+    const noopTrack = vi.spyOn(NO_ANALYTICS, 'track');
+    await act(async () => { root.render(<OfflineProbe />); });
+    track.mockClear();
+    noopTrack.mockClear();
+    await edit();
+    vi.spyOn(database, 'saveDocument').mockRejectedValue(new DOMException('送らない文面', 'UnknownError'));
+    await act(async () => { await editor.session.saveNow(); });
+    expect(noopTrack).toHaveBeenCalledWith('save_failed', { save_trigger: 'manual', failure_reason: 'storage' });
+    expect(track).not.toHaveBeenCalled();
+    expect(editor.session.saveFailed).toBe(true);
+    expect(editor.session.dirty).toBe(true);
+    expect(editor.message).toContain('保存');
   });
 });

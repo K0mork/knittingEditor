@@ -41,6 +41,7 @@ export interface EditorSessionOptions {
   onInitialized?: (initialized: EditorSessionInit) => void;
   onInitializationError: (message: string, error: unknown) => void;
   onSaveError: (error: unknown, trigger: SaveTrigger) => void;
+  onSaveSuccess?: () => void;
   onSaveConflict?: (document: ChartDocument) => void;
 }
 
@@ -166,6 +167,7 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
       return 'failed';
     }
     setSaveFailed(false);
+    optionsRef.current.onSaveSuccess?.();
     if (saved.id !== documentId) optionsRef.current.onSaveConflict?.(saved);
     if (saved.id === documentId && exportedGenerationRef.current === `${documentId}:${generation}`) {
       // 記録に失敗しても保存の失敗ではない。次に開いたとき勧めが出るだけになる。
