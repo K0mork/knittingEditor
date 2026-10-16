@@ -60,8 +60,8 @@ export function createWorkerTask(url: string) {
         };
         worker.onerror = (event) => { event.preventDefault?.(); fail(new Error(event.message?.trim() || fallback)); };
         worker.onmessageerror = () => fail(new Error(fallback));
-        // 読み込み失敗が通知されない環境でも待ち続けない。処理時間には制限を設けない。
-        timer = setTimeout(() => fail(new Error(fallback)), 15_000);
+        // メモリ上のBlob起動だけ待ち時間を制限する。URLの読み込みと処理時間は制限しない。
+        if (blob) timer = setTimeout(() => fail(new Error(fallback)), 15_000);
       } catch (error) { fail(error); }
     });
     try {

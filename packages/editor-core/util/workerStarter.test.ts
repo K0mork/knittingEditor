@@ -139,7 +139,7 @@ it.each(['error', 'messageerror', 'send'])('never retries or checks HEAD after r
   expect(state.revoke).toHaveBeenCalledOnce();
 });
 
-it('times out only startup, falling back without sending data to the stalled worker', async () => {
+it('times out blob startup, falling back without sending data to the stalled worker', async () => {
   vi.useFakeTimers();
   const state = setup(0);
   await state.task.preload();
@@ -163,8 +163,37 @@ it('times out only startup, falling back without sending data to the stalled wor
   expect(state.revoke).toHaveBeenCalledWith('blob:test');
 });
 
-it('does not impose the startup timeout on processing', async () => {
+it('waits for URL startup without a timeout', async () => {
   vi.useFakeTimers();
+  const state = setup(0);
+  let instance!: Worker;
+  vi.stubGlobal('Worker', class {
+    onmessage = null;
+    terminate = state.terminate;
+    constructor() { instance = this as unknown as Worker; }
+  });
+  // 先読みが失敗したWebでも、低速なURLの読み込みを打ち切らない。
+  state.fetch.mockRejectedValue(new Error('offline'));
+  await state.task.preload();
+  const send = vi.fn();
+  const pending = state.task.run(send, state.receive, fallback);
+  expect(vi.getTimerCount()).toBe(0);
+  await vi.advanceTimersByTimeAsync(60_000);
+  expect(send).not.toHaveBeenCalled();
+  expect(state.terminate).not.toHaveBeenCalled();
+  expect(state.fetch).toHaveBeenCalledTimes(1);
+  instance.onmessage?.call(instance, { data: { ready: true } } as MessageEvent);
+  expect(send).toHaveBeenCalledExactlyOnceWith(instance);
+  instance.onmessage?.call(instance, { data: 'done' } as MessageEvent);
+  await pending;
+  expect(state.receive).toHaveBeenCalledWith('done');
+  expect(state.terminate).toHaveBeenCalledOnce();
+});
+
+it('does not impose the blob startup timeout on processing', async () => {
+  vi.useFakeTimers();
+  const state = setup(0);
+  await state.task.preload();
   let instance!: Worker;
   vi.stubGlobal('Worker', class {
     onmessage = null;
@@ -172,7 +201,7 @@ it('does not impose the startup timeout on processing', async () => {
     constructor() { instance = this as unknown as Worker; }
   });
   const receive = vi.fn();
-  const pending = createWorkerTask('/worker.js').run(() => {}, receive, fallback);
+  const pending = state.task.run(() => {}, receive, fallback);
   instance.onmessage?.call(instance, { data: { ready: true } } as MessageEvent);
   await vi.advanceTimersByTimeAsync(30_000);
   instance.onmessage?.call(instance, { data: 'done' } as MessageEvent);
