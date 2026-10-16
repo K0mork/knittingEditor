@@ -1,12 +1,21 @@
-# 2026-10-16 — Web版のWorkerを先読みして配信更新後の出力を保つ
+# 2026-10-16 — Web版のWorkerを先読みして、配信更新後もPDF保存とバックアップを使えるようにする
 
-- 影響: Web本番版だけ、ページ読み込み後にPDF・バックアップWorkerの内容を保持し、タスクごとにBlob URLから起動して終了・URL解放する。先読み未完了・失敗やBlob起動失敗では同梱URLへ戻す。URL起動も失敗してHEADが404ならサイト更新を通知する。端末内保存に失敗している場合は再読み込みを勧めず、編集消失の注意とPNG保存を案内する。バックアップの空のエラー通知も修正した。両Workerのready通知を待ってからデータを送信し、通知前の失敗だけ再試行する。通知後の処理エラーでは再試行・404確認を行わない。バックアップは元のバッファをコピーせず転送し、PDFはready後に1回だけ盤面をコピーする。起動通知が届かない場合に備え、メモリ上のBlobからの起動待ちだけ15秒でタイムアウトさせる。同梱URLからの起動は低速な通信でも従来どおりreadyまたはerrorを待ち、処理時間も制限しない。
-- 主なファイル: `packages/editor-core/util/workerStarter.ts`、`export/exporters.ts`、`export/pdf.worker.ts`、`storage/backupTask.ts`、`storage/backup.worker.ts`、`ui/useEditorController.ts`、`src/main.tsx`、`scripts/content-security-policy.mjs`、`ios/docs/WEB_SYNC.md`。共有コードは先読みを既定で有効にせず、iOSは同梱URLから起動してfetchしない。開発サーバーでも先読みしない。CSPの変更は`worker-src 'self' blob:`だけで、インラインスクリプトは引き続き禁止する。
-- テスト: Blobの利用・解放、先読みの重複抑止・待機中・失敗、同期／非同期起動失敗のフォールバック、404／200／通信失敗の分類、iOS経路のfetch不使用、ready前の送信抑止・ready重複時の二重送信抑止、ready後のerror／messageerror／送信例外の再試行・HEAD抑止、Blob起動タイムアウトからの復帰、URL起動待ちと処理中のタイムアウト不使用、バックアップの元バッファ転送とPDFの1回のコピー、処理エラーの再試行抑止、バックアップの非空通知、保存状態に応じた更新通知を単体テストで確認。Playwrightには配信物消失後のPDF・バックアップ書き出し／復元、初期404時の通常／保存失敗通知を追加。
-- 検証: Node.js v26.8.1を使用（CIはNode 24）。`npm run typecheck`成功。`npm test`成功（63ファイル、612テスト）。`npm run build`成功。`npm run check:dist`成功。`(cd ios/Web && ../../node_modules/.bin/tsc -p tsconfig.app.json --noEmit)`成功。`(cd ios/Web && ../../node_modules/.bin/vitest run --config vite.config.ts)`成功（15ファイル、132テスト）。`(cd ios/Web && ../../node_modules/.bin/vite build)`成功。両ビルドでPDF／バックアップWorkerが単独ファイルとして出力され、import文がなく、メインbundleから参照されることをPythonで検査した。両方のthird-party noticesにfflateが残り、Web HTMLのCSPとiOS HTMLのCSP不在も確認した。`npx playwright test tests/e2e/prefetch-web-workers.spec.ts --list`成功（設定済み3プロジェクト、9件）。`git diff --check`成功。
-- 未実行: Playwright E2EとiOS Simulatorはrun by the lead。このsandboxではブラウザ・Simulatorを起動できないため、実行成功は未確認。PR／full iOS CIもleadが確認する。
-- デプロイ影響: Webの配信JavaScriptとCSPが変わる。未デプロイ。配信後はHTTPSの既存タブでPDFとバックアップの書き出し／復元、404時の通知、保存失敗時に再読み込みを勧めないことを確認する。iOSの先読み・CSPは有効にしない。
-
-- 追加修正の検証（Blob起動だけのタイムアウト）: `npm run typecheck`、`npm test`（63ファイル、612テスト）、`npm run build`、`npm run check:dist`、`(cd ios/Web && ../../node_modules/.bin/tsc -p tsconfig.app.json --noEmit)`、`(cd ios/Web && ../../node_modules/.bin/vitest run --config vite.config.ts)`（15ファイル、132テスト）、`git diff --check`はいずれも成功。Node.js v26.8.1を使用。Playwright E2EとiOS Simulatorは引き続きrun by the lead。
-
-- 既存PDF失敗E2Eを更新: 再読み込み前からWorkerの全メソッドの通信を中断し、一般エラー・再読み込みボタン不在・busy解除・通信復旧後のPDF保存と通知消去を確認する。`npm run typecheck`、`npx playwright test --list tests/e2e/editor.spec.ts`（3プロジェクト、96件）、`git diff --check`成功（Node.js v26.8.1）。Playwright E2EとiOS Simulatorはrun by the lead。
+- 影響: Web版で、ページを開いたまま新しい版がデプロイされると、そのタブでは「PDFを保存」とバックアップの書き出し・復元が押すたびに失敗していた（#278）。Workerのファイル名にはビルドごとのハッシュが付き、デプロイで古いファイルが消えるため、古いタブからは起動できなかった。バックアップは失敗しても通知が空で、何も表示されなかった。
+  - Web本番版だけ、ページの読み込み後にPDF・バックアップのWorkerの中身を先読みして保持し、使うときはその中身の`blob:` URLから起動する。タスクごとに起動し、終わったら終了してURLを解放する今の作りは変えない。
+  - 先読みが済んでいない・失敗したとき、`blob:`からの起動に失敗したときは、同梱ファイルのURLから起動する（従来の動き）。それも失敗し、そのURLが404を返すときは「サイトが更新されました」と知らせ、再読み込みのボタンを出す。端末内への保存に失敗している最中は、再読み込みで未保存の編集が消えるので再読み込みを勧めず、先にPNGを保存するよう案内する。
+  - Workerは起動すると準備完了を知らせ、そのあとでデータを渡す。準備完了の前の失敗だけを起動の失敗として次の方法へ切り替え、処理中に落ちた場合はやり直さない。バックアップのデータはコピーせずに渡す。`blob:`からの起動だけ、準備完了を15秒待って起動の失敗とみなす。URLからの起動と処理時間には上限を設けない。
+  - バックアップの失敗で通知が空にならないようにした。PDFの一般的な失敗の文言から「ページを再読み込みして」を外した（再読み込みで直る場合は上の案内を出す）。
+  - Web版のCSPの`worker-src`に`blob:`を足した。インラインのスクリプトは引き続き許さない。
+  - iOS版は先読みせず、同梱URLから起動する（実行時に通信APIを呼ばない方針のまま）。開発サーバーも先読みしない。
+- 主なファイル: `packages/editor-core/util/workerStarter.ts`、`packages/editor-core/export/exporters.ts`、`packages/editor-core/export/pdf.worker.ts`、`packages/editor-core/storage/backupTask.ts`、`packages/editor-core/storage/backup.worker.ts`、`packages/editor-core/ui/useEditorController.ts`、`src/main.tsx`、`scripts/content-security-policy.mjs`、`ios/docs/WEB_SYNC.md`
+- テスト:
+  - 単体テスト: `workerStarter.test.ts`（先読みと`blob:`起動・URL解放、先読みしないときに`fetch`を呼ばないこと、起動失敗からの切り替え、準備完了の前後での失敗の扱い、`blob:`起動だけの待ち時間、404・200・通信失敗の区別）、`backupTask.test.ts`（バッファをコピーせずに渡すこと、空でない失敗の文言）、`exporters.test.ts`、`useEditorController.test.tsx`（保存の状態に応じた案内）、`content-security-policy.test.mjs`。
+  - E2E: `tests/e2e/prefetch-web-workers.spec.ts`を追加（先読みのあとでWorkerのURLを404にしても、PDF保存とバックアップの書き出し・復元が成功する。Workerを読めないときの案内が、保存が正常なときと失敗しているときで正しく分かれる）。`tests/e2e/editor.spec.ts`の「PDFのWorkerの読み込み失敗」のテストは、先読みで成功するようになったため、通信失敗（404ではない）で一般的な失敗の文言が出て、再試行で成功する確認に変えた。
+- 検証: Node.js v26.8.1で実行した（CIはNode 24）。
+  - `npm run typecheck`、`npm test`（63ファイル、612件）、`npm run build`、`npm run check:dist`がすべて成功した。
+  - `npm run test:e2e`は、450件成功、6件スキップ（既存）、`editor.spec.ts`の上記1件が3プロジェクトで失敗した。テストを直したあと、そのテストと`prefetch-web-workers.spec.ts`を`npx playwright test tests/e2e/editor.spec.ts:976 tests/e2e/prefetch-web-workers.spec.ts`で流し、3プロジェクトの12件がすべて成功した。製品コードはこの間に変えていない。
+  - `(cd ios/Web && ../../node_modules/.bin/tsc -p tsconfig.app.json --noEmit)`、`(cd ios/Web && ../../node_modules/.bin/vitest run --config vite.config.ts)`（15ファイル、132件）、`(cd ios/Web && ../../node_modules/.bin/vite build)`が成功した。Web・iOSの両ビルドで、PDF・バックアップのWorkerが他のファイルを読み込まない1ファイルとして出力され、第三者ライセンスの一覧にfflateが残り、Webだけに`worker-src 'self' blob:`が入っていることを確かめた。
+  - iPhone 17 Simulator（iOS 26.5）で`xcodebuild ... test -only-testing:knittingEditorTests`を流し、103件が成功（1件は機内モードが必要なためスキップ）した。PDF・バックアップを使うUIテスト`testBackslashDocumentNameReachesAllNativeExportActions`・`testBackupExportSheetDismissesBackToEditor`・`testBlockSaveAndFullBackupRestoreFollowGuide`も同じSimulatorで成功した（`testLargeBoardSavesAndRestores`は手動の準備が要るためスキップされた）。iPadとiOSの全UIテストはPRのCIと`ios-full.yml`に任せる。
+  - 事前の調査として、iOS 26.5 Simulatorの`knitting-local:`のページで、`blob:`から起動したWorkerがPDFとバックアップを作れることを、一時的なテストで確かめた（コミットしていない）。iOS版はこの経路を使わない。
+  - 狭い画面（Pixel 7）と広い画面（Desktop Chrome）で、Workerを読めないときの2種類の案内の表示を画面写真で確かめた。
+- デプロイ影響: Pagesへ配信される（JavaScriptとCSPが変わる）。配信後、`https://knittingeditor.com/`でPDF保存とバックアップの書き出しが使えることを確かめる。このPRの配信の時点で既に開いていたタブは、まだ先読みしていないので、1度だけ従来どおり失敗しうる。
