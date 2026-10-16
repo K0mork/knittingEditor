@@ -1,6 +1,28 @@
 import type { AnalyticsParameters, EditorAnalytics } from '@knitting-editor/editor-core/analytics';
 
 const MEASUREMENT_ID = 'G-VVE0G4ZFL4';
+const ANALYTICS_OPT_OUT_KEY = 'knitting-editor:analytics-opt-out';
+
+interface AnalyticsEnvironment {
+  prod: boolean;
+  webdriver: boolean;
+  userAgent: string;
+  optedOut: boolean;
+}
+
+/** 本番の通常ブラウザだけで解析を有効にする。判定に使う情報は送信しない。 */
+export function shouldSendAnalytics({ prod, webdriver, userAgent, optedOut }: AnalyticsEnvironment): boolean {
+  return prod && !webdriver && !userAgent.includes('Claude/') && !optedOut;
+}
+
+function isAnalyticsOptedOut(): boolean {
+  try {
+    return window.localStorage.getItem(ANALYTICS_OPT_OUT_KEY) === '1';
+  } catch {
+    // 保存領域を利用できない場合は、通常の送信判定を続ける。
+    return false;
+  }
+}
 
 declare global {
   interface Window {
@@ -17,7 +39,12 @@ function gtag(..._args: unknown[]): void {
   (window.dataLayer ??= []).push(arguments);
 }
 
-export function initializeAnalytics(analyticsEnabled = import.meta.env.PROD && !navigator.webdriver): void {
+export function initializeAnalytics(analyticsEnabled = shouldSendAnalytics({
+  prod: import.meta.env.PROD,
+  webdriver: navigator.webdriver,
+  userAgent: navigator.userAgent,
+  optedOut: isAnalyticsOptedOut(),
+})): void {
   if (!analyticsEnabled || initialized) return;
   enabled = true;
   initialized = true;
