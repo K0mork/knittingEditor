@@ -8,3 +8,5 @@
 - デプロイ影響: Webの配信JavaScriptとCSPが変わる。未デプロイ。配信後はHTTPSの既存タブでPDFとバックアップの書き出し／復元、404時の通知、保存失敗時に再読み込みを勧めないことを確認する。iOSの先読み・CSPは有効にしない。
 
 - 追加修正の検証（Blob起動だけのタイムアウト）: `npm run typecheck`、`npm test`（63ファイル、612テスト）、`npm run build`、`npm run check:dist`、`(cd ios/Web && ../../node_modules/.bin/tsc -p tsconfig.app.json --noEmit)`、`(cd ios/Web && ../../node_modules/.bin/vitest run --config vite.config.ts)`（15ファイル、132テスト）、`git diff --check`はいずれも成功。Node.js v26.8.1を使用。Playwright E2EとiOS Simulatorは引き続きrun by the lead。
+
+- 既存PDF失敗E2Eを更新: 再読み込み前からWorkerの全メソッドの通信を中断し、一般エラー・再読み込みボタン不在・busy解除・通信復旧後のPDF保存と通知消去を確認する。`npm run typecheck`、`npx playwright test --list tests/e2e/editor.spec.ts`（3プロジェクト、96件）、`git diff --check`成功（Node.js v26.8.1）。Playwright E2EとiOS Simulatorはrun by the lead。
