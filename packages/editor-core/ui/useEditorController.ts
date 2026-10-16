@@ -80,6 +80,8 @@ export function useEditorController(options: EditorControllerOptions) {
   const { message, notificationAction, notify } = useNotifier();
   const { panelRef, rememberTrigger } = usePanelFocus<HTMLElement>(panel !== undefined);
 
+  // 保存成功までは、編集や保存のきっかけが変わっても失敗の計測を重ねない。
+  const saveFailureTrackedRef = useRef(false);
   const session = useEditorSession({
     initialize: options.initialize,
     autosaveDelayMs: options.autosaveDelayMs,
@@ -90,7 +92,14 @@ export function useEditorController(options: EditorControllerOptions) {
       analytics.track('operation_failed', { operation_name: 'editor_init', failure_reason: failureReason(error) });
       setInitializationError(reason);
     },
-    onSaveError: (_error, trigger) => notify(saveErrorMessage(trigger)),
+    onSaveError: (error, trigger) => {
+      if (!saveFailureTrackedRef.current) {
+        saveFailureTrackedRef.current = true;
+        analytics.track('save_failed', { save_trigger: trigger, failure_reason: failureReason(error) });
+      }
+      notify(saveErrorMessage(trigger));
+    },
+    onSaveSuccess: () => { saveFailureTrackedRef.current = false; },
     onSaveConflict: (saved) => notify(`別のタブで変更されたため、この編集を「${saved.name}」として保存しました。`),
   });
   const {
