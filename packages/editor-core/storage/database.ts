@@ -1,3 +1,4 @@
+import { BackupLimitError, InvalidBackupError } from './backupErrors';
 import { openDB, unwrap, type DBSchema, type IDBPDatabase } from 'idb';
 import { Board, cellStitchId, packCell, type PatternBlock } from '../model/Board';
 import { STITCH_BY_ID } from '../stitches/catalog';
@@ -250,8 +251,11 @@ export async function exportBackup(documentIds?: string[], snapshot?: ChartDocum
 }
 
 export async function importBackup(file: Blob): Promise<ImportBackupResult> {
-  if (file.size > BACKUP_LIMITS.maxCompressedBytes) throw new Error('バックアップファイルが大きすぎます');
-  const result = await runBackupTask({ operation: 'decode', data: new Uint8Array(await file.arrayBuffer()) });
+  if (file.size > BACKUP_LIMITS.maxCompressedBytes) throw new BackupLimitError('バックアップファイルが大きすぎます');
+  let buffer: ArrayBuffer;
+  try { buffer = await file.arrayBuffer(); }
+  catch (error) { throw new InvalidBackupError(error instanceof Error ? error.message : 'バックアップを処理できませんでした。'); }
+  const result = await runBackupTask({ operation: 'decode', data: new Uint8Array(buffer) });
   const db = await database();
   const transaction = db.transaction(['documents', 'blocks'], 'readwrite');
   await finishTransaction(transaction, async () => {

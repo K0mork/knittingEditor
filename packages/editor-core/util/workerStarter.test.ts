@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createWorkerTask, WorkerVersionError } from './workerStarter';
+import { createWorkerTask, WorkerVersionError, WorkerStartError, WorkerProcessingError } from './workerStarter';
 
 const fallback = '処理できませんでした。';
 afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); });
@@ -210,4 +210,16 @@ it('does not impose the blob startup timeout on processing', async () => {
   instance.onmessage?.call(instance, { data: 'done' } as MessageEvent);
   await pending;
   expect(receive).toHaveBeenCalledWith('done');
+});
+
+it('keeps a distinct type when a worker cannot start', async () => {
+  const state = setup(1);
+  await expect(state.run()).rejects.toBeInstanceOf(WorkerStartError);
+});
+
+it('marks response errors after ready as processing failures', async () => {
+  const state = setup(0);
+  await expect(state.task.run((worker) => worker.postMessage({}), () => {
+    throw new Error('処理エラー');
+  }, fallback)).rejects.toBeInstanceOf(WorkerProcessingError);
 });

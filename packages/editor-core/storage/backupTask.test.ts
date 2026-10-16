@@ -43,3 +43,22 @@ it.each(['encode', 'decode'] as const)('transfers the original buffers after rea
   await pending;
   expect(clone).not.toHaveBeenCalled();
 });
+
+it.each([
+  ['invalid_backup', 'invalid_backup'],
+  ['backup_limit', 'backup_limit'],
+  ['unrecognized', 'worker_error'],
+])('preserves only known backup codes across the worker boundary: %s', async (code, expected) => {
+  const { failureReason } = await import('../analyticsFailure');
+  vi.stubGlobal('Worker', class {
+    onmessage?: (event: { data: unknown }) => void;
+    constructor() { queueMicrotask(() => this.onmessage?.({ data: { ready: true } })); }
+    terminate() {}
+    postMessage() {
+      queueMicrotask(() => this.onmessage?.({ data: { error: '元の文面', code } }));
+    }
+  });
+  const error = await runBackupTask({ operation: 'decode', data: new Uint8Array() }).catch((error: unknown) => error);
+  expect(failureReason(error)).toBe(expected);
+  expect(error).toHaveProperty('message', '元の文面');
+});

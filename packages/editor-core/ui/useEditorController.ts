@@ -1,3 +1,4 @@
+import { failureReason } from '../analyticsFailure';
 import { WorkerVersionError } from '../util/workerStarter';
 import type { ExportAnnotations } from '../export/annotations';
 import { useCallback, useMemo, useRef, useState } from 'react';
@@ -85,8 +86,8 @@ export function useEditorController(options: EditorControllerOptions) {
     onInitialized: (initialized) => analytics.track('editor_ready', {
       document_count_bucket: countBucket(initialized.documents.length),
     }),
-    onInitializationError: (reason) => {
-      analytics.track('operation_failed', { operation_name: 'editor_init' });
+    onInitializationError: (reason, error) => {
+      analytics.track('operation_failed', { operation_name: 'editor_init', failure_reason: failureReason(error) });
       setInitializationError(reason);
     },
     onSaveError: (_error, trigger) => notify(saveErrorMessage(trigger)),
@@ -138,7 +139,7 @@ export function useEditorController(options: EditorControllerOptions) {
 
   /** 失敗を記録して利用者へ伝える。出力やバックアップの`catch`で使う。 */
   const reportFailure = (operation: string, error: unknown) => {
-    analytics.track('operation_failed', { operation_name: operation });
+    analytics.track('operation_failed', { operation_name: operation, failure_reason: failureReason(error) });
     if (error instanceof WorkerVersionError) {
       if (saveFailedRef.current) {
         notify('サイトが更新されました。端末内への保存に失敗しているため、再読み込みすると未保存の編集が失われます。先にPNGを保存してください。');
@@ -232,8 +233,8 @@ export function useEditorController(options: EditorControllerOptions) {
 
   const runManagementOperation = async (operation: string, label: string, action: () => Promise<void>) => {
     try { await action(); }
-    catch {
-      analytics.track('operation_failed', { operation_name: operation });
+    catch (error) {
+      analytics.track('operation_failed', { operation_name: operation, failure_reason: failureReason(error) });
       notify(`${label}に失敗しました。もう一度お試しください。`);
     }
   };

@@ -39,7 +39,7 @@ export interface EditorSessionOptions {
   /** 端末内データの読み出し。Web版は旧localStorageからの移行、iOS版はタイムアウトを挟む。 */
   initialize: () => Promise<EditorSessionInit>;
   onInitialized?: (initialized: EditorSessionInit) => void;
-  onInitializationError: (message: string) => void;
+  onInitializationError: (message: string, error: unknown) => void;
   onSaveError: (error: unknown, trigger: SaveTrigger) => void;
   onSaveConflict?: (document: ChartDocument) => void;
 }
@@ -213,7 +213,7 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
       setBlocks(initialized.blocks);
       optionsRef.current.onInitialized?.(initialized);
     })().catch((error) => {
-      optionsRef.current.onInitializationError(errorMessage(error));
+      optionsRef.current.onInitializationError(errorMessage(error), error);
     });
   }, [resetHistory]);
 

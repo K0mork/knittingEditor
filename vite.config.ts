@@ -1,3 +1,4 @@
+import { appBuild } from './scripts/app-build.mjs';
 import { defineConfig } from 'vitest/config';
 import { contentSecurityPolicy } from './scripts/content-security-policy.mjs';
 import { publicDirectoryIndex } from './scripts/public-directory-index.mjs';
@@ -7,6 +8,7 @@ const shared = sharedViteConfig();
 
 export default defineConfig({
   ...shared,
+  define: { ...shared.define, __APP_BUILD__: JSON.stringify(appBuild()) },
   // Web版の配信物だけにCSPのmetaを入れる。iOS版は`ios/docs/WEB_SYNC.md`の差分を参照。
   plugins: [...(shared.plugins ?? []), contentSecurityPolicy(), publicDirectoryIndex()],
   test: {
