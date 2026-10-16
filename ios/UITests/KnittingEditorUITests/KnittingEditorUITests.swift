@@ -969,9 +969,12 @@ final class KnittingEditorUITests: XCTestCase {
             predicate: NSPredicate { _, _ in !exportPicker.exists || replace.exists },
             object: exportPicker
         )
-        let exportWaitResult = XCTWaiter.wait(for: [exportFinishedOrReplaceAppeared], timeout: 20)
+        // 別プロセスの保存画面が閉じる途中はreplace.existsの問い合わせに17〜19秒かかることがある。
+        // 保存済みでも20秒では1回しか判定できず失敗したため、エディターの表示と同じ時間待つ。
+        let exportWaitResult = XCTWaiter.wait(for: [exportFinishedOrReplaceAppeared], timeout: Self.editorAppearanceTimeout)
         XCTAssertEqual(exportWaitResult, .completed, app.debugDescription)
         if exportPicker.exists && replace.exists {
+            waitUntilStill(replace)
             replace.tap()
             assertDisappears(exportPicker, from: app)
         }
@@ -1262,8 +1265,14 @@ final class KnittingEditorUITests: XCTestCase {
             format: "label IN %@",
             ["Copy", "コピー", "Cut", "カット", "Select", "選択", "Select All", "すべてを選択"]
         )).firstMatch
+        // CIで直前のタップに続くダブルタップが効かず、問い合わせは速くてもメニューが出ないことがあった。
+        var selectionActionsAppeared = selectionActions.waitForExistence(timeout: 5)
+        if !selectionActionsAppeared {
+            nameField.doubleTap()
+            selectionActionsAppeared = selectionActions.waitForExistence(timeout: 10)
+        }
         XCTAssertTrue(
-            selectionActions.waitForExistence(timeout: 10),
+            selectionActionsAppeared,
             "入力欄で文字を選択・コピーできない: \(app.debugDescription)"
         )
         app.buttons["キャンセル"].tap()
@@ -1548,13 +1557,20 @@ final class KnittingEditorUITests: XCTestCase {
                 return "閉じ方=×ボタン"
             }
         }
-        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.15)).press(
-            forDuration: 0.05,
-            thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.98)),
-            withVelocity: .default,
-            thenHoldForDuration: 0.0
-        )
-        return "閉じ方=下スワイプ(×ボタン exists=\(buttonExists) hittable=\(buttonHittable)) window=\(app.windows.firstMatch.frame)"
+        let swipeDown = {
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.15)).press(
+                forDuration: 0.05,
+                thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.98)),
+                withVelocity: .default,
+                thenHoldForDuration: 0.0
+            )
+        }
+        swipeDown()
+        // createDocument・confirmDialogと同じく、操作が効いていないと分かった場合だけやり直す。
+        let needsSecondSwipe = !waitForDisappearance(of: sheet, timeout: 10)
+        if needsSecondSwipe { swipeDown() }
+        let retryNote = needsSecondSwipe ? "、再スワイプ" : ""
+        return "閉じ方=下スワイプ\(retryNote)(×ボタン exists=\(buttonExists) hittable=\(buttonHittable)) window=\(app.windows.firstMatch.frame)"
     }
 
     /// 要素の位置と大きさが変わらないことを確かめる。画面全体が拡大されると、拡大の

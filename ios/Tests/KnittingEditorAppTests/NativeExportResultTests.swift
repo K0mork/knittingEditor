@@ -390,7 +390,9 @@ final class NativeExportResultTests: XCTestCase {
             """,
             baseURL: nil
         )
-        let deadline = Date().addingTimeInterval(10)
+        // CIではWebContentの起動に9〜15秒かかり、10秒ではページの評価前に打ち切られた。
+        // LocalWebSchemeHandlerTestsのNavigationDelegate.loadTimeoutと同じ30秒待つ。
+        let deadline = Date().addingTimeInterval(30)
         while (try? await webView.evaluateJavaScript("Array.isArray(window.results)")) as? Bool != true {
             guard Date() < deadline else { return XCTFail("テスト用のページを読み込めませんでした") }
             try await Task.sleep(nanoseconds: 50_000_000)
