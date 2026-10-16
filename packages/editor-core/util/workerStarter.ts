@@ -3,6 +3,8 @@ export class WorkerVersionError extends Error {
   constructor() { super('サイトが更新されました。'); this.name = 'WorkerVersionError'; }
 }
 
+class WorkerStartError extends Error {}
+
 export function createWorkerTask(url: string) {
   let enabled = false;
   let prefetch: Promise<void> | undefined;
@@ -20,33 +22,58 @@ export function createWorkerTask(url: string) {
     const attempt = (blob?: Blob) => new Promise<void>((resolve, reject) => {
       let worker: Worker | undefined;
       let objectUrl: string | undefined;
+      let ready = false;
+      let settled = false;
+      let timer: ReturnType<typeof setTimeout> | undefined;
       const cleanup = () => {
+        clearTimeout(timer);
         worker?.terminate();
         if (objectUrl) URL.revokeObjectURL(objectUrl);
+      };
+      const fail = (error: unknown) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        const message = error instanceof Error && error.message.trim() ? error.message : fallback;
+        reject(ready ? new Error(message) : new WorkerStartError(message));
       };
       try {
         if (blob) objectUrl = URL.createObjectURL(blob);
         worker = new Worker(objectUrl ?? url, { type: 'module' });
-        worker.onmessage = (event: MessageEvent<T>) => {
-          cleanup();
-          // 応答を受け取れた後の処理エラーは、起動失敗として再試行しない。
-          try { receive(event.data); resolve(); } catch (error) { reject({ responseError: error }); }
+        worker.onmessage = (event: MessageEvent<T | { ready: true }>) => {
+          if (settled) return;
+          if (event.data && typeof event.data === 'object' && 'ready' in event.data && event.data.ready === true) {
+            if (ready) return;
+            ready = true;
+            clearTimeout(timer);
+            // 起動確認後だけ転送する。以後の失敗ではデータを再送しない。
+            try { send(worker!); } catch (error) { fail(error); }
+            return;
+          }
+          if (!ready) { fail(new Error(fallback)); return; }
+          try {
+            receive(event.data as T);
+            settled = true;
+            cleanup();
+            resolve();
+          } catch (error) { fail(error); }
         };
-        worker.onerror = (event) => { event.preventDefault?.(); cleanup(); reject(new Error(event.message?.trim() || fallback)); };
-        worker.onmessageerror = () => { cleanup(); reject({ responseError: new Error(fallback) }); };
-        send(worker);
-      } catch (error) { cleanup(); reject(error); }
+        worker.onerror = (event) => { event.preventDefault?.(); fail(new Error(event.message?.trim() || fallback)); };
+        worker.onmessageerror = () => fail(new Error(fallback));
+        // 読み込み失敗が通知されない環境でも待ち続けない。処理時間には制限を設けない。
+        timer = setTimeout(() => fail(new Error(fallback)), 15_000);
+      } catch (error) { fail(error); }
     });
     try {
       if (contents) {
         try { await attempt(contents); return; }
         catch (error) {
-          if (error && typeof error === 'object' && 'responseError' in error) throw error;
+          if (!(error instanceof WorkerStartError)) throw error;
         }
       }
       await attempt();
     } catch (error) {
-      if (error && typeof error === 'object' && 'responseError' in error) throw error.responseError;
+      if (!(error instanceof WorkerStartError)) throw error;
       if (enabled) {
         try {
           if ((await fetch(url, { method: 'HEAD', cache: 'no-store' })).status === 404) throw new WorkerVersionError();

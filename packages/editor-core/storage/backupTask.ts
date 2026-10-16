@@ -20,10 +20,9 @@ export async function runBackupTask(task: BackupTask): Promise<Uint8Array<ArrayB
   }
   let result!: Uint8Array<ArrayBuffer> | Decoded;
   await backupTask.run<{ result?: Uint8Array<ArrayBuffer> | Decoded; error?: string }>((worker) => {
-    // 起動を再試行できるよう、転送で元の配列を切り離さない。
-    const copy = structuredClone(task);
-    const buffers = copy.operation === 'encode' ? copy.documents.map((item) => item.cells) : [copy.data.buffer as ArrayBuffer];
-    worker.postMessage(copy, buffers);
+    // 起動確認後に元のバッファをコピーせず転送する。
+    const buffers = task.operation === 'encode' ? task.documents.map((item) => item.cells) : [task.data.buffer as ArrayBuffer];
+    worker.postMessage(task, buffers);
   }, (data) => {
     if (data.result === undefined) throw new Error(data.error?.trim() || 'バックアップを処理できませんでした。');
     result = data.result;

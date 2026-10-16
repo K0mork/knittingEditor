@@ -117,6 +117,7 @@ describe('renderPdf worker failures', () => {
     vi.stubGlobal('Worker', class {
       onmessage: Worker['onmessage'] = null;
       onerror: Worker['onerror'] = null;
+      constructor() { queueMicrotask(() => this.onmessage?.call(this as unknown as Worker, { data: { ready: true } } as MessageEvent)); }
       terminate = terminate;
       postMessage() { queueMicrotask(() => reply(this as unknown as Worker)); }
     });
@@ -141,4 +142,35 @@ describe('renderPdf worker failures', () => {
     mockWorker((worker) => worker.onmessage?.call(worker, { data: { ok: true, pdf: new ArrayBuffer(8) } } as MessageEvent));
     expect((await renderPdf(new Board(1, 1), options)).type).toBe('application/pdf');
   });
+});
+
+
+it('copies PDF cells only once after ready and transfers that copy', async () => {
+  let instance!: Worker;
+  const postMessage = vi.fn();
+  const board = new Board(2, 2);
+  const slice = vi.spyOn(board.cells.buffer, 'slice');
+  vi.stubGlobal('Worker', class {
+    onmessage = null;
+    terminate() {}
+    postMessage = postMessage;
+    constructor() { instance = this as unknown as Worker; }
+  });
+  try {
+    const pending = renderPdf(board, { layout: 'single', orientation: 'portrait', cellMillimeters: 5 });
+    expect(slice).not.toHaveBeenCalled();
+    instance.onmessage?.call(instance, { data: { ready: true } } as MessageEvent);
+    expect(slice).toHaveBeenCalledExactlyOnceWith(0);
+    const [request, transfer] = postMessage.mock.calls[0];
+    expect(request.cells).not.toBe(board.cells.buffer);
+    expect(new Uint32Array(request.cells)).toEqual(board.cells);
+    expect(transfer[0]).toBe(request.cells);
+    instance.onmessage?.call(instance, { data: { ready: true } } as MessageEvent);
+    expect(slice).toHaveBeenCalledOnce();
+    instance.onmessage?.call(instance, { data: { ok: true, pdf: new ArrayBuffer(8) } } as MessageEvent);
+    await pending;
+  } finally {
+    slice.mockRestore();
+    vi.unstubAllGlobals();
+  }
 });

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createWorkerTask, WorkerVersionError } from './workerStarter';
 
 const fallback = '処理できませんでした。';
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); });
 function setup(failures: number) {
   const urls: string[] = [];
   const terminate = vi.fn();
@@ -12,15 +12,16 @@ function setup(failures: number) {
   vi.stubGlobal('URL', { createObjectURL: vi.fn(() => 'blob:test'), revokeObjectURL: revoke });
   vi.stubGlobal('Worker', class {
     onerror?: (event: { message: string; preventDefault: () => void }) => void;
-    onmessage?: (event: { data: string }) => void;
+    onmessage?: (event: { data: string | { ready: true } }) => void;
     terminate = terminate;
-    constructor(url: string) { urls.push(url); }
-    postMessage() {
+    constructor(url: string) {
+      urls.push(url);
       queueMicrotask(() => {
         if (failures-- > 0) this.onerror?.({ message: '', preventDefault() {} });
-        else this.onmessage?.({ data: 'done' });
+        else this.onmessage?.({ data: { ready: true } });
       });
     }
+    postMessage() { queueMicrotask(() => this.onmessage?.({ data: 'done' })); }
   });
   const task = createWorkerTask('/worker.js');
   const receive = vi.fn();
@@ -103,4 +104,78 @@ describe('worker tasks', () => {
     expect(state.urls).toEqual(['blob:test']);
     expect(state.fetch).toHaveBeenCalledTimes(1);
   });
+});
+
+it('waits for ready before sending and ignores duplicate ready messages', async () => {
+  let instance!: Worker;
+  const send = vi.fn();
+  const terminate = vi.fn();
+  vi.stubGlobal('Worker', class {
+    onmessage = null;
+    terminate = terminate;
+    constructor() { instance = this as unknown as Worker; }
+  });
+  const pending = createWorkerTask('/worker.js').run(send, () => {}, fallback);
+  expect(send).not.toHaveBeenCalled();
+  instance.onmessage?.call(instance, { data: { ready: true } } as MessageEvent);
+  instance.onmessage?.call(instance, { data: { ready: true } } as MessageEvent);
+  expect(send).toHaveBeenCalledExactlyOnceWith(instance);
+  instance.onmessage?.call(instance, { data: 'done' } as MessageEvent);
+  await pending;
+  expect(terminate).toHaveBeenCalledOnce();
+});
+
+it.each(['error', 'messageerror', 'send'])('never retries or checks HEAD after ready: %s', async (mode) => {
+  const state = setup(0);
+  await state.task.preload();
+  await expect(state.task.run((worker) => {
+    if (mode === 'send') throw new Error('');
+    if (mode === 'error') worker.onerror?.call(worker, { message: '' } as ErrorEvent);
+    else worker.onmessageerror?.call(worker, {} as MessageEvent);
+  }, () => {}, fallback)).rejects.toThrow(fallback);
+  expect(state.urls).toEqual(['blob:test']);
+  expect(state.fetch).toHaveBeenCalledTimes(1);
+  expect(state.terminate).toHaveBeenCalledOnce();
+  expect(state.revoke).toHaveBeenCalledOnce();
+});
+
+it('times out only startup, falling back without sending data to the stalled worker', async () => {
+  vi.useFakeTimers();
+  const state = setup(0);
+  await state.task.preload();
+  const Original = Worker;
+  vi.stubGlobal('Worker', class extends Original {
+    constructor(url: string, options?: WorkerOptions) {
+      if (url.startsWith('blob:')) {
+        // Blob起動だけreadyもerrorも届かない状態を作る。
+        return { terminate: vi.fn() } as unknown as Worker;
+      }
+      super(url, options);
+    }
+  });
+  const send = vi.fn((worker: Worker) => worker.postMessage({}));
+  const pending = state.task.run(send, () => {}, fallback);
+  expect(send).not.toHaveBeenCalled();
+  await vi.advanceTimersByTimeAsync(15_000);
+  await pending;
+  expect(send).toHaveBeenCalledOnce();
+  expect(state.urls).toEqual(['/worker.js']);
+  expect(state.revoke).toHaveBeenCalledWith('blob:test');
+});
+
+it('does not impose the startup timeout on processing', async () => {
+  vi.useFakeTimers();
+  let instance!: Worker;
+  vi.stubGlobal('Worker', class {
+    onmessage = null;
+    terminate() {}
+    constructor() { instance = this as unknown as Worker; }
+  });
+  const receive = vi.fn();
+  const pending = createWorkerTask('/worker.js').run(() => {}, receive, fallback);
+  instance.onmessage?.call(instance, { data: { ready: true } } as MessageEvent);
+  await vi.advanceTimersByTimeAsync(30_000);
+  instance.onmessage?.call(instance, { data: 'done' } as MessageEvent);
+  await pending;
+  expect(receive).toHaveBeenCalledWith('done');
 });

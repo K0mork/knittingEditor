@@ -292,6 +292,7 @@ export function buildPdf(request: PdfRequest): Uint8Array {
 }
 
 if (typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScope) {
+  self.postMessage({ ready: true });
   self.onmessage = (event: MessageEvent<PdfRequest>) => {
     try {
       const pdf = buildPdf(event.data);
