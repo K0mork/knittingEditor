@@ -17,11 +17,13 @@ let container: HTMLDivElement;
 let editor: EditorController;
 let source: database.ChartDocument;
 let confirmResult = true;
+const track = vi.fn();
 const askConfirm = vi.fn(async () => confirmResult);
 let savedBlock: ReturnType<Board['createBlock']>;
 const quota = new DOMException('test quota', 'QuotaExceededError');
 
 beforeEach(async () => {
+  track.mockClear();
   confirmResult = true;
   askConfirm.mockClear();
   for (const document of await database.listDocuments()) await database.deleteDocument(document.id);
@@ -39,6 +41,7 @@ beforeEach(async () => {
       platform: { saveFile: async () => ({ saved: Promise.resolve(undefined) }) },
       askText: async () => '変更した名前',
       askConfirm,
+      analytics: { track, trackFirstEdit: vi.fn() },
     });
     return null;
   }
@@ -198,7 +201,8 @@ describe('management failures', () => {
     expect(askConfirm).toHaveBeenLastCalledWith(`「${source.name}」を削除しますか？`, { destructive: true });
     expect(editor.session.documents).toEqual(before);
     expect(await database.listDocuments()).toHaveLength(2);
-    confirmResult = true;
+    track.mockClear();
+  confirmResult = true;
     await act(async () => { await editor.deleteChart(source); });
     expect(editor.session.documents.map((chart) => chart.id)).toEqual(before.filter((chart) => chart.id !== source.id).map((chart) => chart.id));
     expect(await database.listDocuments()).toEqual(editor.session.documents);
@@ -231,7 +235,8 @@ describe('management failures', () => {
     expect(askConfirm).toHaveBeenLastCalledWith('選んだ2件の編み図を削除しますか？', { destructive: true });
     expect(await database.listDocuments()).toHaveLength(3);
 
-    confirmResult = true;
+    track.mockClear();
+  confirmResult = true;
     await act(async () => { await editor.deleteCharts([source, third]); });
     expect(editor.session.documents.map((chart) => chart.id)).toEqual([other.id]);
     expect(await database.listDocuments()).toEqual(editor.session.documents);
@@ -271,5 +276,38 @@ describe('worker version notification', () => {
       expect(editor.notificationAction).toBeUndefined();
       expect(editor.message).not.toContain('再読み込みすると、もう一度');
     } else expect(editor.notificationAction?.label).toBe('再読み込み');
+  });
+});
+
+it('reports the category for management failures without the message', async () => {
+  vi.spyOn(database, 'renameDocument').mockRejectedValue(quota);
+  await act(async () => { await editor.renameChart(source); });
+  expect(track).toHaveBeenCalledWith('operation_failed', {
+    operation_name: 'chart_rename', failure_reason: 'storage_quota',
+  });
+});
+
+it('reports the category for export failures', async () => {
+  vi.spyOn(exporters, 'renderPng').mockRejectedValue(new WorkerVersionError());
+  await act(async () => { await editor.runPngExport(24); });
+  expect(track).toHaveBeenCalledWith('operation_failed', {
+    operation_name: 'png_export', failure_reason: 'site_updated',
+  });
+});
+
+it('reports the original initialization error category', async () => {
+  function FailedProbe() {
+    useEditorController({
+      initialize: async () => { throw quota; },
+      platform: { saveFile: async () => ({ saved: Promise.resolve(undefined) }) },
+      askText: async () => null,
+      askConfirm,
+      analytics: { track, trackFirstEdit: vi.fn() },
+    });
+    return null;
+  }
+  await act(async () => { root.render(<FailedProbe />); });
+  expect(track).toHaveBeenCalledWith('operation_failed', {
+    operation_name: 'editor_init', failure_reason: 'storage_quota',
   });
 });

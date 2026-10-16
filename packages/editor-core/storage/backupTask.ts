@@ -1,3 +1,4 @@
+import { restoreBackupError } from './backupErrors';
 import backupWorkerUrl from './backup.worker.ts?worker&url';
 import { createWorkerTask } from '../util/workerStarter';
 import type { PatternBlock } from '../model/Board';
@@ -19,12 +20,12 @@ export async function runBackupTask(task: BackupTask): Promise<Uint8Array<ArrayB
     return task.operation === 'encode' ? encodeBackup(task.documents, task.blocks) : decodeBackup(task.data);
   }
   let result!: Uint8Array<ArrayBuffer> | Decoded;
-  await backupTask.run<{ result?: Uint8Array<ArrayBuffer> | Decoded; error?: string }>((worker) => {
+  await backupTask.run<{ result?: Uint8Array<ArrayBuffer> | Decoded; error?: string; code?: unknown }>((worker) => {
     // 起動確認後に元のバッファをコピーせず転送する。
     const buffers = task.operation === 'encode' ? task.documents.map((item) => item.cells) : [task.data.buffer as ArrayBuffer];
     worker.postMessage(task, buffers);
   }, (data) => {
-    if (data.result === undefined) throw new Error(data.error?.trim() || 'バックアップを処理できませんでした。');
+    if (data.result === undefined) throw restoreBackupError(data.error?.trim() || 'バックアップを処理できませんでした。', data.code);
     result = data.result;
   }, 'バックアップを処理できませんでした。');
   return result;

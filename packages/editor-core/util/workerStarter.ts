@@ -1,3 +1,5 @@
+import { BackupLimitError, InvalidBackupError } from '../storage/backupErrors';
+
 export interface WorkerLoader {
   download(url: string): Promise<Blob | undefined>;
   isMissing(url: string): Promise<boolean>;
@@ -8,7 +10,8 @@ export class WorkerVersionError extends Error {
   constructor() { super('サイトが更新されました。'); this.name = 'WorkerVersionError'; }
 }
 
-class WorkerStartError extends Error {}
+export class WorkerStartError extends Error {}
+export class WorkerProcessingError extends Error {}
 
 export function createWorkerTask(url: string) {
   let loader: WorkerLoader | undefined;
@@ -39,7 +42,9 @@ export function createWorkerTask(url: string) {
         settled = true;
         cleanup();
         const message = error instanceof Error && error.message.trim() ? error.message : fallback;
-        reject(ready ? new Error(message) : new WorkerStartError(message));
+        if (!ready) reject(new WorkerStartError(message));
+        else if (error instanceof BackupLimitError || error instanceof InvalidBackupError) reject(error);
+        else reject(new WorkerProcessingError(message));
       };
       try {
         if (blob) objectUrl = URL.createObjectURL(blob);
@@ -83,7 +88,7 @@ export function createWorkerTask(url: string) {
           if (await loader.isMissing(url)) throw new WorkerVersionError();
         } catch (checkError) { if (checkError instanceof WorkerVersionError) throw checkError; }
       }
-      throw new Error(error instanceof Error && error.message.trim() ? error.message : fallback);
+      throw error;
     }
   }
   return { preload, run };

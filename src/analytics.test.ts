@@ -41,13 +41,13 @@ describe('analytics', () => {
   it('queues product events and records the first edit once', async () => {
     const { initializeAnalytics, trackAnalyticsEvent, trackFirstEdit } = await loadAnalytics();
     initializeAnalytics(true);
-    trackAnalyticsEvent('chart_exported', { export_format: 'png', board_size_bucket: 'small' });
+    trackAnalyticsEvent('chart_exported', { export_format: 'png', board_size_bucket: 'small', app_build: 'override' });
     trackFirstEdit();
     trackFirstEdit();
 
     expect(window.dataLayer?.slice(2).map((command) => Array.from(command))).toEqual([
-      ['event', 'chart_exported', { export_format: 'png', board_size_bucket: 'small' }],
-      ['event', 'first_edit', {}],
+      ['event', 'chart_exported', { export_format: 'png', board_size_bucket: 'small', app_build: __APP_BUILD__ }],
+      ['event', 'first_edit', { app_build: __APP_BUILD__ }],
     ]);
   });
 });

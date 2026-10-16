@@ -35,7 +35,7 @@ Web版とiOS版は同じリポジトリで管理する。以前の固定コミ�
 | ファイル | 差分の理由 |
 |---|---|
 | `App.tsx` | `useEditorController`と`EditorView`へ差分を渡すだけにする。iOS版はネイティブブリッジ、アプリ内ダイアログ（`AppDialog.tsx`、`window.prompt`/`confirm`の代替）、ストレージ初期化タイムアウト、使い方ページ遷移前・バックグラウンド移行前の保存flushを持つ。Web版は`window.prompt`、旧データ移行つきの初期化、GA4、SEO向けの説明表示を持ち、`documentsNote`でプライバシーポリシー（`/privacy/`）へのリンクを渡す。iOS版はアクセス解析を送らないので`documentsNote`を渡さず、何も表示しない。 |
-| `analytics.ts` | Web版だけが持ち、GA4を初期化して`EditorAnalytics`を実装する。iOS版にはファイル自体が無く、分析を渡さないのでイベントも外部スクリプトも発生させない。 |
+| `analytics.ts` | Web版だけが持ち、Webのビルド時に埋め込む短いコミット識別子を全製品イベントへ付け、GA4を初期化して`EditorAnalytics`を実装する。iOS版にはファイル自体が無く、分析を渡さないのでイベントも外部スクリプトも発生させない。 |
 | `workerPrefetch.ts` | Web版だけが持ち、`fetch`でWorkerの中身を先読みし、起動できないときにWorkerのファイルが404かを確かめる（`main.tsx`が共通の`workerStarter`へ渡す）。iOS版にはファイル自体が無く、同梱Web資産に通信APIを含めない（`ios/scripts/check-app-bundle.sh`が検査する）。 |
 | `main.tsx` | iOS版は`initializeAnalytics()`を呼ばない。Workerの先読みも呼ばず、同梱URLから起動する。Web本番版だけページ読み込み後にPDF・バックアップWorkerを先読みし、保持した内容のBlobからタスクごとに起動する。開発サーバーはURLから起動する。 |
 | `styles.css` | 共通CSSへの差分だけ。iOS版はタップ領域44px、Dynamic Type、テキスト自動拡大の抑止、長押しの文字選択とメニュー（コピー・調べる）の抑止、アプリ内ダイアログの様式。文字選択は入力欄（`input`・`textarea`と、`contenteditable="false"`でない`[contenteditable]`）だけ元に戻し、編み図名などを選択・コピー・貼り付けできるようにする。Web版はSEO向けの説明文と編み図名の表示で、文字選択は抑えない（ブラウザでは説明文や見出しを選んでコピーできるのが普通で、長押しのメニューもWebページとして自然なため）。 |

@@ -32,7 +32,7 @@ export function initializeAnalytics(analyticsEnabled = import.meta.env.PROD && !
 }
 
 export function trackAnalyticsEvent(name: string, parameters: AnalyticsParameters = {}): void {
-  gtag('event', name, parameters);
+  gtag('event', name, { ...parameters, app_build: __APP_BUILD__ });
 }
 
 export function trackFirstEdit(): void {
