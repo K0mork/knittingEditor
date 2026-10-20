@@ -130,7 +130,11 @@ for checked_item in \
   }
 done
 
-for submission_shot in app-store-iphone-6.9-editor.png app-store-iphone-6.9-launch.png app-store-ipad-13-editor.png; do
+for submission_shot in \
+  app-store-iphone-6.9-01-editor.png app-store-iphone-6.9-02-stitches.png app-store-iphone-6.9-03-export.png \
+  app-store-iphone-6.9-04-background.png app-store-iphone-6.9-05-dark.png \
+  app-store-ipad-13-01-editor.png app-store-ipad-13-02-stitches.png app-store-ipad-13-03-export.png \
+  app-store-ipad-13-04-background.png app-store-ipad-13-05-dark.png; do
   grep -qF -- "$submission_shot" "$SCREENSHOTS" || {
     echo "App Store submission screenshot is not documented: $submission_shot" >&2
     exit 1
