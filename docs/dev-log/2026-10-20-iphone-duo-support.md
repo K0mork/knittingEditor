@@ -9,6 +9,7 @@
   - `ios/Web/src/nativeBridge.ts`、`ios/Web/src/nativeFoldLayout.ts`（新規）、`ios/Web/src/main.tsx`、`ios/Web/src/styles.css`: `data-fold`と`--fold-start`・`--fold-end`を付け外しする。折り目があるあいだだけ、重なった重ね表示を測って動かす。
   - `packages/editor-core/canvas/BoardCanvas.tsx`: `resizeViewport`（ウィンドウの大きさが変わったときだけ、盤面の枠の大きさの差を位置に足す）。
   - `packages/editor-core/styles/base.css`: 背景色のボタン。
+  - `ios/docs/APP_STORE_CHECKLIST.md`: 提出用のアーカイブをXcode 27.1（iOS 27.1 SDK）以降で作り、アップロード前に`DTSDKName`と`DTXcodeBuild`を確かめる項目を足した。
   - `ios/docs/NATIVE_BRIDGE.md`、`ios/docs/WEB_SYNC.md`、`ios/knittingEditor.xcodeproj/project.pbxproj`（XcodeGenで再生成）。
 - テスト:
   - `ios/Tests/KnittingEditorAppTests/FoldRegionTests.swift`: 縦と横の判定、無効・非アクティブな領域の除外、送るJavaScript。
@@ -34,5 +35,5 @@
     - 開閉や回転の途中では、折り目の値が一瞬だけ前の画面のものになることがあるが、次の読み取り（0.25秒以内）で正しい値に戻る。
     - Release設定（`-configuration Release`、Xcode 27.1、`DTSDKName`は`iphonesimulator27.1`）でも、閉じた状態で画面の端まで表示される。
     - 横の折り目の確認では、折り目の値をログに出す行を一時的に足したビルドを使った（コミットしていない）。
-  - 手元で確かめていないこと: iPhone 17とiPad (A16)のSimulatorでの確認は、PRのCI（iPhone）と`ios-full.yml`（iPhone・iPad）に任せた。署名した提出用のアーカイブは、リリースのときにXcode 27.1以降で作る。
+  - 手元で確かめていないこと: iPhone 17とiPad (A16)のSimulatorでの確認は、PRのCI（iPhone）と`ios-full.yml`（iPhone・iPad）に任せた。署名した提出用のアーカイブは、リリースのときにXcode 27.1以降で作る（`APP_STORE_CHECKLIST.md`の項目で確かめる）。
 - デプロイ影響: 共通の盤面とCSSが変わるので、Pagesへ配信される。配信後に、ブラウザーのウィンドウの大きさを変えたときの盤面の位置と、盤面設定の背景色のボタンを確かめる。iOSでは、次の提出ビルドから入る。iPhone Duoで画面の端まで表示するには、提出ビルドをXcode 27.1（iOS 27.1 SDK）以降で作る必要がある（CIのXcodeの更新は#289）。

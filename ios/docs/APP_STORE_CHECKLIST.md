@@ -25,6 +25,7 @@
 
 - [x] GitHub Actionsの文書検査、Web、Release Archive、iPhone／iPad UIテスト、iPhone／iPad app-update、集約ゲートを成功させる（統合先のrun [`35739657855`](https://github.com/K0mork/knittingEditor/actions/runs/35739657855)、失敗ジョブ再実行後に全11ジョブ成功。統合前は旧リポジトリのrun `35572127914`、全6ジョブ）。
 - [ ] 提出候補のPRでci-gate、提出候補を含むmainコミットで別のFull iOS validation（iPhone／iPad全テスト、両端末のapp_update、unsigned Release Archive・オフライン資産検査）の成功を確認する。全検証は関連マージ後・夜間・手動実行で行い、Pagesのゲートには含めない。main・夜間の失敗Issueがあれば調査・修正する。
+- [ ] 提出用のアーカイブはXcode 27.1（iOS 27.1 SDK）以降で作る。Xcode 26.6以前で作ると、iPhone Duoを開いたときに従来のiPhoneの大きさでしか表示されない（#96）。CIのXcodeは26.6のまま（#289）なので、手元のXcodeで作る。アップロード前に、アーカイブ内のアプリの`Info.plist`で`DTSDKName`が`iphoneos27.1`以降、`DTXcodeBuild`がXcode 27.1以降のビルド番号（27.1正式版は`27A9275`）であることを確かめる。
 - [ ] 提出ビルドで実機の機内モードのP0フローを再確認する。開発ビルドではiPad Air（第5世代、2026-09-22）とiPhone 17（2026-10-09）の主要フロー、iPadの機内モード前後の通信監視（2026-10-02）は確認済み。TestFlight等の提出ビルドは未確認なので、この欄は未チェックとする（`REAL_DEVICE_RELEASE_CHECKLIST.md`のM0・M6）。
 - [ ] 提出ビルドでFiles、AirDrop、共有先、外部`.knit`の往復と残りの異常系を実機で確認する。開発ビルドでのiPhone・iPadの保存・共有・復元は確認済みだが、存在しないファイルなどの異常系とTestFlightでの最終往復が残るため、未チェックとする（`REAL_DEVICE_RELEASE_CHECKLIST.md`のM3）。
 - [ ] 1000×1000盤面のメモリ、PNG拒否、PDF出力時間を記録する。
