@@ -960,21 +960,33 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertTrue(exportPicker.waitForExistence(timeout: 20), app.debugDescription)
         // CIの再試行で同名ファイルを置き換えるとファイルプロバイダーが停止したため、
         // 実行ごとに名前を変えてシステムの置き換え確認を避ける。
-        let backupFileName = "knitting-editor-backup-\(suffix)"
+        // CIのiPhoneではファイル名の入力欄が公開されないことがあるため、その場合は既定名を使う。
+        var backupFileName = "knitting-editor-backup"
         let filename = app.textFields["DOCPicker.filenameTextField"]
-        XCTAssertTrue(filename.waitForExistence(timeout: 20), app.debugDescription)
-        replaceText(backupFileName, in: filename, app: app)
+        if filename.waitForExistence(timeout: 10) {
+            backupFileName = "knitting-editor-backup-\(suffix)"
+            replaceText(backupFileName, in: filename, app: app)
+        }
         // 保存先はシステムの前回の場所に依存する。iPhoneでの確認時は「このiPhone内」が開いた。
         let saveInPicker = app.buttons.matching(NSPredicate(format: "label IN %@", ["保存", "Save"])).firstMatch
         XCTAssertTrue(saveInPicker.waitForExistence(timeout: 20), app.debugDescription)
         add(screenshotAttachment(named: "全データの保存先の選択"))
         saveInPicker.tap()
-        let exportFinished = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "exists == false"),
+        // 名前を変えられず、前回の同名ファイルが残っているときだけ、確認が出るので置き換える。
+        let replace = app.buttons.matching(NSPredicate(format: "label IN %@", ["置き換え", "Replace"])).firstMatch
+        let exportFinishedOrReplaceAppeared = XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in !exportPicker.exists || replace.exists },
             object: exportPicker
         )
-        let exportWaitResult = XCTWaiter.wait(for: [exportFinished], timeout: Self.editorAppearanceTimeout)
+        // 別プロセスの保存画面が閉じる途中はreplace.existsの問い合わせに17〜19秒かかることがある。
+        // 保存済みでも20秒では1回しか判定できず失敗したため、エディターの表示と同じ時間待つ。
+        let exportWaitResult = XCTWaiter.wait(for: [exportFinishedOrReplaceAppeared], timeout: Self.editorAppearanceTimeout)
         XCTAssertEqual(exportWaitResult, .completed, app.debugDescription)
+        if exportPicker.exists && replace.exists {
+            waitUntilStill(replace)
+            replace.tap()
+            assertDisappears(exportPicker, from: app)
+        }
 
         // 「バックアップから復元」で、いま保存したファイルを選ぶ。
         let restore = app.buttons["バックアップから復元"]
@@ -1891,7 +1903,8 @@ final class KnittingEditorUITests: XCTestCase {
         location.tap()
 
         let backupFile = app.cells
-            .matching(NSPredicate(format: "identifier BEGINSWITH %@", fileName)).firstMatch
+            .matching(NSPredicate(format: "identifier == %@ OR identifier BEGINSWITH %@", fileName, fileName + "."))
+            .firstMatch
         guard waitForHittable(backupFile, timeout: 30) else {
             add(screenshotAttachment(named: "復元のバックアップが見つからない"))
             XCTFail("端末内のバックアップを選べない: \(app.debugDescription)")
