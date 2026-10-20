@@ -390,7 +390,8 @@ export function useEditorController(options: EditorControllerOptions) {
       const restored = `${result.count}件の編み図を復元しました`;
       // 保存失敗は上部の帯がバックアップを勧めるので、ここでは切り替えなかったことだけを伝える。
       if (switched === 'failed' || switched === 'pending') notify(`${result.count}件を復元しました。編集中の編み図が未保存のため、切り替えていません。`);
-      else if (switched !== 'switched') notify(`${restored}。復元した編み図を開けませんでした。もう一度お試しください。`);
+      // 「もう一度」と書くと復元をやり直して同じ編み図を増やしかねないので、一覧から開くよう案内する。
+      else if (switched !== 'switched') notify(`${result.count}件を復元しました。復元した編み図は「編み図」の一覧から開いてください。`);
       else notify(restored);
     } catch (error) { reportFailure('backup_restore', error); }
     finally { setBusy(undefined); }

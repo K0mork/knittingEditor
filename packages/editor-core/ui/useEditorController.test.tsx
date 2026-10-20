@@ -199,6 +199,17 @@ describe('restore with edits during import', () => {
     expect(track).toHaveBeenCalledWith('backup_restored', { document_count_bucket: '1' });
     expect(editor.busy).toBeUndefined();
   });
+
+  it('points to the chart list when the restored chart cannot be opened', async () => {
+    const { release, restoring } = await startRestore();
+    vi.spyOn(database, 'setSetting').mockRejectedValueOnce(new Error('settings unavailable'));
+    await act(async () => { release(); await restoring; });
+    expect(editor.session.activeDocument?.id).toBe(source.id);
+    expect(editor.message).toBe('1件を復元しました。復元した編み図は「編み図」の一覧から開いてください。');
+    expect(editor.session.documents.find((document) => document.name === `${source.name}（復元）`)).toBeDefined();
+    expect(track).toHaveBeenCalledWith('backup_restored', { document_count_bucket: '1' });
+    expect(editor.busy).toBeUndefined();
+  });
 });
 
 describe('management failures', () => {
