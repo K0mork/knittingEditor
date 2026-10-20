@@ -1,3 +1,4 @@
+import { normalizeGuideLines } from '../model/guideLines';
 import { BackupLimitError, InvalidBackupError } from './backupErrors';
 import { Gunzip, gzipSync, strFromU8, strToU8 } from 'fflate';
 import { Board, cellStitchId, MAX_BOARD_SIZE, packCell, type BlockAnchor, type PatternBlock } from '../model/Board';
@@ -96,12 +97,14 @@ function restoreBlock(value: unknown, now: number): PatternBlock {
     claimFootprint(occupied, cols, row, col, definition, 'ブロックの記号が重複しています');
     anchors.push({ row, col, value: cellStitchId(packedValue) === 0 ? packCell(packedValue, 0) : packedValue });
   }
+  const lines = normalizeGuideLines(block.lines, rows, cols);
   return {
     id: crypto.randomUUID(),
     name: `${block.name.trim()}（復元）`,
     rows,
     cols,
     anchors,
+    ...(lines.length ? { lines } : {}),
     createdAt: now,
   };
 }
@@ -205,10 +208,11 @@ export function decodeBackup(data: Uint8Array): ImportBackupResult & { blocks: P
     if (bytes.byteLength !== item.rows * item.cols * Uint32Array.BYTES_PER_ELEMENT) throw new InvalidBackupError('盤面データが破損しています');
     validatePackedCells(item.rows, item.cols, bytes);
     // 地の色が壊れていても編み図は捨てず、白い地として復元する。
-    const { backgroundColor: rawBackground, ...rest } = item;
+    const { backgroundColor: rawBackground, guideLines: rawLines, ...rest } = item;
     const backgroundColor = normalizeBackgroundColor(rawBackground);
+    const lines = normalizeGuideLines(rawLines, item.rows, item.cols);
     return {
-      ...rest, ...(backgroundColor ? { backgroundColor } : {}),
+      ...rest, ...(lines.length ? { guideLines: lines } : {}), ...(backgroundColor ? { backgroundColor } : {}),
       id: crypto.randomUUID(), name: `${item.name}（復元）`, cells: bytes.slice().buffer as ArrayBuffer,
       // 一覧の順序のため更新日時だけ元の値を保つ。作成日時は復元時刻にし、
       // 復元した直後に「まだバックアップしていません」の勧めが出ないようにする。

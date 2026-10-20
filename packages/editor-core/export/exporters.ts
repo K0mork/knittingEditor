@@ -1,6 +1,7 @@
+import { drawGuideLine } from '../canvas/guideLines';
 import pdfWorkerUrl from './pdf.worker.ts?worker&url';
 import { createWorkerTask } from '../util/workerStarter';
-import { annotationHeights, usedStitches, type ExportAnnotations } from './annotations';
+import { annotationHeights, exportLegend, type ExportAnnotations } from './annotations';
 import { packCell, type Board } from '../model/Board';
 import { boardSurface, DEFAULT_BACKGROUND_COLOR } from '../model/boardColors';
 import { drawCell } from '../stitches/drawCell';
@@ -62,7 +63,7 @@ const pngLegendRowHeight = (cellSize: number) => Math.max(20, cellSize) * 2 + 12
 
 export function validatePngSize(board: Board, cellSize: number, options: ExportAnnotations = {}): { width: number; height: number; valid: boolean; reason?: string } {
   const { rowLabelWidth, colLabelHeight } = pngLabelLayout(board, cellSize);
-  const { titleHeight, legendHeight } = annotationHeights({ ...options, legendCount: options.includeTitleAndLegend ? (options.legendCount ?? usedStitches(board.cells).length) : 0 }, 40, pngLegendRowHeight(cellSize));
+  const { titleHeight, legendHeight } = annotationHeights({ ...options, legendCount: options.includeTitleAndLegend ? (options.legendCount ?? exportLegend(board.cells, board.lines.length > 0).length) : 0 }, 40, pngLegendRowHeight(cellSize));
   const width = Math.max(board.cols * cellSize + rowLabelWidth * 2, options.includeTitleAndLegend ? Math.max(560, (Math.max(20, cellSize) * 6 + 200 + 36) * 2) : 0);
   const height = board.rows * cellSize + colLabelHeight * 2 + titleHeight + legendHeight;
   if (width > PNG_MAX_SIDE || height > PNG_MAX_SIDE) return { width, height, valid: false, reason: `一辺が上限${PNG_MAX_SIDE}pxを超えます` };
@@ -86,7 +87,7 @@ export function pngGridStyles(cellSize: number, background: string = DEFAULT_BAC
  * 盤面をPNGにする。地の色（`background`）は盤面のマスにだけ塗り、段・目番号の帯は白い紙のままにする。
  */
 export async function renderPng(board: Board, cellSize: number, background: string = DEFAULT_BACKGROUND_COLOR, options: ExportAnnotations = {}): Promise<Blob> {
-  const legend = options.includeTitleAndLegend ? usedStitches(board.cells) : [];
+  const legend = options.includeTitleAndLegend ? exportLegend(board.cells, board.lines.length > 0) : [];
   const size = validatePngSize(board, cellSize, { ...options, legendCount: legend.length });
   if (!size.valid) throw new Error(`${size.reason}。PDF保存を利用してください。`);
   const canvas = document.createElement('canvas');
@@ -140,6 +141,7 @@ export async function renderPng(board: Board, cellSize: number, background: stri
       if (value) drawCell(context, value, left + col * cellSize, top + row * cellSize, cellSize);
     }
   }
+  for (const line of board.lines) drawGuideLine(context, left + (line.col + 0.5) * cellSize, top + (line.top + 1) * cellSize, top + line.bottom * cellSize, cellSize, background);
   if (options.includeTitleAndLegend) {
     context.fillStyle = '#111';
     context.font = '20px system-ui';
@@ -151,8 +153,12 @@ export async function renderPng(board: Board, cellSize: number, background: stri
       const rowHeight = pngLegendRowHeight(cellSize);
       const centerY = bottom + labels.colLabelHeight + 6 + Math.floor(index / 2) * rowHeight + (rowHeight - 12) / 2;
       const y = centerY - stitch.height * legendCell / 2;
-      strokeGrid(context, { x, y, cell: legendCell, rows: stitch.height, cols: stitch.width, firstRow: 0, lastRow: stitch.height - 1, firstCol: 0, lastCol: stitch.width - 1 }, grid.minor, grid.minor);
-      drawCell(context, packCell(stitch.id, 0x111111), x, y, legendCell);
+      if (stitch.key === 'guide-line') {
+        drawGuideLine(context, x + legendCell / 2, centerY - legendCell * 0.75, centerY + legendCell * 0.75, legendCell, '#ffffff');
+      } else {
+        strokeGrid(context, { x, y, cell: legendCell, rows: stitch.height, cols: stitch.width, firstRow: 0, lastRow: stitch.height - 1, firstCol: 0, lastCol: stitch.width - 1 }, grid.minor, grid.minor);
+        drawCell(context, packCell(stitch.id, 0x111111), x, y, legendCell);
+      }
       context.fillStyle = '#111';
       context.font = '14px system-ui';
       const nameX = x + legendCell * 6 + 12;
@@ -170,7 +176,7 @@ export async function renderPdf(board: Board, options: PdfLayoutOptions, backgro
   let result!: Blob;
   await pdfTask.run<{ ok: boolean; pdf?: ArrayBuffer; error?: string }>((worker) => {
     const cells = board.cells.buffer.slice(0);
-    worker.postMessage({ rows: board.rows, cols: board.cols, cells, background, ...options }, [cells]);
+    worker.postMessage({ rows: board.rows, cols: board.cols, cells, lines: board.lines, background, ...options }, [cells]);
   }, (data) => {
     if (!data.ok || !data.pdf) throw new Error(data.error?.trim() || PDF_WORKER_ERROR);
     result = new Blob([data.pdf], { type: 'application/pdf' });

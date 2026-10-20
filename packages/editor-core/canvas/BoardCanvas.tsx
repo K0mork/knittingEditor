@@ -4,13 +4,14 @@ import { boardSurface, DEFAULT_BACKGROUND_COLOR } from '../model/boardColors';
 import { STITCH_BY_KEY, STITCHES } from '../stitches/catalog';
 import { drawCell } from '../stitches/drawCell';
 import { labelStride, showsLabel } from '../export/labels';
+import { drawGuideLine } from './guideLines';
 import { strokeGrid, type GridLineStyle } from './strokeGrid';
 
-export type CanvasMode = 'draw' | 'erase' | 'select' | 'paste';
+export type CanvasMode = 'draw' | 'erase' | 'select' | 'paste' | 'line';
 
 /** 画面の案内と読み上げで使うモード名。 */
 export const CANVAS_MODE_LABELS: Record<CanvasMode, string> = {
-  draw: '描画', erase: '消去', select: '範囲選択', paste: '貼付',
+  line: '線', draw: '描画', erase: '消去', select: '範囲選択', paste: '貼付',
 };
 
 /** ホストから盤面の表示だけを変更する。座標を省略すると表示領域の中央。 */
@@ -209,6 +210,8 @@ export function BoardCanvas(props: Props) {
   const strokeFootprintRef = useRef(new Set<number>());
   // 1本指のタップは指を離すまで確定しない。触れた瞬間に置くと、2本指ジェスチャの
   // 開始時に先に触れた指の位置へ記号が入ってしまうため。
+  const lineStartRef = useRef<Point | undefined>(undefined);
+  const lineDragRef = useRef<Point | undefined>(undefined);
   const pendingTapRef = useRef<Point | undefined>(undefined);
   const provisionalRef = useRef<Board | undefined>(undefined);
   const touchChangedRef = useRef(false);
@@ -309,6 +312,23 @@ export function BoardCanvas(props: Props) {
       }
     }
 
+    for (const line of board.lines) {
+      if (line.col < firstCol || line.col > lastCol || line.bottom < firstRow || line.top > lastRow) continue;
+      drawGuideLine(context, view.x + (line.col + 0.5) * view.cell, view.y + (line.top + 1) * view.cell, view.y + line.bottom * view.cell, view.cell, background);
+    }
+    if (mode === 'line') {
+      const start = lineDragRef.current ?? lineStartRef.current;
+      if (start) {
+        context.fillStyle = 'rgba(45, 125, 72, .2)';
+        context.strokeStyle = '#2d7d48';
+        context.lineWidth = 2;
+        context.fillRect(view.x + start.col * view.cell, view.y + start.row * view.cell, view.cell, view.cell);
+        context.strokeRect(view.x + start.col * view.cell, view.y + start.row * view.cell, view.cell, view.cell);
+        const end = lineDragRef.current && lastCellRef.current;
+        if (end && end.row >= start.row + 2) drawGuideLine(context, view.x + (start.col + 0.5) * view.cell, view.y + (start.row + 1) * view.cell, view.y + end.row * view.cell, view.cell, background);
+      }
+    }
+
     const preview = mode === 'paste' && pasteBlock && lastCellRef.current
       ? { top: lastCellRef.current.row, left: lastCellRef.current.col, bottom: lastCellRef.current.row + pasteBlock.rows - 1, right: lastCellRef.current.col + pasteBlock.cols - 1 }
       : selection;
@@ -374,6 +394,25 @@ export function BoardCanvas(props: Props) {
     bandRef.current = band;
     placeInitialViewport(canvas.clientWidth, canvas.clientHeight, band);
   }, [props.board]);
+
+  useEffect(() => {
+    lineStartRef.current = undefined;
+    lineDragRef.current = undefined;
+    pendingTapRef.current = undefined;
+    requestDraw();
+  }, [props.mode, props.board]);
+
+  useEffect(() => {
+    const cancel = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      lineStartRef.current = undefined;
+      lineDragRef.current = undefined;
+      pendingTapRef.current = undefined;
+      requestDraw();
+    };
+    window.addEventListener('keydown', cancel);
+    return () => window.removeEventListener('keydown', cancel);
+  }, []);
 
   useEffect(requestDraw, [props.board, props.background, props.revision, props.selection, props.mode, props.pasteBlock]);
 
@@ -459,7 +498,9 @@ export function BoardCanvas(props: Props) {
     const board = provisionalRef.current ?? propsRef.current.board;
     let changed = false;
     for (const point of rasterLine(from, to)) {
-      if (board.inBounds(point.row, point.col) && board.clearAt(point.row, point.col)) changed = true;
+      if (!board.inBounds(point.row, point.col)) continue;
+      const erasedLine = board.eraseLinesAt(point.row, point.col);
+      if (board.clearAt(point.row, point.col) || erasedLine) changed = true;
     }
     if (changed) {
       if (provisionalRef.current) touchChangedRef.current = true;
@@ -478,6 +519,7 @@ export function BoardCanvas(props: Props) {
       gestureBlockedRef.current = true;
       // 2本目が触れた時点で、1本目の保留タップは取り消す。
       pendingTapRef.current = undefined;
+      lineDragRef.current = undefined;
       provisionalRef.current = undefined;
       touchChangedRef.current = false;
       if (props.mode === 'select') props.onSelectionChange(previousSelectionRef.current);
@@ -496,13 +538,14 @@ export function BoardCanvas(props: Props) {
     if (!cell) return;
     strokeStartedRef.current = true;
     if (event.pointerType === 'touch' && (props.mode === 'draw' || props.mode === 'erase')) {
-      provisionalRef.current = new Board(props.board.rows, props.board.cols, props.board.cells);
+      provisionalRef.current = new Board(props.board.rows, props.board.cols, props.board.cells, props.board.lines);
       touchChangedRef.current = false;
     }
     if (event.button === 2) {
       if ((provisionalRef.current ?? props.board).clearAt(cell.row, cell.col)) changed();
       return;
     }
+    if (props.mode === 'line' && !props.board.inBounds(cell.row, cell.col)) return;
     if (props.mode === 'select') {
       if (!props.board.inBounds(cell.row, cell.col)) {
         props.onSelectionChange(undefined);
@@ -552,6 +595,10 @@ export function BoardCanvas(props: Props) {
       if (!selectionStartRef.current && !strokeStartedRef.current) return;
       lastCellRef.current = cell;
     }
+    if (props.mode === 'line' && pendingTapRef.current) {
+      const start = pendingTapRef.current;
+      if (cell.row !== start.row || cell.col !== start.col) lineDragRef.current = start;
+    }
     if (props.mode === 'select' && selectionStartRef.current) {
       const start = selectionStartRef.current;
       props.onSelectionChange({ top: start.row, left: start.col, bottom: cell.row, right: cell.col });
@@ -576,7 +623,23 @@ export function BoardCanvas(props: Props) {
     const pendingTap = cellAt(eventPosition(event)) ? pendingTapRef.current : undefined;
     pendingTapRef.current = undefined;
     if (pendingTap && button !== 2 && !gestureBlockedRef.current && event.type !== 'pointercancel') {
-      if (props.mode === 'paste' && props.pasteBlock) {
+      if (props.mode === 'line') {
+        const end = cellAt(eventPosition(event));
+        const drag = lineDragRef.current;
+        const start = drag ?? lineStartRef.current;
+        if (drag && end) {
+          if (props.board.addLine(drag.col, drag.row, end.row)) props.onChange();
+          lineStartRef.current = undefined;
+        } else if (start && start.col === pendingTap.col && pendingTap.row >= start.row + 2) {
+          if (props.board.addLine(start.col, start.row, pendingTap.row)) props.onChange();
+          lineStartRef.current = undefined;
+        } else if (props.board.eraseLinesAt(pendingTap.row, pendingTap.col)) {
+          props.onChange();
+          lineStartRef.current = undefined;
+        } else {
+          lineStartRef.current = start?.row === pendingTap.row && start.col === pendingTap.col ? undefined : pendingTap;
+        }
+      } else if (props.mode === 'paste' && props.pasteBlock) {
         props.onPasteComplete(props.board.pasteBlock(props.pasteBlock, pendingTap.row, pendingTap.col));
       } else if (props.mode === 'erase') {
         applyErase(pendingTap, pendingTap);
@@ -591,9 +654,10 @@ export function BoardCanvas(props: Props) {
     if (pointersRef.current.size === 0) {
       if (provisionalRef.current && touchChangedRef.current && event.type !== 'pointercancel') {
         const temporary = provisionalRef.current;
-        props.board.restore(temporary.rows, temporary.cols, temporary.cells);
+        props.board.restore(temporary.rows, temporary.cols, temporary.cells, temporary.lines);
         props.onChange();
       }
+      lineDragRef.current = undefined;
       provisionalRef.current = undefined;
       touchChangedRef.current = false;
       props.onEditEnd?.();

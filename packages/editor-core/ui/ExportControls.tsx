@@ -1,4 +1,4 @@
-import { usedStitches, type ExportAnnotations } from '../export/annotations';
+import { exportLegend, type ExportAnnotations } from '../export/annotations';
 import { useState, type ReactNode } from 'react';
 import type { Board } from '../model/Board';
 import { defaultPngCellSize, PNG_CELL_SIZE_RANGE, validatePngSize } from '../export/exporters';
@@ -23,7 +23,7 @@ export function ExportControls({ board, onPng, onPdf, onBackup, onRestore, backu
   const [orientation, setOrientation] = useState<PdfLayoutOptions['orientation']>('portrait');
   const [millimeters, setMillimeters] = useState(5);
   const [includeTitleAndLegend, setIncludeTitleAndLegend] = useState(false);
-  const legend = includeTitleAndLegend ? usedStitches(board.cells) : [];
+  const legend = includeTitleAndLegend ? exportLegend(board.cells, board.lines.length > 0) : [];
   const annotations = { includeTitleAndLegend, legendCount: legend.length, legendHeights: legend.map((stitch) => stitch.height) };
   const png = validatePngSize(board, pngSize, annotations);
   // 推定ページ数はPDF Workerと同じ計算を使う。用紙の有効寸法をここに書き写すと、

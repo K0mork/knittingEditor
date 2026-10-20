@@ -196,3 +196,62 @@ describe('PDF worker', () => {
     expect([...colNumbers].sort((a, b) => a - b)).toEqual([10, 20, 30, 40]);
   });
 });
+
+it('線の点線を各タイルに描き、矢印は下端が途中にあるタイルにだけ描く', () => {
+  const input: PdfRequest = { ...request(100, 2, false), layout: 'tiled' };
+  const layout = pdfPageLayout(input.rows, input.cols, input);
+  input.lines = [{ col: 0, top: 0, bottom: layout.tileRows + 5 }];
+  const pages = gridPages(buildPdf(input));
+  layout.tiles.forEach((tile, index) => {
+    const intersects = tile.row < input.lines![0].bottom && tile.row + tile.rows > 1;
+    expect(pages[index].includes('] 0 d')).toBe(intersects);
+    const hasEnd = input.lines![0].bottom - 1 >= tile.row && input.lines![0].bottom < tile.row + tile.rows;
+    expect(pages[index].includes(' l h f')).toBe(hasEnd);
+  });
+});
+
+it('線だけを使った編み図にも一覧の最後に線の見本を加える', () => {
+  const input: PdfRequest = { ...request(8, 2, false), includeTitleAndLegend: true, lines: [{ col: 0, top: 0, bottom: 4 }] };
+  const pages = gridPages(buildPdf(input));
+  expect(pages.join('\n')).toContain('<7dda> Tj');
+  expect((pages.join('\n').match(/ l h f/g) ?? []).length).toBe(2);
+});
+
+it.each([-1, 0, 1, 2])('重なりのあるA4分割の境目から%i段の下端に矢印を正しいページへ1回だけ描く', (offset) => {
+  const input: PdfRequest = { ...request(90, 20, false), layout: 'tiled' };
+  const layout = pdfPageLayout(input.rows, input.cols, input);
+  expect(layout.stepRows).toBe(layout.tileRows - 1);
+  expect(layout.tiles.length).toBeGreaterThan(1);
+  const bottom = layout.tiles[1].row + offset;
+  input.lines = [{ col: 0, top: 0, bottom }];
+  const pages = gridPages(buildPdf(input));
+  expect(pages).toHaveLength(layout.tiles.length);
+  expect(pages.join('\n').match(/ l h f/g)).toHaveLength(1);
+  const arrowTiles = layout.tiles.filter((tile) => bottom - 1 >= tile.row && bottom < tile.row + tile.rows);
+  expect(arrowTiles).toHaveLength(1);
+  layout.tiles.forEach((tile, index) => {
+    const hasEnd = arrowTiles.includes(tile);
+    expect(pages[index].includes(' l h f'), `page ${index + 1}`).toBe(hasEnd);
+    if (hasEnd) {
+      const originX = layout.margin + layout.rowLabelWidth;
+      const originY = layout.pageHeight - layout.margin - layout.colLabelHeight - tile.rows * layout.cellSize;
+      const arrowY = originY + (tile.rows - bottom + tile.row) * layout.cellSize;
+      expect(pages[index]).toContain(`[] 0 d ${(originX + layout.cellSize / 2).toFixed(3)} ${arrowY.toFixed(3)} m`);
+    }
+  });
+});
+
+it('一覧の線と記号の名前を同じ文字サイズで見本の縦中央に合わせる', () => {
+  const input: PdfRequest = { ...request(8, 2, false), includeTitleAndLegend: true, lines: [{ col: 0, top: 0, bottom: 4 }] };
+  new Uint32Array(input.cells)[0] = packCell(STITCH_BY_KEY.get('knit')!.id, 0x000000);
+  const commands = gridPages(buildPdf(input)).join('\n');
+  const names = [...commands.matchAll(/\/F2 ([\d.]+) Tf [\d.]+ ([\d.]+) Td <(7dda|886876ee)> Tj/g)];
+  expect(names).toHaveLength(2);
+  expect(names[0][1]).toBe('8');
+  expect(names[1][1]).toBe(names[0][1]);
+  expect(names[1][2]).toBe(names[0][2]);
+  const sample = [...commands.matchAll(/\[\] 0 d [\d.]+ ([\d.]+) m [\d.]+ ([\d.]+) l [\d.]+ [\d.]+ l h f/g)].at(-1)!;
+  const shaft = [...commands.matchAll(/\[[\d.]+ [\d.]+\] 0 d [\d.]+ ([\d.]+) m/g)].at(-1)!;
+  const center = (Number(shaft[1]) + Number(sample[1])) / 2;
+  expect(Number(names[1][2]) + 8 * (0.752 - 0.221) / 2).toBeCloseTo(center, 2);
+});

@@ -174,3 +174,32 @@ it('copies PDF cells only once after ready and transfers that copy', async () =>
     vi.unstubAllGlobals();
   }
 });
+
+it.each(['#ffffff', '#1e1e1e'])('PNGの点線を両端の縁の間に描き、一覧にも線を加える（%s）', async (background) => {
+  const paths: Array<{ color: string; points: number[][]; dash: number[] }> = [];
+  let points: number[][] = [];
+  let dash: number[] = [];
+  const context = {
+    fillStyle: '', strokeStyle: '', lineWidth: 0,
+    fillRect: vi.fn(), fillText: vi.fn(), save: vi.fn(), restore: vi.fn(),
+    beginPath: () => { points = []; },
+    moveTo: (...point: number[]) => points.push(point),
+    lineTo: (...point: number[]) => points.push(point),
+    setLineDash: (value: number[]) => { dash = value; },
+    closePath: vi.fn(), fill: vi.fn(),
+    stroke: () => paths.push({ color: context.strokeStyle, points: [...points], dash: [...dash] }),
+  };
+  const canvas = { width: 0, height: 0, getContext: () => context, toBlob: (callback: BlobCallback) => callback(new Blob(['png'])) };
+  vi.stubGlobal('document', { createElement: () => canvas });
+  try {
+    const board = new Board(6, 3);
+    board.addLine(1, 0, 4);
+    await renderPng(board, 24, background);
+    const line = paths.find((path) => path.dash.length)!;
+    expect(line.color).toBe(background === '#ffffff' ? '#333333' : '#e6e6e6');
+    expect(line.points).toEqual([[60, 48], [60, 120 - 24 * 0.18]]);
+    await renderPng(board, 24, background, { includeTitleAndLegend: true });
+    expect(context.fillText).toHaveBeenCalledWith('線', expect.any(Number), expect.any(Number), expect.any(Number));
+    expect(validatePngSize(board, 24, { includeTitleAndLegend: true }).height).toBeGreaterThan(validatePngSize(new Board(6, 3), 24, { includeTitleAndLegend: true }).height);
+  } finally { vi.unstubAllGlobals(); }
+});

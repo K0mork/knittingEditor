@@ -1,5 +1,7 @@
+import { normalizeGuideLines, type GuideLine } from '../model/guideLines';
+import { guideLineColor } from '../canvas/guideLines';
 /// <reference lib="webworker" />
-import { usedStitches } from './annotations';
+import { exportLegend } from './annotations';
 import { Zlib, strToU8, zlibSync } from 'fflate';
 import { STITCH_BY_ID, STITCHES } from '../stitches/catalog';
 import { GLYPH_CELL, glyphPdfCommands } from '../stitches/glyphs';
@@ -14,6 +16,7 @@ export interface PdfRequest extends PdfLayoutOptions {
   rows: number;
   cols: number;
   cells: ArrayBuffer;
+  lines?: readonly GuideLine[];
   /** 盤面の地の色（`#rrggbb`）。省略すると白。 */
   background?: string;
 }
@@ -152,9 +155,34 @@ function tileGrid(tile: PdfTile, request: PdfRequest, originX: number, originY: 
   return commands;
 }
 
+/** PDF座標では下向きが負。指定時は点線の下端に矢印を描く。 */
+export function pdfGuideLine(x: number, top: number, bottom: number, cell: number, background: string, arrow: boolean): string {
+  if (top <= bottom) return '';
+  const size = cell * 0.18;
+  const color = pdfRgb(guideLineColor(background));
+  const end = bottom + (arrow ? size : 0);
+  let commands = `q ${color} RG ${color} rg ${(cell * 0.045).toFixed(3)} w [${(cell * 0.09).toFixed(3)} ${(cell * 0.1).toFixed(3)}] 0 d ${x.toFixed(3)} ${top.toFixed(3)} m ${x.toFixed(3)} ${end.toFixed(3)} l S\n`;
+  if (arrow) commands += `[] 0 d ${x.toFixed(3)} ${bottom.toFixed(3)} m ${(x - size * 0.55).toFixed(3)} ${(bottom + size).toFixed(3)} l ${(x + size * 0.55).toFixed(3)} ${(bottom + size).toFixed(3)} l h f\n`;
+  return commands + 'Q\n';
+}
+
+/** 点線をタイルで切る。1段重なる分割で矢印が重複しないよう、下端とその1段上を両方含むタイルだけに描く。 */
+export function tileGuideLines(tile: PdfTile, request: PdfRequest, x: number, y: number, cell: number): string {
+  let commands = '';
+  for (const line of request.lines ?? []) {
+    if (line.col < tile.col || line.col >= tile.col + tile.cols) continue;
+    const top = Math.max(line.top + 1, tile.row);
+    const bottom = Math.min(line.bottom, tile.row + tile.rows);
+    const arrow = line.bottom - 1 >= tile.row && line.bottom < tile.row + tile.rows;
+    commands += pdfGuideLine(x + (line.col - tile.col + 0.5) * cell, y + (tile.rows - top + tile.row) * cell, y + (tile.rows - bottom + tile.row) * cell, cell, request.background ?? DEFAULT_BACKGROUND_COLOR, arrow);
+  }
+  return commands;
+}
+
 export function buildPdf(request: PdfRequest): Uint8Array {
   const cells = new Uint32Array(request.cells);
-  const legend = request.includeTitleAndLegend ? usedStitches(cells) : [];
+  const lines = normalizeGuideLines(request.lines, request.rows, request.cols);
+  const legend = request.includeTitleAndLegend ? exportLegend(cells, lines.length > 0) : [];
   const options = { ...request, legendCount: legend.length, legendHeights: legend.map((stitch) => stitch.height) };
   const titleHeight = request.includeTitleAndLegend && request.layout === 'single' ? 24 : 0;
   const { pageWidth, pageHeight, margin, rowLabelWidth, colLabelHeight, cellSize, tiles, legendPages, pageCount } = pdfPageLayout(request.rows, request.cols, options);
@@ -198,10 +226,14 @@ export function buildPdf(request: PdfRequest): Uint8Array {
         const x = margin + column * columnWidth;
         const height = stitch.height * PDF_LEGEND_CELL_SIZE;
         const y = top - (row.height - 8 + height) / 2;
-        const glyph = glyphPdfCommands(stitch.key)!;
-        const scale = PDF_LEGEND_CELL_SIZE / GLYPH_CELL;
-        yield tileGrid({ row: 0, col: 0, rows: stitch.height, cols: stitch.width }, { ...request, rows: stitch.height, cols: stitch.width, background: DEFAULT_BACKGROUND_COLOR }, x, y, PDF_LEGEND_CELL_SIZE);
-        yield `0 g 0 G q ${scale} 0 0 ${scale} ${x} ${y + height - glyph.height * scale} cm /S${stitch.id} Do Q\n`;
+        if (stitch.key === 'guide-line') {
+          yield pdfGuideLine(x + PDF_LEGEND_CELL_SIZE / 2, top - 4, top - row.height + 12, PDF_LEGEND_CELL_SIZE, '#ffffff', true);
+        } else {
+          const glyph = glyphPdfCommands(stitch.key)!;
+          const scale = PDF_LEGEND_CELL_SIZE / GLYPH_CELL;
+          yield tileGrid({ row: 0, col: 0, rows: stitch.height, cols: stitch.width }, { ...request, rows: stitch.height, cols: stitch.width, background: DEFAULT_BACKGROUND_COLOR }, x, y, PDF_LEGEND_CELL_SIZE);
+          yield `0 g 0 G q ${scale} 0 0 ${scale} ${x} ${y + height - glyph.height * scale} cm /S${stitch.id} Do Q\n`;
+        }
         const nameSize = Math.min(8, (columnWidth - 84) / pdfJapaneseTextWidth(stitch.name, 1));
         yield pdfJapaneseText(stitch.name, x + 84, y + height / 2 - nameSize * (0.752 - 0.221) / 2, nameSize);
       }
@@ -253,6 +285,7 @@ export function buildPdf(request: PdfRequest): Uint8Array {
         }
         if (rowCommands) yield rowCommands;
       }
+      yield tileGuideLines(tile, { ...request, lines }, originX, originY, cellSize);
       yield 'Q\n';
       if (request.includeTitleAndLegend) {
         yield titleCommands(request.layout === 'tiled');

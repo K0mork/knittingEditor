@@ -1,0 +1,21 @@
+# 2026-10-20 — 縦の点線矢印「線」を追加
+
+- 影響: #296。Web版・iOS版共通の編集ツールに「線」を足した。同じ列の上のマスを押してから下のマスを押すか、下へドラッグすると、上のマスの下の縁から下のマスの上の縁まで点線の矢印を引く。上下の端の間には1段以上要り、隣り合う段や同じ段には引かない（押したマスが新しい始点になる）。押した始点は盤面で強調し、同じマスをもう一度押すかEscapeで取り消す。始点から同じ列の2段以上下を押すと線を引き、範囲が重なる線は置き換え、端どうしが接するだけの線は両方残す。線の両端の間のマスを「線」で押すか、「消す」でなぞると消える。色は決まった色（明るい地では濃い灰色、暗い地では明るい灰色）。
+  - データ: 線は記号と別の任意項目`guideLines`（`{ col, top, bottom }`の一覧）として編み図に持ち、`.knit`のversion 2は変えない。IndexedDB・`.knit`・ブロックの読み込みでは、範囲外・上下が隣り合うか同じ段・重なる線などの不正なデータを捨て、読み込みは失敗させない。
+  - 編集: 元に戻す・やり直すの対象。段・目の挿入と削除、盤面の追加・削除では端に追従し、端の段や列を消した線と、上下が隣り合う段になった線は消える。範囲のコピー・ブロックは両端が範囲内の線だけを持ち、貼り付けは範囲にかかる既存の線を置き換える。
+  - 出力: 盤面・PNG・PDFに描く。A4分割では各ページに入る部分を描き、矢印は下の端の段とその1つ上の段の両方を含むページ（1段重ねる分割で1ページだけになる）に描く。「編み図名と記号の一覧を入れる」では、線があれば一覧の最後に点線の矢印の見本と「線」を載せる。編み図一覧のサムネイルには描かない。
+  - ツールバー: ボタンが1つ増えるので、429px以下の幅だけボタンの横の余白（8px→4px）と間隔（5px→3px）を詰めた。375px以上の幅で記号名「表目」が切れず、320〜429pxの幅で横にはみ出さない。範囲をコピーして「貼付」ボタンも並ぶときは、375・390・429・430pxの幅で収まる（320pxでは「線」を足す前と同じく横にスクロールする）。
+  - 使い方: Web版（`public/guide/`）とiOS版（`ios/Web/public/guide/`）に「線」の説明を足した。
+- 主なファイル: `packages/editor-core/model/guideLines.ts`、`model/Board.ts`、`model/BoardHistory.ts`、`storage/database.ts`、`storage/backupCodec.ts`、`state/useEditorSession.ts`、`canvas/BoardCanvas.tsx`、`canvas/guideLines.ts`、`export/annotations.ts`、`export/exporters.ts`、`export/pdf.worker.ts`、`ui/EditorView.tsx`、`ui/ExportControls.tsx`、`styles/base.css`、`public/guide/index.html`、`ios/Web/public/guide/index.html`
+- テスト:
+  - Vitest: `model/guideLines.test.ts`（引く・隣り合う段に引かない・重なりの置き換え・接する線・間のマスで消す・段と目の挿入削除・resize・コピーと貼り付け）、`model/BoardHistory.test.ts`（線だけ・記号との混在・段挿入の取り消しとやり直し）、`storage/database.test.ts`（保存・複製・`.knit`の往復・不正な線を捨てる・ブロックの線）、`canvas/BoardCanvas.input.test.tsx`（2回押し・ドラッグ・始点の取り消し・線を押して消す・始点からの置き換え）、`export/exporters.test.ts`（PNGの線の画素と一覧）、`export/pdf.worker.test.ts`（点線と矢印、実際のA4分割の境目前後で矢印が1ページだけに出る、一覧の「線」）、`ui/EditorView.test.tsx`、`ios/Web/src/guideVersion.test.ts`
+  - Playwright: `tests/e2e/guide-lines.spec.ts`（マウスの2回押しとドラッグで引く→PNGの画素→元に戻す・やり直す→再読み込み後も残る→線を押して消す→「消す」でなぞって消す、タッチの2回タップで引いて間のマスのタップで消す、320・375・390・429・430・1200px幅でツールバーがはみ出さない（375px以上は「表目」が切れない）、貼付ボタンありの375・390・429・430px幅でもはみ出さない）、`tests/e2e/guide-content.spec.ts`
+- 検証（手元、Node.js 26.8.1。AGENTS.mdの指定のNode.js 24はこのMacに入っていないため、Node.js 24での確認はPRのCIに任せる）:
+  - `npm run typecheck`: 成功
+  - `npm test`: 69ファイル・709件成功
+  - `npm run build`、`npm run check:dist`: 成功
+  - `npm run test:e2e`: Chromium（mobile・desktop）とWebKit（mobile）で515件成功、7件は条件付きで飛ばすテスト（タッチのテストはPCの設定で飛ばす）
+  - `ios/Web`で`../../node_modules/.bin/tsc -p tsconfig.app.json --noEmit`と`../../node_modules/.bin/vitest run --config vite.config.ts`: 成功（16ファイル・139件）
+  - 画面写真: WebKitの320・375・390px幅（iPhone、貼付ボタンありを含む）とChromiumの1280px幅で、ツールバー・線・始点の強調・黒い地を目で確かめた。PNG・1ページPDF・A4分割PDF（ページをまたぐ線と境目の矢印）と記号の一覧も画像にして確かめた。写真はPRに添付する。
+  - iOSのSimulatorのテストは、PRのCI（iPhoneの単体テストとUIスモーク）とマージ後の`ios-full.yml`に任せる。
+- デプロイ影響: Pagesへ配信され、iOS版の同梱Webにも入る。配信後は https://knittingeditor.com/ で「線」を引く・消す・再読み込みし、PNG・PDFに線が描かれることを確かめる。
