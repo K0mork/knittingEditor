@@ -125,3 +125,43 @@ describe('BoardHistory', () => {
     expect(large.occupiedStitchCount).toBe(1);
   });
 });
+
+it('線だけの編集と記号との混在、段挿入をまとめて取り消し・再実行する', () => {
+  const board = new Board(8, 4);
+  const history = new BoardHistory(board);
+  board.addLine(1, 0, 4);
+  expect(history.record(board)).toBe(true);
+  history.undo(board);
+  expect(board.lines).toEqual([]);
+  history.redo(board);
+  expect(board.lines).toEqual([{ col: 1, top: 0, bottom: 4 }]);
+  board.place(2, 1, 'knit', '#123456');
+  board.eraseLinesAt(2, 1);
+  history.record(board);
+  history.undo(board);
+  expect(board.lines).toHaveLength(1);
+  expect(board.occupiedStitchCount).toBe(0);
+  history.redo(board);
+  expect(board.lines).toEqual([]);
+  expect(board.occupiedStitchCount).toBe(1);
+  history.undo(board);
+  board.insertRow(2);
+  history.record(board);
+  expect(board.lines[0].bottom).toBe(5);
+  history.undo(board);
+  expect(board.lines[0].bottom).toBe(4);
+  history.redo(board);
+  expect(board.lines[0].bottom).toBe(5);
+});
+
+it('線の消去だけでも1件の履歴となり、元に戻す・やり直すができる', () => {
+  const board = new Board(8, 4);
+  board.addLine(1, 0, 4);
+  const history = new BoardHistory(board);
+  board.eraseLinesAt(2, 1);
+  expect(history.record(board)).toBe(true);
+  history.undo(board);
+  expect(board.lines).toHaveLength(1);
+  history.redo(board);
+  expect(board.lines).toEqual([]);
+});

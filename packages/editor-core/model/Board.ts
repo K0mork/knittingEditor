@@ -1,3 +1,4 @@
+import { normalizeGuideLines, linesOverlap, type GuideLine } from './guideLines';
 import { STITCH_BY_ID, STITCH_BY_KEY, type StitchDefinition } from '../stitches/catalog';
 
 export const MAX_BOARD_SIZE = 1000;
@@ -7,7 +8,7 @@ const COLOR_MASK = 0x00ff_ffff;
 export interface Point { row: number; col: number }
 export interface Rect { top: number; left: number; bottom: number; right: number }
 export interface BlockAnchor extends Point { value: number }
-export interface PatternBlock { id: string; name: string; rows: number; cols: number; anchors: BlockAnchor[]; createdAt: number }
+export interface PatternBlock { id: string; name: string; rows: number; cols: number; anchors: BlockAnchor[]; lines?: GuideLine[]; createdAt: number }
 
 export function parseColor(color: string): number {
   const normalized = color.trim().replace('#', '');
@@ -40,8 +41,11 @@ export class Board {
   cells: Uint32Array;
   private owners: Int32Array;
   private occupiedCount = 0;
+  private guideLines: readonly GuideLine[] = Object.freeze([]);
+  /** 記号とは独立した線の読み取り専用一覧。 */
+  get lines(): readonly GuideLine[] { return this.guideLines; }
 
-  constructor(rows = 20, cols = 20, cells?: Uint32Array) {
+  constructor(rows = 20, cols = 20, cells?: Uint32Array, lines?: unknown) {
     Board.validateSize(rows, cols);
     this.rows = rows;
     this.cols = cols;
@@ -49,6 +53,35 @@ export class Board {
     if (this.cells.length !== rows * cols) throw new Error('盤面データのサイズが一致しません');
     this.owners = new Int32Array(this.cells.length);
     this.rebuildOwners();
+    this.guideLines = Object.freeze(normalizeGuideLines(lines, rows, cols));
+  }
+
+  /** 線を追加し、重なる既存の線を置き換える。 */
+  addLine(col: number, top: number, bottom: number): boolean {
+    const line = normalizeGuideLines([{ col, top, bottom }], this.rows, this.cols)[0];
+    if (!line) return false;
+    if (this.lines.some((old) => old.col === col && old.top === top && old.bottom === bottom)) return false;
+    this.guideLines = Object.freeze([...this.lines.filter((old) => !linesOverlap(old, line)), line]);
+    return true;
+  }
+
+  /** 両端と列が一致する線を削除する。 */
+  removeLine(col: number, top: number, bottom: number): boolean {
+    const next = this.lines.filter((line) => line.col !== col || line.top !== top || line.bottom !== bottom);
+    if (next.length === this.lines.length) return false;
+    this.guideLines = Object.freeze(next);
+    return true;
+  }
+
+  /** 両端を除き、指定マスを通る線を返す。 */
+  lineThrough(row: number, col: number): GuideLine | undefined {
+    return this.lines.find((line) => line.col === col && line.top < row && row < line.bottom);
+  }
+
+  /** 指定マスを途中に含む線を削除する。 */
+  eraseLinesAt(row: number, col: number): boolean {
+    const line = this.lineThrough(row, col);
+    return line ? this.removeLine(line.col, line.top, line.bottom) : false;
   }
 
   static validateSize(rows: number, cols: number): void {
@@ -105,13 +138,16 @@ export class Board {
   }
 
   clear(): void {
+    this.guideLines = Object.freeze([]);
     this.cells.fill(0);
     this.owners.fill(-1);
     this.occupiedCount = 0;
   }
 
   resize(newRows: number, newCols: number, rowOffset = 0, colOffset = 0): void {
+    const lines = this.lines.map((line) => ({ col: line.col + colOffset, top: line.top + rowOffset, bottom: line.bottom + rowOffset }));
     this.relayout(newRows, newCols, (row, col) => ({ row: row + rowOffset, col: col + colOffset }));
+    this.guideLines = Object.freeze(normalizeGuideLines(lines, newRows, newCols));
   }
 
   /** 縮小で消える記号数。複数セルの記号も、起点を1回だけ数える。盤面は変更しない。 */
@@ -134,11 +170,12 @@ export class Board {
    * 寸法とセル配列をまとめて差し替える。元に戻す・やり直すで使う。
    * `cells`は複製して持つので、呼び出し元は渡した配列を使い回してよい。
    */
-  restore(rows: number, cols: number, cells: Uint32Array): void {
+  restore(rows: number, cols: number, cells: Uint32Array, lines?: unknown): void {
     Board.validateSize(rows, cols);
     if (cells.length !== rows * cols) throw new Error('盤面データのサイズが一致しません');
     this.rows = rows;
     this.cols = cols;
+    this.guideLines = Object.freeze(normalizeGuideLines(lines, rows, cols));
     this.cells = cells.slice();
     this.owners = new Int32Array(this.cells.length);
     this.rebuildOwners();
@@ -198,7 +235,10 @@ export class Board {
         if (value) anchors.push({ row: row - selection.top, col: col - selection.left, value });
       }
     }
+    const lines = this.lines.filter((line) => line.col >= selection.left && line.col <= selection.right && line.top >= selection.top && line.bottom <= selection.bottom)
+      .map((line) => ({ col: line.col - selection.left, top: line.top - selection.top, bottom: line.bottom - selection.top }));
     return {
+      ...(lines.length ? { lines } : {}),
       id: crypto.randomUUID(), name,
       rows: selection.bottom - selection.top + 1,
       cols: selection.right - selection.left + 1,
@@ -208,6 +248,9 @@ export class Board {
 
   pasteBlock(block: PatternBlock, top: number, left: number): boolean {
     if (top < 0 || left < 0 || top + block.rows > this.rows || left + block.cols > this.cols) return false;
+    // 貼付範囲にかかる線を消し、ブロックの線で置き換える。
+    this.guideLines = Object.freeze(this.lines.filter((line) => !(line.col >= left && line.col < left + block.cols && line.top < top + block.rows && line.bottom >= top)));
+    for (const line of normalizeGuideLines(block.lines, block.rows, block.cols)) this.addLine(left + line.col, top + line.top, top + line.bottom);
     const owners = new Set<number>();
     for (let row = top; row < top + block.rows; row++) {
       for (let col = left; col < left + block.cols; col++) {
@@ -267,6 +310,11 @@ export class Board {
     const delta = insert ? 1 : -1;
     const nextRows = this.rows + (axis === 'row' ? delta : 0);
     const nextCols = this.cols + (axis === 'col' ? delta : 0);
+    // 段・列の増減に線を追従させ、端や列を削除した線は除く。
+    const lines = this.lines.filter((line) => insert || (axis === 'row' ? line.top !== index && line.bottom !== index : line.col !== index)).map((line) => {
+      const move = (value: number) => value >= index ? value + delta : value;
+      return axis === 'row' ? { col: line.col, top: move(line.top), bottom: move(line.bottom) } : { ...line, col: move(line.col) };
+    });
     this.relayout(nextRows, nextCols, (row, col, definition) => {
       const coordinate = axis === 'row' ? row : col;
       const span = axis === 'row' ? definition.height : definition.width;
@@ -275,6 +323,7 @@ export class Board {
       if (coordinate < index) return { row, col };
       return axis === 'row' ? { row: row + delta, col } : { row, col: col + delta };
     });
+    this.guideLines = Object.freeze(normalizeGuideLines(lines, nextRows, nextCols));
   }
 
   /**

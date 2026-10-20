@@ -308,6 +308,7 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
     const target = boardRef.current;
     if (!document || !target) return undefined;
     return { ...document, rows: target.rows, cols: target.cols,
+      guideLines: target.lines.length ? target.lines.map((line) => ({ ...line })) : undefined,
       cells: target.cells.slice().buffer as ArrayBuffer, backgroundColor: backgroundRef.current };
   }, []);
   const updateDocument = useCallback((document: ChartDocument) => {
@@ -350,6 +351,7 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
     const target = boardRef.current;
     if (!document || !target) return undefined;
     return { ...document, backgroundColor: backgroundRef.current, rows: target.rows, cols: target.cols,
+      guideLines: target.lines.length ? target.lines.map((line) => ({ ...line })) : undefined,
       cells: target.cells.slice().buffer as ArrayBuffer, updatedAt: Date.now() };
   }, []);
 

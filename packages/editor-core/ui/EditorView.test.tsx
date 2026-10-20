@@ -159,6 +159,9 @@ describe('EditorView', () => {
   it('switches the canvas mode from the tool buttons', async () => {
     const { container, button, click } = await renderEditor();
 
+    await click('線');
+    expect(button('線').getAttribute('aria-pressed')).toBe('true');
+    expect(container.querySelector('.gesture-hint')?.textContent).toContain('ドラッグ：線');
     await click('消す');
     expect(button('消す').getAttribute('aria-pressed')).toBe('true');
     expect(button('描く').getAttribute('aria-pressed')).toBe('false');

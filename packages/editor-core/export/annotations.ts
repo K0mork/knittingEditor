@@ -20,3 +20,8 @@ export function annotationHeights(options: ExportAnnotations, rowHeight: number,
     ? { titleHeight: rowHeight, legendHeight: Math.ceil((options.legendCount ?? 0) / 2) * legendRowHeight + legendRowHeight / 2 }
     : { titleHeight: 0, legendHeight: 0 };
 }
+
+/** 記号の一覧の末尾に、使われている線の見本を1件加える。 */
+export function exportLegend(cells: Uint32Array, hasLines: boolean): Pick<StitchDefinition, 'id' | 'key' | 'name' | 'height' | 'width'>[] {
+  return [...usedStitches(cells), ...(hasLines ? [{ name: '線', key: 'guide-line', id: 0, height: 2, width: 1 }] : [])];
+}

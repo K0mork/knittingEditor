@@ -264,6 +264,12 @@ button:disabled { opacity: .45; cursor: not-allowed; }
   .stitch-tool-chevron { display: none; }
 }
 
+/* 「線」と「貼付」が並んでも収まるよう、狭いiPhoneでは余白と間隔を詰める。 */
+@media (max-width: 429px) {
+  .primary-tools { gap: 3px; }
+  .primary-tools > button { padding-inline: 4px; }
+}
+
 /*
  * 広い画面では、操作メニューを右の列に縦に並べる。高さが低い画面（iPhoneの横向きなど）では、右の列に
  * 操作メニューが収まらず、文字を大きくするとボタンが画面の外へ出るので、狭い画面と同じ並びのままにする（#146）。

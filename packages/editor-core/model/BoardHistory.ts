@@ -1,13 +1,14 @@
 import type { Board } from './Board';
+import type { GuideLine } from './guideLines';
 
-interface BoardState { rows: number; cols: number; cells: Uint32Array }
+interface BoardState { rows: number; cols: number; cells: Uint32Array; lines: readonly GuideLine[] }
 
 /**
  * 1回分の編集。寸法が変わらない編集は変わったセルだけを持ち、1000×1000の盤面でも
  * 1筆ごとに盤面全体を複製しない。寸法が変わる編集は前後の盤面をそのまま持つ。
  */
 type HistoryEntry =
-  | { kind: 'cells'; indices: Uint32Array; before: Uint32Array; after: Uint32Array }
+  | { kind: 'cells'; indices: Uint32Array; before: Uint32Array; after: Uint32Array; lines?: { before: readonly GuideLine[]; after: readonly GuideLine[] } }
   | { kind: 'layout'; before: BoardState; after: BoardState };
 
 export const HISTORY_ENTRY_LIMIT = 100;
@@ -18,14 +19,14 @@ export interface BoardHistoryOptions {
   byteLimit?: number;
 }
 
-function copyState(board: Pick<Board, 'rows' | 'cols' | 'cells'>): BoardState {
-  return { rows: board.rows, cols: board.cols, cells: board.cells.slice() };
+function copyState(board: Pick<Board, 'rows' | 'cols' | 'cells' | 'lines'>): BoardState {
+  return { rows: board.rows, cols: board.cols, cells: board.cells.slice(), lines: board.lines.slice() };
 }
 
 function entryBytes(entry: HistoryEntry): number {
   return entry.kind === 'cells'
-    ? entry.indices.byteLength + entry.before.byteLength + entry.after.byteLength
-    : entry.before.cells.byteLength + entry.after.cells.byteLength;
+    ? entry.indices.byteLength + entry.before.byteLength + entry.after.byteLength + (entry.lines ? (entry.lines.before.length + entry.lines.after.length) * 24 : 0)
+    : entry.before.cells.byteLength + entry.after.cells.byteLength + (entry.before.lines.length + entry.after.lines.length) * 24;
 }
 
 /**
@@ -96,7 +97,9 @@ export class BoardHistory {
     const current = board.cells;
     let count = 0;
     for (let index = 0; index < current.length; index++) if (current[index] !== base.cells[index]) count++;
-    if (count === 0) return undefined;
+    const lines = JSON.stringify(base.lines) !== JSON.stringify(board.lines) ? { before: base.lines, after: board.lines.slice() } : undefined;
+    if (count === 0 && !lines) return undefined;
+    if (lines) base.lines = lines.after;
     const indices = new Uint32Array(count);
     const before = new Uint32Array(count);
     const after = new Uint32Array(count);
@@ -108,17 +111,18 @@ export class BoardHistory {
       base.cells[index] = current[index];
       cursor++;
     }
-    return { kind: 'cells', indices, before, after };
+    return { kind: 'cells', indices, before, after, lines };
   }
 
   private apply(board: Board, entry: HistoryEntry, side: 'before' | 'after'): void {
     if (entry.kind === 'layout') {
       this.baseline = { ...entry[side], cells: entry[side].cells.slice() };
     } else {
+      if (entry.lines) this.baseline.lines = entry.lines[side];
       const values = entry[side];
       for (let cursor = 0; cursor < entry.indices.length; cursor++) this.baseline.cells[entry.indices[cursor]] = values[cursor];
     }
-    board.restore(this.baseline.rows, this.baseline.cols, this.baseline.cells);
+    board.restore(this.baseline.rows, this.baseline.cols, this.baseline.cells, this.baseline.lines);
   }
 
   /** 古い履歴から捨てる。直前の1件は容量を超えても残す。 */

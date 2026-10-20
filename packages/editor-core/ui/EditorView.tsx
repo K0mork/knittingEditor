@@ -35,6 +35,7 @@ const MODE_BUTTONS: Array<{ mode: CanvasMode; label: string }> = [
   { mode: 'draw', label: '描く' },
   { mode: 'erase', label: '消す' },
   { mode: 'select', label: '範囲' },
+  { mode: 'line', label: '線' },
 ];
 
 const ACTION_BAR_PANELS: Array<{ panel: EditorPanel; label: string }> = [

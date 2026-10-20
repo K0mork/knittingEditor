@@ -323,3 +323,43 @@ it.each(['delete', 'record'] as const)('handles an asynchronous settings failure
     expect(await getLastBackupAt(existing.id)).toBe(123);
   } finally { put.mockRestore(); remove.mockRestore(); }
 });
+
+it('線を保存・複製・バックアップ復元し、空のときは項目を省く', async () => {
+  const source = await createDocument('線', 8, 4);
+  const board = boardFromDocument(source);
+  board.addLine(1, 0, 4);
+  const saved = await saveDocument(source, board);
+  expect(saved.guideLines).toEqual(board.lines);
+  expect(boardFromDocument(saved).lines).toEqual(board.lines);
+  const { duplicateDocument } = await import('./database');
+  const copy = await duplicateDocument(saved.id);
+  expect(copy.guideLines).toEqual(board.lines);
+  const block = board.createBlock({ top: 0, left: 0, bottom: 7, right: 3 }, '線のブロック');
+  await saveBlock(block);
+  const restored = await importBackup(await exportBackup());
+  expect(restored.documents.find((doc) => doc.name === '線（復元）')?.guideLines).toEqual(board.lines);
+  expect((await listBlocks()).find((item) => item.name === '線のブロック（復元）')?.lines).toEqual(board.lines);
+  board.eraseLinesAt(2, 1);
+  const empty = await saveDocument(saved, board);
+  expect(empty).not.toHaveProperty('guideLines');
+});
+
+it('文書とブロックの不正な線は読み込みを失敗させず捨てる', async () => {
+  const valid = { col: 1, top: 0, bottom: 4 };
+  const lines = [valid, { ...valid, top: 2 }, { ...valid, bottom: 1 }, { ...valid, top: 4 }, { ...valid, bottom: 9 }, { ...valid, col: '1' }];
+  const result = await importBackup(backupBlob({
+    format: 'knitting-editor', version: 2, stitchCatalogVersion: 4,
+    documents: [{ name: '不正な線', rows: 8, cols: 4, cells: packedCells(new Array(32).fill(0)), guideLines: lines }],
+    blocks: [{ name: '不正な線', rows: 8, cols: 4, anchors: [], lines }],
+  }));
+  expect(result.documents[0].guideLines).toEqual([valid]);
+  expect(boardFromDocument({ ...result.documents[0], guideLines: lines as never }).lines).toEqual([valid]);
+  expect((await listBlocks()).find((block) => block.name === '不正な線（復元）')?.lines).toEqual([valid]);
+});
+
+it('IndexedDBからブロックの線を読むときも正規化する', async () => {
+  const line = { col: 0, top: 0, bottom: 3 };
+  const block = { id: crypto.randomUUID(), name: '線の正規化', rows: 5, cols: 2, anchors: [], createdAt: Date.now(), lines: [line, { ...line, bottom: 1 }, { ...line, top: 1 }] };
+  await saveBlock(block);
+  expect((await listBlocks()).find((item) => item.id === block.id)?.lines).toEqual([line]);
+});

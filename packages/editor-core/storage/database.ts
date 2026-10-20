@@ -1,3 +1,4 @@
+import { normalizeGuideLines, type GuideLine } from '../model/guideLines';
 import { BackupLimitError, InvalidBackupError } from './backupErrors';
 import { openDB, unwrap, type DBSchema, type IDBPDatabase } from 'idb';
 import { Board, cellStitchId, packCell, type PatternBlock } from '../model/Board';
@@ -18,6 +19,7 @@ export interface ChartDocument {
    * `.knit`にもそのまま入る。この項目を知らない古い版で読み込んでも、白い地で表示されるだけになる。
    */
   backgroundColor?: string;
+  guideLines?: GuideLine[];
   createdAt: number;
   updatedAt: number;
 }
@@ -59,7 +61,7 @@ export function boardFromDocument(document: ChartDocument): Board {
       cells[index] = packCell(value, 0);
     }
   }
-  return new Board(document.rows, document.cols, cells);
+  return new Board(document.rows, document.cols, cells, document.guideLines);
 }
 
 export async function listDocuments(): Promise<ChartDocument[]> {
@@ -110,6 +112,8 @@ export async function saveDocument(
           cells: board.cells.slice().buffer as ArrayBuffer, updatedAt: now,
           ...(conflict ? { id: crypto.randomUUID(), name: `${document.name}（別のタブの編集）`, createdAt: now } : {}),
         };
+        delete saved.guideLines;
+        if (board.lines.length) saved.guideLines = board.lines.map((line) => ({ ...line }));
         const writes = [store.put(saved)];
         if (conflict) writes.push(transaction.objectStore('settings').put({ key: 'activeDocumentId', value: saved.id }));
         void Promise.all(writes).then(() => resolve(), reject);
@@ -136,8 +140,11 @@ export async function duplicateDocument(id: string, snapshot?: ChartDocument): P
   const source = snapshot ?? await (await database()).get('documents', id);
   if (!source) throw new Error('編み図が見つかりません');
   const now = Date.now();
+  const { guideLines: rawLines, ...rest } = source;
+  const lines = normalizeGuideLines(rawLines, source.rows, source.cols);
   const copy: ChartDocument = {
-    ...source, id: crypto.randomUUID(), name: `${source.name}のコピー`,
+    ...rest, id: crypto.randomUUID(), name: `${source.name}のコピー`,
+    ...(lines.length ? { guideLines: lines } : {}),
     cells: source.cells.slice(0), createdAt: now, updatedAt: now,
   };
   await (await database()).put('documents', copy);
@@ -180,7 +187,11 @@ export async function deleteDocuments(ids: readonly string[], nextActiveId?: str
 
 export async function listBlocks(): Promise<PatternBlock[]> {
   const values = await (await database()).getAll('blocks');
-  return values.sort((a, b) => b.createdAt - a.createdAt);
+  return values.map((block) => {
+    const { lines: rawLines, ...rest } = block;
+    const lines = normalizeGuideLines(rawLines, block.rows, block.cols);
+    return { ...rest, ...(lines.length ? { lines } : {}) };
+  }).sort((a, b) => b.createdAt - a.createdAt);
 }
 
 export async function saveBlock(block: PatternBlock): Promise<void> { await (await database()).put('blocks', block); }

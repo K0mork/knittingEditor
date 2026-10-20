@@ -53,3 +53,12 @@ describe('guide app version', () => {
     expect(element.textContent).toBe('バージョン <img src=x>（ビルド 1）');
   });
 });
+
+
+it('線の作成・間隔・消去・出力をアプリ内の使い方で説明する', () => {
+  const text = new DOMParser().parseFromString(guideHtml, 'text/html').body.textContent;
+  expect(text).toContain('縦の点線の矢印');
+  expect(text).toContain('上下の端の間には1段以上必要');
+  expect(text).toContain('「消す」でなぞると線を消せます');
+  expect(text).toContain('PNG・PDFにも描かれます');
+});

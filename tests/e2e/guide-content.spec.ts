@@ -15,6 +15,9 @@ test('guide explains chart reading, block reuse and backup scope', async ({ page
   await expect(main).toContainText('元の名前の末尾に「のコピー」を付けた編み図');
   await expect(main).toContainText('ブロックの左上になり');
   await expect(main).toContainText('「補助」にある記号');
+  await expect(main).toContainText('縦の点線の矢印');
+  await expect(main).toContainText('上下の端の間には1段以上必要');
+  await expect(main).toContainText('線を消せます');
   await expect(main).toContainText('すべての編み図と保存済みブロック');
   await page.locator('footer').getByRole('link', { name: '棒針編み図エディタへ戻る', exact: true }).click();
   await expect(page.getByRole('button', { name: '編み図', exact: true })).toBeVisible();
