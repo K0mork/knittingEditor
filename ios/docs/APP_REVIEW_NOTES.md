@@ -15,7 +15,7 @@ This app is not a wrapper that only displays a website. The editing engine is bu
 - Saving to Files, AirDrop, the share sheet, and opening `.knit` files from other apps
 - Adaptive layouts for iPhone and iPad (including resizable windows), VoiceOver labels, and in-app input dialogs
 
-The app does not load any external website to start the editor. It opens Safari only when the user taps the support page link in the in-app guide, and opens Mail only when the user taps the support email address. There are no accounts, servers, ads, analytics SDKs, or remote configuration.
+The app does not load any external website to start the editor. It opens Safari only when the user taps the support page or app privacy policy link in the in-app guide, and opens Mail only when the user taps the support email address. There are no accounts, servers, ads, analytics SDKs, or remote configuration.
 
 ### How to review
 
@@ -26,7 +26,7 @@ The app's interface is in Japanese. Button names are shown as "English (日本�
 3. Move the app to the background, return to it, and confirm the edits are still there.
 4. Tap "Export (出力)" at the bottom. Save a PNG with "Save PNG (PNGを保存)", a PDF with "Save PDF (PDFを保存)", and a `.knit` backup with "Export this chart (この編み図を書き出す)" to Files.
 5. In the same panel, tap "Restore from backup (バックアップから復元)" and choose the `.knit` file, or open the `.knit` file from the Files app. Confirm the restored chart.
-6. Tap "Guide (使い方)" at the top right and read the "Privacy (プライバシー)" section. The support page link in the "Support (サポート)" section can be checked while online. The email link opens Mail only when the user taps it.
+6. Tap "Guide (使い方)" at the top right and read the "Privacy (プライバシー)" section. The app privacy policy (https://knittingeditor.com/privacy/app/) in the Privacy section and the support page link in the "Support (サポート)" section open in Safari only when tapped and can be checked while online. The email link opens Mail only when the user taps it.
 
 ## 日本語
 
@@ -41,7 +41,7 @@ The app's interface is in Japanese. Button names are shown as "English (日本�
 - Files、AirDrop、共有シート、他アプリからの`.knit`受け入れ
 - iPhoneとiPadの可変幅レイアウト、VoiceOver向けラベル、アプリ内入力ダイアログ
 
-外部Webサイトは編集画面の起動に使いません。アプリ内ヘルプからユーザーが明示的にサポートページへのリンクを選んだ場合だけSafariを、サポートのメールアドレスを選んだ場合だけメールアプリを開きます。アカウント、サーバー、広告、分析SDK、リモート設定はありません。
+外部Webサイトは編集画面の起動に使いません。アプリ内ヘルプからユーザーが明示的にサポートページまたはアプリのプライバシーポリシーへのリンクを選んだ場合だけSafariを、サポートのメールアドレスを選んだ場合だけメールアプリを開きます。アカウント、サーバー、広告、分析SDK、リモート設定はありません。
 
 ### 審査時の確認手順
 
@@ -50,4 +50,4 @@ The app's interface is in Japanese. Button names are shown as "English (日本�
 3. アプリをバックグラウンドへ移し、戻って編集内容を確認する。
 4. 下の「出力」を開き、「PNGを保存」「PDFを保存」「この編み図を書き出す」（`.knit`）でFilesへ保存する。
 5. 同じ画面の「バックアップから復元」で`.knit`を選ぶか、Filesから`.knit`を開き、復元された編み図を確認する。
-6. 右上の「使い方」を開き、「プライバシー」の本文を確認する。「サポート」のサポートページへのリンクはネットワーク接続時に確認する。メールのリンクは利用者が選んだ場合だけメールアプリを開く。
+6. 右上の「使い方」を開き、「プライバシー」の本文を確認する。アプリのプライバシーポリシー（https://knittingeditor.com/privacy/app/）へのリンクは、タップした場合だけSafariで開く。「サポート」のサポートページへのリンクはネットワーク接続時に確認する。メールのリンクは利用者が選んだ場合だけメールアプリを開く。

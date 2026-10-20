@@ -116,7 +116,7 @@ for (const colorScheme of ['light', 'dark'] as const) {
     failures.push(...await lowContrast(page, '色の選択'));
     await page.locator('.color-picker').getByRole('button', { name: '閉じる' }).click();
 
-    for (const path of ['/guide/', '/support/', '/privacy/']) {
+    for (const path of ['/guide/', '/support/', '/privacy/', '/privacy/app/']) {
       await page.goto(path);
       failures.push(...await lowContrast(page, path));
     }

@@ -12,7 +12,7 @@ beforeAll(async () => {
 });
 afterAll(async () => { await server?.close(); });
 
-test.each(['guide', 'support', 'privacy'])('serves public/%s/index.html for directory URLs', async (directory) => {
+test.each(['guide', 'support', 'privacy', 'privacy/app'])('serves public/%s/index.html for directory URLs', async (directory) => {
   const expected = await readFile(`public/${directory}/index.html`, 'utf8');
   for (const suffix of ['/', '/?from=editor', '/index.html']) {
     const response = await fetch(`${origin}/${directory}${suffix}`);

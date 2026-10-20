@@ -1,0 +1,23 @@
+# 2026-10-20 — アプリのプライバシーポリシーを自サイトへ移す
+
+- 影響: #291。iPhone・iPadアプリのポリシー本文の正本を`public/privacy/app/index.html`へ移し、公開URLを`https://knittingeditor.com/privacy/app/`にする。制定日を維持し、既存の改定日の慣例に従って2026年10月20日へ更新した。情報を収集しない方針、端末内の保存・削除、共有先、評価のお願い、問い合わせの利用目的・保管・削除依頼を説明する。Web版の`/privacy/`はアプリのポリシーへのリンクだけを変更し、両ページを相互にリンクする。
+- 主なファイル:
+  - `public/privacy/app/index.html`、`public/privacy/index.html`、`public/sitemap.xml`。サポートページと同じHTML・メタ情報・配色・ダークモード・フッターを使う。CSP metaは既存のビルド処理が付け、分析やスクリプトは追加しない。
+  - `ios/docs/PRIVACY_POLICY.md`は正本への案内だけにし、`APP_STORE_METADATA.md`、`APP_STORE_CHECKLIST.md`、`APP_REVIEW_NOTES.md`、`WEB_SYNC.md`、`PRO_PLAN.md`も参照先を更新する。
+  - `ios/Web/public/guide/index.html`にHTTPS・`rel="noreferrer"`のポリシーリンクを追加する。`ios/AGENTS.md`、`ios/DEVELOPMENT.md`、`docs/ARCHITECTURE.md`、`ios/scripts/check-app-bundle.sh`のオフライン例外をサポートとそろえる。
+  - `ios/scripts/check-app-store-docs.sh`と`check-release-assets.sh`は公開HTMLを検査対象にする。文書検査は新URL、正本のタイトル・情報を収集しない旨、Markdownから正本への案内を確認する。`scripts/check-dist.mjs`と`check-live-site.mjs`は新ページを必須にする。
+- テスト:
+  - `tests/e2e/seo.spec.ts`に直接アクセス・再読み込み・HTTPS canonical/OGP・相互リンク・サポート導線・スクリプトなし・sitemapを追加した。`csp.spec.ts`と`contrast.spec.ts`の明暗両方に新ページを含めた。
+  - `scripts/public-directory-index.test.mjs`に入れ子の新ページを追加した。`scripts/app-privacy-docs.test.mjs`は正本文書の正常系と、HTML欠落・タイトル欠落・非収集表明欠落・新URL欠落・誤ったメタデータURLの異常系を確認する。
+  - `ios/Web/src/guideFooter.test.ts`に外部リンクのURL・属性・配置と事前読み込みなしを追加した。`ios/Tests/KnittingEditorAppTests/LocalWebSchemeHandlerTests.swift`に、サポートページ・ポリシー・メールのリンクを押すとSafariとメールアプリで開くXCTestを追加した（遷移の判定そのものは変えていない）。
+- 検証（Node v26.8.1。この環境にNode 24が無いため、Node 24での実行はPRのCIに任せた）:
+  - `npm run typecheck`: 成功。
+  - `npm test`: 68ファイル・676件成功。
+  - `npm run build`、`npm run check:dist`: 成功。`dist/privacy/app/index.html`、CSP、HTTPSのcanonical、`dist/CNAME`（`knittingeditor.com`）を含む。
+  - `npm run test:e2e`: 1回目は460件成功・6件スキップ・5件失敗。失敗は`canvas-pointer-and-view`・`contrast`（chromium-mobile）・`whiteout`（webkit-mobile）のタイムアウトと要素待ちで、同じ時間に撮影用のSimulator 2台を動かしていた。`npx playwright test tests/e2e/canvas-pointer-and-view.spec.ts tests/e2e/contrast.spec.ts tests/e2e/whiteout.spec.ts`で流し直し、60件すべて成功した。全件の成功はPRのCIで確かめる。
+  - `ios/scripts/build-web.sh`、`(cd ios/Web && ../../node_modules/.bin/tsc -p tsconfig.app.json --noEmit)`: 成功。`(cd ios/Web && ../../node_modules/.bin/vitest run --config vite.config.ts)`: 133件成功。
+  - `sh ios/scripts/check-app-store-docs.sh`: 成功。
+  - Xcode 27.1、iPhone 17（iOS 27.0）Simulatorで`xcodebuild ... CODE_SIGNING_ALLOWED=NO build-for-testing`と`test-without-building -only-testing:knittingEditorTests`: 104件実行、1件スキップ、失敗0。
+  - `sh ios/scripts/check-app-bundle.sh <Debugの.app>`: 成功（サポートページとポリシーのURL以外に外部参照なし）。`check-release-assets.sh`はRelease Archiveを使うので、PRのCIとFull iOS validationに任せた。
+  - 新しいページの見た目（狭い幅・広い幅、明暗）は`contrast.spec.ts`と`seo.spec.ts`で確かめた。手で画面を見る確認は配信後に行う。
+- デプロイ影響: Pagesへ新ページを配信する。まだデプロイしていない。配信後に`https://knittingeditor.com/privacy/app/`が直接アクセス・再読み込みで開き、`/privacy/`からリンクで移動できることを確認する。`check-live-site.mjs --dist`による配信物との照合にも新ページが含まれる。App Store ConnectへのURL登録は後続の#27で行う。アプリ内の導線を含むため、アプリの次回ビルドにも反映される。

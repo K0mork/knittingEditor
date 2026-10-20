@@ -129,7 +129,7 @@ App Store Connectの年齢制限は、質問票への回答から決まる（202
 ## URLと提出メモ
 
 - サポートURL: `https://knittingeditor.com/support/`。下記「サポート窓口」
-- プライバシーポリシーURL候補: `https://github.com/K0mork/knittingEditor/blob/main/ios/docs/PRIVACY_POLICY.md`（App Store Connect登録前に公開状態と表示を確認）。自サイトの別ページへ移す（#291）。
+- プライバシーポリシーURL: `https://knittingeditor.com/privacy/app/`（App Store Connect登録前に公開状態と表示を確認）。正本はリポジトリルートの`public/privacy/app/index.html`。登録は#27で行う。
 - 審査メモ: [`APP_REVIEW_NOTES.md`](APP_REVIEW_NOTES.md)の4.2説明と機内モード手順を、英語と日本語の両方で転記する。
 - スクリーンショット: iPhone縦、iPhone横、iPad全画面、iPad可変幅を実機またはTestFlightで撮影して差し替える。
 
@@ -166,6 +166,6 @@ App Store Connectの年齢制限は、質問票への回答から決まる（202
 - [ ] App名、サブタイトル、プロモーションテキスト、説明文、キーワードの文字数をApp Store Connectで確認する。
 - [ ] アクセシビリティの表示を、上の「アクセシビリティの表示」を実機で確かめ直したうえで入力する。
 - [ ] App Privacyの回答をPrivacy Manifestと照合する。
-- [x] Privacy Policy本文を`docs/PRIVACY_POLICY.md`へ用意する。
+- [x] Privacy Policy本文をリポジトリルートの`public/privacy/app/index.html`へ用意する（公開URL: https://knittingeditor.com/privacy/app/、登録は#27）。
 - [ ] 公開Privacy Policy URLをApp Store Connectへ登録し、審査端末から表示できることを確認する。
 - [ ] スクリーンショットとアイコンを最終版へ差し替える。

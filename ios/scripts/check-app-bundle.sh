@@ -122,9 +122,9 @@ check_knit_type_name() {
 check_knit_type_name ja "$knit_type_name"
 check_knit_type_name en 'Knitting Chart Backup'
 
-# 「使い方」のサポートページとサポートのメールアドレスは、利用者が選んだときだけSafariとメールアプリで開くリンクなので除く。
+# 「使い方」のサポートページ、アプリのプライバシーポリシーとサポートのメールアドレスは、利用者が選んだときだけSafariとメールアプリで開くリンクなので除く。
 external_matches=$(find "$WEB_ROOT" -type f -exec perl -ne '
-  s{https://knittingeditor\.com/support/|support\@knittingeditor\.com}{}g;
+  s{https://knittingeditor\.com/(?:support/|privacy/app/)|support\@knittingeditor\.com}{}g;
   print "$ARGV:$.:$_" if /googletagmanager|G-VVE0G4ZFL4|knittingeditor\.com/;
   close ARGV if eof;
 ' {} + || true)
