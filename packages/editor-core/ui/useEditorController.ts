@@ -193,7 +193,7 @@ export function useEditorController(options: EditorControllerOptions) {
    * 削除に伴う切り替えでは`keepPanel`を立て、続けて一覧を操作できるよう開いたままにする（#267）。
    */
   const switchDocument = useCallback(async (document: ChartDocument, saveCurrent = true, remember = true, keepPanel = false) => {
-    if (document.id === activeDocument?.id) { if (!keepPanel) setPanel(undefined); return; }
+    if (document.id === activeDocument?.id) { if (!keepPanel) setPanel(undefined); return 'switched' as const; }
     let outcome;
     try { outcome = await switchSessionDocument(document, saveCurrent, remember); }
     catch {
@@ -203,10 +203,11 @@ export function useEditorController(options: EditorControllerOptions) {
     // failedは`onSaveError`が通知済み。pendingは通知が出ないので、ここで理由を伝える。
     // 黙って何も起きないと、切り替えを押したつもりの利用者が変化に気づけない。
     if (outcome === 'pending') notify(PENDING_SWITCH_MESSAGE);
-    if (outcome !== 'switched') return;
+    if (outcome !== 'switched') return outcome;
     setSelection(undefined);
     setMode('draw');
     if (!keepPanel) setPanel(undefined);
+    return outcome;
   }, [switchSessionDocument, activeDocument?.id, notify]);
 
   const startPaste = useCallback((block: PatternBlock) => {
@@ -384,9 +385,14 @@ export function useEditorController(options: EditorControllerOptions) {
       const result = await importBackup(file);
       await refreshDocuments();
       await refreshBlocks();
-      if (result.documents[0]) await switchDocument(result.documents[0], false);
+      const switched = result.documents[0] ? await switchDocument(result.documents[0]) : 'switched';
       analytics.track('backup_restored', { document_count_bucket: countBucket(result.count) });
-      notify(`${result.count}件の編み図を復元しました`);
+      const restored = `${result.count}件の編み図を復元しました`;
+      // 保存失敗は上部の帯がバックアップを勧めるので、ここでは切り替えなかったことだけを伝える。
+      if (switched === 'failed' || switched === 'pending') notify(`${result.count}件を復元しました。編集中の編み図が未保存のため、切り替えていません。`);
+      // 「もう一度」と書くと復元をやり直して同じ編み図を増やしかねないので、一覧から開くよう案内する。
+      else if (switched !== 'switched') notify(`${result.count}件を復元しました。復元した編み図は「編み図」の一覧から開いてください。`);
+      else notify(restored);
     } catch (error) { reportFailure('backup_restore', error); }
     finally { setBusy(undefined); }
   };
