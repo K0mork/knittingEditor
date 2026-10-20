@@ -21,7 +21,7 @@ for required in "$INFO_PLIST" "$ICON_PATH" \
   "$LAUNCH_COLORSET_PATH" \
   "$REPO_ROOT/docs/APP_STORE_METADATA.md" \
   "$REPO_ROOT/docs/APP_REVIEW_NOTES.md" \
-  "$REPO_ROOT/docs/PRIVACY_POLICY.md" \
+  "$REPO_ROOT/../public/privacy/app/index.html" \
   "$REPO_ROOT/docs/APP_STORE_CHECKLIST.md"; do
   if [ ! -f "$required" ]; then
     echo "missing release asset or document: $required" >&2

@@ -23,6 +23,16 @@ final class LocalWebSchemeHandlerTests: XCTestCase {
         XCTAssertEqual(decide(mail, .linkActivated), .openExternally(mail))
     }
 
+    /// 使い方のサポートページとアプリのプライバシーポリシーは、押すとSafariで開く（#81、#291）。
+    @MainActor
+    func testGuideSupportAndPrivacyLinksOpenInSafari() throws {
+        let decide = WebViewContainer.Coordinator.navigationDecision
+        for address in ["https://knittingeditor.com/support/", "https://knittingeditor.com/privacy/app/", "mailto:support@knittingeditor.com"] {
+            let url = try XCTUnwrap(URL(string: address))
+            XCTAssertEqual(decide(url, .linkActivated), .openExternally(url))
+        }
+    }
+
     @MainActor
     func testWebContentReadinessStartsFalseAndBecomesTrue() {
         let model = WebViewModel()

@@ -45,7 +45,7 @@ ios/docs/            additional app design and release records
 
 - 新しい外部URL、SDK、パッケージ、通信処理を追加する前に、オフライン要件への影響を説明する。
 - Webアセットはアプリに同梱し、`https://knittingeditor.com/`を`WKWebView`へ読み込まない。
-- 同梱の使い方ページのサポートページ（HTTPS）とメールのリンクは、実行時の外部依存禁止の例外とする。ユーザー操作時のみSafariまたはメールアプリで開き、オフラインの編集・保存・ヘルプの閲覧と分離する（`scripts/check-app-bundle.sh`もこの2つを検査対象から除く）。
+- 同梱の使い方ページのサポートページ（`https://knittingeditor.com/support/`）、アプリのプライバシーポリシー（`https://knittingeditor.com/privacy/app/`）とメールのリンクは、実行時の外部依存禁止の例外とする。ユーザー操作時のみSafariまたはメールアプリで開き、オフラインの編集・保存・ヘルプの閲覧と分離する（`scripts/check-app-bundle.sh`もこれらのリンクを検査対象から除く）。
 - リリースビルドにGoogle AnalyticsやGoogle Tag Managerを含めない。
 - テストでは予期しないネットワーク要求を検出し、失敗として扱う。
 

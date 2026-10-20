@@ -7,11 +7,12 @@ REPO_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
 METADATA="$REPO_ROOT/docs/APP_STORE_METADATA.md"
 CHECKLIST="$REPO_ROOT/docs/APP_STORE_CHECKLIST.md"
 REVIEW_NOTES="$REPO_ROOT/docs/APP_REVIEW_NOTES.md"
-PRIVACY_POLICY="$REPO_ROOT/docs/PRIVACY_POLICY.md"
+PRIVACY_POLICY="$REPO_ROOT/../public/privacy/app/index.html"
+PRIVACY_POINTER="$REPO_ROOT/docs/PRIVACY_POLICY.md"
 SCREENSHOTS="$REPO_ROOT/docs/SCREENSHOTS.md"
 PERFORMANCE_BASELINE="$REPO_ROOT/docs/SIMULATOR_PERFORMANCE_BASELINE.md"
 
-for required in "$METADATA" "$CHECKLIST" "$REVIEW_NOTES" "$PRIVACY_POLICY" "$SCREENSHOTS" "$PERFORMANCE_BASELINE"; do
+for required in "$METADATA" "$CHECKLIST" "$REVIEW_NOTES" "$PRIVACY_POLICY" "$PRIVACY_POINTER" "$SCREENSHOTS" "$PERFORMANCE_BASELINE"; do
   if [ ! -f "$required" ]; then
     echo "missing App Store document: $required" >&2
     exit 1
@@ -88,8 +89,8 @@ grep -qE -- 'サポートURL: `https://knittingeditor\.com/support/`' "$METADATA
   echo "support URL is missing or does not target the support page" >&2
   exit 1
 }
-grep -qE -- 'プライバシーポリシーURL候補: `https://github\.com/K0mork/knittingEditor/blob/main/ios/docs/PRIVACY_POLICY\.md`' "$METADATA" || {
-  echo "privacy policy URL is missing or does not target the public repository" >&2
+grep -qE -- 'プライバシーポリシーURL: `https://knittingeditor\.com/privacy/app/`' "$METADATA" || {
+  echo "privacy policy URL is missing or does not target the canonical app policy page" >&2
   exit 1
 }
 
@@ -104,8 +105,18 @@ for required_text in \
   }
 done
 
-grep -qE -- '^# ' "$PRIVACY_POLICY" || {
-  echo "privacy policy has no title" >&2
+for required_text in \
+  '<h1>アプリのプライバシーポリシー</h1>' \
+  '情報を収集しません' \
+  'https://knittingeditor.com/privacy/app/'; do
+  grep -qF -- "$required_text" "$PRIVACY_POLICY" || {
+    echo "canonical privacy policy is missing required text: $required_text" >&2
+    exit 1
+  }
+done
+grep -qF -- 'https://knittingeditor.com/privacy/app/' "$PRIVACY_POINTER" &&
+  grep -qF -- '正本' "$PRIVACY_POINTER" || {
+  echo "privacy policy document must point to the canonical page" >&2
   exit 1
 }
 

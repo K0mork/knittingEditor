@@ -12,7 +12,7 @@
 - [x] iPhone 16／iPad (10th generation) Simulatorの起動画面下書きを`docs/screenshots/`へ保存する（最終素材ではない）。
 - [x] `App/PrivacyInfo.xcprivacy`を同梱し、収集データなし・トラッキングなしと一致させる。使っている理由の申告が必要なAPI（`UserDefaults`、理由`CA92.1`）を申告し、`scripts/check-app-bundle.sh`で申告漏れを検査する。
 - [x] アプリ内ヘルプへプライバシーとサポート導線を同梱する。
-- [x] 公開Privacy Policy本文を`docs/PRIVACY_POLICY.md`へ用意する。
+- [x] 公開Privacy Policy本文をリポジトリルートの`public/privacy/app/index.html`へ用意する（公開URL: https://knittingeditor.com/privacy/app/、登録は#27）。
 - [x] App Review 4.2向けのネイティブ統合説明を`docs/APP_REVIEW_NOTES.md`へ記録する。
 - [x] App Store提出メタデータの下書きを`docs/APP_STORE_METADATA.md`へ用意する。
 - [x] 輸出コンプライアンスのため、`App/Info.plist`へ`ITSAppUsesNonExemptEncryption`を`false`で入れる。

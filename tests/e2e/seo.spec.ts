@@ -166,6 +166,33 @@ test('serves the privacy policy directly and after a reload', async ({ page }) =
   await expect(page).toHaveURL(/\/support\/$/);
 });
 
+test('serves the app policy directly, after reload and from the Web policy', async ({ page }) => {
+  const response = await page.goto('/privacy/app/');
+  expect(response?.status()).toBe(200);
+  await expect(page).toHaveURL(/\/privacy\/app\/$/);
+  await expect(page).toHaveTitle('アプリのプライバシーポリシー｜棒針編み図エディタ');
+  await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://knittingeditor.com/privacy/app/');
+  await expect(page.locator('meta[property="og:url"]')).toHaveAttribute('content', 'https://knittingeditor.com/privacy/app/');
+  await expect(page.locator('meta[property="og:type"]')).toHaveAttribute('content', 'article');
+  await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', /iPhone・iPadアプリ.*情報を収集しません/);
+  await expectLargeImageCard(page);
+  await expectAppIconLinks(page);
+  await expect(page.locator('main')).toContainText('情報を収集しません');
+  await expect(page.locator('main')).toContainText('改定日: 2026年10月20日');
+  await expect(page.getByRole('link', { name: 'support@knittingeditor.com' })).toHaveAttribute('href', 'mailto:support@knittingeditor.com');
+  // この静的ページには分析やその他のスクリプトを読み込まない。
+  await expect(page.locator('script')).toHaveCount(0);
+  expect((await page.reload())?.status()).toBe(200);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('アプリのプライバシーポリシー');
+  await page.locator('main .lead').getByRole('link', { name: 'Web版のプライバシーポリシー' }).click();
+  await expect(page).toHaveURL(/\/privacy\/$/);
+  await page.getByRole('link', { name: 'アプリのプライバシーポリシー', exact: true }).click();
+  await expect(page).toHaveURL(/\/privacy\/app\/$/);
+  await page.getByRole('link', { name: 'サポート・お問い合わせ' }).click();
+  await expect(page).toHaveURL(/\/support\/$/);
+});
+
 test('links the privacy policy from the chart panel, the guide and the support page', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
@@ -191,6 +218,7 @@ test('publishes the guide, the support page and the privacy policy in the sitema
   expect(xml).toContain('<loc>https://knittingeditor.com/guide/</loc>');
   expect(xml).toContain('<loc>https://knittingeditor.com/support/</loc>');
   expect(xml).toContain('<loc>https://knittingeditor.com/privacy/</loc>');
+  expect(xml).toContain('<loc>https://knittingeditor.com/privacy/app/</loc>');
 });
 
 test('serves the app icon as the favicon and touch icons', async ({ page }) => {
