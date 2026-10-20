@@ -25,7 +25,7 @@
 - `main`の`aa53a3a`をXcode 27.1でRelease設定でビルドし、Simulatorで撮った。iPhoneはiPhone 18 Pro Max、iPadはiPad Pro 13-inch (M5)で、どちらもiOS 27.0。画面の解像度がそのまま提出サイズになる。撮影用の端末は撮影のあとで削除した。
 - ステータスバーは`xcrun simctl status_bar <端末> override --time 9:41 --dataNetwork wifi --wifiMode active --wifiBars 3 --cellularMode active --cellularBars 4 --batteryState charged --batteryLevel 100`で固定した。
 - 編み図は撮影のために作った「アラン模様のベスト」で、端末内のテストデータや個人情報は含まない。`.knit`で読み込み、名前の「（復元）」を外した。iPhoneでは盤面全体が幅に収まるよう、2本指で縮小して撮った。
-- 4枚目は、iPhoneで背景色を選んだあと、端末内のデータ（アプリのコンテナの`Library/WebKit`）をiPadへ写して撮った。iPadのSimulatorでは「ほかの色を選ぶ」から色の選択画面が開かなかったため（別に調べている）。
+- 4枚目は、iPhoneで背景色を選んだあと、端末内のデータ（アプリのコンテナの`Library/WebKit`）をiPadへ写して撮った。iPadのSimulatorでは「ほかの色を選ぶ」から色の選択画面が開かなかったため。アプリの不具合ではなく、色の選択画面を出すシステムのプロセスの起動が、Simulatorの起動直後やMacが重いときに間に合わず、システムが表示をやめるためだった（Safariでも同じ）。ほかの入力欄を押してから見本を押すか、パネルを開き直すと開く。
 - iPadで外観を切り替えたあとに画面下のホームバーが出たままになったので、Simulatorを再起動してから撮り直した。
 - 説明文の帯と文字は、下の「説明文を入れる（最終版）」の決まりに従って付けた。文字はヒラギノ丸ゴ ProN W4、帯の高さは画像の高さの17%で、画面の部分は残りの高さに合わせて縮小し、左右中央に置いた。
 

@@ -13,5 +13,5 @@
   - `npm test -- scripts`: 10ファイル・91件成功。
   - `node scripts/check-pr-smoke-ui-tests.mjs`、`git diff --check`: 成功。
   - 撮影は、iPhone 18 Pro MaxとiPad Pro 13-inch (M5)（どちらもiOS 27.0）のSimulatorを新しく作って行い、撮影のあとで削除した。
-  - 撮影の途中で、iPadのSimulatorでは盤面設定の「ほかの色を選ぶ」から色の選択画面が開かなかった（iPhoneでは開く）。原因は別のセッションで調べている。
+  - 撮影の途中で、iPadのSimulatorでは盤面設定の「ほかの色を選ぶ」から色の選択画面が開かなかった（iPhoneでは開く）。調べた結果、アプリの不具合ではなかった。色の選択画面を出すシステムのプロセスの起動が、Simulatorの起動直後やMacが重いときに間に合わず、システムが表示をやめる（Safariでも同じ条件で起きた）。実機では試していない。
 - デプロイ影響: なし。文書と画像だけで、Pagesの配信物もアプリも変わらない。App Store Connectへの登録は、加入後に#27で行う。
