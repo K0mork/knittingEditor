@@ -958,12 +958,21 @@ final class KnittingEditorUITests: XCTestCase {
         assertDisappears(fileSave, from: app)
         let exportPicker = SystemSheet.element(in: app)
         XCTAssertTrue(exportPicker.waitForExistence(timeout: 20), app.debugDescription)
+        // CIの再試行で同名ファイルを置き換えるとファイルプロバイダーが停止したため、
+        // 実行ごとに名前を変えてシステムの置き換え確認を避ける。
+        // CIのiPhoneではファイル名の入力欄が公開されないことがあるため、その場合は既定名を使う。
+        var backupFileName = "knitting-editor-backup"
+        let filename = app.textFields["DOCPicker.filenameTextField"]
+        if filename.waitForExistence(timeout: 10) {
+            backupFileName = "knitting-editor-backup-\(suffix)"
+            replaceText(backupFileName, in: filename, app: app)
+        }
         // 保存先はシステムの前回の場所に依存する。iPhoneでの確認時は「このiPhone内」が開いた。
         let saveInPicker = app.buttons.matching(NSPredicate(format: "label IN %@", ["保存", "Save"])).firstMatch
         XCTAssertTrue(saveInPicker.waitForExistence(timeout: 20), app.debugDescription)
         add(screenshotAttachment(named: "全データの保存先の選択"))
         saveInPicker.tap()
-        // 前回の実行で同じ名前のファイルが残っているときは、確認が出るので置き換える。
+        // 名前を変えられず、前回の同名ファイルが残っているときだけ、確認が出るので置き換える。
         let replace = app.buttons.matching(NSPredicate(format: "label IN %@", ["置き換え", "Replace"])).firstMatch
         let exportFinishedOrReplaceAppeared = XCTNSPredicateExpectation(
             predicate: NSPredicate { _, _ in !exportPicker.exists || replace.exists },
@@ -986,7 +995,7 @@ final class KnittingEditorUITests: XCTestCase {
         let restorePicker = SystemSheet.element(in: app)
         XCTAssertTrue(restorePicker.waitForExistence(timeout: 20), app.debugDescription)
         add(screenshotAttachment(named: "復元の選択画面を開いた直後"))
-        guard let backupFile = backupFileInOnDeviceLocation(in: app) else { return }
+        guard let backupFile = backupFileInOnDeviceLocation(named: backupFileName, in: app) else { return }
         add(screenshotAttachment(named: "復元するファイルの選択"))
         backupFile.tap()
         assertDisappears(restorePicker, from: app)
@@ -1851,24 +1860,42 @@ final class KnittingEditorUITests: XCTestCase {
     }
 
     /// 「最近使った項目」に依存せず、端末内に保存したバックアップを選べる状態まで待つ。
-    private func backupFileInOnDeviceLocation(in app: XCUIApplication) -> XCUIElement? {
+    private func backupFileInOnDeviceLocation(named fileName: String, in app: XCUIApplication) -> XCUIElement? {
         // 選択画面は別プロセスで表示されるため、シートの子孫ではなくアプリ全体から探す。
-        let location = app.descendants(matching: .any)
+        let locations = app.descendants(matching: .any)
             .matching(NSPredicate(format: "label IN %@", ["このiPhone内", "このiPad内", "On My iPhone", "On My iPad"]))
-            .firstMatch
+        // 同じ名前の見出しや非表示のサイドバーも一致するため、画面内で押せる候補を探す。
+        // 空や画面外のframeでisHittableを読むと、falseではなくXCTestの失敗になる。
+        func waitForLocation(timeout: TimeInterval) -> XCUIElement? {
+            var location: XCUIElement?
+            let hittable = XCTNSPredicateExpectation(
+                predicate: NSPredicate { _, _ in
+                    let window = app.windows.firstMatch.frame
+                    location = locations.allElementsBoundByIndex.first { element in
+                        guard element.exists else { return false }
+                        let frame = element.frame
+                        return !frame.isEmpty && window.intersects(frame) && element.isHittable
+                    }
+                    return location != nil
+                },
+                object: app
+            )
+            guard XCTWaiter.wait(for: [hittable], timeout: timeout) == .completed else { return nil }
+            return location
+        }
         // iPadではサイドバーに保存場所が出る場合があるので、先に直接探す。
-        if !waitForHittable(location, timeout: 2) {
+        if waitForLocation(timeout: 2) == nil {
             let browse = app.buttons
                 .matching(NSPredicate(format: "label IN %@", ["ブラウズ", "Browse"])).firstMatch
             if waitForHittable(browse, timeout: 5) {
                 browse.tap()
                 // もう一度押すと「ブラウズ」の先頭へ戻り、保存場所の一覧が出る。
-                if !waitForHittable(location, timeout: 3), browse.isHittable {
+                if waitForLocation(timeout: 3) == nil, browse.isHittable {
                     browse.tap()
                 }
             }
         }
-        guard waitForHittable(location, timeout: 10) else {
+        guard let location = waitForLocation(timeout: 10) else {
             add(screenshotAttachment(named: "復元の端末内保存場所が見つからない"))
             XCTFail("復元の端末内保存場所を選べない: \(app.debugDescription)")
             return nil
@@ -1876,11 +1903,9 @@ final class KnittingEditorUITests: XCTestCase {
         location.tap()
 
         let backupFile = app.cells
-            .matching(NSPredicate(format: "identifier BEGINSWITH %@", "knitting-editor-backup")).firstMatch
-        let backupFileHittable = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "exists == true AND hittable == true"), object: backupFile
-        )
-        guard XCTWaiter.wait(for: [backupFileHittable], timeout: 30) == .completed else {
+            .matching(NSPredicate(format: "identifier == %@ OR identifier BEGINSWITH %@", fileName, fileName + "."))
+            .firstMatch
+        guard waitForHittable(backupFile, timeout: 30) else {
             add(screenshotAttachment(named: "復元のバックアップが見つからない"))
             XCTFail("端末内のバックアップを選べない: \(app.debugDescription)")
             return nil
@@ -1888,9 +1913,15 @@ final class KnittingEditorUITests: XCTestCase {
         return backupFile
     }
 
+    /// 空や画面外の要素でisHittableを読むとXCTestが失敗するため、先に位置を確かめる。
     private func waitForHittable(_ element: XCUIElement, timeout: TimeInterval) -> Bool {
+        let app = XCUIApplication()
         let hittable = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "isHittable == true"),
+            predicate: NSPredicate { _, _ in
+                guard element.exists else { return false }
+                let frame = element.frame
+                return !frame.isEmpty && app.windows.firstMatch.frame.intersects(frame) && element.isHittable
+            },
             object: element
         )
         return XCTWaiter.wait(for: [hittable], timeout: timeout) == .completed
