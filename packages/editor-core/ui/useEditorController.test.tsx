@@ -6,6 +6,7 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Board } from '../model/Board';
+import { encodeBackup } from '../storage/backupCodec';
 import * as database from '../storage/database';
 import { useEditorController, type EditorController } from './useEditorController';
 
@@ -38,6 +39,7 @@ beforeEach(async () => {
   document.body.append(container);
   function Probe() {
     editor = useEditorController({
+      autosaveDelayMs: 60_000,
       initialize: async () => ({ documents: [source, other], activeId: source.id, blocks: [savedBlock] }),
       platform: { saveFile: async () => ({ saved: Promise.resolve(undefined) }) },
       askText: async () => '変更した名前',
@@ -117,6 +119,87 @@ describe('duplicateChart', () => {
     const copy = editor.session.documents.find((document) => document.name === '別の編み図のコピー')!;
     expect(copy.rows).toBe(4);
     expect(new Uint32Array(copy.cells).every((cell) => cell === 0)).toBe(true);
+  });
+});
+
+describe('restore with edits during import', () => {
+  async function startRestore() {
+    const file = new File([encodeBackup([source], [])], 'restore.knit');
+    const original = database.importBackup;
+    let release!: () => void;
+    let entered!: () => void;
+    const started = new Promise<void>((resolve) => { entered = resolve; });
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    vi.spyOn(database, 'importBackup').mockImplementationOnce(async (file) => {
+      entered();
+      await gate;
+      return original(file);
+    });
+    let restoring!: Promise<void>;
+    await act(async () => {
+      editor.togglePanel('export');
+      restoring = editor.restore(file);
+      await started;
+    });
+    expect(editor.busy).toBe('バックアップを処理中');
+    return { release, restoring };
+  }
+
+  async function draw(row: number) {
+    await act(async () => {
+      editor.session.board!.place(row, 0, 'knit', '#123456');
+      editor.changed();
+    });
+  }
+
+  it.each(['draw', 'undo', 'unchanged'] as const)('saves %s before switching to the restored chart', async (action) => {
+    await draw(0);
+    const { release, restoring } = await startRestore();
+    if (action === 'draw') await draw(1);
+    if (action === 'undo') await act(async () => { editor.undo(); });
+    const expected = editor.session.activeSnapshot()!;
+    await act(async () => { release(); await restoring; });
+    const documents = await database.listDocuments();
+    const stored = documents.find((document) => document.id === source.id)!;
+    expect(new Uint32Array(stored.cells)).toEqual(new Uint32Array(expected.cells));
+    expect(new Uint32Array(stored.cells).filter(Boolean)).toHaveLength(action === 'draw' ? 2 : action === 'undo' ? 0 : 1);
+    const restored = documents.find((document) => document.name === `${source.name}（復元）`)!;
+    expect(restored.id).not.toBe(source.id);
+    expect(new Uint32Array(restored.cells).every((cell) => cell === 0)).toBe(true);
+    expect(editor.session.activeDocument?.id).toBe(restored.id);
+    expect(editor.panel).toBeUndefined();
+    expect(editor.message).toBe('1件の編み図を復元しました');
+    expect(track).toHaveBeenCalledWith('backup_restored', { document_count_bucket: '1' });
+  });
+
+  it.each(['failed', 'pending'] as const)('keeps the current board and reports restore success when switching is %s', async (outcome) => {
+    const { release, restoring } = await startRestore();
+    await draw(0);
+    const board = editor.session.board;
+    if (outcome === 'failed') vi.spyOn(database, 'saveDocument').mockRejectedValueOnce(quota);
+    else {
+      const original = database.saveDocument;
+      vi.spyOn(database, 'saveDocument').mockImplementationOnce(async (document, target) => {
+        const snapshot = new Board(target.rows, target.cols, target.cells);
+        target.place(1, 0, 'purl', '#654321');
+        editor.changed();
+        return original(document, snapshot);
+      });
+    }
+    await act(async () => { release(); await restoring; });
+    expect(editor.session.activeDocument?.id).toBe(source.id);
+    expect(editor.session.board).toBe(board);
+    expect(editor.session.board!.valueAt(0, 0)).not.toBe(0);
+    expect(editor.session.dirty).toBe(true);
+    expect(editor.session.canUndo).toBe(true);
+    expect(editor.panel).toBe('export');
+    expect(editor.message).toBe(outcome === 'failed'
+      ? '1件の編み図を復元しました。変更を保存できなかったため、編み図を切り替えませんでした。バックアップを保存してください。'
+      : '1件の編み図を復元しました。編集中のため、編み図を切り替えませんでした。');
+    expect(editor.session.documents.find((document) => document.name === `${source.name}（復元）`)).toBeDefined();
+    expect((await database.listDocuments()).find((document) => document.name === `${source.name}（復元）`)).toBeDefined();
+    expect(track).toHaveBeenCalledWith('backup_restored', { document_count_bucket: '1' });
+    expect(editor.busy).toBeUndefined();
   });
 });
 

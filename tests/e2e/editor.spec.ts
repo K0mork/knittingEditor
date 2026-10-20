@@ -770,6 +770,63 @@ test('describes the board and the current mode for assistive technology', async 
 });
 
 
+type RestoreDecodeWindow = Window & { restoreDecode: { held: boolean; release: () => void } };
+
+for (const action of ['draw', 'undo'] as const) {
+  test(`saves ${action} during restore decoding before switching charts`, async ({ page }) => {
+    await page.addInitScript(() => {
+      const original = Worker.prototype.postMessage;
+      const queued: Array<() => void> = [];
+      const state = { held: false, release: () => { queued.splice(0).forEach((send) => send()); } };
+      (window as RestoreDecodeWindow).restoreDecode = state;
+      Worker.prototype.postMessage = function (...args: Parameters<Worker['postMessage']>) {
+        if (args[0]?.operation === 'decode') {
+          state.held = true;
+          queued.push(() => original.apply(this, args));
+        } else original.apply(this, args);
+      };
+    });
+    await page.reload();
+    const canvas = page.getByLabel('編み図編集盤面');
+    await expect(canvas).toBeVisible();
+    // 自動保存が先に成功して不具合を隠さないよう、400msのタイマーだけ延ばす。
+    await delayAutosave(page, 60_000);
+    const origin = await placeBoardOrigin(page);
+    await clickCell(page, origin, 1, 1);
+    await expect(canvas).toHaveAttribute('aria-label', /記号1個/);
+    const fixture = readFileSync('ios/test-fixtures/knitting-editor-v2-interop.knit.b64', 'utf8').trim();
+    await page.locator('input[type="file"]').setInputFiles({
+      name: 'restore.knit', mimeType: 'application/gzip', buffer: Buffer.from(fixture, 'base64'),
+    });
+    await expect.poll(() => page.evaluate(() => (window as RestoreDecodeWindow).restoreDecode.held)).toBe(true);
+    await expect(page.locator('.busy')).toHaveText('バックアップを処理中');
+    if (action === 'draw') {
+      // 画面中央の「バックアップを処理中」は画面幅によって重なるマスが変わるので、重ならないマスを探して描く。
+      const cells = [[1, 3], [3, 1], [3, 3], [5, 1], [5, 5]] as const;
+      const free = await page.getByLabel('編み図編集盤面').evaluate((element, points) =>
+        points.findIndex((point) => document.elementFromPoint(point.x, point.y) === element),
+      cells.map(([row, col]) => cellCenter(origin, row, col)));
+      expect(free, '処理中の表示に重ならないマス').toBeGreaterThanOrEqual(0);
+      const [row, col] = cells[free];
+      await clickCell(page, origin, row, col);
+    }
+    else await page.keyboard.press('Control+z');
+    const count = action === 'draw' ? 2 : 0;
+    await expect(canvas).toHaveAttribute('aria-label', new RegExp(`記号${count}個`));
+    await expectAutosaveDelayed(page);
+    await page.evaluate(() => (window as RestoreDecodeWindow).restoreDecode.release());
+    await expect(page.locator('.app-document-name')).toContainText('相互運用fixture（復元）');
+    await expect(page.locator('.toast')).toHaveText('1件の編み図を復元しました');
+    await page.getByRole('button', { name: '編み図', exact: true }).click();
+    await expect(page.locator('.document').filter({ hasText: '相互運用fixture（復元）' })).toHaveCount(1);
+    await page.locator('.document').filter({ hasText: '新しい編み図' }).locator('.document-open').click();
+    await expect(canvas).toHaveAttribute('aria-label', new RegExp(`記号${count}個`));
+    await page.reload();
+    await expect(page.locator('.app-document-name')).toContainText('新しい編み図');
+    await expect(canvas).toHaveAttribute('aria-label', new RegExp(`記号${count}個`));
+  });
+}
+
 for (const action of ['switch', 'restore'] as const) {
   test(`preserves unsaved edits when ${action} cannot save`, async ({ page }) => {
     await page.getByRole('button', { name: '編み図', exact: true }).click();

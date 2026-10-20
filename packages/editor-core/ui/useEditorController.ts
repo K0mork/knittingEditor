@@ -193,7 +193,7 @@ export function useEditorController(options: EditorControllerOptions) {
    * 削除に伴う切り替えでは`keepPanel`を立て、続けて一覧を操作できるよう開いたままにする（#267）。
    */
   const switchDocument = useCallback(async (document: ChartDocument, saveCurrent = true, remember = true, keepPanel = false) => {
-    if (document.id === activeDocument?.id) { if (!keepPanel) setPanel(undefined); return; }
+    if (document.id === activeDocument?.id) { if (!keepPanel) setPanel(undefined); return 'switched' as const; }
     let outcome;
     try { outcome = await switchSessionDocument(document, saveCurrent, remember); }
     catch {
@@ -203,10 +203,11 @@ export function useEditorController(options: EditorControllerOptions) {
     // failedは`onSaveError`が通知済み。pendingは通知が出ないので、ここで理由を伝える。
     // 黙って何も起きないと、切り替えを押したつもりの利用者が変化に気づけない。
     if (outcome === 'pending') notify(PENDING_SWITCH_MESSAGE);
-    if (outcome !== 'switched') return;
+    if (outcome !== 'switched') return outcome;
     setSelection(undefined);
     setMode('draw');
     if (!keepPanel) setPanel(undefined);
+    return outcome;
   }, [switchSessionDocument, activeDocument?.id, notify]);
 
   const startPaste = useCallback((block: PatternBlock) => {
@@ -384,9 +385,13 @@ export function useEditorController(options: EditorControllerOptions) {
       const result = await importBackup(file);
       await refreshDocuments();
       await refreshBlocks();
-      if (result.documents[0]) await switchDocument(result.documents[0], false);
+      const switched = result.documents[0] ? await switchDocument(result.documents[0]) : 'switched';
       analytics.track('backup_restored', { document_count_bucket: countBucket(result.count) });
-      notify(`${result.count}件の編み図を復元しました`);
+      const restored = `${result.count}件の編み図を復元しました`;
+      if (switched === 'failed') notify(`${restored}。変更を保存できなかったため、編み図を切り替えませんでした。バックアップを保存してください。`);
+      else if (switched === 'pending') notify(`${restored}。編集中のため、編み図を切り替えませんでした。`);
+      else if (switched !== 'switched') notify(`${restored}。復元した編み図を開けませんでした。もう一度お試しください。`);
+      else notify(restored);
     } catch (error) { reportFailure('backup_restore', error); }
     finally { setBusy(undefined); }
   };
