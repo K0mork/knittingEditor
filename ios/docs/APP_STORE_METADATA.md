@@ -111,19 +111,34 @@ App Store Connectの年齢制限は、質問票への回答から決まる（202
 
 編み図データは端末内に保存し、Web版や別の端末とは`.knit`バックアップで交換します。アカウント登録、サーバー同期、広告、利用分析はありません。
 
+## App Store Connectの質問への回答
+
+2026-10-20に決めた（#292）。提出時は、その時点の質問がこの表と同じかを確かめてから入力する。個人情報の値はリポジトリに書かず、ルートの`private/APP_STORE_CONNECT.md`に置く。
+
+| 質問 | 回答 | 理由 |
+|---|---|---|
+| App Privacy（データの収集） | データを収集しない | 編み図、設定、評価の依頼の判定に使う記録は端末内だけで扱い、外部へ送らない。Appleの定義では、端末内だけで処理するデータは「収集」に当たらない。評価の依頼はStoreKit（Appleが扱うデータは開発者の申告の対象外）。サポートのメールは利用者がアプリの外のメールアプリから送るもので、アプリが送信しない。`App/PrivacyInfo.xcprivacy`（収集データなし・トラッキングなし）と一致する |
+| 第三者のコンテンツの権利（Content Rights） | 第三者のコンテンツを含まない | 同梱する画像はアプリアイコンだけで、`../design/app-icon/`の自作の素材から作る。フォントは同梱しない。編み目記号はJISの記号の形に沿うが、アプリのコード（`packages/editor-core/stitches/glyphs.ts`）で描いている。外部の内容を表示・取得しない。同梱するオープンソースのライセンス表記は下記「第三者ソフトウェアのライセンス表記」 |
+| EUのデジタルサービス法（DSA）の事業者申告 | 事業者ではない（non-trader） | 下記「配信地域」 |
+| 審査の連絡先（App Review Information） | 本人の名前・電話、個人のメールアドレス | 製品ページには表示されず、審査担当者だけが使う。転送に頼らず確実に届くよう、メールは`support@knittingeditor.com`ではなく個人のアドレスにする。値は`private/APP_STORE_CONNECT.md` |
+| サインインの要否 | サインイン不要 | アカウントが無いので、デモアカウントも不要 |
+| 審査メモ | [`APP_REVIEW_NOTES.md`](APP_REVIEW_NOTES.md)の英語と日本語を転記する | アプリの画面は日本語だけなので、日本語を読めない審査担当者でも手順をたどれるよう、英語の手順にボタンの日本語名を添える |
+| 価格 | 無料 | v1.0は無料。有料アプリ契約・税務・口座の登録（#58）はv1.0には不要 |
+| 年齢確認の法律（米国の州法など） | 対応しない | Appleの年齢区分を受け取るDeclared Age Range APIは任意。このアプリは4+で、年齢によって制限する内容が無い。提出時に質問票や要件が増えていないかを確かめる |
+
 ## URLと提出メモ
 
 - サポートURL: `https://knittingeditor.com/support/`。下記「サポート窓口」
-- プライバシーポリシーURL候補: `https://github.com/K0mork/knittingEditor/blob/main/ios/docs/PRIVACY_POLICY.md`（App Store Connect登録前に公開状態と表示を確認）
-- 審査メモ: [`APP_REVIEW_NOTES.md`](APP_REVIEW_NOTES.md)の4.2説明と機内モード手順を転記する。
+- プライバシーポリシーURL候補: `https://github.com/K0mork/knittingEditor/blob/main/ios/docs/PRIVACY_POLICY.md`（App Store Connect登録前に公開状態と表示を確認）。自サイトの別ページへ移す（#291）。
+- 審査メモ: [`APP_REVIEW_NOTES.md`](APP_REVIEW_NOTES.md)の4.2説明と機内モード手順を、英語と日本語の両方で転記する。
 - スクリーンショット: iPhone縦、iPhone横、iPad全画面、iPad可変幅を実機またはTestFlightで撮影して差し替える。
 
 ## 配信地域
 
 - EU加盟国のストアでは配信しない（決定済み）。v1.0の無料版も、v1.1以降のPro（[`PRO_PLAN.md`](PRO_PLAN.md)）を含む版も対象にする。
 - App Store Connectの「価格および配信状況」で、EU加盟国をすべて配信対象から外す。
-- EUで配信しないため、デジタルサービス法（DSA）の事業者（trader）申告と、それに伴うEUのストアページでの連絡先の公開は求められない。
-- EUで配信する方針に変えるときは、配信地域を変える前に、trader申告と公開する連絡先を決める。
+- デジタルサービス法（DSA）の事業者（trader）かどうかは、EUで配信しなくても、最初のアプリの提出時にApp Store Connectで申告する（Appleの[DSAの事業者要件](https://developer.apple.com/help/app-store-connect/manage-compliance-information/manage-european-union-digital-services-act-trader-requirements/)、2026-10-20に確認）。Appleは、EU以外でだけ配信する開発者はApp Store上で事業者として行動していないとしている。このため「事業者ではない」と申告する（2026-10-20に決定、#292）。事業者と申告すると、住所・電話・メールの入力とAppleの確認が要り、EUのストアに公開される。
+- EUで配信する方針に変えるときは、配信地域を変える前に、アプリの事業者申告を「事業者」に変え、公開する連絡先を決めて確認を受ける（申告はアプリごとに後から変えられる）。
 - 中国本土のストアでも配信しない（2026-10-06に決定）。中国本土で配信するには、App Store ConnectへICP備案（ICP Filing）の番号を登録する必要があり、個人の開発者は取得できない。「価格および配信状況」で中国本土を配信対象から外す。
 
 ## 輸出コンプライアンス（暗号化）
