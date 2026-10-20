@@ -70,6 +70,8 @@ final class KnittingEditorUITests: XCTestCase {
 
         // 戻るリンクはページの一番下にある。XCUITestの自動スクロールに任せると、
         // タップ位置が画面の外（y=3275）で計算されて外れ、使い方ページのまま残った（#95）。
+        // isHittableでも画面下端のホームインジケータの帯を押して外れることがあるため、
+        // リンク全体が帯より上に収まるまで送る。
         // 自分でページを送り、押せる位置に来てから叩く。使い方ページのまま（リンクが残って
         // いる）ときに限って押し直し、最後まで戻らなければ失敗にする。
         let returnLinks = app.links.matching(identifier: "編集画面へ戻る")
@@ -1861,19 +1863,35 @@ final class KnittingEditorUITests: XCTestCase {
     private func scrollWebViewUntilHittable(
         _ element: XCUIElement,
         in app: XCUIApplication,
-        maximumSwipes: Int = 12
+        maximumSwipes: Int = 14
     ) {
         let webView = app.webViews.firstMatch
         var swipes = 0
-        while !element.isHittable, swipes < maximumSwipes {
+        while !isHittableInWebView(element, webView: webView), swipes < maximumSwipes {
             webView.swipeUp()
             swipes += 1
-            _ = waitForHittable(element, timeout: 2)
+            let hittable = XCTNSPredicateExpectation(
+                predicate: NSPredicate { _, _ in
+                    self.isHittableInWebView(element, webView: webView)
+                },
+                object: element
+            )
+            _ = XCTWaiter.wait(for: [hittable], timeout: 2)
         }
         XCTAssertTrue(
-            element.isHittable,
-            "スワイプ\(swipes)回で押せる位置に来ない frame=\(element.frame): \(app.debugDescription)"
+            isHittableInWebView(element, webView: webView),
+            "スワイプ\(swipes)回で押せる位置に来ない 要素=\(element.frame) WebView=\(webView.frame): \(app.debugDescription)"
         )
+    }
+
+    /// 画面外での判定失敗と下端の帯への誤タップを避けるため、先に枠を確かめる。
+    private func isHittableInWebView(_ element: XCUIElement, webView: XCUIElement) -> Bool {
+        guard element.exists, webView.exists else { return false }
+        let frame = element.frame
+        let webViewFrame = webView.frame
+        guard !frame.isEmpty, webViewFrame.contains(frame),
+              frame.maxY <= webViewFrame.maxY - 34 else { return false }
+        return element.isHittable
     }
 
     /// 「最近使った項目」に依存せず、端末内に保存したバックアップを選べる状態まで待つ。
