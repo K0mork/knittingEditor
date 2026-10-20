@@ -8,6 +8,7 @@ import XCTest
 @MainActor
 final class KeyboardCommandUITests: XCTestCase {
     private static let timeout: TimeInterval = KnittingEditorUITests.editorAppearanceTimeout
+    private static let shortcutAttemptTimeout: TimeInterval = 8
 
     override func setUpWithError() throws {
         try super.setUpWithError()
@@ -138,18 +139,20 @@ final class KeyboardCommandUITests: XCTestCase {
     /// その間に押したキーはWebViewへ落ちて捨てられる。XCUITestからメニューの状態は読めないため、
     /// 期待した変化が起きないときだけ送り直す。どの操作も、アプリ内のダイアログや保存画面などを
     /// 出している間は重ねて実行されないので、遅れて届いても二重には開かない。
+    /// CIのSimulatorでは合成したキーがUIKitでショートカットと扱われず、文字入力へ回ることもある。
+    /// 再送の機会を増やしつつテスト1件の上限150秒に収めるため、既定は8回、各8秒（計64秒）待つ。
     private func typeShortcut(
         _ key: String,
         _ modifiers: XCUIElement.KeyModifierFlags,
         in app: XCUIApplication,
         until predicate: NSPredicate,
         on object: Any,
-        attempts: Int = 4
+        attempts: Int = 8
     ) -> Bool {
         for _ in 0..<attempts {
             app.typeKey(key, modifierFlags: modifiers)
             let reached = XCTNSPredicateExpectation(predicate: predicate, object: object)
-            if XCTWaiter.wait(for: [reached], timeout: Self.timeout / Double(attempts)) == .completed { return true }
+            if XCTWaiter.wait(for: [reached], timeout: Self.shortcutAttemptTimeout) == .completed { return true }
         }
         add(screenshot(named: "ショートカット失敗-\(key)-\(modifiers.rawValue)"))
         return false
