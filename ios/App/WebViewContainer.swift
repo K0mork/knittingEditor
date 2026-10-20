@@ -223,7 +223,7 @@ struct WebViewContainer: UIViewRepresentable {
         // iOS 27ではゼロサイズのWKWebViewがWebKitプロセスの起動を待つことがある。
         // SwiftUIのレイアウト確定前にもローカルHTMLの読み込みを開始できるよう、
         // 実画面に近い初期サイズを与え、レイアウト確定後はSwiftUIにサイズを委ねる。
-        let webView = WKWebView(
+        let webView = FoldAwareWebView(
             frame: CGRect(origin: .zero, size: Self.initialFrameSize),
             configuration: configuration
         )
@@ -343,6 +343,7 @@ struct WebViewContainer: UIViewRepresentable {
             switch NativeBridgeMessage.decode(body: message.body) {
             case .success(.webReady):
                 model.webContentDidBecomeReady()
+                (webView as? FoldAwareWebView)?.foldEditorDidBecomeReady()
             case let .success(.commandState(state)):
                 model.editorCommandState = state
             case .success(.openBackup):
@@ -407,6 +408,7 @@ struct WebViewContainer: UIViewRepresentable {
 
         func webView(_ webView: WKWebView, didCommit navigation: WKNavigation?) {
             model.webContentDidStartNavigation(to: webView.url)
+            (webView as? FoldAwareWebView)?.foldPageDidStartNavigation()
             // 要求を送った文書はもう無い。新しい文書へ古いIDの結果を送らない。
             pendingExport?.requestID = nil
         }

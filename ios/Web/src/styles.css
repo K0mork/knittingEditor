@@ -65,3 +65,45 @@ input, textarea, [contenteditable]:not([contenteditable="false"]) { -webkit-user
   .app-dialog input { grid-area: input; margin: 0; }
   .app-dialog-actions { grid-area: actions; }
 }
+
+/*
+ * --fold-start/endはWKWebView座標（px）の操作禁止帯で、UIKitの余白込み。
+ * 展開時にはdata-foldが無いため、既存の見た目には影響しない。
+ * backdrop全体は残し、中の操作面だけを右側／上側へ収める。
+ */
+:root[data-fold="vertical"] {
+  --fold-pane-left: max(0px, var(--fold-end));
+  --fold-pane-right: env(safe-area-inset-right, 0px);
+  --fold-pane-bottom: 0px;
+}
+:root[data-fold="horizontal"] {
+  --fold-pane-left: env(safe-area-inset-left, 0px);
+  --fold-pane-right: env(safe-area-inset-right, 0px);
+  --fold-pane-bottom: max(0px, calc(100dvh - var(--fold-start)));
+}
+:root[data-fold] :is(.app-dialog-backdrop, .stitch-picker-backdrop, .color-picker-backdrop) {
+  padding-left: calc(var(--fold-pane-left) + 12px);
+  padding-right: calc(var(--fold-pane-right) + 12px);
+  padding-top: max(8px, env(safe-area-inset-top));
+  padding-bottom: calc(var(--fold-pane-bottom) + 8px);
+  place-items: center;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+}
+:root[data-fold] :is(.app-dialog, .stitch-picker, .color-picker) {
+  min-width: 0;
+  max-width: 100%;
+  max-height: 100%;
+  overflow: auto;
+}
+:root[data-fold] .app-dialog-actions { flex-wrap: wrap; }
+/* キーボードで高さが減った場合は、狭い右半分でも入力欄とボタンを横に押し込まない。 */
+:root[data-fold] .app-dialog { display: block; }
+/* 元の配置が帯と交差した要素だけ、nativeFoldLayoutで測定した補正を適用する。
+ * translateは既存のtransform（通知の中央揃え）や通常フローを保持する。 */
+[data-fold-adjusted] {
+  translate: var(--fold-shift-x, 0px) var(--fold-shift-y, 0px);
+  max-width: var(--fold-max-width);
+  max-height: var(--fold-max-height);
+  overflow: auto;
+}

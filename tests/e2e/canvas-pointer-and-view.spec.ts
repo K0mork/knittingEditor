@@ -187,3 +187,76 @@ for (const rootFontSize of [32, 48]) {
     for (const label of labels) expect(label.width + 8, label.text).toBeLessThanOrEqual(band + 0.01);
   });
 }
+
+test('keeps the knitting start anchored to the canvas bottom-right when opening and closing', async ({ page }) => {
+  // 既存の番号描画フックと同様に、Canvasへ描かれた段1・目1から盤面端を読む。
+  await page.addInitScript(() => {
+    const fill = CanvasRenderingContext2D.prototype.fillText;
+    const clear = CanvasRenderingContext2D.prototype.clearRect;
+    const labels: { text: string; x: number; y: number }[] = [];
+    Object.assign(window, { resizeLabels: labels });
+    CanvasRenderingContext2D.prototype.clearRect = function (x, y, width, height) {
+      if (this.canvas.classList.contains('board-canvas')) labels.length = 0;
+      clear.call(this, x, y, width, height);
+    };
+    CanvasRenderingContext2D.prototype.fillText = function (text, x, y, maxWidth) {
+      if (this.canvas.classList.contains('board-canvas')) labels.push({ text, x, y });
+      if (maxWidth === undefined) fill.call(this, text, x, y);
+      else fill.call(this, text, x, y, maxWidth);
+    };
+  });
+  await page.goto('/');
+  const canvas = page.getByLabel('編み図編集盤面');
+  await expect(canvas).toBeVisible();
+  const distances = () => canvas.evaluate((element) => {
+    const labels = (window as unknown as { resizeLabels: { text: string; x: number; y: number }[] }).resizeLabels;
+    const col = labels.find(label => label.text === '1' && label.y === 14);
+    const row = labels.find(label => label.text === '1' && label.x === 14);
+    return col && row ? { right: element.clientWidth - col.x - 15, bottom: element.clientHeight - row.y - 15 } : null;
+  });
+  await expect.poll(distances).not.toBeNull();
+  const before = await distances();
+  for (const size of [{ width: 951, height: 669 }, { width: 466, height: 678 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(size);
+    await expect.poll(distances).toEqual(before);
+  }
+  // ウィンドウを固定したまま選択・貼付帯を出しても、盤面のローカル座標は動かない。
+  const position = () => canvas.evaluate(element => {
+    const labels = (window as unknown as { resizeLabels: { text: string; x: number; y: number }[] }).resizeLabels;
+    return {
+      x: labels.find(label => label.text === '10' && label.y === 14)?.x,
+      y: labels.find(label => label.text === '10' && label.x === 14)?.y,
+      width: element.clientWidth,
+    };
+  });
+  const original = await position();
+  await page.getByRole('button', { name: '範囲', exact: true }).click();
+  const box = (await canvas.boundingBox())!;
+  await page.mouse.click(box.x + original.x!, box.y + original.y!);
+  await expect(page.getByRole('button', { name: 'コピーして貼付' })).toBeVisible();
+  await expect.poll(position).toEqual(original);
+  await page.getByRole('button', { name: 'コピーして貼付' }).click();
+  await expect(page.getByRole('toolbar', { name: '貼付の操作' })).toBeVisible();
+  await expect.poll(position).toEqual(original);
+});
+
+test('background preset labels stay on one line and fit the panel', async ({ page }, testInfo) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: '盤面', exact: true }).click();
+  for (const size of [{ width: 320, height: 678 }, { width: 568, height: 320 }, { width: 760, height: 669 }, { width: 951, height: 669 }, { width: 1280, height: 800 }]) {
+    await page.setViewportSize(size);
+    const presets = page.locator('.background-presets');
+    await expect(presets).toBeVisible();
+    const layout = await presets.evaluate(element => {
+      const panel = element.getBoundingClientRect();
+      return [...element.querySelectorAll('button')].map(button => {
+        const range = document.createRange();
+        range.selectNodeContents(button.lastChild!);
+        const rect = button.getBoundingClientRect();
+        return { lines: range.getClientRects().length, fits: rect.left >= panel.left - 1 && rect.right <= panel.right + 1 && button.scrollWidth <= button.clientWidth };
+      });
+    });
+    expect(layout).toEqual(Array.from({ length: 3 }, () => ({ lines: 1, fits: true })));
+    await page.screenshot({ path: testInfo.outputPath(`background-${size.width}.png`) });
+  }
+});

@@ -1,0 +1,39 @@
+# 2026-10-20 — iPhone Duoの折り目をよけ、開閉で盤面の右下を保つ（#96）
+
+- 影響:
+  - iOS 27.1以降で、半分折ったときの折り目（UIKitの`.division`の予約領域、操作用の余白込み）をネイティブ側で読み、Web側へ渡す。折り目があるあいだ、アプリ内ダイアログ（名前の入力・確認・削除）と記号・色の選択は、縦の折り目なら右側、横の折り目なら上側の中央に出す。パネル・通知・処理中の表示・選択と貼付の操作帯は、折り目に重なるときだけ動かし、もとから片側に収まっていれば位置を変えない。折り目が無いとき（ほかのiPhone・iPad、Duoを閉じた・開いたとき）の見た目は変えない。
+  - 盤面は、ウィンドウの大きさが変わったとき（Duoの開閉、回転、ブラウザーのウィンドウの大きさの変更、Split View）に、右下（編み始め）の位置を保つ。これまでは左上を保っていたため、Duoを閉じた状態から開くと、右と下に大きな空白が残った。操作帯やパネルの出し入れで盤面の枠だけが変わったときと、キーボードの表示中は、これまでどおり動かさない。共通コードなのでWeb版にも入る。
+  - 盤面設定の背景色のボタンで、「グレー」が「グレ／ー」と途中で折り返していた。語の途中では折り返さず、幅が足りないときはボタンごとに次の行へ送る。
+- 主なファイル:
+  - `ios/App/FoldRegion.swift`（新規）、`ios/App/WebViewContainer.swift`: `WKWebView`の派生クラスが`reservedRegions(kind: .division)`を読み、変わったときと、編集画面の準備ができたたびに、`knittingEditorNativeFoldChanged`で送る。ヒンジを動かしても`layoutSubviews`は呼ばれないため（Duo Simulatorで確認）、表示中は0.25秒ごとにも読み、同じ値は送らない。iOS 27.1 SDKのAPIは`#if compiler(>=6.4)`と`#available(iOS 27.1, *)`の中だけで使い、CIのXcode 26.6でもビルドできるようにした。
+  - `ios/Web/src/nativeBridge.ts`、`ios/Web/src/nativeFoldLayout.ts`（新規）、`ios/Web/src/main.tsx`、`ios/Web/src/styles.css`: `data-fold`と`--fold-start`・`--fold-end`を付け外しする。折り目があるあいだだけ、重なった重ね表示を測って動かす。
+  - `packages/editor-core/canvas/BoardCanvas.tsx`: `resizeViewport`（ウィンドウの大きさが変わったときだけ、盤面の枠の大きさの差を位置に足す）。
+  - `packages/editor-core/styles/base.css`: 背景色のボタン。
+  - `ios/docs/APP_STORE_CHECKLIST.md`: 提出用のアーカイブをXcode 27.1（iOS 27.1 SDK）以降で作り、アップロード前に`DTSDKName`と`DTXcodeBuild`を確かめる項目を足した。
+  - `ios/docs/NATIVE_BRIDGE.md`、`ios/docs/WEB_SYNC.md`、`ios/knittingEditor.xcodeproj/project.pbxproj`（XcodeGenで再生成）。
+- テスト:
+  - `ios/Tests/KnittingEditorAppTests/FoldRegionTests.swift`: 縦と横の判定、無効・非アクティブな領域の除外、送るJavaScript。
+  - `ios/Web/src/nativeFold.test.ts`: 属性とCSS変数の付け外し、不正な値、折り目があるあいだだけ監視すること、重なったものだけ動かすこと。
+  - `packages/editor-core/canvas/BoardCanvas.test.ts`: `resizeViewport`、操作帯やパネルだけの変化で動かないこと、キーボードを閉じたら元の位置に戻ること。
+  - `tests/e2e/canvas-pointer-and-view.spec.ts`: 狭い幅から広げて戻したときの右下の固定と、選択・貼付の操作帯で盤面が動かないこと。背景色のボタンが1行に収まること（320px〜1280px）。
+  - `tests/e2e/ios-fold-layout.spec.ts`（新規）: 実際のCSSで、折り目（縦・横）とダイアログ・パネル・通知・操作帯の位置を確かめる。
+- 検証（Node v26.8.1。この環境にNode 24が無いため、Node 24での実行はPRのCIに任せた）:
+  - `npm run typecheck`: 成功。
+  - `npm test`: 67ファイル・668件成功。
+  - `npm run build`、`npm run check:dist`: 成功。
+  - `npm run test:e2e`: 477件成功・6件スキップ（Chromium mobile/desktop・WebKit mobile）。途中の版では、操作帯の出し入れでも盤面を動かしていたため、貼付・範囲選択のE2Eが9件失敗した。ウィンドウの大きさが変わったときだけ動かすように直した。
+  - `ios/scripts/build-web.sh`、`(cd ios/Web && ../../node_modules/.bin/tsc -p tsconfig.app.json --noEmit)`: 成功。`(cd ios/Web && ../../node_modules/.bin/vitest run --config vite.config.ts)`: 137件成功。
+  - `xcodegen generate --spec ios/project.yml`、`sh ios/scripts/check-app-store-docs.sh`: 成功。
+  - Xcode 27.1（27A9275、iOS 27.1 SDK）で、iPhone Duo（iOS 27.1）Simulator向けに`xcodebuild ... CODE_SIGNING_ALLOWED=NO build-for-testing`: 成功。`test-without-building -only-testing:knittingEditorTests`: 106件実行、1件スキップ、失敗0。
+  - iPhone Duo Simulator（iOS 27.1）で、DeviceHubのヒンジを動かして手で確かめた。
+    - 閉じた状態（466×678pt）と開いた状態（951×669pt）: 画面の端まで表示され、右上のステータスバーとカメラの列を避けている。閉じた状態では、向きを横に指定しても縦に戻った。
+    - 半分折った状態: `.division`は`x 455.5〜495.5pt`（中央の縦の折り目、左右20ptの余白込み）。修正前は、名前の入力ダイアログが折り目をまたぎ、「キャンセル」が折り目の上にあった。修正後は、折り目より右（約508〜855pt）に出て、キーボードを出し入れしても盤面は元の位置に戻る。編み図・盤面設定・出力のパネルは、修正前と同じ位置。
+    - 閉じた状態から開いたとき: 修正前は左上に寄って、20目×20段のうち12目・14段しか見えなかった。修正後は、閉じる前と同じく右下を基準に表示される。
+    - 盤面設定の「グレー」が1行で表示される。
+    - 開いて90度回した状態（669×951pt）: 画面の端まで表示され、ステータスバーは上に来て、縦長用の配置（下にボタン列）になる。平らに開いているあいだは折り目なし。
+    - 回した向きで半分折った状態（ノートPCの形）: 横の折り目が出る（WebView座標で`y 373.5〜413.5pt`。WebViewは上のセーフエリアを除くので、画面全体では中央の475.5pt）。名前の入力ダイアログは折り目より上に出て、キーボードは下半分に出る。編み図の一覧（下から出るシート）は、もとから折り目より下にあるので動かない。
+    - 開閉や回転の途中では、折り目の値が一瞬だけ前の画面のものになることがあるが、次の読み取り（0.25秒以内）で正しい値に戻る。
+    - Release設定（`-configuration Release`、Xcode 27.1、`DTSDKName`は`iphonesimulator27.1`）でも、閉じた状態で画面の端まで表示される。
+    - 横の折り目の確認では、折り目の値をログに出す行を一時的に足したビルドを使った（コミットしていない）。
+  - 手元で確かめていないこと: iPhone 17とiPad (A16)のSimulatorでの確認は、PRのCI（iPhone）と`ios-full.yml`（iPhone・iPad）に任せた。署名した提出用のアーカイブは、リリースのときにXcode 27.1以降で作る（`APP_STORE_CHECKLIST.md`の項目で確かめる）。
+- デプロイ影響: 共通の盤面とCSSが変わるので、Pagesへ配信される。配信後に、ブラウザーのウィンドウの大きさを変えたときの盤面の位置と、盤面設定の背景色のボタンを確かめる。iOSでは、次の提出ビルドから入る。iPhone Duoで画面の端まで表示するには、提出ビルドをXcode 27.1（iOS 27.1 SDK）以降で作る必要がある（CIのXcodeの更新は#289）。

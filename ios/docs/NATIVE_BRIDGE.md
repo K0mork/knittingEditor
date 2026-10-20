@@ -187,3 +187,13 @@ XCUITestは起動前に`app.launchEnvironment["KNITTING_EDITOR_AUTOSAVE_DELAY_MS
 `DebugEditorConfiguration`とWebViewへの登録はともに`#if DEBUG`内にあり、Releaseには環境変数の読み取り・設定の注入を含めない。DEBUGネイティブはメインフレームの文書開始時に`window.knittingEditorDebugConfiguration = Object.freeze({ autosaveDelayMs: 3600000 })`を渡す。iOS Webはこの値だけを検証してcontroller/sessionへ渡し、URL・localStorage・Webの環境変数からは設定しない。通常のWeb版はこの設定を読まない。
 
 `testDocumentSwitchSavesWithoutAutosave`と`testHomeSavesWithoutAutosave`は編集後の「保存中」を確認し、切替・Home移行の後にDBから再起動復元する。前面へ戻るときも`inactive`を通って`flushPendingSave()`が呼ばれるため、Home移行のテストはアプリを前面へ戻さず、バックグラウンドのまま終了する。検証時には文書切替の`saveNow()`、ネイティブの`flushPendingSave()`経路（Home移行時には呼ばず、前面へ戻ったときだけ呼ぶ変更を含む）をそれぞれ一時的に外し、対応するテストが失敗することを確かめてから必ず戻す。実機でサスペンドまでに保存が完了する保証は別の確認とする。
+
+## 折り目の操作禁止帯（#96）
+
+`FoldAwareWebView`（`App/FoldRegion.swift`）がiOS 27.1以降のアクティブな`.division`をWKWebView自身から取得する。`frame`は操作用の`margins`を含むため、余白を二重に加えない。編集画面のviewportは拡大禁止・初期倍率1なので、WebViewのptをCSS pxとして渡す。縦長の帯をvertical、横長の帯をhorizontalとして扱う。
+
+ネイティブ→Webの`knittingEditorNativeFoldChanged`イベントのdetailは`{ axis: 'vertical' | 'horizontal', start: number, end: number }`、帯がないときは`null`。start/endは縦帯ならx、横帯ならy。`nativeBridge.ts`が有限数と区間を検証し、`document.documentElement`の`data-fold`と`--fold-start`／`--fold-end`（px）を更新する。nullですべて消去する。
+
+レイアウト時に再取得し、サイズやtraitが変わらない姿勢変更にも対応するため、iOS 27.1以降ではwindowに付いている間だけ0.25秒間隔でも取得する。同値は配送しない。古いSDKではコンパイラ条件で新API参照を除外し、iOS 17以降の既存配置を保つ。ページ遷移時に配送を止め、各編集画面の`webReady`後には同じ帯でも必ず再送する。
+
+iOS CSSは、ダイアログと記号・色選択を縦帯の右側、横帯の上側の中央に出す。パネル、通知、処理中の表示、選択・貼付の操作帯は、`nativeFoldLayout.ts`が帯のあるあいだだけ位置を測り、帯と重なるものだけを同じ側へ動かす。もとから帯の片側に収まっていれば位置を変えない。セーフエリアとキーボードによる表示領域縮小を考慮し、内容はスクロール可能にする。ネイティブの保存・共有・エラーアラートはUIKitの配置に委ねる。

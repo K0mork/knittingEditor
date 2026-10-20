@@ -69,3 +69,5 @@ Web版で生成した`.knit`をiOS版で読み込み、iOS側のブリッジ出�
 永続記号ID 1〜29、`STITCH_CATALOG_VERSION`、IndexedDBのDB名、アプリの固定originは、既存fixtureとの互換性を確認せずに変更しない。
 
 トラックパッドの拡大案内は、iOSホストが`useEditorController`へ`pointerZoomGesture: 'pinch'`を渡す。Webホストは省略して従来の修飾キー＋ホイールの案内を保つ。盤面の倍率変更は共通の`zoomBoard` APIで行い、ネイティブイベントの受信・検証はiOS Webだけに置く。
+
+折り姿勢のホスト差分（#96）は`App/FoldRegion.swift`とiOS Webの`nativeBridge.ts`／`nativeFoldLayout.ts`／`main.tsx`／`styles.css`に置く。`knittingEditorNativeFoldChanged`の帯を`data-fold`と`--fold-start`／`--fold-end`へ反映し、ダイアログを縦帯の右・横帯の上へ出し、帯と重なるオーバーレイだけを同じ側へ動かす（詳細は`NATIVE_BRIDGE.md`）。Webホストにはこのイベント購読やCSSを追加しない。キャンバスサイズ変更時の右下固定と背景色ラベルの折り返し防止は共通コードで両ホストに適用する。
