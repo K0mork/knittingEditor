@@ -426,6 +426,25 @@ final class KnittingEditorUITests: XCTestCase {
             .firstMatch.waitForExistence(timeout: 10), app.debugDescription)
     }
 
+    private func drawSaveProbeCell(row: Int, col: Int, count: Int, in app: XCUIApplication) {
+        let canvas = positionSaveProbeCanvas(count: count, in: app)
+        saveProbeCell(row: row, col: col, on: canvas).tap()
+        let drawn = app.webViews.firstMatch.otherElements
+            .matching(NSPredicate(format: "label CONTAINS %@", "記号\(count + 1)個"))
+            .firstMatch
+        if drawn.waitForExistence(timeout: 10) { return }
+        // iPadで静止後のタップでも記号数が変わらなかった。元の個数の盤面がある場合だけ押し直す。
+        let unchanged = app.webViews.firstMatch.otherElements
+            .matching(NSPredicate(format: "label CONTAINS %@", "記号\(count)個"))
+            .firstMatch
+        if unchanged.exists {
+            add(screenshotAttachment(named: "保存検証のマスを押し直す"))
+            let retryCanvas = positionSaveProbeCanvas(count: count, in: app)
+            saveProbeCell(row: row, col: col, on: retryCanvas).tap()
+        }
+        _ = saveProbeCanvas(count: count + 1, in: app)
+    }
+
     private func saveProbeCanvas(count: Int, in app: XCUIApplication) -> XCUIElement {
         let canvas = app.webViews.firstMatch.otherElements
             .matching(NSPredicate(format: "label CONTAINS %@", "記号\(count)個"))
@@ -894,9 +913,7 @@ final class KnittingEditorUITests: XCTestCase {
         _ = positionSaveProbeCanvas(count: 0, in: app)
         let cells = [(8, 12), (8, 13), (9, 12)]
         for (index, cell) in cells.enumerated() {
-            let canvas = positionSaveProbeCanvas(count: index, in: app)
-            saveProbeCell(row: cell.0, col: cell.1, on: canvas).tap()
-            _ = saveProbeCanvas(count: index + 1, in: app)
+            drawSaveProbeCell(row: cell.0, col: cell.1, count: index, in: app)
         }
 
         // 「範囲」で囲み、「ブロック」→「選択範囲をブロック保存」で名前を付けて保存する。
@@ -1900,12 +1917,20 @@ final class KnittingEditorUITests: XCTestCase {
             XCTFail("復元の端末内保存場所を選べない: \(app.debugDescription)")
             return nil
         }
+        waitUntilStill(location)
         location.tap()
 
         let backupFile = app.cells
             .matching(NSPredicate(format: "identifier == %@ OR identifier BEGINSWITH %@", fileName, fileName + "."))
             .firstMatch
-        guard waitForHittable(backupFile, timeout: 30) else {
+        // iPhoneで「Browse」から戻る途中のタップが効かず、保存場所の一覧に残った。
+        // ファイルが押せず、保存場所がまだ画面内で押せる場合だけ押し直す。
+        if !waitForHittable(backupFile, timeout: 10), let retryLocation = waitForLocation(timeout: 2) {
+            add(screenshotAttachment(named: "復元の保存場所を押し直す"))
+            waitUntilStill(retryLocation)
+            retryLocation.tap()
+        }
+        guard waitForHittable(backupFile, timeout: 20) else {
             add(screenshotAttachment(named: "復元のバックアップが見つからない"))
             XCTFail("端末内のバックアップを選べない: \(app.debugDescription)")
             return nil

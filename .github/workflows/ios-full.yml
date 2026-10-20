@@ -67,18 +67,44 @@ jobs:
       - name: Wait for simulator boot
         run: xcrun simctl bootstatus '${{ steps.simulator.outputs.udid }}' -b
       - name: Run iOS tests
-        run: >-
-          xcodebuild test
-          -project ios/knittingEditor.xcodeproj
-          -scheme knittingEditor
-          -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.udid }}'
-          -derivedDataPath "$RUNNER_TEMP/DerivedData"
-          -retry-tests-on-failure
-          -test-iterations 2
-          -test-timeouts-enabled YES
-          -default-test-execution-time-allowance 150
-          -maximum-test-execution-time-allowance 240
-          CODE_SIGNING_ALLOWED=NO
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project ios/knittingEditor.xcodeproj \
+            -scheme knittingEditor \
+            -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.udid }}' \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            -resultBundlePath "$RUNNER_TEMP/TestResults.xcresult" \
+            -retry-tests-on-failure \
+            -test-iterations 2 \
+            -test-timeouts-enabled YES \
+            -default-test-execution-time-allowance 150 \
+            -maximum-test-execution-time-allowance 240 \
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tee "$RUNNER_TEMP/ios-tests.log"
+      # 再試行で成功したケースも、初回失敗の画面写真を調べられるように残す。
+      - name: Detect test case failures
+        id: test_failures
+        if: ${{ !cancelled() }}
+        env:
+          DEVICE: ${{ matrix.device }}
+        run: |
+          if grep -Eq "Test Case '.*' failed \(" "$RUNNER_TEMP/ios-tests.log"; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          fi
+          device="$(printf '%s' "$DEVICE" | tr -cs 'A-Za-z0-9_-' '-')"
+          echo "device=$device" >> "$GITHUB_OUTPUT"
+      - name: Upload failed test results
+        if: ${{ failure() || steps.test_failures.outputs.found == 'true' }}
+        # 調査用の保存に失敗しても、テストの結果は変えない。
+        continue-on-error: true
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: ios-tests-${{ steps.test_failures.outputs.device }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/TestResults.xcresult
+            ${{ runner.temp }}/ios-tests.log
+          retention-days: 7
+          if-no-files-found: ignore
       # テストのためにビルドしたDebugのアプリをそのまま検査する。ビルドし直すと1〜2分かかる。
       - name: Verify generated app bundle
         run: ios/scripts/check-app-bundle.sh "$RUNNER_TEMP/DerivedData/Build/Products/Debug-iphonesimulator/knittingEditor.app"
