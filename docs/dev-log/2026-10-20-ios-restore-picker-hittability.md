@@ -1,0 +1,7 @@
+# 2026-10-20 — 復元のファイル選択で押せるかの判定と置き換えの停止を避ける
+
+- 影響: #274 の3件目（run 39068013765、iPad (A16)）への対処。`testBlockSaveAndFullBackupRestoreFollowGuide` で、復元のファイル選択画面の「On My iPad」に、枠が画面外の要素のまま `isHittable` を問い合わせていた。XCTest はこれを false ではなくテストの失敗（Activation point invalid）として記録するため、押せるかの判定は枠が画面内にあると確かめてから行い、保存場所は一致する要素のうち画面内で押せるものを選ぶ。再試行では前回のファイルを置き換える確認が出て、置き換えの後にファイルプロバイダが「In progress」のまま止まっていた（2件目の再試行も同じ形）。書き出すファイル名をテストごとに一意（`knitting-editor-backup-<8桁>`）にして置き換えを起こさず、復元でもその名前のファイルだけを選ぶ。
+- 主なファイル: `ios/UITests/KnittingEditorUITests/KnittingEditorUITests.swift`
+- テスト: `testBlockSaveAndFullBackupRestoreFollowGuide` と、共通ヘルパー `waitForHittable(_:timeout:)`・`backupFileInOnDeviceLocation(named:in:)` を更新。
+- 検証: 手元（Xcode 26、Node 26.8.1）で `ios/Web` の `tsc -p tsconfig.app.json --noEmit` と `vitest run --config vite.config.ts`（15ファイル132件）、`node scripts/check-pr-smoke-ui-tests.mjs`、`git diff --check`、`xcodegen generate --spec ios/project.yml` が成功。`xcodebuild test -only-testing:knittingEditorUITests/KnittingEditorUITests/testBlockSaveAndFullBackupRestoreFollowGuide -test-iterations 2 -run-tests-until-failure` を iPad (A16)・iOS 26.5 と iPhone 17・iOS 26.5 の Simulator で実行し、どちらも2回続けて成功（2回目は1回目のファイルが端末内に残った状態で、置き換えの確認は出ず、それぞれの回の名前のファイルを選んで復元した）。iPad の最初の実行は、変更箇所より前の盤面への2マス目のタップが効かずに `:433` で失敗した（main と同じコードの部分。再実行では再現せず）。PRのCIとブランチでの `ios-full.yml`（`workflow_dispatch`）の結果はPRに記録する。
+- デプロイ影響: なし。iOSのテストだけで、Pagesへの配信物は変わらない。
