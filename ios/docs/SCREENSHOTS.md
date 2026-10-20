@@ -1,27 +1,37 @@
 # スクリーンショット
 
-## App Store Connect提出サイズ
+## App Store Connect提出用（最終版）
 
-App Store Connectは6.9インチiPhone（1320×2868）と13インチiPad（2064×2752）のスクリーンショットを要求する。以下は2026-09-22にその解像度で取得した素材である。
+2026-10-20に撮り直し、使う画面・枚数・文面を決めた（#290）。App Store Connectが求める6.9インチiPhone（1320×2868）と13インチiPad（2064×2752）のそれぞれに、同じ順で5枚を登録する。
 
-| 対象 | 解像度 | ファイル |
-| --- | ---: | --- |
-| iPhone 6.9インチ（iPhone 16 Pro Max Simulator）編集画面 | 1320×2868 | [app-store-iphone-6.9-editor.png](screenshots/app-store-iphone-6.9-editor.png) |
-| iPad 13インチ（iPad Pro 13-inch M4 Simulator）編集画面 | 2064×2752 | [app-store-ipad-13-editor.png](screenshots/app-store-ipad-13-editor.png) |
-| iPhone 6.9インチ 起動画面 | 1320×2868 | [app-store-iphone-6.9-launch.png](screenshots/app-store-iphone-6.9-launch.png) |
+| 順 | 説明文 | iPhone 6.9インチ | iPad 13インチ |
+| ---: | --- | --- | --- |
+| 1 | 29種類の編み目記号で作る | [app-store-iphone-6.9-01-editor.png](screenshots/app-store-iphone-6.9-01-editor.png) | [app-store-ipad-13-01-editor.png](screenshots/app-store-ipad-13-01-editor.png) |
+| 2 | 記号は一覧から選ぶだけ | [app-store-iphone-6.9-02-stitches.png](screenshots/app-store-iphone-6.9-02-stitches.png) | [app-store-ipad-13-02-stitches.png](screenshots/app-store-ipad-13-02-stitches.png) |
+| 3 | PDFにしてA4で印刷 | [app-store-iphone-6.9-03-export.png](screenshots/app-store-iphone-6.9-03-export.png) | [app-store-ipad-13-03-export.png](screenshots/app-store-ipad-13-03-export.png) |
+| 4 | 背景色を変えて見やすく | [app-store-iphone-6.9-04-background.png](screenshots/app-store-iphone-6.9-04-background.png) | [app-store-ipad-13-04-background.png](screenshots/app-store-ipad-13-04-background.png) |
+| 5 | ダークモードにも対応 | [app-store-iphone-6.9-05-dark.png](screenshots/app-store-iphone-6.9-05-dark.png) | [app-store-ipad-13-05-dark.png](screenshots/app-store-ipad-13-05-dark.png) |
+
+各画面に写っているもの:
+
+1. 編集画面。アラン模様（ケーブル、ねじり目、透かし模様、ゴム編み）の40段×32目の編み図。
+2. 記号の選択画面（基本・減目・交差の分類）。
+3. 出力パネル（PNG、PDFの構成と用紙、バックアップ）。
+4. 背景色を淡いクリーム色（`#fff2d5`、「ほかの色を選ぶ」）にした盤面。iPadは盤面設定のパネルも写る。
+5. ダークモードの編集画面。
 
 取得条件:
 
-- 編集画面は40段×32列の「サンプル編み図」を表示し、盤面が画面いっぱいに広がって余白が出ないことを確認した。iPadで空白が目立った問題は、ビューポートを変えるのではなく盤面の段数・列数を増やして解消している。
-- iPad素材は`TEST_RUNNER_KNITTING_EDITOR_SCREENSHOT_ROWS=40 TEST_RUNNER_KNITTING_EDITOR_SCREENSHOT_COLS=32`を付けて`testPrepareScreenshotBoard`を実行し、「上に段」「右に列」を繰り返し押して盤面を拡大したうえで記号を6個置いて取得した。
-- iPhone素材は同じ内容を再現するため、iPad Simulatorのアプリデータコンテナ配下`Library/WebKit`をiPhone Simulatorへコピーしてから起動して取得した。iPhoneでの`testPrepareScreenshotBoard`実行は数値入力の不安定さで失敗するため、この手順を用いている。
-- 起動画面は`UILaunchScreen`の`LaunchBackground`が全面に出ている状態を取得した。iPadの同等カットは撮影時に「編み図を準備しています。」の読み込み表示へ進んでいたため採用していない。
-- 端末内のテストデータや個人情報は含めていない。ステータスバーはSimulatorの表示を含む。
-- 実機での撮り直しは任意。App Store Connectの解像度要件はこの素材で満たしている。
+- `main`の`aa53a3a`をXcode 27.1でRelease設定でビルドし、Simulatorで撮った。iPhoneはiPhone 18 Pro Max、iPadはiPad Pro 13-inch (M5)で、どちらもiOS 27.0。画面の解像度がそのまま提出サイズになる。撮影用の端末は撮影のあとで削除した。
+- ステータスバーは`xcrun simctl status_bar <端末> override --time 9:41 --dataNetwork wifi --wifiMode active --wifiBars 3 --cellularMode active --cellularBars 4 --batteryState charged --batteryLevel 100`で固定した。
+- 編み図は撮影のために作った「アラン模様のベスト」で、端末内のテストデータや個人情報は含まない。`.knit`で読み込み、名前の「（復元）」を外した。iPhoneでは盤面全体が幅に収まるよう、2本指で縮小して撮った。
+- 4枚目は、iPhoneで背景色を選んだあと、端末内のデータ（アプリのコンテナの`Library/WebKit`）をiPadへ写して撮った。iPadのSimulatorでは「ほかの色を選ぶ」から色の選択画面が開かなかったため（別に調べている）。
+- iPadで外観を切り替えたあとに画面下のホームバーが出たままになったので、Simulatorを再起動してから撮り直した。
+- 説明文の帯と文字は、下の「説明文を入れる（最終版）」の決まりに従って付けた。文字はヒラギノ丸ゴ ProN W4、帯の高さは画像の高さの17%で、画面の部分は残りの高さに合わせて縮小し、左右中央に置いた。
 
 ## 説明文を入れる（最終版）
 
-2026-10-09に、最終版のスクリーンショットには機能を説明する短い文を入れると決めた（#85）。今ある素材には入れず、実機またはTestFlightで最終版を撮り直すときに作る。
+2026-10-09に、最終版のスクリーンショットには機能を説明する短い文を入れると決めた（#85）。2026-10-20に上の5枚で作った。
 
 - 1枚に1つの文を、画面の上の帯に置く。文は全角16文字以内にし、iPhoneの縮小表示でも読める大きさにする。
 - 帯の色はアプリのヘッダーの緑（`#346f42`）、文字は白にする（コントラスト比6.0:1）。
@@ -29,7 +39,7 @@ App Store Connectは6.9インチiPhone（1320×2868）と13インチiPad（2064�
 - 仕上がりの解像度は提出サイズ（iPhone 6.9インチは1320×2868、iPad 13インチは2064×2752）のままにする。
 - 文は、その画面で実際に見せている機能だけを書く。
 
-文の案（撮る画面とあわせて、撮り直すときに決める）:
+文の案（2026-10-20に、6つ目を除く5つを採用した。2つ目は「分類から」を「一覧から」に変えた）:
 
 | 画面 | 文の案 |
 | --- | --- |
