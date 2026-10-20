@@ -1,3 +1,4 @@
+import { observeFoldOverlays } from './nativeFoldLayout';
 import type { SaveFileOutcome } from '@knitting-editor/editor-core/platform';
 import { bytesToBase64 } from '@knitting-editor/editor-core/util/base64';
 
@@ -226,4 +227,47 @@ export function listenNativeZoom(listener: (zoom: { factor: number; x: number; y
   };
   window.addEventListener('knittingEditorNativeZoom', handler);
   return () => window.removeEventListener('knittingEditorNativeZoom', handler);
+}
+
+
+export interface NativeFoldDetail {
+  axis: 'vertical' | 'horizontal';
+  start: number;
+  end: number;
+}
+
+/** WebView座標の操作禁止帯（余白込み）。nullは展開・旧OSを表す。 */
+export function listenNativeFold(): () => void {
+  const root = document.documentElement;
+  let layout: ReturnType<typeof observeFoldOverlays> | undefined;
+  let fold: NativeFoldDetail | undefined;
+  const handler = (event: Event) => {
+    const detail: unknown = (event as CustomEvent<unknown>).detail;
+    if (detail === null) {
+      layout?.stop();
+      layout = undefined;
+      fold = undefined;
+      root.removeAttribute('data-fold');
+      root.style.removeProperty('--fold-start');
+      root.style.removeProperty('--fold-end');
+      return;
+    }
+    if (!detail || typeof detail !== 'object') return;
+    const { axis, start, end } = detail as Partial<NativeFoldDetail>;
+    if ((axis !== 'vertical' && axis !== 'horizontal') ||
+        typeof start !== 'number' || !Number.isFinite(start) ||
+        typeof end !== 'number' || !Number.isFinite(end) || end <= start) return;
+    if (fold?.axis === axis && fold.start === start && fold.end === end) return;
+    fold = { axis, start, end };
+    root.dataset.fold = axis;
+    root.style.setProperty('--fold-start', `${start}px`);
+    root.style.setProperty('--fold-end', `${end}px`);
+    if (layout) layout.update();
+    else layout = observeFoldOverlays();
+  };
+  window.addEventListener('knittingEditorNativeFoldChanged', handler);
+  return () => {
+    window.removeEventListener('knittingEditorNativeFoldChanged', handler);
+    layout?.stop();
+  };
 }

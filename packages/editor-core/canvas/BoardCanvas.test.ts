@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { describe, expect, it, vi } from 'vitest';
 import { Board } from '../model/Board';
 import { STITCHES } from '../stitches/catalog';
-import { zoomViewportAt, type BoardZoom, BoardCanvas, type CanvasMode, canvasCellAt, canvasLabelMetrics, canvasLabels, fitCanvasLabels, initialViewport, clampViewport, glyphSearchStart, LABEL_SIZE, LIGHT_CANVAS_CHROME, readCanvasChrome } from './BoardCanvas';
+import { zoomViewportAt, type BoardZoom, BoardCanvas, type CanvasMode, canvasCellAt, canvasLabelMetrics, canvasLabels, fitCanvasLabels, initialViewport, resizeViewport, clampViewport, glyphSearchStart, LABEL_SIZE, LIGHT_CANVAS_CHROME, readCanvasChrome } from './BoardCanvas';
 
 describe('glyphSearchStart', () => {
   it('includes off-screen anchors whose multi-cell glyph overlaps the viewport', () => {
@@ -330,5 +330,94 @@ describe('host board zoom', () => {
       expect([...board.cells.keys()].filter(index => board.cells[index])).toEqual([cell * board.cols + cell]);
     }, zoomRef);
     expect(zoomRef.current).toBeNull();
+  });
+});
+
+
+describe('resizeViewport', () => {
+  const view = { x: -240, y: -380, cell: 30 };
+  const narrow = { width: 390, height: 477, windowWidth: 390, windowHeight: 844 };
+  const wide = { width: 850, height: 600, windowWidth: 951, windowHeight: 669 };
+  it('anchors the bottom-right through growth and shrinkage without changing zoom', () => {
+    const next = resizeViewport(view, narrow, wide);
+    expect(next).toEqual({ x: 220, y: -257, cell: 30 });
+    expect(wide.width - (next.x + 20 * next.cell)).toBe(narrow.width - (view.x + 20 * view.cell));
+    expect(wide.height - (next.y + 20 * next.cell)).toBe(narrow.height - (view.y + 20 * view.cell));
+    expect(resizeViewport(next, wide, narrow)).toEqual(view);
+  });
+  it('does not move on redraws, board edits or dimension changes at the same canvas size', () => {
+    expect(resizeViewport(view, narrow, narrow)).toBe(view);
+  });
+  it('keeps the top-left when selection/paste bars or panels change only the canvas size', () => {
+    const withBar = { ...narrow, height: narrow.height - 64 };
+    expect(resizeViewport(view, narrow, withBar)).toBe(view);
+    expect(resizeViewport(view, withBar, narrow)).toBe(view);
+    expect(resizeViewport(view, narrow, { ...narrow, width: 300 })).toBe(view);
+  });
+  it('still applies the existing clamp after a resize reaches the movement limit', () => {
+    const next = resizeViewport({ x: 100, y: 100, cell: 30 }, narrow, wide);
+    expect(clampViewport(next, { rows: 20, cols: 20 }, wide)).toEqual({ x: 424, y: 223, cell: 30 });
+  });
+});
+
+
+describe('keyboard viewport resizing', () => {
+  it('restores the same pan after keyboard height changes, including blur before dismissal', () => {
+    const size = { width: 390, height: 477 };
+    for (const [key, dimension] of [['clientWidth', 'width'], ['clientHeight', 'height']] as const) {
+      Object.defineProperty(HTMLCanvasElement.prototype, key, { configurable: true, get: () => size[dimension] });
+    }
+    const labels: unknown[][] = [];
+    const context = new Proxy({}, {
+      get: (_target, key) => key === 'measureText' ? () => ({ width: 10 })
+        : key === 'clearRect' ? () => { labels.length = 0; }
+        : key === 'fillText' ? (...args: unknown[]) => labels.push(args) : () => undefined,
+      set: () => true,
+    });
+    const getContext = vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => context as CanvasRenderingContext2D);
+    const frames: FrameRequestCallback[] = [];
+    vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+    vi.stubGlobal('innerWidth', 390);
+    vi.stubGlobal('innerHeight', 844);
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => frames.push(callback));
+    vi.stubGlobal('cancelAnimationFrame', () => {});
+    const draw = () => act(() => {
+      labels.length = 0;
+      while (frames.length) frames.shift()!(0);
+    });
+    const host = document.createElement('div');
+    const input = document.createElement('input');
+    document.body.append(host, input);
+    const root = createRoot(host);
+    try {
+      act(() => root.render(createElement(BoardCanvas, {
+        board: new Board(20, 20), revision: 0, mode: 'draw', stitchKey: 'knit', color: '#000000',
+        onChange: () => {}, onSelectionChange: () => {}, onPasteComplete: () => {},
+      })));
+      const canvas = host.querySelector('canvas')!;
+      // clamp上限付近のpanで、キーボード中にclampすると復元不能になるケース。
+      act(() => { canvas.dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaX: -100_000, deltaY: -100_000 })); });
+      draw();
+      const before = [...labels];
+      expect(before.length).toBeGreaterThan(0);
+      input.focus();
+      for (const height of [544, 644, 844]) {
+        if (height === 644) input.blur();
+        vi.stubGlobal('innerHeight', height);
+        size.height = height - 367;
+        act(() => window.dispatchEvent(new Event('resize')));
+        draw();
+      }
+      expect(labels).toEqual(before);
+    } finally {
+      act(() => root.unmount());
+      host.remove();
+      input.remove();
+      vi.unstubAllGlobals();
+      getContext.mockRestore();
+      delete (HTMLCanvasElement.prototype as unknown as Record<string, unknown>).clientWidth;
+      delete (HTMLCanvasElement.prototype as unknown as Record<string, unknown>).clientHeight;
+    }
   });
 });

@@ -19,6 +19,7 @@
 		3169FE3B0B8F832ABA6E5440 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 105A34342230A6B324A75809 /* PrivacyInfo.xcprivacy */; };
 		35AE20F80146A380EBA04F4E /* NativeExportResultTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9402DFD62B28E439CE5D3569 /* NativeExportResultTests.swift */; };
 		399AE0908FE88F56457A7A54 /* WebViewContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E643EAB3D8627886E3EDCB9 /* WebViewContainer.swift */; };
+		438AA36230C74148AE41620D /* FoldRegionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F75DCA21EE8D8202C2EF5C4 /* FoldRegionTests.swift */; };
 		4C2C861608AD1B104C9DB85F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 594A6F94A2E8CE6BB9AB667E /* Assets.xcassets */; };
 		59A9148D359B433D6C65D747 /* ReviewRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0EFAC03FE6BC45A5DA5823E /* ReviewRequest.swift */; };
 		72A7C34CF22FD0138A1E8FE7 /* KnittingEditorUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 049604E8F16625AD6FE9AA3F /* KnittingEditorUITests.swift */; };
@@ -36,6 +37,7 @@
 		D9892238D542E5CB61C45169 /* PencilDoubleTapTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D2F05AF7ECD85F71858476E /* PencilDoubleTapTests.swift */; };
 		DA9BED17DD090F6AE8270C7A /* AppAppearanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4FB5A4B7A1BE555D1AC9899 /* AppAppearanceTests.swift */; };
 		E0EFF7BEEF040AF9BD12FE82 /* KnittingEditorUTTypeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8552AECC9B947C62C1E8D5EA /* KnittingEditorUTTypeTests.swift */; };
+		E12262CE2F3E18D05768F37F /* FoldRegion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96055397BDD5D49A99659128 /* FoldRegion.swift */; };
 		F892932BE7BC991009235A25 /* LocalWebSchemeHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2454BC6D34F2448DF141412 /* LocalWebSchemeHandler.swift */; };
 		FB30A9460946E8C504C37373 /* KeyboardCommandUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53DD446B472E9C0F9AFA3887 /* KeyboardCommandUITests.swift */; };
 /* End PBXBuildFile section */
@@ -69,6 +71,7 @@
 		28C75CE32321B186A6C63482 /* PhotoLibraryPermissionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoLibraryPermissionTests.swift; sourceTree = "<group>"; };
 		2B93317921D588395EEBC3EE /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
 		2DA6B84D7E98986674AF1841 /* NativeBridgeMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeBridgeMessage.swift; sourceTree = "<group>"; };
+		2F75DCA21EE8D8202C2EF5C4 /* FoldRegionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoldRegionTests.swift; sourceTree = "<group>"; };
 		4E643EAB3D8627886E3EDCB9 /* WebViewContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebViewContainer.swift; sourceTree = "<group>"; };
 		53DD446B472E9C0F9AFA3887 /* KeyboardCommandUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardCommandUITests.swift; sourceTree = "<group>"; };
 		594A6F94A2E8CE6BB9AB667E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -77,6 +80,7 @@
 		8552AECC9B947C62C1E8D5EA /* KnittingEditorUTTypeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnittingEditorUTTypeTests.swift; sourceTree = "<group>"; };
 		8D40BDC62512CFC6F6D66BE6 /* knittingEditorUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = knittingEditorUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9402DFD62B28E439CE5D3569 /* NativeExportResultTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeExportResultTests.swift; sourceTree = "<group>"; };
+		96055397BDD5D49A99659128 /* FoldRegion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoldRegion.swift; sourceTree = "<group>"; };
 		98B454AC8083B55FA185DB3A /* AppVersionInfoTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppVersionInfoTests.swift; sourceTree = "<group>"; };
 		9D2F05AF7ECD85F71858476E /* PencilDoubleTapTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PencilDoubleTapTests.swift; sourceTree = "<group>"; };
 		9E89D10B53EB561502464406 /* KnittingEditorUTType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnittingEditorUTType.swift; sourceTree = "<group>"; };
@@ -111,6 +115,7 @@
 				98B454AC8083B55FA185DB3A /* AppVersionInfoTests.swift */,
 				B3E0AAB7701C4E04FD2C86CC /* DebugEditorConfigurationTests.swift */,
 				D93AD700CD9A6DD09B7954FA /* EditorCommandsTests.swift */,
+				2F75DCA21EE8D8202C2EF5C4 /* FoldRegionTests.swift */,
 				8552AECC9B947C62C1E8D5EA /* KnittingEditorUTTypeTests.swift */,
 				02EEF60A275DC7E5B3AFEC1E /* LocalWebSchemeHandlerTests.swift */,
 				CAFE539ADB212ECD98B46BDB /* NativeBridgeMessageTests.swift */,
@@ -178,6 +183,7 @@
 				594A6F94A2E8CE6BB9AB667E /* Assets.xcassets */,
 				1E9A702EF5C4040F4F0BAA9A /* DebugEditorConfiguration.swift */,
 				1BE0512F4A649A8674295FF1 /* EditorCommands.swift */,
+				96055397BDD5D49A99659128 /* FoldRegion.swift */,
 				B879541A0716033B76781073 /* Info.plist */,
 				2B93317921D588395EEBC3EE /* InfoPlist.xcstrings */,
 				79CFD1A36C16A062BF1E7D49 /* KnittingEditorApp.swift */,
@@ -361,6 +367,7 @@
 				0DE1D11CC92E583D999981AC /* AppVersionInfo.swift in Sources */,
 				1E84BBE06411D78A8D072E98 /* DebugEditorConfiguration.swift in Sources */,
 				C5FA6A020534C03488B4AF1D /* EditorCommands.swift in Sources */,
+				E12262CE2F3E18D05768F37F /* FoldRegion.swift in Sources */,
 				80BB0B545C49794374C7C699 /* KnittingEditorApp.swift in Sources */,
 				2A22B31E4E848E4416DE5D2E /* KnittingEditorUTType.swift in Sources */,
 				F892932BE7BC991009235A25 /* LocalWebSchemeHandler.swift in Sources */,
@@ -380,6 +387,7 @@
 				18C56518B8BB0104B9D6DD6A /* AppVersionInfoTests.swift in Sources */,
 				045433B5AD27209C1BAE831C /* DebugEditorConfigurationTests.swift in Sources */,
 				904BFF04951D603EA988ED53 /* EditorCommandsTests.swift in Sources */,
+				438AA36230C74148AE41620D /* FoldRegionTests.swift in Sources */,
 				E0EFF7BEEF040AF9BD12FE82 /* KnittingEditorUTTypeTests.swift in Sources */,
 				D7C5FF536E7363BAD27BC269 /* LocalWebSchemeHandlerTests.swift in Sources */,
 				D3CA49E4EE8BA3B56DA80D0E /* NativeBridgeMessageTests.swift in Sources */,

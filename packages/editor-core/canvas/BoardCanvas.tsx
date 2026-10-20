@@ -75,6 +75,15 @@ export function clampViewport(view: Viewport, board: Pick<Board, 'rows' | 'cols'
   const y = clamp(view.y, centerY - (board.rows - 0.5) * view.cell, centerY - 0.5 * view.cell);
   return x === view.x && y === view.y ? view : { ...view, x, y };
 }
+type CanvasLayout = { width: number; height: number; windowWidth: number; windowHeight: number };
+
+/** ウィンドウが変わった場合だけ、キャンバス右下から編み始めまでの距離を保つ。 */
+export function resizeViewport(view: Viewport, previous: CanvasLayout, next: CanvasLayout): Viewport {
+  if (previous.windowWidth === next.windowWidth && previous.windowHeight === next.windowHeight) return view;
+  if (previous.width === next.width && previous.height === next.height) return view;
+  return { ...view, x: view.x + next.width - previous.width, y: view.y + next.height - previous.height };
+}
+
 /** 初回は倍率を変えず、編み始めの右下まで見える位置に寄せる。 */
 export function initialViewport(cell: number, board: Pick<Board, 'rows' | 'cols'>, canvas: { width: number; height: number }, band = LABEL_SIZE): Viewport {
   return clampViewport({
@@ -186,6 +195,8 @@ function rasterLine(from: Point, to: Point): Point[] {
 export function BoardCanvas(props: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const frameRef = useRef(0);
+  const canvasSizeRef = useRef<CanvasLayout | undefined>(undefined);
+  const keyboardResizeRef = useRef(false);
   const viewportRef = useRef<Viewport>({ x: LABEL_SIZE + 8, y: LABEL_SIZE + 8, cell: 30 });
   const initializedBoardRef = useRef<Board | undefined>(undefined);
   const pointerButtonsRef = useRef(new Map<number, number>());
@@ -226,6 +237,7 @@ export function BoardCanvas(props: Props) {
     if (initializedBoardRef.current === board || width <= band || height <= band) return;
     viewportRef.current = initialViewport(viewportRef.current.cell, board, { width, height }, band);
     initializedBoardRef.current = board;
+    canvasSizeRef.current = { width, height, windowWidth: window.innerWidth, windowHeight: window.innerHeight };
   };
 
   const requestDraw = () => {
@@ -261,7 +273,20 @@ export function BoardCanvas(props: Props) {
     // 画面の大きさ（回転・可変ウィンドウ）や段数・列数、編み図が変わると、
     // 今の位置が範囲の外になることがあるので、描くたびに範囲へ戻す。
     placeInitialViewport(width, height, band);
-    viewportRef.current = clampViewport(viewportRef.current, board, { width, height }, band);
+    const next = { width, height, windowWidth: window.innerWidth, windowHeight: window.innerHeight };
+    const previous = canvasSizeRef.current;
+    const editing = document.activeElement?.matches('input, textarea, [contenteditable="true"]') ?? false;
+    // WKWebViewのキーボードはinnerHeightも縮める。閉じる途中のblur後も元の高さまで待ち、
+    // 一時的なclampでpan位置が失われるのを防ぐ。幅が変わる回転等は通常のリサイズに戻す。
+    keyboardResizeRef.current = !!previous && previous.windowWidth === next.windowWidth
+      && next.windowHeight < previous.windowHeight && (editing || keyboardResizeRef.current);
+    if (!keyboardResizeRef.current) {
+      if (width > band && height > band) {
+        if (previous) viewportRef.current = resizeViewport(viewportRef.current, previous, next);
+        canvasSizeRef.current = next;
+      }
+      viewportRef.current = clampViewport(viewportRef.current, board, { width, height }, band);
+    }
     const view = viewportRef.current;
     const firstCol = Math.max(0, Math.floor((-view.x + band) / view.cell));
     const firstRow = Math.max(0, Math.floor((-view.y + band) / view.cell));
@@ -321,6 +346,7 @@ export function BoardCanvas(props: Props) {
     const observer = new ResizeObserver(requestDraw);
     observer.observe(canvas);
     observer.observe(document.documentElement);
+    window.addEventListener('resize', requestDraw);
     const fontObserver = new MutationObserver(requestDraw);
     fontObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['style', 'class'] });
     const scheme = window.matchMedia?.('(prefers-color-scheme: dark)');
@@ -329,6 +355,7 @@ export function BoardCanvas(props: Props) {
     scheme?.addEventListener?.('change', updateChrome);
     return () => {
       observer.disconnect();
+      window.removeEventListener('resize', requestDraw);
       fontObserver.disconnect();
       scheme?.removeEventListener?.('change', updateChrome);
       cancelAnimationFrame(frameRef.current);
