@@ -193,9 +193,7 @@ describe('restore with edits during import', () => {
     expect(editor.session.dirty).toBe(true);
     expect(editor.session.canUndo).toBe(true);
     expect(editor.panel).toBe('export');
-    expect(editor.message).toBe(outcome === 'failed'
-      ? '1件の編み図を復元しました。変更を保存できなかったため、編み図を切り替えませんでした。バックアップを保存してください。'
-      : '1件の編み図を復元しました。編集中のため、編み図を切り替えませんでした。');
+    expect(editor.message).toBe('1件を復元しました。編集中の編み図が未保存のため、切り替えていません。');
     expect(editor.session.documents.find((document) => document.name === `${source.name}（復元）`)).toBeDefined();
     expect((await database.listDocuments()).find((document) => document.name === `${source.name}（復元）`)).toBeDefined();
     expect(track).toHaveBeenCalledWith('backup_restored', { document_count_bucket: '1' });

@@ -388,8 +388,8 @@ export function useEditorController(options: EditorControllerOptions) {
       const switched = result.documents[0] ? await switchDocument(result.documents[0]) : 'switched';
       analytics.track('backup_restored', { document_count_bucket: countBucket(result.count) });
       const restored = `${result.count}件の編み図を復元しました`;
-      if (switched === 'failed') notify(`${restored}。変更を保存できなかったため、編み図を切り替えませんでした。バックアップを保存してください。`);
-      else if (switched === 'pending') notify(`${restored}。編集中のため、編み図を切り替えませんでした。`);
+      // 保存失敗は上部の帯がバックアップを勧めるので、ここでは切り替えなかったことだけを伝える。
+      if (switched === 'failed' || switched === 'pending') notify(`${result.count}件を復元しました。編集中の編み図が未保存のため、切り替えていません。`);
       else if (switched !== 'switched') notify(`${restored}。復元した編み図を開けませんでした。もう一度お試しください。`);
       else notify(restored);
     } catch (error) { reportFailure('backup_restore', error); }
