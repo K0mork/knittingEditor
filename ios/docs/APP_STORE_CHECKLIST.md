@@ -30,10 +30,11 @@
 - [ ] 1000×1000盤面のメモリ、PNG拒否、PDF出力時間を記録する。
 - Simulator／Webでの1000×1000保存復元・PDF基準値は[`SIMULATOR_PERFORMANCE_BASELINE.md`](SIMULATOR_PERFORMANCE_BASELINE.md)に記録済み（実機/TestFlight確認の代替ではない）。
 - [ ] TestFlight内部テストでクラッシュログとメモリ警告を確認する。
-- [ ] App Store ConnectのApp Privacy回答をPrivacy Manifestと照合する。
+- [ ] App Store ConnectのApp Privacy回答をPrivacy Manifestと照合し、「データを収集しない」と入力する（`docs/APP_STORE_METADATA.md`の「App Store Connectの質問への回答」）。
+- [ ] 第三者のコンテンツの権利、DSAの事業者申告、審査の連絡先、サインインの要否、価格を、`docs/APP_STORE_METADATA.md`の「App Store Connectの質問への回答」のとおり入力する。審査の連絡先の値はルートの`private/APP_STORE_CONNECT.md`。
 - [ ] Privacy Policy URLをApp Store Connectへ登録し、公開状態を確認する。
 - [ ] 外部のアドレスから`support@knittingeditor.com`へ送ったメールが届き、同じアドレスから返信できることを確かめてから、サポートURL`https://knittingeditor.com/support/`をApp Store Connectへ登録する。
-- [ ] 審査メモへ`docs/APP_REVIEW_NOTES.md`の要点を転記する。
+- [ ] 審査メモへ`docs/APP_REVIEW_NOTES.md`の要点を英語と日本語で転記する。
 - [ ] App Store Connectの「著作権」欄に「2026 K0mork」を入力し、販売元が加入者の法的氏名で表示されることを確かめる（`docs/APP_STORE_METADATA.md`の「販売元と著作権表記」）。
 - [ ] 年齢制限の質問票に`docs/APP_STORE_METADATA.md`の「年齢制限の質問票」のとおり回答し、4+になることを確かめる。
 - [ ] App Store Connectの配信地域からEU加盟国と中国本土を外す（`docs/APP_STORE_METADATA.md`の「配信地域」）。
