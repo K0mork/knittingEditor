@@ -148,7 +148,7 @@ window.knittingEditorAppInfo = Object.freeze({ "build": "1", "version": "1.0" })
 
 AirDropや他のアプリの共有から受け取った`.knit`は、`Documents/Inbox`への複製となる。読み込み後に複製を削除して端末内へ蓄積させない。削除対象は`Documents/Inbox`配下とDocument Pickerが一時領域へ作る複製に限り、利用者の原本は削除しない。
 
-編集画面以外（使い方ページ）を表示している間はバックアップイベントの購読者が存在しないため、`didCommit`で配送を保留し、編集画面が再び`webReady`を送ってから配送する。
+起動直後の`webReady`前（WebViewの接続前を含む）は、バックアップイベントとネイティブのエラー通知（`knittingEditorNativeError`）を保留する。編集画面以外（使い方ページ）を表示している間も購読するReactが存在しないため、`didCommit`で配送を保留し、編集画面が再び`webReady`を送ってから配送する。保留はバックアップ・エラーそれぞれ最後の1件だけとし、同じ種類の新しい通知で古い通知を置き換える。両方ある場合は保持している通知の発生順に配送し、配送前に保留を消すことで一度だけ送る。使い方ページから再び戻っても配送済みの通知は再送しない。書き出し結果（`knittingEditorNativeExportFinished`）の扱いは変更しない。
 
 ## 互換fixture
 
@@ -178,7 +178,7 @@ App Storeの評価は、StoreKitのシステムの依頼画面（`AppStore.reque
 
 ## 実機確認
 
-iPad Air（第5世代）は2026-09-22、iPhone 17は2026-10-09に、PNG・PDF・`.knit`のFiles保存、共有、`.knit`の復元を確認済みである。異常系は一部を確認済みだが、存在しないファイルは再現手順がなく未確認で、両端末での残りの確認とTestFlight提出ビルドによる最終往復が残る。詳細とリリース判定は`REAL_DEVICE_RELEASE_CHECKLIST.md`を正とする。
+iPad Air（第5世代）は2026-09-22、iPhone 17は2026-10-09に、PNG・PDF・`.knit`のFiles保存、共有、`.knit`の復元を確認済みである。異常系は一部を確認済みである。欠損ファイルの例外処理、Files・共有（`readIncomingBackup`／`handleIncomingURL`）とDocument Pickerのエラー通知、起動直後・使い方ページ表示中の保留と準備後の一度だけの配送は、`NativeErrorDeliveryTests`で検証する。実機ではiPhone・iPadで、読み込み直前にLLDBからテスト用ファイルを削除する手順と、未ダウンロードのiCloud Driveファイルをオフラインで開く手順の確認、およびTestFlight提出ビルドによる最終往復が残る。単体テスト名、手順の詳細とリリース判定は`REAL_DEVICE_RELEASE_CHECKLIST.md`のM3を正とする。
 
 ## DEBUGの自動保存遅延（#196）
 
