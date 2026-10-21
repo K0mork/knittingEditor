@@ -14,11 +14,15 @@
 ## 2. 個人で加入し、承認を待つ
 
 1. [Appleの加入案内](https://developer.apple.com/help/account/membership/program-enrollment/)から、個人として申し込む。Apple Accountの2ファクタ認証を確認し、本人確認・支払いを進める。販売元の表示は[販売元と著作権表記](APP_STORE_METADATA.md#販売元と著作権表記)の決定に従う。
-2. 支払い直後に先へ進めるとは限らない。本人確認や処理を含め、通常1〜2日かかりうる目安で承認を待つ（所要時間は保証されない）。追加確認が来たらAppleの案内に従う。
+2. 契約・支払い前にも[本人確認](https://developer.apple.com/jp/help/account/membership/identity-verification/)が入る。氏名・電話番号・住所に加え、場合によって身分証等が求められる。「登録手続きを続けるには、Appleまでお問い合わせください」と表示された場合は、審査中の表示だけを見て待機せず、画面の問い合わせ先から追加対応を確認する。
+   - 問い合わせは「メンバーシップとアカウント」→「プログラムの登録」へ進み、連絡方法を選ぶ。入力値、問い合わせ下書き、受付番号やAppleからの返信はメインチェックアウトの `private/ACCOUNTS.md` に記録する。
+   - 購入後も有効化まで処理がある。[公式案内](https://developer.apple.com/jp/help/account/membership/program-enrollment/)の「購入後24時間以内に確認が届かなければ問い合わせる」という目安は、支払い前の本人確認の所要時間ではない。追加確認が来たらAppleの案内に従う。
 3. メンバーシップの有効化を確認し、App Store Connectへ入れるようになったら、#17の署名確認へ進む。支払いだけで#17を完了にしない。
 
 - **完了の目安:** 加入が承認され、有料のDeveloper TeamをXcodeで選べる。
 - **関係するIssue／項目:** [#17の決定](https://github.com/K0mork/knittingEditor/issues/17#issuecomment-5947707637)、提出チェックリスト「Apple Developer Team、Bundle ID、署名証明書、Provisioning Profile」。
+
+2026-10-21の状況: Webで個人情報を入力した後、登録申請が審査中となり、登録を続けるためAppleへの問い合わせを求められた。契約・支払い・メンバーシップ有効化は未完了。問い合わせの準備とその後の対応を#17で追跡し、署名確認の項目は未完了のままとする。非公開の経緯と下書きはメインチェックアウトの `private/ACCOUNTS.md` に記録する。
 
 ## 3. XcodeでAutomatic署名を設定する
 
