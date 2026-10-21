@@ -96,6 +96,13 @@ test('initial narrow view draws stitch 1 and row 1 labels and retains zoom on re
     return labels.some((label) => label.text === '1' && label.y === 14 && label.x > 28)
       && labels.some((label) => label.text === '1' && label.x === 14 && label.y > 28);
   })).toBe(true);
+  const cellSize = () => page.evaluate(() => {
+    const labels = (window as unknown as { canvasNumberLabels: { text: string; x: number; y: number }[] }).canvasNumberLabels;
+    const columns = labels.filter((label) => label.y === 14).sort((a, b) => a.x - b.x);
+    if (columns.length < 2) return 0;
+    return (columns[1].x - columns[0].x) / (Number(columns[0].text) - Number(columns[1].text));
+  });
+  await expect.poll(cellSize).toBe(30);
   // モバイルWebKitではpage.mouse.wheelが使えないので、ほかのテストと同じくCtrl付きのwheelを送る。
   await canvas.evaluate((element) => {
     const rect = element.getBoundingClientRect();
@@ -103,12 +110,6 @@ test('initial narrow view draws stitch 1 and row 1 labels and retains zoom on re
       bubbles: true, cancelable: true, ctrlKey: true, deltaY: -100,
       clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2,
     }));
-  });
-  const cellSize = () => page.evaluate(() => {
-    const labels = (window as unknown as { canvasNumberLabels: { text: string; x: number; y: number }[] }).canvasNumberLabels;
-    const columns = labels.filter((label) => label.y === 14).sort((a, b) => a.x - b.x);
-    if (columns.length < 2) return 0;
-    return (columns[1].x - columns[0].x) / (Number(columns[0].text) - Number(columns[1].text));
   });
   await expect.poll(cellSize).toBeCloseTo(30 * Math.exp(0.2), 5);
   const zoomedCellSize = await cellSize();
@@ -119,7 +120,7 @@ test('initial narrow view draws stitch 1 and row 1 labels and retains zoom on re
   await expect.poll(cellSize).toBeCloseTo(zoomedCellSize, 5);
   // 回転相当の幅変更後にも編集盤面と名前が維持される。
   await page.setViewportSize({ width: 844, height: 390 });
-  await expect(canvas).toHaveAttribute('aria-label', /20段、20目/);
+  await expect(canvas).toHaveAttribute('aria-label', /150段、60目/);
   await expect.poll(cellSize).toBeCloseTo(zoomedCellSize, 5);
 });
 

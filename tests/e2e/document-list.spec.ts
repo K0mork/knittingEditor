@@ -26,13 +26,14 @@ test('shows each chart with a thumbnail and its update time, and refreshes both 
   await openDocuments(page);
   const item = page.locator('.document').first();
   // 読み上げでは名前・寸法・更新日時の順に読む。
-  const open = page.getByRole('button', { name: /^新しい編み図、20段×20目、更新 今日 \d{1,2}:\d{2}$/ });
+  const open = page.getByRole('button', { name: /^新しい編み図、150段×60目、更新 今日 \d{1,2}:\d{2}$/ });
   await expect(open).toBeVisible();
   await expect(item.locator('time')).toHaveText(/^更新 今日 \d{1,2}:\d{2}$/);
   await expect(item.locator('.document-thumbnail')).toHaveAttribute('aria-hidden', 'true');
-  await expect(item.locator('.document-thumbnail')).toHaveJSProperty('width', 20);
-  // 枠より小さい縮小画像は、セルの境目をぼかさずに拡大する。
-  await expect(item.locator('.document-thumbnail')).toHaveCSS('image-rendering', 'pixelated');
+  await expect(item.locator('.document-thumbnail')).toHaveJSProperty('width', 30);
+  await expect(item.locator('.document-thumbnail')).toHaveJSProperty('height', 75);
+  // 150段を2段ずつ1画素にまとめ、枠に収めるときは滑らかに縮める。
+  await expect(item.locator('.document-thumbnail')).toHaveCSS('image-rendering', 'auto');
   // 空の盤面は全面が白。
   await expect.poll(() => item.locator('.document-thumbnail').evaluate((canvas: HTMLCanvasElement) =>
     canvas.getContext('2d')!.getImageData(0, 0, 1, 1).data[3])).toBe(255);
@@ -90,7 +91,7 @@ test('keeps the rename, duplicate and delete buttons easy to press beside a long
   }
 
   // 複製した編み図も縮小画像を持ち、開くと切り替わる。
-  const copy = page.getByRole('button', { name: /^とても長い名前.*のコピー、20段×20目、更新 / });
+  const copy = page.getByRole('button', { name: /^とても長い名前.*のコピー、150段×60目、更新 / });
   await copy.click();
   await expect(page.locator('.app-document-name')).toContainText('のコピー');
 });

@@ -69,7 +69,11 @@ export async function listDocuments(): Promise<ChartDocument[]> {
   return values.sort(compareDocuments);
 }
 
-export async function createDocument(name = '新しい編み図', rows = 20, cols = 20): Promise<ChartDocument> {
+/** 新しく作る編み図の大きさ。既存の編み図は保存済みの段数・目数のまま開く。 */
+export const DEFAULT_CHART_ROWS = 150;
+export const DEFAULT_CHART_COLS = 60;
+
+export async function createDocument(name = '新しい編み図', rows = DEFAULT_CHART_ROWS, cols = DEFAULT_CHART_COLS): Promise<ChartDocument> {
   const board = new Board(rows, cols);
   const now = Date.now();
   const document: ChartDocument = {

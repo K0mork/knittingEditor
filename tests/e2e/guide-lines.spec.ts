@@ -1,3 +1,4 @@
+import { resizeBoardFromInitialView } from './board-helpers';
 import { expect, test, type Page } from './fixtures';
 
 async function savedLines(page: Page) {
@@ -25,6 +26,8 @@ for (const input of ['tap', 'drag'] as const) {
     await page.goto('/');
     const canvas = page.getByLabel('編み図編集盤面');
     await expect(canvas).toBeVisible();
+    // 線の端とPNGの画素を、再読み込みの前後で同じ座標で比べるため、20×20の初期表示から始める。
+    await resizeBoardFromInitialView(page, 20, 20);
     await page.getByRole('button', { name: '線', exact: true }).click();
     const box = (await canvas.boundingBox())!;
     const start = { x: box.x + 81, y: box.y + 81 };
