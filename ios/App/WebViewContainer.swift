@@ -9,8 +9,20 @@ import UniformTypeIdentifiers
 @Observable
 final class WebViewModel {
     @ObservationIgnored weak var webView: WKWebView?
-    private var pendingBackup: (data: Data, filename: String)?
-    /// バックアップイベントを購読するReactが動作中かどうか。
+    private enum PendingDelivery {
+        case backup(Data, String)
+        case error(String)
+    }
+
+    /// バックアップとエラーをそれぞれ最新1件だけ、発生した順に保持する。
+    /// 画面の表示には使わない。`updateUIView`から呼ぶ`attach`で書き換えても再描画を起こさないよう、観測の対象から外す。
+    @ObservationIgnored private var pendingDeliveries: [PendingDelivery] = []
+    @ObservationIgnored private var isFlushingDeliveries = false
+    /// テストではWebViewへ送るスクリプトを記録する。
+    @ObservationIgnored var evaluateScript: (WKWebView, String) -> Void = { webView, script in
+        webView.evaluateJavaScript(script, completionHandler: nil)
+    }
+    /// バックアップとエラーのイベントを購読するReactが動作中かどうか。
     private(set) var webContentReady = false
     /// 編集画面の読み込み待ちを利用者へ伝えるかどうか。使い方ページのように
     /// `webReady`を送らない同梱ページでは表示しない。
@@ -33,7 +45,7 @@ final class WebViewModel {
             isPreparingEditor = true
         }
         self.webView = webView
-        flushPendingBackupIfReady()
+        flushPendingDeliveriesIfReady()
     }
 
     func webContentDidBecomeReady() {
@@ -44,10 +56,10 @@ final class WebViewModel {
             isPreparingEditor = false
         }
         hasShownEditor = true
-        flushPendingBackupIfReady()
+        flushPendingDeliveriesIfReady()
     }
 
-    /// 使い方ページなどへ遷移すると、バックアップイベントを購読するReactは
+    /// 使い方ページなどへ遷移すると、バックアップとエラーのイベントを購読するReactは
     /// 一度破棄される。新しい文書が`webReady`を送るまで配送を保留する。
     func webContentDidStartNavigation(to url: URL?) {
         webContentReady = false
@@ -61,13 +73,14 @@ final class WebViewModel {
         return path.isEmpty || path == "/" || path == "/index.html"
     }
 
-    func handleIncomingURL(_ url: URL) {
+    @discardableResult
+    func handleIncomingURL(_ url: URL) -> Task<Void, Never>? {
         guard url.pathExtension.lowercased() == "knit" else {
             presentError("対応していないファイル形式です")
-            return
+            return nil
         }
         // iCloud Driveの原本は読む前にダウンロードされることがあるので、画面を止めないよう別のスレッドで読む。
-        Task { @MainActor in
+        return Task { @MainActor in
             let result = await Task.detached { Result { try Self.readIncomingBackup(at: url) } }.value
             switch result {
             case .success(let data):
@@ -106,24 +119,21 @@ final class WebViewModel {
 
     /// WebViewが準備できていない間は保留し、`webReady`到着後に一度だけ配送する。
     func deliverBackup(_ data: Data, filename: String) {
-        guard let webView, webContentReady else {
-            pendingBackup = (data: data, filename: filename)
-            return
+        pendingDeliveries.removeAll {
+            if case .backup = $0 { return true }
+            return false
         }
-        dispatchBackup(to: webView, data: data, filename: filename)
+        pendingDeliveries.append(.backup(data, filename))
+        flushPendingDeliveriesIfReady()
     }
 
     func presentError(_ message: String) {
-        guard let webView else {
-            NSLog("Web側へ通知できないネイティブエラー: %@", message)
-            return
+        pendingDeliveries.removeAll {
+            if case .error = $0 { return true }
+            return false
         }
-        guard let jsonData = try? JSONSerialization.data(withJSONObject: message, options: [.fragmentsAllowed]),
-              let json = String(data: jsonData, encoding: .utf8) else { return }
-        webView.evaluateJavaScript(
-            "window.dispatchEvent(new CustomEvent('knittingEditorNativeError',{detail:\(json)}));",
-            completionHandler: nil
-        )
+        pendingDeliveries.append(.error(message))
+        flushPendingDeliveriesIfReady()
     }
 
     /// 書き出しを保存・共有し終えたか、取りやめたかをWebへ返す（#122）。
@@ -181,16 +191,35 @@ final class WebViewModel {
             presentError("バックアップを渡せませんでした")
             return
         }
-        webView.evaluateJavaScript(
-            "window.dispatchEvent(new CustomEvent('knittingEditorNativeBackupSelected',{detail:\(json)}));",
-            completionHandler: nil
+        evaluateScript(
+            webView,
+            "window.dispatchEvent(new CustomEvent('knittingEditorNativeBackupSelected',{detail:\(json)}));"
         )
     }
 
-    private func flushPendingBackupIfReady() {
-        guard webContentReady, let webView, let pendingBackup else { return }
-        self.pendingBackup = nil
-        dispatchBackup(to: webView, data: pendingBackup.data, filename: pendingBackup.filename)
+    private func dispatchError(to webView: WKWebView, message: String) {
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: message, options: [.fragmentsAllowed]),
+              let json = String(data: jsonData, encoding: .utf8) else { return }
+        evaluateScript(
+            webView,
+            "window.dispatchEvent(new CustomEvent('knittingEditorNativeError',{detail:\(json)}));"
+        )
+    }
+
+    private func flushPendingDeliveriesIfReady() {
+        // 配送中に`presentError`が呼ばれても入れ子で配送せず、保留の置き換えと発生順をこのループで守る。
+        guard !isFlushingDeliveries, webContentReady, webView != nil, !pendingDeliveries.isEmpty else { return }
+        isFlushingDeliveries = true
+        defer { isFlushingDeliveries = false }
+        while webContentReady, let webView, !pendingDeliveries.isEmpty {
+            // 先に保留から外し、次の`webReady`で同じ通知を再送しない。
+            switch pendingDeliveries.removeFirst() {
+            case let .backup(data, filename):
+                dispatchBackup(to: webView, data: data, filename: filename)
+            case let .error(message):
+                dispatchError(to: webView, message: message)
+            }
+        }
     }
 }
 
