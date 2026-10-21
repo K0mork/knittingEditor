@@ -136,7 +136,7 @@ describe('EditorView', () => {
       expect(row?.querySelector('small')?.textContent).toBe('2段×5目');
       await click('閉じる');
       await click('編み図');
-      expect(container.querySelector('.document-list')?.textContent).toContain('20段×20目');
+      expect(container.querySelector('.document-list')?.textContent).toContain('150段×60目');
     } finally {
       await deleteBlock(block.id);
     }
@@ -389,17 +389,17 @@ describe('EditorView', () => {
 
     await click('盤面');
     await click('上に段');
-    expect(boardLabel()).toContain('21段');
+    expect(boardLabel()).toContain('151段');
     expect(undo.disabled).toBe(false);
 
     await act(async () => { undo.click(); });
-    expect(boardLabel()).toContain('20段');
+    expect(boardLabel()).toContain('150段');
     expect(undo.disabled).toBe(true);
     expect(redo.disabled).toBe(false);
     expect(container.querySelector('.toast')?.textContent).toBe('元に戻しました');
 
     await act(async () => { redo.click(); });
-    expect(boardLabel()).toContain('21段');
+    expect(boardLabel()).toContain('151段');
     expect(undo.disabled).toBe(false);
 
     await click('閉じる');

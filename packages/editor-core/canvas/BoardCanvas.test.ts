@@ -289,6 +289,201 @@ describe('initial view timing', () => {
   });
 });
 
+describe('initial view resizing', () => {
+  type Interaction = 'pan' | 'wheel zoom' | 'host zoom' | 'touch gesture';
+  const recoveryOrders = ['innerHeight first', 'canvas first', 'together'] as const;
+
+  const withCanvas = (width: number, test: (canvas: {
+    size: { width: number; height: number };
+    labels: { text: string; x: number; y: number }[];
+    input: HTMLInputElement;
+    render: (board: Board) => void;
+    resize: () => void;
+    interact: (interaction: Interaction) => void;
+    expectStart: () => void;
+  }) => void) => {
+    const size = { width, height: 540 };
+    for (const [key, dimension] of [['clientWidth', 'width'], ['clientHeight', 'height']] as const) {
+      Object.defineProperty(HTMLCanvasElement.prototype, key, { configurable: true, get: () => size[dimension] });
+    }
+    const labels: { text: string; x: number; y: number }[] = [];
+    const context = new Proxy({}, {
+      get: (_target, key) => key === 'measureText' ? () => ({ width: 10 })
+        : key === 'clearRect' ? () => { labels.length = 0; }
+        : key === 'fillText' ? (text: string, x: number, y: number) => labels.push({ text, x, y }) : () => undefined,
+      set: () => true,
+    });
+    const getContext = vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => context as CanvasRenderingContext2D);
+    const frames: FrameRequestCallback[] = [];
+    let notifyResize = () => {};
+    vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+    vi.stubGlobal('innerWidth', width);
+    vi.stubGlobal('innerHeight', 874);
+    vi.stubGlobal('ResizeObserver', class {
+      constructor(callback: () => void) { notifyResize = callback; }
+      observe() {}
+      disconnect() {}
+    });
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => frames.push(callback));
+    vi.stubGlobal('cancelAnimationFrame', () => {});
+    const draw = () => act(() => { while (frames.length) frames.shift()!(0); });
+    const host = document.createElement('div');
+    const input = document.createElement('input');
+    document.body.append(host, input);
+    const root = createRoot(host);
+    const zoomRef = createRef<BoardZoom>();
+    const render = (board: Board) => {
+      act(() => root.render(createElement(BoardCanvas, {
+        zoomRef, board, revision: 0, mode: 'draw', stitchKey: 'knit', color: '#000000',
+        onChange: () => {}, onSelectionChange: () => {}, onPasteComplete: () => {},
+      })));
+      draw();
+    };
+    try {
+      render(new Board(20, 20));
+      const canvas = host.querySelector('canvas')!;
+      canvas.setPointerCapture = () => {};
+      vi.spyOn(canvas, 'getBoundingClientRect').mockImplementation(() => ({
+        left: 0, top: 0, right: size.width, bottom: size.height, width: size.width, height: size.height,
+      } as DOMRect));
+      test({
+        size, labels, input, render,
+        resize: () => { act(notifyResize); draw(); },
+        expectStart: () => expect(labels.filter(({ text }) => text === '1')).toEqual([
+          { text: '1', x: size.width - 23, y: LABEL_SIZE / 2 },
+          { text: '1', x: LABEL_SIZE / 2, y: size.height - 23 },
+        ]),
+        interact: (interaction) => {
+          if (interaction === 'pan' || interaction === 'wheel zoom') {
+            act(() => canvas.dispatchEvent(new WheelEvent('wheel', {
+              bubbles: true, cancelable: true, clientX: width - 40, clientY: 200,
+              deltaX: 45, deltaY: 30, ctrlKey: interaction === 'wheel zoom',
+            })));
+          } else if (interaction === 'host zoom') {
+            act(() => zoomRef.current!.zoom(0.8, { x: width - 40, y: 200 }));
+          } else {
+            const pointer = (type: string, id: number, x: number) => act(() => {
+              const event = new Event(type, { bubbles: true });
+              Object.assign(event, { pointerId: id, pointerType: 'touch', clientX: x, clientY: 150, button: 0 });
+              canvas.dispatchEvent(event);
+            });
+            pointer('pointerdown', 1, width - 180);
+            pointer('pointerdown', 2, width - 80);
+            pointer('pointermove', 2, width - 100);
+            pointer('pointerup', 2, width - 100);
+            pointer('pointerup', 1, width - 180);
+          }
+          draw();
+        },
+      });
+    } finally {
+      act(() => root.unmount());
+      host.remove();
+      input.remove();
+      vi.unstubAllGlobals();
+      getContext.mockRestore();
+      delete (HTMLCanvasElement.prototype as unknown as Record<string, unknown>).clientWidth;
+      delete (HTMLCanvasElement.prototype as unknown as Record<string, unknown>).clientHeight;
+    }
+  };
+
+  it.each([402, 1000].flatMap((width) => recoveryOrders.map((order) => ({ width, order }))))(
+    'places board B at the recovered bottom-right at $width px with $order', ({ width, order }) => {
+      withCanvas(width, ({ size, labels, input, render, resize, expectStart }) => {
+        // Aを全高で描いてから名前入力で縮める。新規Bは同じcanvasで初期配置される。
+        input.focus();
+        vi.stubGlobal('innerHeight', 574);
+        size.height = 240;
+        resize();
+        render(new Board(150, 60));
+        expectStart();
+        input.blur();
+        if (order === 'innerHeight first') {
+          vi.stubGlobal('innerHeight', 874);
+          resize();
+          expectStart();
+        } else if (order === 'canvas first') {
+          size.height = 540;
+          resize();
+          expectStart();
+        }
+        vi.stubGlobal('innerHeight', 874);
+        // 途中の高さでは復帰待ちを解除しない。
+        if (order === 'innerHeight first') { size.height = 340; resize(); }
+        size.height = 540;
+        resize();
+        expectStart();
+        const recovered = [...labels];
+        // 再配置は一度だけ。その後のcanvasだけの拡大では段1の位置を保つ。
+        size.height = 600;
+        resize();
+        expect(labels).toEqual(recovered);
+        size.height = 540;
+        resize();
+        expectStart();
+      });
+    },
+  );
+
+  it.each(recoveryOrders.flatMap((order) =>
+    (['pan', 'wheel zoom', 'host zoom', 'touch gesture'] as const).map((interaction) => ({ order, interaction })),
+  ))('keeps the user view after $interaction with $order', ({ order, interaction }) => {
+    withCanvas(402, ({ size, labels, input, render, resize, interact }) => {
+      input.focus();
+      vi.stubGlobal('innerHeight', 574);
+      size.height = 240;
+      resize();
+      render(new Board(150, 60));
+      interact(interaction);
+      const before = [...labels];
+      expect(before.filter(({ text }) => text === '1')).toHaveLength(2);
+      input.blur();
+      if (order === 'innerHeight first') {
+        vi.stubGlobal('innerHeight', 874);
+        resize();
+      } else if (order === 'canvas first') {
+        size.height = 540;
+        resize();
+      }
+      vi.stubGlobal('innerHeight', 874);
+      size.height = 540;
+      resize();
+      // 同時復帰では高さ差だけ移動し、別々の復帰では既存clampの中央制限だけを適用する。
+      // 上側に新しく見える番号は増えるため、操作時に見えた番号の座標と間隔を比較する。
+      const firstRow = before.find(({ text, x }) => text === '1' && x === LABEL_SIZE / 2)!;
+      const dy = order === 'together' ? 300 : Math.max(0, (LABEL_SIZE + size.height) / 2 - firstRow.y);
+      for (const label of before) {
+        const actual = labels.find(({ text, x, y }) => text === label.text
+          && (label.x === LABEL_SIZE / 2 ? x === LABEL_SIZE / 2 : y === LABEL_SIZE / 2));
+        expect(actual).toBeDefined();
+        expect(actual!.x).toBeCloseTo(label.x);
+        expect(actual!.y).toBeCloseTo(label.y + (label.x === LABEL_SIZE / 2 ? dy : 0));
+      }
+      expect(firstRow.y + dy).not.toBe(size.height - 23);
+    });
+  });
+
+  it.each([402, 1000].flatMap((width) => [150, 1000].map((rows) => ({ width, rows }))))(
+    'keeps local coordinates when only selection bars or panels resize a $rows-row canvas at $width px', ({ width, rows }) => {
+      withCanvas(width, ({ size, labels, render, resize }) => {
+        render(new Board(rows, 60));
+        // 段10・目10は帯が出ても表示内に残るため、クリップの変化と移動を区別できる。
+        const tenthLabels = () => labels.filter(({ text }) => text === '10');
+        const before = [...tenthLabels()];
+        expect(before).toHaveLength(2);
+        for (const next of [
+          { width, height: 468 }, { width, height: 540 },
+          { width: width - 64, height: 540 }, { width, height: 540 },
+        ]) {
+          Object.assign(size, next);
+          resize();
+          expect(tenthLabels()).toEqual(before);
+        }
+      });
+    },
+  );
+});
+
 describe('zoomViewportAt', () => {
   const view = { x: -40, y: 10, cell: 30 };
   const position = { x: 240, y: 180 };

@@ -380,20 +380,23 @@ final class KnittingEditorUITests: XCTestCase {
         return canvas
     }
 
-    // BoardCanvas.initialViewport/clampViewportと同じ変換で、20×20、既定30pxの
+    // BoardCanvas.initialViewport/clampViewportと同じ変換で、新規作成の150段×60目、既定30pxの
     // セルの中心を指定する。画面サイズに対する割合では同じセルを指定できない。
+    // 初期表示は編み始めの右下に寄るので、`row`と`col`は右下の20×20の範囲での位置で指定する。
     private func saveProbeCell(row: Int, col: Int, on canvas: XCUIElement) -> XCUICoordinate {
         let size = canvas.frame.size
         let band: CGFloat = 28
         let cell: CGFloat = 30
-        let cells: CGFloat = 20
-        func origin(_ extent: CGFloat) -> CGFloat {
+        let rows = 150, cols = 60, window = 20
+        func origin(_ extent: CGFloat, cells: Int) -> CGFloat {
             let center = (extent + band) / 2
-            let initial = min(band + 8, extent - 8 - cells * cell)
-            return min(center - cell / 2, max(center - (cells - 0.5) * cell, initial))
+            let initial = min(band + 8, extent - 8 - CGFloat(cells) * cell)
+            return min(center - cell / 2, max(center - (CGFloat(cells) - 0.5) * cell, initial))
         }
-        let point = CGVector(dx: origin(size.width) + (CGFloat(col) + 0.5) * cell,
-                             dy: origin(size.height) + (CGFloat(row) + 0.5) * cell)
+        let boardRow = rows - window + row
+        let boardCol = cols - window + col
+        let point = CGVector(dx: origin(size.width, cells: cols) + (CGFloat(boardCol) + 0.5) * cell,
+                             dy: origin(size.height, cells: rows) + (CGFloat(boardRow) + 0.5) * cell)
         XCTAssertTrue(point.dx > band && point.dx < size.width
                       && point.dy > band && point.dy < size.height,
                       "セルが表示範囲外 row=\(row) col=\(col) frame=\(canvas.frame)")
@@ -795,18 +798,8 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
         createDocument(named: "サンプル編み図", in: app)
 
-        // 数値欄への入力はキャレット位置が安定しないため、追加ボタンを繰り返し押す。
-        app.buttons["盤面"].tap()
-        let addRow = app.buttons["上に段"]
-        XCTAssertTrue(addRow.waitForExistence(timeout: 15), app.debugDescription)
-        for _ in 0..<max(0, rows! - 20) { addRow.tap() }
-        for _ in 0..<max(0, cols! - 20) { app.buttons["右に列"].tap() }
-
-        let resized = app.webViews.firstMatch.otherElements
-            .matching(NSPredicate(format: "label CONTAINS %@", "\(rows!)段、\(cols!)目"))
-            .firstMatch
-        XCTAssertTrue(resized.waitForExistence(timeout: 60), "盤面を\(rows!)×\(cols!)にできない: \(app.debugDescription)")
-        app.buttons["閉じる"].tap()
+        // 新規作成の150段×60目から、指定の大きさへ広げることも縮めることもある。
+        let resized = resizeBoard(rows: rows!, cols: cols!, in: app)
 
         // 記号を置いて編み図らしい見た目にする。
         for (dx, dy) in [(0.30, 0.35), (0.38, 0.35), (0.46, 0.35), (0.34, 0.45), (0.42, 0.45), (0.38, 0.55)] {

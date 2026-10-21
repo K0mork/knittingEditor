@@ -93,9 +93,26 @@ test('initial narrow view draws stitch 1 and row 1 labels and retains zoom on re
   await expect(canvas).toBeVisible();
   await expect.poll(() => page.evaluate(() => {
     const labels = (window as unknown as { canvasNumberLabels: { text: string; x: number; y: number }[] }).canvasNumberLabels;
-    return labels.some((label) => label.text === '1' && label.y === 14 && label.x > 28)
-      && labels.some((label) => label.text === '1' && label.x === 14 && label.y > 28);
+    // 帯の幅は段番号の文字幅で広がる（150段の「150」はフォントによって既定の28pxに収まらない）。
+    // 目の番号はすべて帯の中央の高さに並ぶので、最も多いyを帯の中央とする。
+    const counts = new Map<number, number>();
+    for (const label of labels) counts.set(label.y, (counts.get(label.y) ?? 0) + 1);
+    const center = [...counts].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 14;
+    return labels.some((label) => label.text === '1' && label.y === center && label.x > center * 2)
+      && labels.some((label) => label.text === '1' && label.x === center && label.y > center * 2);
   })).toBe(true);
+  const cellSize = () => page.evaluate(() => {
+    const labels = (window as unknown as { canvasNumberLabels: { text: string; x: number; y: number }[] }).canvasNumberLabels;
+    // 帯の幅は段番号の文字幅で広がる（150段の「150」はフォントによって既定の28pxに収まらない）。
+    // 目の番号はすべて帯の中央の高さに並ぶので、最も多いyを帯の中央とする。
+    const counts = new Map<number, number>();
+    for (const label of labels) counts.set(label.y, (counts.get(label.y) ?? 0) + 1);
+    const center = [...counts].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 14;
+    const columns = labels.filter((label) => label.y === center).sort((a, b) => a.x - b.x);
+    if (columns.length < 2) return 0;
+    return (columns[1].x - columns[0].x) / (Number(columns[0].text) - Number(columns[1].text));
+  });
+  await expect.poll(cellSize).toBe(30);
   // モバイルWebKitではpage.mouse.wheelが使えないので、ほかのテストと同じくCtrl付きのwheelを送る。
   await canvas.evaluate((element) => {
     const rect = element.getBoundingClientRect();
@@ -103,12 +120,6 @@ test('initial narrow view draws stitch 1 and row 1 labels and retains zoom on re
       bubbles: true, cancelable: true, ctrlKey: true, deltaY: -100,
       clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2,
     }));
-  });
-  const cellSize = () => page.evaluate(() => {
-    const labels = (window as unknown as { canvasNumberLabels: { text: string; x: number; y: number }[] }).canvasNumberLabels;
-    const columns = labels.filter((label) => label.y === 14).sort((a, b) => a.x - b.x);
-    if (columns.length < 2) return 0;
-    return (columns[1].x - columns[0].x) / (Number(columns[0].text) - Number(columns[1].text));
   });
   await expect.poll(cellSize).toBeCloseTo(30 * Math.exp(0.2), 5);
   const zoomedCellSize = await cellSize();
@@ -119,7 +130,7 @@ test('initial narrow view draws stitch 1 and row 1 labels and retains zoom on re
   await expect.poll(cellSize).toBeCloseTo(zoomedCellSize, 5);
   // 回転相当の幅変更後にも編集盤面と名前が維持される。
   await page.setViewportSize({ width: 844, height: 390 });
-  await expect(canvas).toHaveAttribute('aria-label', /20段、20目/);
+  await expect(canvas).toHaveAttribute('aria-label', /150段、60目/);
   await expect.poll(cellSize).toBeCloseTo(zoomedCellSize, 5);
 });
 
@@ -210,8 +221,13 @@ test('keeps the knitting start anchored to the canvas bottom-right when opening 
   await expect(canvas).toBeVisible();
   const distances = () => canvas.evaluate((element) => {
     const labels = (window as unknown as { resizeLabels: { text: string; x: number; y: number }[] }).resizeLabels;
-    const col = labels.find(label => label.text === '1' && label.y === 14);
-    const row = labels.find(label => label.text === '1' && label.x === 14);
+    // 帯の幅は段番号の文字幅で広がる（150段の「150」はフォントによって既定の28pxに収まらない）。
+    // 目の番号はすべて帯の中央の高さに並ぶので、最も多いyを帯の中央とする。
+    const counts = new Map<number, number>();
+    for (const label of labels) counts.set(label.y, (counts.get(label.y) ?? 0) + 1);
+    const center = [...counts].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 14;
+    const col = labels.find(label => label.text === '1' && label.y === center);
+    const row = labels.find(label => label.text === '1' && label.x === center);
     return col && row ? { right: element.clientWidth - col.x - 15, bottom: element.clientHeight - row.y - 15 } : null;
   });
   await expect.poll(distances).not.toBeNull();
@@ -223,9 +239,14 @@ test('keeps the knitting start anchored to the canvas bottom-right when opening 
   // ウィンドウを固定したまま選択・貼付帯を出しても、盤面のローカル座標は動かない。
   const position = () => canvas.evaluate(element => {
     const labels = (window as unknown as { resizeLabels: { text: string; x: number; y: number }[] }).resizeLabels;
+    // 帯の幅は段番号の文字幅で広がる（150段の「150」はフォントによって既定の28pxに収まらない）。
+    // 目の番号はすべて帯の中央の高さに並ぶので、最も多いyを帯の中央とする。
+    const counts = new Map<number, number>();
+    for (const label of labels) counts.set(label.y, (counts.get(label.y) ?? 0) + 1);
+    const center = [...counts].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 14;
     return {
-      x: labels.find(label => label.text === '10' && label.y === 14)?.x,
-      y: labels.find(label => label.text === '10' && label.x === 14)?.y,
+      x: labels.find(label => label.text === '10' && label.y === center)?.x,
+      y: labels.find(label => label.text === '10' && label.x === center)?.y,
       width: element.clientWidth,
     };
   });

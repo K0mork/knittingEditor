@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { resizeBoard } from './board-helpers';
 import { packCell } from '../../packages/editor-core/model/Board';
 import { STITCH_BY_KEY } from '../../packages/editor-core/stitches/catalog';
 import { expect, test, type Page } from './fixtures';
@@ -60,7 +61,7 @@ for (const saveDelay of [0, 1_400]) {
       await expectAutosaveDelayed(page);
     }
     const storedBefore = await storedCells(page);
-    expect(storedBefore.cells.length * Uint32Array.BYTES_PER_ELEMENT).toBe(1600);
+    expect(storedBefore.cells.length * Uint32Array.BYTES_PER_ELEMENT).toBe(150 * 60 * Uint32Array.BYTES_PER_ELEMENT);
     await page.reload();
     await expect(page.getByText('新しい編み図', { exact: false })).toBeVisible();
     await expect.poll(async () => (await storedCells(page)).cells).toEqual(storedBefore.cells);
@@ -168,7 +169,7 @@ test('keeps the board on screen when scrolled far, with edge cells reaching the 
   await expect.poll(async () => {
     const { rows, cols, filled } = await storedCells(page);
     return { rows, cols, filled };
-  }).toEqual({ rows: 20, cols: 20, filled: [0, 20 * 20 - 1] });
+  }).toEqual({ rows: 150, cols: 60, filled: [0, 150 * 60 - 1] });
 });
 
 test('keeps the board on screen when dragged far with two fingers', async ({ page }) => {
@@ -200,7 +201,7 @@ test('keeps the board on screen when dragged far with two fingers', async ({ pag
   await expect.poll(async () => {
     const { rows, cols, filled } = await storedCells(page);
     return { rows, cols, filled };
-  }).toEqual({ rows: 20, cols: 20, filled: [20 * 20 - 1] });
+  }).toEqual({ rows: 150, cols: 60, filled: [150 * 60 - 1] });
 });
 
 test('matches the guidance to the input method and hides the gesture hint after about ten seconds', async ({ page }, testInfo) => {
@@ -497,8 +498,9 @@ type BoardOrigin = { x: number; y: number; canvasX: number; canvasY: number };
 /** `row`段目・`col`目のマスの中央のページ座標。 */
 const cellCenter = (origin: BoardOrigin, row: number, col: number) => ({ x: origin.x + col * CELL, y: origin.y + row * CELL });
 
-// 初期盤面は20×20マスで、記号は1段目（上から2段目）の1・2（2目幅）・4目に置く。
+// 盤面を20×20マスにそろえ、記号は1段目（上から2段目）の1・2（2目幅）・4目に置く。
 async function drawRealContent(page: Page) {
+  await resizeBoard(page, 20, 20);
   const origin = await placeBoardOrigin(page);
   for (const [name, color, col] of [['表目', '#c83264', 1], ['右上2目一度', '#2468ac', 2], ['白くする', '#abcdef', 4]] as const) {
     await page.getByRole('button', { name: '編み目記号を選ぶ', exact: true }).click();
@@ -671,15 +673,15 @@ test('undoes and redoes a stroke and a grid change, then saves the result', asyn
   await page.getByRole('button', { name: '盤面' }).click();
   await page.getByRole('button', { name: '上に段' }).click();
   await page.getByRole('button', { name: '閉じる' }).click();
-  await expect.poll(async () => (await readStored()).rows).toBe(21);
+  await expect.poll(async () => (await readStored()).rows).toBe(151);
 
   await page.keyboard.press('ControlOrMeta+z');
-  await expect.poll(readStored).toEqual({ filled: drawn.filled, rows: 20 });
+  await expect.poll(readStored).toEqual({ filled: drawn.filled, rows: 150 });
 
   await page.keyboard.press('ControlOrMeta+z');
   await page.keyboard.press('ControlOrMeta+z');
   await expect(undo).toBeDisabled();
-  await expect.poll(readStored).toEqual({ filled: 0, rows: 20 });
+  await expect.poll(readStored).toEqual({ filled: 0, rows: 150 });
 });
 
 test('keeps the cast-on row when the row count grows and shrinks again', async ({ page }) => {
@@ -696,10 +698,10 @@ test('keeps the cast-on row when the row count grows and shrinks again', async (
 
   // 盤面設定の段数変更は増減のどちらでも上端側で行う。往復しても段番号は変わらない。
   await page.getByRole('button', { name: '盤面' }).click();
-  await page.getByLabel('段数').fill('25');
+  await page.getByLabel('段数').fill('155');
   await page.getByRole('button', { name: '変更' }).click();
-  await expect.poll(async () => (await readFilled()).rows).toBe(25);
-  await page.getByLabel('段数').fill('20');
+  await expect.poll(async () => (await readFilled()).rows).toBe(155);
+  await page.getByLabel('段数').fill('150');
   await page.getByRole('button', { name: '変更' }).click();
   await expect.poll(readFilled).toEqual(before);
 });
@@ -753,7 +755,7 @@ test('resizes to one million cells without creating cell DOM nodes', async ({ pa
 test('describes the board and the current mode for assistive technology', async ({ page }) => {
   const canvas = page.getByLabel('編み図編集盤面');
   await expect(canvas).toHaveAttribute('role', 'region');
-  await expect(canvas).toHaveAttribute('aria-label', /20段、20目。記号0個。描画モード。選択範囲なし/);
+  await expect(canvas).toHaveAttribute('aria-label', /150段、60目。記号0個。描画モード。選択範囲なし/);
   await expect(page.locator('#board-instructions')).toHaveText(/現在は描画モードです/);
   await expect(canvas).toHaveAttribute('aria-describedby', 'board-instructions');
 
@@ -994,7 +996,7 @@ test('keeps cleared size inputs empty and applies dimensions on change', async (
     await field.pressSequentially(value);
     await expect(field).toHaveValue(value);
   }
-  await expect(page.getByLabel('編み図編集盤面')).toHaveAttribute('aria-label', /20段、20目/);
+  await expect(page.getByLabel('編み図編集盤面')).toHaveAttribute('aria-label', /150段、60目/);
   await page.getByRole('button', { name: '変更', exact: true }).click();
   await expect(page.getByLabel('編み図編集盤面')).toHaveAttribute('aria-label', /25段、30目/);
   for (const label of ['段数', '列数']) {

@@ -1,0 +1,22 @@
+# 2026-10-21 — 新しい編み図の既定の大きさを150段×60目にする
+
+- 影響:
+  - Web版・iOS版共通で、「新しい編み図」で作る編み図と、初回起動で編み図が1件も無いときに作る最初の編み図を、20段×20目から150段×60目にした（`DEFAULT_CHART_ROWS`・`DEFAULT_CHART_COLS`）。既存の編み図は保存済みの段数・目数と記号のまま開き、保存形式・IndexedDBの版・旧Web版からの移行は変えていない。ブラウザやアプリのストレージにだけある（バックアップしていない）編み図は上書きされない。
+  - 盤面の初期位置: 名前入力のキーボードで表示領域が縮んでいる間に新しい編み図を開くと、初期位置が縮んだ領域に合わせて決まり、キーボードが閉じたあと1段目が画面の中ほどに残って下が空いた（20×20では範囲の制限で下端に戻っていたため目立たず、150段で表に出た。iPhone 17のSimulatorで変更前のビルドと比べて確かめた）。初期位置を置く直前の表示領域より小さい領域で置いたときだけ、利用者が動かす・拡大縮小する前に表示領域が戻ったら一度だけ置き直す。範囲選択・貼付の帯やパネルの開閉で表示領域だけが変わるときに盤面が動かない、という既存の挙動は変えていない。
+- 主なファイル: `packages/editor-core/storage/database.ts`、`packages/editor-core/canvas/BoardCanvas.tsx`
+- テスト:
+  - Vitest: `storage/database.test.ts`（新規作成と初回起動が150×60、記号を置いた既存の20×20の編み図が初期化後も大きさ・記号とも残り、IDが重ならない）、`canvas/BoardCanvas.test.ts`（キーボード中に新しい編み図を開き、innerHeightとcanvasのどちらが先に戻っても編み始めが右下に見える、戻る前に動かしたら置き直さない、帯やパネルで表示領域だけが変わっても盤面のローカル座標は動かない）、`ui/EditorView.test.tsx`（既定の大きさの表示）
+  - Playwright（新規）: `tests/e2e/stored-chart-preservation.spec.ts`。以前の版が保存したのと同じ形の編み図2件（37段×23目・8段×120目。色・複数マスの記号・地の色・線を含む）とブロック1件、開いていた編み図の設定を、アプリが起動する前にIndexedDBへ直接書き込む（値はspec内の固定値で、今のコードから作らない）。起動・切り替え・2回の再読み込みのあと、一覧の件数と大きさ、盤面の段数・目数・記号数、保存レコードのcellsのバイト列を含む全項目が元のままであることを確かめる。今後の変更でも、ストレージにだけある編み図が上書き・変形・削除されないことをCIで毎回確かめるためのテスト。
+  - Playwright（更新）: 20×20の初期盤面を前提にしていた`canvas-pointer-and-view`・`document-list`・`editor`・`guide-lines`の15件。既定の大きさ自体を確かめるもの（一覧の表示、aria-label、初期表示、段の増減、端までの移動）は150×60を期待するように変え、マスの座標や画素を固定で比べるもの（コピー、PNGとバックアップ、線）は`tests/e2e/board-helpers.ts`で盤面を20×20にそろえてから始める。線のテストは、大きさを変えた盤面が変更前の表示位置を引き継ぐため、保存を待って再読み込みし20×20の初期表示から始める。
+  - XCUITest: `KnittingEditorUITests.swift`の保存検証のマス座標を150段×60目の初期表示に合わせ（右下の20×20の範囲で指定）、撮影用の盤面準備は「盤面」パネルの段数・列数で大きさを変える（150×60から縮める場合もある）。
+- 検証（手元、Node.js 26.8.1。AGENTS.mdの指定のNode.js 24はこのMacに入っていないため、Node.js 24での確認はPRのCIに任せる）:
+  - `npm run typecheck`: 成功
+  - `npm test`: 69ファイル・732件成功
+  - `npm run build`、`npm run check:dist`: 成功
+  - `npm run test:e2e`: Chromium（mobile・desktop）とWebKit（mobile）で518件成功、7件は条件付きで飛ばすテスト
+  - `tests/e2e/stored-chart-preservation.spec.ts`が壊れを検出できること: `initializeStorage`を一時的に、既存の編み図があっても新しい編み図を作るように変えると失敗し（開いた盤面が150段・60目・記号0個）、既存の編み図の記号を消して保存するように変えても失敗した（保存レコードの不一致）。どちらも元に戻し、戻したあと3プロジェクトで成功した。
+  - `ios/Web`で`../../node_modules/.bin/tsc -p tsconfig.app.json --noEmit`と`../../node_modules/.bin/vitest run --config vite.config.ts`: 成功（16ファイル・139件）
+  - iOS: `xcodegen generate`、Debugの`build`と`build-for-testing`（KE verify iPhone、iPhone 17・iOS 27.0）: 成功。同じ端末で、アプリを入れ直して初回起動の編み図と「新しい編み図」がどちらも150段×60目になること、新しい編み図を作った直後に1段目が表示領域の下端に収まること（修正前は中ほどに残った）、変更前のビルドでは20段×20目で下端に収まることを画面写真で確かめた。写真は手元に保存し、リポジトリには入れていない。
+  - iOSのUIテストは手元で実行していない。PRのCI（iPhoneの単体テストとUIスモーク）とマージ後の`ios-full.yml`に任せる。
+- PRのCIで直したこと: `web`ジョブ（Linux）で`canvas-pointer-and-view.spec.ts`の「initial narrow view draws stitch 1 and row 1 labels…」と「keeps the knitting start anchored…」が3プロジェクトとも失敗した。150段では最も長い段番号が「150」になり、Linuxのフォントでは文字幅が既定の帯（28px）に収まらず、帯が広がる（仕様どおり）。テストは番号が帯の中央の14pxに描かれる前提だったため、描かれた番号から帯の中央を読むように直した。手元で`measureText`の「150」の幅を26pxにして帯を広げると、直す前のテストは失敗し、直したテストは3プロジェクトで成功した（確認用の一時specは削除済み）。`npx playwright test tests/e2e/canvas-pointer-and-view.spec.ts`: 27件成功。
+- デプロイ影響: Pagesへ配信され、iOS版の同梱Webにも入る。配信後は https://knittingeditor.com/ で、既存の編み図が元の大きさのまま開くことと、「新しい編み図」が150段×60目で作られ編み始めが右下に見えることを確かめる。

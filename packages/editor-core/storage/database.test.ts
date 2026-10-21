@@ -172,6 +172,28 @@ describe('document persistence', () => {
     expect(initialized.documents.map((document) => document.id)).toContain(first.id);
   });
 
+  it('creates new charts at 150 rows by 60 columns without resizing existing charts', async () => {
+    // バックアップしていない、ブラウザのストレージにだけある以前の既定の大きさの編み図。
+    const existing = await createDocument('以前の既定の大きさ', 20, 20);
+    const drawn = new Board(20, 20);
+    drawn.place(19, 19, 'knit', '#123456', false);
+    await saveDocument(existing, drawn);
+    const created = await createDocument();
+    expect([created.rows, created.cols]).toEqual([150, 60]);
+    expect(created.id).not.toBe(existing.id);
+    expect(boardFromDocument(created).cells).toHaveLength(150 * 60);
+
+    const initialized = await initializeStorage();
+    const kept = initialized.documents.find((document) => document.id === existing.id);
+    expect([kept?.rows, kept?.cols]).toEqual([20, 20]);
+    expect(boardFromDocument(kept!).valueAt(19, 19)).toBe(drawn.valueAt(19, 19));
+
+    // 初回起動で編み図が一つも無いときに作る最初の編み図も、新しい大きさにする。
+    for (const document of await listDocuments()) await deleteDocument(document.id);
+    const firstLaunch = await initializeStorage();
+    expect(firstLaunch.documents.map((document) => [document.rows, document.cols])).toEqual([[150, 60]]);
+  });
+
   it('persists a 1000x1000 board and restores its packed cells', async () => {
     const document = await createDocument('最大盤面', 1, 1);
     const board = new Board(1000, 1000);

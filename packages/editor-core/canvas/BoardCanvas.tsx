@@ -200,6 +200,7 @@ export function BoardCanvas(props: Props) {
   const keyboardResizeRef = useRef(false);
   const viewportRef = useRef<Viewport>({ x: LABEL_SIZE + 8, y: LABEL_SIZE + 8, cell: 30 });
   const initializedBoardRef = useRef<Board | undefined>(undefined);
+  const initialViewportRecoveryRef = useRef<{ width: number; height: number } | undefined>(undefined);
   const pointerButtonsRef = useRef(new Map<number, number>());
   const strokeStartedRef = useRef(false);
   const pointersRef = useRef(new Map<number, PointerPosition>());
@@ -233,11 +234,16 @@ export function BoardCanvas(props: Props) {
 
   /**
    * 初めて表示する編み図を、表示領域の大きさが分かった時点で編み始めの右下が見える位置に置く。
-   * 一度置いた編み図には二度と適用しないので、利用者が動かした位置や倍率は上書きしない。
+   * 一時的に縮んだ領域で置いた場合だけ、利用者が動かす前の復帰時に一度置き直す。
    */
   const placeInitialViewport = (width: number, height: number, band: number) => {
     const board = propsRef.current.board;
     if (initializedBoardRef.current === board || width <= band || height <= band) return;
+    const previous = canvasSizeRef.current;
+    // キーボード中はkeyboardResizeRefにより縮む前のサイズが残る。上書き前に比較し、
+    // innerHeightとcanvasのどちらが先に戻っても、canvas自体の復帰を待つ。
+    initialViewportRecoveryRef.current = previous && (width < previous.width || height < previous.height)
+      ? { width: previous.width, height: previous.height } : undefined;
     viewportRef.current = initialViewport(viewportRef.current.cell, board, { width, height }, band);
     initializedBoardRef.current = board;
     canvasSizeRef.current = { width, height, windowWidth: window.innerWidth, windowHeight: window.innerHeight };
@@ -285,7 +291,15 @@ export function BoardCanvas(props: Props) {
       && next.windowHeight < previous.windowHeight && (editing || keyboardResizeRef.current);
     if (!keyboardResizeRef.current) {
       if (width > band && height > band) {
-        if (previous) viewportRef.current = resizeViewport(viewportRef.current, previous, next);
+        if (previous) {
+          const recovery = initialViewportRecoveryRef.current;
+          if (recovery && width >= recovery.width && height >= recovery.height) {
+            viewportRef.current = initialViewport(viewportRef.current.cell, board, { width, height }, band);
+            initialViewportRecoveryRef.current = undefined;
+          } else {
+            viewportRef.current = resizeViewport(viewportRef.current, previous, next);
+          }
+        }
         canvasSizeRef.current = next;
       }
       viewportRef.current = clampViewport(viewportRef.current, board, { width, height }, band);
@@ -419,6 +433,7 @@ export function BoardCanvas(props: Props) {
   /** 移動・拡大の結果を範囲に収めて反映する。 */
   const setViewport = (next: Viewport) => {
     const canvas = canvasRef.current;
+    initialViewportRecoveryRef.current = undefined;
     viewportRef.current = canvas
       ? clampViewport(next, propsRef.current.board, { width: canvas.clientWidth, height: canvas.clientHeight }, bandRef.current)
       : next;
