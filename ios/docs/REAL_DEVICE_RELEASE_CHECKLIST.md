@@ -147,8 +147,34 @@ KNITTING_EDITOR_DEVELOPMENT_TEAM=XXXXXXXXXX ios/scripts/measure-large-board.sh <
 - [x] アプリからPNG、PDF、`.knit`をFilesへ保存する。（2026-09-22、iPad Air 第5世代。機内モードで3種すべてを「このiPad内」へ保存）
 - [x] 共有シートからAirDropまたは別の共有先へ送る。（2026-09-22、iPad Air 第5世代。`.knit`とPNGを共有シートから送り、編集画面へ復帰することを確認）
 - [x] Files、AirDrop、メール等から`.knit`をアプリで開き、同じ編み図へ復元する。（2026-09-22、iPad Air 第5世代。Filesから開く`onOpenURL`経路で復元し、13:09:56と13:10:28に編み図が作成されたことを端末内IndexedDBで実測。アプリ内「バックアップから復元」のDocument Picker経路も別途成立）
-- [ ] キャンセル、上書き、存在しないファイル、不正形式、巨大解凍データでアプリがクラッシュしない。（保存シートのキャンセルはiPhone・iPad実機とSimulatorで自動検証済み。2026-10-09にiPhone 17で、上書き保存、不正形式（でたらめなデータの`.knit`）、巨大解凍データ（解凍後300MBの`.knit`）を確かめ、どれもクラッシュせずに理由が表示された。不正形式の理由が英語だったので日本語にした（PR #147）。存在しないファイルは、再現する手順が無く未確認）
+- [ ] キャンセル、上書き、存在しないファイル、不正形式、巨大解凍データでアプリがクラッシュしない。（保存シートのキャンセルはiPhone・iPad実機とSimulatorで自動検証済み。2026-10-09にiPhone 17で、上書き保存、不正形式（でたらめなデータの`.knit`）、巨大解凍データ（解凍後300MBの`.knit`）を確かめ、どれもクラッシュせずに理由が表示された。不正形式の理由が英語だったので日本語にした（PR #147）。欠損ファイルは下記の単体テストで例外処理とエラー配送を検証する。iPhone・iPadでの読み込み直前の削除とオフラインのiCloud Driveの確認は未完了であり、下記の手順で確かめる）
 - [x] iPhoneとiPadの双方で同じ往復を行う。（iPadは2026-09-22に保存・共有・両方の取り込み経路が成立。iPhone 17は2026-10-09に、PNG・PDF・`.knit`を「このiPhone内」へ保存し、Filesの`.knit`から復元、MacからAirDropで受け取った`.knit`の復元、共有シートからMacへのAirDropの送信を確かめた）
+
+欠損ファイルの自動テスト範囲（`ios/Tests/KnittingEditorAppTests/NativeErrorDeliveryTests.swift`）。WebViewへ送るスクリプトを記録し、イベント名とJSON化したメッセージを検証する。実機のFiles・共有やトーストの目視確認は含まない。
+
+- `testMissingIncomingBackupThrows`／`testDeletedIncomingBackupThrows`: 作っていないファイルと作成後に削除したファイルを`readIncomingBackup(at:)`へ渡すと例外になる。
+- `testMissingIncomingBackupErrorWaitsForWebViewAndReady`／`testMissingIncomingBackupErrorWaitsForReady`／`testMissingIncomingBackupErrorIsDeliveredImmediatelyWhenReady`: Files・共有から開く`handleIncomingURL`経路で欠損を捕まえ、「バックアップを読み込めませんでした」を通知する。WebView接続前・起動直後は編集画面の準備後、準備済みなら直ちに一度だけ配送し、使い方ページから戻っても再送しない。
+- `testIncomingBackupErrorDuringGuideWaitsForEditorReady`: 使い方ページ表示中の読み込みエラーも、編集画面が再び`webReady`を送ってから一度だけ配送する。
+- `testMissingPickerBackupReportsErrorAndClearsPresentationState`: Document Picker経路で欠損を捕まえて同じエラーを通知し、選択画面の状態を解除する。
+
+実機で残る確認は、以下をiPhone・iPadの両方で行う。
+
+1. 開発ビルドをLLDBでデバッグし、読み込み直前で止め、テスト用の`.knit`を削除してから再開する。停止場所は`WebViewModel.readIncomingBackup(at:)`の`Data(contentsOf: readingURL, ...)`と、`Coordinator.importBackup(from:)`の`Data(contentsOf: url, ...)`である。行番号ではなく、例えば以下のソースパターンでブレークポイントを置く。
+
+   ```lldb
+   breakpoint set --file WebViewContainer.swift --source-pattern-regexp 'Data\(contentsOf'
+   ```
+
+   Files・共有からの経路で停止したら、テスト用ファイルだけを次で削除して再開する。
+
+   ```lldb
+   expr -l swift -- try? FileManager.default.removeItem(at: readingURL)
+   continue
+   ```
+
+   Document Picker経路では削除する変数を`url`に替える。Filesからは、アプリを終了した状態から開く場合（Xcodeのスキームで「Wait for the executable to be launched」を使う）と、起動中に開く場合の両方を確認する。使い方ページ表示中からも開き、編集画面へ戻る。期待結果は、クラッシュせず、準備後の編集画面に「バックアップを読み込めませんでした」が表示されることである。
+
+2. iCloud Driveの端末へダウンロードされていない`.knit`を、機内モード（オフライン）でFilesから開く経路と、アプリの「バックアップを開く」で選ぶ経路で確認する。期待結果は、クラッシュせず、理由が表示されることである。Picker側で選べない・ダウンロードできない表示になる場合は、その表示を記録する。
 
 証跡: 入力ファイルのSHA-256、出力ファイルのSHA-256、復元後の行数・目数・記号数、Filesの保存場所、共有先、キャンセル後に編集画面へ戻ったこと。
 
