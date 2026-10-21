@@ -179,7 +179,9 @@ test('serves the app policy directly, after reload and from the Web policy', asy
   await expectLargeImageCard(page);
   await expectAppIconLinks(page);
   await expect(page.locator('main')).toContainText('情報を収集しません');
-  await expect(page.locator('main')).toContainText('改定日: 2026年10月20日');
+  await expect(page.locator('main')).toContainText('改定日: 2026年10月21日');
+  // 共有メニューの「画像を保存」で写真へ追加するだけで、写真を読み取らないことを書く。
+  await expect(page.locator('main')).toContainText('「写真」に保存されている写真やビデオを読み取ることはありません');
   await expect(page.getByRole('link', { name: 'support@knittingeditor.com' })).toHaveAttribute('href', 'mailto:support@knittingeditor.com');
   // この静的ページには分析やその他のスクリプトを読み込まない。
   await expect(page.locator('script')).toHaveCount(0);
