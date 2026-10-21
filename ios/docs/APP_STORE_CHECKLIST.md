@@ -21,7 +21,7 @@
 - [x] 同梱する第三者ソフトウェアのライセンス表記を、アプリ内の「使い方」から開ける`/third-party-notices/`へ置く。
 - [x] アカウント無しで非公開に連絡できるサポート窓口とサポートURLを用意する（#75）。窓口は`support@knittingeditor.com`、サポートURLは`https://knittingeditor.com/support/`。
 - [x] App Store Connectの年齢制限の質問票への回答を決める（#76）。回答は`docs/APP_STORE_METADATA.md`の「年齢制限の質問票」。
-- [ ] MacとApple Vision Proで配信するかを決める（#86）。
+- [x] MacとApple Vision Proで配信するかを決める（#86）。v1.0ではApp Store Connectの既定のまま配信を止めず、動作確認もしない（`APP_STORE_METADATA.md`の「配信地域」）。提出時に「価格および配信状況」で、MacとApple Vision Proの配信を外していないことを確かめる。
 
 ## 検証・配布
 
@@ -31,7 +31,7 @@
   - 2026-10-21に、手元のXcode 27.1（`27A9275`）で`main`の`fda7bbf`から署名なしのReleaseアーカイブを試しに作った（CIの`release_archive`と同じ引数）。アーカイブは成功し、`check-release-assets.sh`も通った。アプリの`Info.plist`は`DTSDKName`が`iphoneos27.1`、`DTXcodeBuild`が`27A9275`、`CFBundleShortVersionString`が`1.0`、`CFBundleVersion`が`1`だった。提出用は加入後に署名して作り直すので、この欄は未チェックのままにする。
 - [ ] 提出ビルドで実機の機内モードのP0フローを再確認する。開発ビルドではiPad Air（第5世代、2026-09-22）とiPhone 17（2026-10-09）の主要フロー、iPadの機内モード前後の通信監視（2026-10-02）は確認済み。TestFlight等の提出ビルドは未確認なので、この欄は未チェックとする（`REAL_DEVICE_RELEASE_CHECKLIST.md`のM0・M6）。
 - [ ] 提出ビルドでFiles、AirDrop、共有先、外部`.knit`の往復と残りの異常系を実機で確認する。開発ビルドでのiPhone・iPadの保存・共有・復元は確認済みだが、存在しないファイルなどの異常系とTestFlightでの最終往復が残るため、未チェックとする（`REAL_DEVICE_RELEASE_CHECKLIST.md`のM3）。
-- [ ] 1000×1000盤面のメモリ、PNG拒否、PDF出力時間を記録する。
+- [ ] 提出ビルドで、1000×1000盤面のメモリ、PNG拒否、PDF出力時間を記録する。開発ビルドでの記録は`REAL_DEVICE_RELEASE_CHECKLIST.md`のM2にある。
 - Simulator／Webでの1000×1000保存復元・PDF基準値は[`SIMULATOR_PERFORMANCE_BASELINE.md`](SIMULATOR_PERFORMANCE_BASELINE.md)に記録済み（実機/TestFlight確認の代替ではない）。
 - [ ] TestFlight内部テストでクラッシュログとメモリ警告を確認する。
 - [ ] App Store ConnectのApp Privacy回答をPrivacy Manifestと照合し、「データを収集しない」と入力する（`docs/APP_STORE_METADATA.md`の「App Store Connectの質問への回答」）。

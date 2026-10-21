@@ -174,7 +174,7 @@ KNITTING_EDITOR_DEVELOPMENT_TEAM=XXXXXXXXXX ios/scripts/measure-large-board.sh <
 
    Document Picker経路では削除する変数を`url`に替える。Filesからは、アプリを終了した状態から開く場合（Xcodeのスキームで「Wait for the executable to be launched」を使う）と、起動中に開く場合の両方を確認する。使い方ページ表示中からも開き、編集画面へ戻る。期待結果は、クラッシュせず、準備後の編集画面に「バックアップを読み込めませんでした」が表示されることである。
 
-2. iCloud Driveの端末へダウンロードされていない`.knit`を、機内モード（オフライン）でFilesから開く経路と、アプリの「バックアップを開く」で選ぶ経路で確認する。期待結果は、クラッシュせず、理由が表示されることである。Picker側で選べない・ダウンロードできない表示になる場合は、その表示を記録する。
+2. iCloud Driveの端末へダウンロードされていない`.knit`を、機内モード（オフライン）でFilesから開く経路と、アプリの「バックアップから復元」で選ぶ経路で確認する。期待結果は、クラッシュせず、理由が表示されることである。Picker側で選べない・ダウンロードできない表示になる場合は、その表示を記録する。
 
 証跡: 入力ファイルのSHA-256、出力ファイルのSHA-256、復元後の行数・目数・記号数、Filesの保存場所、共有先、キャンセル後に編集画面へ戻ったこと。
 
@@ -187,6 +187,7 @@ KNITTING_EDITOR_DEVELOPMENT_TEAM=XXXXXXXXXX ios/scripts/measure-large-board.sh <
 - [x] VoiceOverで、道具・パネル・ダイアログのボタンの名前と状態が読み上げで分かる。（2026-10-09、iPhone 17 / iOS 27.0で`testCoreEditorControlsExposeAccessibleNamesAndState`が成功）
   - 2026-10-09に、この項目を見直した。以前は「見出し、記号選択、描画／消去／範囲、保存、ダイアログのラベル・状態・フォーカス順」をVoiceOverで手で確かめる項目だったが、盤面はVoiceOverで記号を置けない作り（1つのCanvas）で、VoiceOverだけでは編み図を作れない。App Storeのアクセシビリティの表示でも「VoiceOverに対応」とは答えない（`APP_STORE_METADATA.md`）。盤面以外のフォーカス順だけを整えても得られるものが小さいので、項目がアプリの作りに合っていなかったとして、v1.0では手動のフォーカス順の確認を外し、名前と状態の自動テストにした。盤面をVoiceOverで操作できるようにするときに、改めて確かめる。
 - [x] Dynamic Type最大設定で主要操作44pt以上、文字の切れ・重なりがない。（iPhone 17とiPad Air 第5世代で文字の切れ・重なりが無いことを確認済み（#23）。2026-10-09にiPhone 17で文字サイズ最大の3件のUIテストを各3回流し、すべて成功した。44ptは、iOS版のCSSで操作の最小の大きさを44pxにしていること（`ios/Web/src/styles.css`の`--tap-size`など）で担保する）
+- [ ] 「拡大表示」（設定 > 画面表示と明るさ > 画面表示を拡大）と太字テキストで、ホーム画面の表示名「棒針編み図」が切れないことを、iPhoneとiPadの実機で確かめる（`APP_STORE_METADATA.md`の「App名とホーム画面の表示名」。無料Personal Teamの開発ビルドでも確かめられる）。
 
 証跡: 端末設定（表示サイズ、Dynamic Type、VoiceOver）、画面収録、問題のある画面のスクリーンショット、再現手順。
 
@@ -195,7 +196,7 @@ KNITTING_EDITOR_DEVELOPMENT_TEAM=XXXXXXXXXX ios/scripts/measure-large-board.sh <
 - [ ] 署名済みArchiveを作成し、App Store ConnectへTestFlight内部配布する。
 - [x] iPhone／iPadで機内モードの主要フローを実施する。（iPadは2026-09-22（M0）。iPhone 17は2026-10-09に、機内モードでアプリを起動し直し、新しい編み図を作って記号を置き、PNG・PDF・`.knit`を「このiPhone内」へ保存できた）
 - [ ] TestFlightのクラッシュログ、メモリ警告、PNG/PDF出力時間を確認する。
-- [ ] AppIcon、起動画面、iPhone縦横、iPad全画面／可変幅の最終スクリーンショットを撮影する。
+- [ ] 提出ビルドで、AppIcon、起動画面、iPhone縦横、iPad全画面／可変幅の画面を確かめ、提出用の最終スクリーンショット（`SCREENSHOTS.md`、#290で用意済み）と食い違わないことを証跡に残す。
 - [ ] App Privacy回答、Privacy Policy URL、サポートURL、審査メモを登録内容と照合する。
 - [ ] `docs/APP_STORE_CHECKLIST.md`の全項目を更新し、承認前に「配布完了」と報告しない。
 
