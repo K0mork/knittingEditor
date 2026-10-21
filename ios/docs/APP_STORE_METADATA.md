@@ -12,7 +12,7 @@
 | プロモーションテキスト | インターネットにつながらない場所でも、棒針編みの編み図をiPhone・iPadで作れます。29種類の編み目記号、自動保存、PNG・PDFでの保存に対応。広告もアカウント登録もありません。 |
 | 主カテゴリ | グラフィック／デザイン |
 | 副カテゴリ | ライフスタイル |
-| キーワード | 編み図,棒針,編み物,ニット,手芸,パターン,オフライン,PDF,PNG |
+| キーワード | 編み物,ニット,手芸,手編み,毛糸,編み目記号,図案,方眼,セーター,マフラー,PDF,PNG |
 | 年齢制限 | 4+（質問票の回答は下記「年齢制限の質問票」） |
 | 販売元 | 加入者の法的氏名（個人加入のため。下記「販売元と著作権表記」） |
 | 著作権 | 2026 K0mork |
@@ -23,7 +23,7 @@
 - ホーム画面の表示名（`App/Info.plist`の`CFBundleDisplayName`と`CFBundleName`）は「棒針編み図」にした。App名とは別の値で、アイコンの下に表示される。
 - 表示名の長さには、Appleの文書に上限も推奨値もない（`CFBundleName`は15文字までとある）。切れるかどうかは文字の幅とアイコンの列幅で決まるため、2026-10-02にSimulatorのホーム画面で実測した。iPhone SE（第3世代、iOS 18.2）とiPhone 17（iOS 27.0）では、全角9文字の「棒針編み図エディタ」が標準の文字サイズで切れた。全角7文字は、標準では切れないが、文字サイズを大きくすると切れた（SEはアクセシビリティを使わない最大のサイズ、iPhone 17はアクセシビリティの最大サイズ）。全角6文字は、どの文字サイズでも切れなかった。iPhone 17 Pro MaxとiPad (A16)は列幅が広く、9文字でも切れなかった。
 - このため、表示名は全角6文字以内とし、余裕のある5文字の「棒針編み図」を選んだ。`scripts/check-app-store-docs.sh`は、この表の値と`App/Info.plist`の表示名が一致し、6文字以内であることを検査する。
-- 「拡大表示」（画面表示の拡大）と太字テキストはSimulatorでは確かめていない。実機の表示確認（#23）で、この2つでも切れないことを確かめる。
+- 「拡大表示」（画面表示の拡大）と太字テキストでの表示名は、まだ確かめていない。確認先としていた#23は、Dynamic Typeの確認で閉じており、この2つは記録されていない。`REAL_DEVICE_RELEASE_CHECKLIST.md`のM4の項目で、実機で確かめる（加入前の無料Personal Teamの開発ビルドでも確かめられる）。
 
 ## 販売元と著作権表記
 
@@ -95,7 +95,7 @@ App Store Connectの年齢制限は、質問票への回答から決まる（202
 |---|---|---|
 | VoiceOver | 対応と答えない | 盤面は1つのCanvasで、マスごとに読み上げたり、記号を置いたりできない。主な操作ができない。 |
 | 音声コントロール | 対応と答えない | ボタンは名前で押せるが、盤面のマスを声で指定して記号を置けるかは確かめていない。できる見込みは低い。 |
-| さらに大きな文字 | 確かめるまで答えない | iOS版はDynamic Typeに追従する（`ios/Web/src/styles.css`の`-apple-system-body`）。文字サイズ最大で文字の切れ・重なりがないことはiPhone 17とiPad Air（第5世代）で確認済み（#23）。ただし、iPadで文字を大きくすると右の操作列の「ブロック」「戻す」「やり直す」の名前が切れる不具合（#179）が残っている。Simulatorで確認したもので、実機では未確認。この実績だけで回答を変更せず、#179の扱いと、提出ビルドで両端末の主な操作を確認してから判断する。 |
+| さらに大きな文字 | 確かめるまで答えない | iOS版はDynamic Typeに追従する（`ios/Web/src/styles.css`の`-apple-system-body`）。文字サイズ最大で文字の切れ・重なりがないことはiPhone 17とiPad Air（第5世代）で確認済み（#23）。iPadで文字を大きくすると右の操作列の「ブロック」「戻す」「やり直す」の名前が切れる不具合（#179）は、2026-10-10のPR #236で直した（iPhone・iPadのSimulatorのUIテストとPlaywrightで確認。`docs/dev-log/2026-10-10-layout-focus-and-hover.md`）。直したあとの表示は実機では未確認なので、この実績だけで回答を変更せず、提出ビルドで両端末の主な操作を確認してから判断する。 |
 | ダークインターフェイス | 実機で確かめてから「対応」と答える | 端末の外観がダークのとき、画面・パネル・ダイアログ・使い方ページが暗くなる（#116、Simulatorで確認済み）。盤面のマスは編み図ごとの背景色で描き、既定の白は明るいまま。Appleの基準は利用者が作った内容を除くとしており、盤面は利用者が作る編み図で、地の色も利用者が選べる（黒・グレー）ので、対象外とみなせる見込み。入力する前に、この扱いでよいかを基準の文書で確かめ直す。 |
 | 色以外でも区別 | 確かめるまで答えない | 記号は形で区別し、色は利用者が選ぶ内容。選択中の道具やボタンは、色に加えて枠と太字で示す。全画面を色覚の違いを想定して確かめてはいない。 |
 | 十分なコントラスト | 実機で確かめてから「対応」と答える | 明るい配色・ダークの配色とも、編集画面・各パネル・記号と色の選択・使い方などのページの文字が4.5:1（大きい文字は3:1）以上、ボタンと入力欄の枠が3:1以上ある（#144で直した）。Playwrightの`tests/e2e/contrast.spec.ts`が両方の配色で確かめる。iOS版の実機（iPhone・iPad）で、「コントラストを上げる」をオン・オフにして見え方を確かめてから入力する。 |
@@ -131,7 +131,7 @@ App Store Connectの年齢制限は、質問票への回答から決まる（202
 - サポートURL: `https://knittingeditor.com/support/`。下記「サポート窓口」
 - プライバシーポリシーURL: `https://knittingeditor.com/privacy/app/`（App Store Connect登録前に公開状態と表示を確認）。正本はリポジトリルートの`public/privacy/app/index.html`。登録は#27で行う。
 - 審査メモ: [`APP_REVIEW_NOTES.md`](APP_REVIEW_NOTES.md)の4.2説明と機内モード手順を、英語と日本語の両方で転記する。
-- スクリーンショット: iPhone縦、iPhone横、iPad全画面、iPad可変幅を実機またはTestFlightで撮影して差し替える。
+- スクリーンショット: 提出に使う最終版（iPhone 6.9インチ・iPad 13インチ、説明文入り各5枚）は[`SCREENSHOTS.md`](SCREENSHOTS.md#app-store-connect提出用最終版)のとおり用意済み（#290）。実機での撮り直しは任意。提出ビルドでは、最終版と同じ画面になることを確かめる（`RELEASE_RUNBOOK.md`の手順6）。
 
 ## 配信地域
 
@@ -139,6 +139,7 @@ App Store Connectの年齢制限は、質問票への回答から決まる（202
 - App Store Connectの「価格および配信状況」で、EU加盟国をすべて配信対象から外す。
 - デジタルサービス法（DSA）の事業者（trader）かどうかは、EUで配信しなくても、最初のアプリの提出時にApp Store Connectで申告する（Appleの[DSAの事業者要件](https://developer.apple.com/help/app-store-connect/manage-compliance-information/manage-european-union-digital-services-act-trader-requirements/)、2026-10-20に確認）。Appleは、EU以外でだけ配信する開発者はApp Store上で事業者として行動していないとしている。このため「事業者ではない」と申告する（2026-10-20に決定、#292）。事業者と申告すると、住所・電話・メールの入力とAppleの確認が要り、EUのストアに公開される。
 - EUで配信する方針に変えるときは、配信地域を変える前に、アプリの事業者申告を「事業者」に変え、公開する連絡先を決めて確認を受ける（申告はアプリごとに後から変えられる）。
+- MacとApple Vision Proは、v1.0ではApp Store Connectの既定のまま配信を止めず、それらの環境での動作確認もしない（2026-10-06に決定、[#86](https://github.com/K0mork/knittingEditor/issues/86#issuecomment-6010786273)）。既定では、iPad向けのアプリはApple Silicon搭載のMac（Designed for iPad）で、互換性のあるiPhone・iPad向けのアプリはApple Vision Proで配信される。`project.yml`も`SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD`と`SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD`を既定のままにする。正式に扱うときに改めて検討する。
 - 中国本土のストアでも配信しない（2026-10-06に決定）。中国本土で配信するには、App Store ConnectへICP備案（ICP Filing）の番号を登録する必要があり、個人の開発者は取得できない。「価格および配信状況」で中国本土を配信対象から外す。
 
 ## 輸出コンプライアンス（暗号化）
@@ -168,4 +169,4 @@ App Store Connectの年齢制限は、質問票への回答から決まる（202
 - [ ] App Privacyの回答をPrivacy Manifestと照合する。
 - [x] Privacy Policy本文をリポジトリルートの`public/privacy/app/index.html`へ用意する（公開URL: https://knittingeditor.com/privacy/app/、登録は#27）。
 - [ ] 公開Privacy Policy URLをApp Store Connectへ登録し、審査端末から表示できることを確認する。
-- [ ] スクリーンショットとアイコンを最終版へ差し替える。
+- [x] スクリーンショットとアイコンを最終版へ差し替える（スクリーンショットは#290、アイコンは#78。`APP_STORE_CHECKLIST.md`の「実装・資産」）。

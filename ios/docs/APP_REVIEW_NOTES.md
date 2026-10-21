@@ -26,7 +26,7 @@ The app's interface is in Japanese. Button names are shown as "English (日本�
 1. Turn on Airplane Mode and launch the app.
 2. Tap "Charts (編み図)" at the top right, then "New chart (新しい編み図)". Enter a chart name and tap "Confirm (決定)" to create it. Choose a stitch with the stitch button (for example "表目") next to the color, make sure "Draw (描く)" is selected, and tap or drag on the grid to place several stitches.
 3. Move the app to the background, return to it, and confirm the edits are still there.
-4. Tap "Export (出力)" at the bottom. Export a PNG with "Save PNG (PNGを保存)", a PDF with "Save PDF (PDFを保存)", and a `.knit` backup with "Export this chart (この編み図を書き出す)". For each file, choose "Save to Files (ファイルに保存)" in the confirmation dialog, select "On My iPhone (このiPhone内)" or "On My iPad (このiPad内)", and complete the save to keep the file available offline.
+4. Tap "Export (出力)" (at the bottom on iPhone, in the column on the right on iPad). Export a PNG with "Save PNG (PNGを保存)", a PDF with "Save PDF (PDFを保存)", and a `.knit` backup with "Export this chart (この編み図を書き出す)". For each file, choose "Save to Files (ファイルに保存)" in the confirmation dialog, select "On My iPhone (このiPhone内)" or "On My iPad (このiPad内)", and complete the save to keep the file available offline.
 5. In the same panel, tap "Restore from backup (バックアップから復元)" and choose the `.knit` file from the on-device location used in step 4, or open that file from the Files app. Confirm the restored chart.
 6. Tap "Guide (使い方)" at the top right and read the "Privacy (プライバシー)" section. The app privacy policy (https://knittingeditor.com/privacy/app/) in the Privacy section and the support page link in the "Support (サポート)" section open in Safari only when tapped and can be checked while online. The email link opens Mail only when the user taps it.
 
@@ -52,6 +52,6 @@ The app's interface is in Japanese. Button names are shown as "English (日本�
 1. 機内モードで起動する。
 2. 右上の「編み図」から「新しい編み図」を押し、編み図名を入力して「決定」を押す。色の隣の記号のボタン（「表目」など）で記号を選び、「描く」が選ばれた状態で盤面をタップまたはなぞって、複数の記号を置く。
 3. アプリをバックグラウンドへ移し、戻って編集内容を確認する。
-4. 下の「出力」を開き、「PNGを保存」「PDFを保存」「この編み図を書き出す」（`.knit`）でそれぞれ出力する。各ファイルの確認画面で「ファイルに保存」を選び、保存先を「このiPhone内」または「このiPad内」にして保存を完了する。端末内へ保存することで、機内モードのまま次の復元を確認できる。
+4. 「出力」（iPhoneでは画面の下、iPadでは右の列）を開き、「PNGを保存」「PDFを保存」「この編み図を書き出す」（`.knit`）でそれぞれ出力する。各ファイルの確認画面で「ファイルに保存」を選び、保存先を「このiPhone内」または「このiPad内」にして保存を完了する。端末内へ保存することで、機内モードのまま次の復元を確認できる。
 5. 同じ画面の「バックアップから復元」で手順4の端末内の保存先から`.knit`を選ぶか、Filesからそのファイルを開き、復元された編み図を確認する。
 6. 右上の「使い方」を開き、「プライバシー」の本文を確認する。アプリのプライバシーポリシー（https://knittingeditor.com/privacy/app/）へのリンクは、タップした場合だけSafariで開く。「サポート」のサポートページへのリンクはネットワーク接続時に確認する。メールのリンクは利用者が選んだ場合だけメールアプリを開く。
