@@ -120,7 +120,12 @@ check_knit_type_name() {
   }
 }
 check_knit_type_name ja "$knit_type_name"
-check_knit_type_name en 'Knitting Chart Backup'
+# アプリの画面は日本語だけなので、App Storeの「言語」に日本語だけが出るよう、`ja.lproj`以外の言語を入れない。
+other_lprojs=$(find "$APP_PATH" -maxdepth 1 -type d -name '*.lproj' ! -name ja.lproj -exec basename {} \;)
+if [ -n "$other_lprojs" ]; then
+  echo "unexpected localizations other than ja: $other_lprojs" >&2
+  exit 1
+fi
 
 # 「使い方」のサポートページ、アプリのプライバシーポリシーとサポートのメールアドレスは、利用者が選んだときだけSafariとメールアプリで開くリンクなので除く。
 external_matches=$(find "$WEB_ROOT" -type f -exec perl -ne '

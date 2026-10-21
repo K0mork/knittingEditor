@@ -5,12 +5,6 @@
       "comment" : "Filesの「情報を見る」や共有シートに出る`.knit`の種類名（UTTypeDescription・CFBundleTypeName）。",
       "extractionState" : "manual",
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Knitting Chart Backup"
-          }
-        },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
