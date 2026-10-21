@@ -6,9 +6,10 @@ import XCTest
 final class KnittingEditorUTTypeTests: XCTestCase {
     /// Info.plistの`UTTypeDescription`・`CFBundleTypeName`の値。InfoPlist.stringsでは、この値が訳のキーになる。
     private static let typeNameKey = "棒針編み図バックアップ"
+    /// アプリの画面は日本語だけなので、訳も日本語だけを持つ。英語の訳を入れると、App Storeの「言語」に
+    /// 英語が出て、英語で使えると誤解されやすい。
     private static let localizedTypeNames = [
         "ja": "棒針編み図バックアップ",
-        "en": "Knitting Chart Backup",
     ]
 
     /// 識別子を変えると、既存の`.knit`とアプリの関連付けが切れる。
@@ -29,7 +30,7 @@ final class KnittingEditorUTTypeTests: XCTestCase {
     /// 端末やアプリの表示言語に依存しないよう、各言語の`InfoPlist.strings`をファイルとして直接読む。
     /// `localizedString(forKey:)`は、キーが無いとキーそのものを返す。日本語の訳はキーと同じ文字列なので、
     /// その方法ではキーが欠けていても通ってしまう。
-    func testKnitTypeNameIsTranslatedIntoJapaneseAndEnglish() throws {
+    func testKnitTypeNameIsTranslatedIntoJapanese() throws {
         for (language, expected) in Self.localizedTypeNames.sorted(by: { $0.key < $1.key }) {
             let path = try XCTUnwrap(
                 Bundle.main.path(
@@ -53,13 +54,19 @@ final class KnittingEditorUTTypeTests: XCTestCase {
         }
     }
 
-    /// システムが返す種類名が、アプリの表示言語の訳になっていることを確かめる。
-    /// キーが訳と合っていないと、英語の端末でもInfo.plistの日本語がそのまま出る。
-    /// 確かめられるのは、テストを実行したSimulatorの表示言語の経路だけである。どちらの経路だったかをログに出す。
-    func testSystemDescribesKnitTypeInTheAppLanguage() throws {
+    /// アプリに入る言語は日本語だけにする。`.lproj`が1つも無いと、Foundationはどの端末でもアプリの言語を
+    /// 英語と判定し、ファイル選択などシステムが出す文言も英語になる。日本語だけを入れると、端末の言語によらず日本語になる。
+    func testAppIsLocalizedOnlyIntoJapanese() {
+        XCTAssertEqual(Bundle.main.localizations.filter { $0 != "Base" }, ["ja"])
+        XCTAssertEqual(Bundle.main.developmentLocalization, "ja")
+    }
+
+    /// システムが返す種類名が日本語になることを確かめる。アプリの言語は端末の言語によらず日本語なので、
+    /// CIのSimulatorの表示言語が英語でも日本語の経路を通る。
+    func testSystemDescribesKnitTypeInJapanese() throws {
         let language = try XCTUnwrap(Bundle.main.preferredLocalizations.first)
         print("KnittingEditorUTTypeTests: app language = \(language)")
-        let expected = try XCTUnwrap(Self.localizedTypeNames[language], "想定していない表示言語: \(language)")
-        XCTAssertEqual(UTType.knittingEditorBackup.localizedDescription, expected)
+        XCTAssertEqual(language, "ja")
+        XCTAssertEqual(UTType.knittingEditorBackup.localizedDescription, Self.localizedTypeNames["ja"])
     }
 }
