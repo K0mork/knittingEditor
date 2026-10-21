@@ -4,7 +4,7 @@
 
 ## 実装・資産
 
-- [ ] Apple Developer Team、Bundle ID、署名証明書、Provisioning Profileを確定する。Teamは個人でApple Developer Programに加入する方針（2026-10-02に決定、#17）。2026-10-21にWebで個人情報を入力し、登録申請の審査中・Appleへの問い合わせ案内を確認した。契約・支払い・有効化と署名確認は未完了（`RELEASE_RUNBOOK.md`の手順2）。署名はAutomaticを続ける。
+- [ ] Apple Developer Team、Bundle ID、署名証明書、Provisioning Profileを確定する。Teamは個人でApple Developer Programに加入する方針（2026-10-02に決定、#17）。2026-10-21にWebで個人情報を入力し、登録申請の審査中・Appleへの問い合わせ案内を確認した。Eメールの問い合わせを送信し、受付完了を確認した。Appleからの回答内容は未確認。契約・支払い・有効化と署名確認は未完了（`RELEASE_RUNBOOK.md`の手順2）。署名はAutomaticを続ける。
 - [x] AppIconのAny・Dark・Tintedを1024×1024で登録する（小サイズはXcodeが生成）。素材・再生成手順は`../design/app-icon/README.md`。
 - [x] iPhone・iPadのホーム画面でライト・ダーク・色合いを切り替えて確認した（iOS 18.2）。小サイズは設定のアプリ一覧（iPhone、iOS 27.0）とSpotlight（iPhone・iPad、iOS 18.2）で確認した（#78、PR #94の比較画像）。
 - [x] 起動画面を確認する。（2026-10-21、`main`の`fda7bbf`をXcode 27.1でReleaseビルドし、KE verify iPhone・KE verify iPad（iOS 27.0 Simulator）へ入れ直して、ライト・ダークの両方で起動を録画した。どれも「起動画面（`LaunchBackground`の緑）→準備中の表示（同じ緑）→編集画面」と移り、白や黒の全面表示は1コマも出なかった。ダークでは編集画面も暗い配色になった。iOS 27のSimulatorで起動画面の緑が準備中の緑より鮮やかに見える件（#117）は変わらないが、実機では起きないことを2026-10-09にiPhone 17で確かめている（`REAL_DEVICE_RELEASE_CHECKLIST.md`）。提出ビルドでの最終確認は`REAL_DEVICE_RELEASE_CHECKLIST.md`のM6で行う）
