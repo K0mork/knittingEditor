@@ -18,4 +18,5 @@
   - `ios/Web`で`../../node_modules/.bin/tsc -p tsconfig.app.json --noEmit`と`../../node_modules/.bin/vitest run --config vite.config.ts`: 成功（16ファイル・139件）
   - iOS: `xcodegen generate`、Debugの`build`と`build-for-testing`（KE verify iPhone、iPhone 17・iOS 27.0）: 成功。同じ端末で、アプリを入れ直して初回起動の編み図と「新しい編み図」がどちらも150段×60目になること、新しい編み図を作った直後に1段目が表示領域の下端に収まること（修正前は中ほどに残った）、変更前のビルドでは20段×20目で下端に収まることを画面写真で確かめた。写真は手元に保存し、リポジトリには入れていない。
   - iOSのUIテストは手元で実行していない。PRのCI（iPhoneの単体テストとUIスモーク）とマージ後の`ios-full.yml`に任せる。
+- PRのCIで直したこと: `web`ジョブ（Linux）で`canvas-pointer-and-view.spec.ts`の「initial narrow view draws stitch 1 and row 1 labels…」と「keeps the knitting start anchored…」が3プロジェクトとも失敗した。150段では最も長い段番号が「150」になり、Linuxのフォントでは文字幅が既定の帯（28px）に収まらず、帯が広がる（仕様どおり）。テストは番号が帯の中央の14pxに描かれる前提だったため、描かれた番号から帯の中央を読むように直した。手元で`measureText`の「150」の幅を26pxにして帯を広げると、直す前のテストは失敗し、直したテストは3プロジェクトで成功した（確認用の一時specは削除済み）。`npx playwright test tests/e2e/canvas-pointer-and-view.spec.ts`: 27件成功。
 - デプロイ影響: Pagesへ配信され、iOS版の同梱Webにも入る。配信後は https://knittingeditor.com/ で、既存の編み図が元の大きさのまま開くことと、「新しい編み図」が150段×60目で作られ編み始めが右下に見えることを確かめる。
