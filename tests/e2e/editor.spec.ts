@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { resizeBoard } from './board-helpers';
+import { resizeBoardFromInitialView } from './board-helpers';
 import { packCell } from '../../packages/editor-core/model/Board';
 import { STITCH_BY_KEY } from '../../packages/editor-core/stitches/catalog';
 import { expect, test, type Page } from './fixtures';
@@ -498,9 +498,10 @@ type BoardOrigin = { x: number; y: number; canvasX: number; canvasY: number };
 /** `row`段目・`col`目のマスの中央のページ座標。 */
 const cellCenter = (origin: BoardOrigin, row: number, col: number) => ({ x: origin.x + col * CELL, y: origin.y + row * CELL });
 
-// 盤面を20×20マスにそろえ、記号は1段目（上から2段目）の1・2（2目幅）・4目に置く。
+// 盤面を20×20マスの初期表示にそろえ、記号は1段目（上から2段目）の1・2（2目幅）・4目に置く。
+// 大きさを変えただけでは変更前の表示位置を引き継ぐので、読み込み直して初期表示から始める。
 async function drawRealContent(page: Page) {
-  await resizeBoard(page, 20, 20);
+  await resizeBoardFromInitialView(page, 20, 20);
   const origin = await placeBoardOrigin(page);
   for (const [name, color, col] of [['表目', '#c83264', 1], ['右上2目一度', '#2468ac', 2], ['白くする', '#abcdef', 4]] as const) {
     await page.getByRole('button', { name: '編み目記号を選ぶ', exact: true }).click();
