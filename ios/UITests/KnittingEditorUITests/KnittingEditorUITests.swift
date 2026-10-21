@@ -973,8 +973,7 @@ final class KnittingEditorUITests: XCTestCase {
         allData.tap()
         let fileSave = app.buttons["ファイルに保存"]
         XCTAssertTrue(fileSave.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
-        fileSave.tap()
-        assertDisappears(fileSave, from: app)
+        guard tapExportAlertButton(fileSave, in: app, step: "全データ-ファイルに保存") else { return }
         let exportPicker = SystemSheet.element(in: app)
         XCTAssertTrue(exportPicker.waitForExistence(timeout: 20), app.debugDescription)
         // CIの再試行で同名ファイルを置き換えるとファイルプロバイダーが停止したため、
@@ -1069,9 +1068,8 @@ final class KnittingEditorUITests: XCTestCase {
         let fileSave = app.buttons["ファイルに保存"]
         XCTAssertTrue(fileSave.waitForExistence(timeout: Self.editorAppearanceTimeout))
         XCTAssertTrue(app.buttons["共有"].exists)
-        fileSave.tap()
         // 確認ダイアログの「キャンセル」を保存シートと取り違えないよう、ダイアログが消えてから探す。
-        assertDisappears(fileSave, from: app)
+        guard tapExportAlertButton(fileSave, in: app, step: "この編み図-ファイルに保存") else { return }
 
         let systemSheet = SystemSheet.element(in: app)
         XCTAssertTrue(systemSheet.waitForExistence(timeout: 20), app.debugDescription)
@@ -1115,10 +1113,14 @@ final class KnittingEditorUITests: XCTestCase {
         png.tap()
         let share = app.buttons["共有"]
         XCTAssertTrue(share.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
-        share.tap()
+        // 共有シートが開かなければ、回転以降の確認は意味が無いので、ここで打ち切る。
+        guard tapExportAlertButton(share, in: app, step: "PNG-共有-回転前") else { return }
 
         let sheet = shareSheet(in: app)
-        XCTAssertTrue(sheet.waitForExistence(timeout: 20), app.debugDescription)
+        guard sheet.waitForExistence(timeout: 20) else {
+            XCTFail("共有シートが開かない: \(app.debugDescription)")
+            return
+        }
         let copy = sheet.cells.matching(NSPredicate(format: "label IN %@", ["Copy", "コピー"])).firstMatch
         XCTAssertTrue(copy.waitForExistence(timeout: 20), app.debugDescription)
         XCTAssertTrue(waitForHittable(copy, timeout: 20), app.debugDescription)
@@ -1166,7 +1168,7 @@ final class KnittingEditorUITests: XCTestCase {
             button.tap()
             let share = app.buttons["共有"]
             XCTAssertTrue(share.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
-            share.tap()
+            guard tapExportAlertButton(share, in: app, step: "\(step)-共有") else { return }
 
             let sheet = shareSheet(in: app)
             XCTAssertTrue(sheet.waitForExistence(timeout: 20), "\(step): \(app.debugDescription)")
@@ -1968,6 +1970,27 @@ final class KnittingEditorUITests: XCTestCase {
             object: element
         )
         return XCTWaiter.wait(for: [hittable], timeout: timeout) == .completed
+    }
+
+    /// 書き出しの確認アラートのボタン（「共有」「ファイルに保存」）を押し、アラートが閉じたかを返す。
+    ///
+    /// CIの遅いSimulatorで、ボタンの中心に届いたタップがアラートの操作として成立せず、アラートが
+    /// 残ったままになったことがある（iPadの「共有」、run 39528108107）。アラートが残って押せるときに限り、
+    /// 画面写真を残して1回だけ押し直す。押し直しても閉じなければ失敗にして、後の確認を打ち切れるようにする。
+    @discardableResult
+    private func tapExportAlertButton(_ button: XCUIElement, in app: XCUIApplication, step: String) -> Bool {
+        waitUntilStill(button)
+        button.tap()
+        if waitForDisappearance(of: button, timeout: 8) { return true }
+        if waitForHittable(button, timeout: 2) {
+            add(screenshotAttachment(named: "確認アラートを押し直す-\(step)"))
+            waitUntilStill(button)
+            button.tap()
+        }
+        if waitForDisappearance(of: button, timeout: 15) { return true }
+        add(screenshotAttachment(named: "確認アラートが閉じない-\(step)"))
+        XCTFail("確認アラートのボタンを押しても閉じない（\(step)）: \(app.debugDescription)")
+        return false
     }
 
     private func cancelExportAlert(in app: XCUIApplication) {
