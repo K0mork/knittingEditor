@@ -1,5 +1,4 @@
 import { readFileSync } from 'node:fs';
-import { resizeBoardFromInitialView } from './board-helpers';
 import { expect, test } from './fixtures';
 
 const PROGRESS_KEY = 'knitting-editor:chart-progress:v1';
@@ -17,8 +16,8 @@ test('keeps automated editing and PNG export free of analytics state and request
   const canvas = page.getByLabel('編み図編集盤面');
   await expect(canvas).toBeVisible();
   expect(await page.evaluate(() => navigator.webdriver)).toBe(true);
-  await resizeBoardFromInitialView(page, 10, 10);
-  for (const x of [75, 105, 135]) await canvas.click({ position: { x, y: 75 } });
+  // 初期表示の盤面で、横に並ぶ30pxのセルの中心を3つ押す。
+  for (const x of [195, 225, 255]) await canvas.click({ position: { x, y: 135 } });
   await expect(canvas).toHaveAttribute('aria-label', /記号3個/);
   await page.getByRole('button', { name: '元に戻す', exact: true }).click();
   await expect(canvas).toHaveAttribute('aria-label', /記号2個/);
