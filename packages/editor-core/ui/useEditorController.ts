@@ -1,8 +1,10 @@
+import { backgroundColorOf } from '../model/boardColors';
+import { ChartProgressTracker } from '../chartProgress';
 import { failureReason } from '../analyticsFailure';
 import { WorkerVersionError } from '../util/workerStarter';
 import type { ExportAnnotations } from '../export/annotations';
-import { useCallback, useMemo, useRef, useState } from 'react';
-import { boardSizeBucket, countBucket, NO_ANALYTICS, type EditorAnalytics } from '../analytics';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { boardSizeBucket, countBucket, NO_ANALYTICS, type EditorAnalytics, type AnalyticsParameters } from '../analytics';
 import { CANVAS_MODE_LABELS, type CanvasMode, type BoardZoom } from '../canvas/BoardCanvas';
 import { renderPdf, renderPng, validatePngSize } from '../export/exporters';
 import type { PdfLayoutOptions } from '../export/pdfLayout';
@@ -12,7 +14,7 @@ import { useBackupReminder } from '../state/useBackupReminder';
 import { useEditorSession, type EditorSessionInit, type SaveTrigger } from '../state/useEditorSession';
 import { STITCHES, type StitchDefinition } from '../stitches/catalog';
 import {
-  createDocument, deleteBlock, deleteDocuments, duplicateDocument, exportBackup, importBackup,
+  boardFromDocument, createDocument, deleteBlock, deleteDocuments, duplicateDocument, exportBackup, importBackup,
   renameDocument, saveBlock, type ChartDocument,
 } from '../storage/database';
 import { errorMessage } from '../util/errors';
@@ -62,7 +64,25 @@ export interface EditorControllerOptions {
  */
 export function useEditorController(options: EditorControllerOptions) {
   const { platform, askText, askConfirm } = options;
-  const analytics = options.analytics ?? NO_ANALYTICS;
+  const sender = options.analytics ?? NO_ANALYTICS;
+  // 計測先の障害を編集・保存・出力へ伝播させない。
+  const analytics = useMemo<EditorAnalytics>(() => ({
+    ...sender,
+    track: (...args) => { try { sender.track(...args); } catch { /* 編集を継続する。 */ } },
+    trackFirstEdit: () => { try { sender.trackFirstEdit(); } catch { /* 編集を継続する。 */ } },
+  }), [sender]);
+  const trackerRef = useRef<ChartProgressTracker | null | undefined>(undefined);
+  if (trackerRef.current === undefined) {
+    trackerRef.current = null;
+    try {
+      const storage = sender.chartProgressStorage?.();
+      if (storage) trackerRef.current = new ChartProgressTracker({ storage, send: analytics.track });
+    } catch { /* 無効な保存領域では計測しない。 */ }
+  }
+  const metric = useCallback(<T,>(action: (tracker: ChartProgressTracker) => T): T | undefined => {
+    try { if (trackerRef.current) return action(trackerRef.current); } catch { /* 編集を継続する。 */ }
+  }, []);
+  const recordedCellsRef = useRef<Uint32Array | undefined>(undefined);
   const [selectedStitch, setSelectedStitch] = useState('knit');
   const [stitchPickerOpen, setStitchPickerOpen] = useState(false);
   const [selectedColor, setSelectedColor] = useState('#d33c32');
@@ -83,6 +103,7 @@ export function useEditorController(options: EditorControllerOptions) {
   // 保存成功までは、編集や保存のきっかけが変わっても失敗の計測を重ねない。
   const saveFailureTrackedRef = useRef(false);
   const session = useEditorSession({
+    onCellsRecorded: (indices) => { recordedCellsRef.current = indices; },
     initialize: options.initialize,
     autosaveDelayMs: options.autosaveDelayMs,
     onInitialized: (initialized) => analytics.track('editor_ready', {
@@ -106,6 +127,24 @@ export function useEditorController(options: EditorControllerOptions) {
     board, activeDocument, changed: markChanged, commitEdit, saveNow, switchDocument: switchSessionDocument,
     refreshDocuments, refreshBlocks, applyActiveDocumentName,
   } = session;
+  useEffect(() => {
+    if (board && activeDocument) metric((tracker) => tracker.open(activeDocument.id, board, session.backgroundColor));
+    // 同じ盤面の編集や背景色変更では基準を開き直さない。
+  }, [board, activeDocument?.id, metric]);
+  useEffect(() => {
+    if (!trackerRef.current) return;
+    const pause = () => metric((tracker) => tracker.pause());
+    const visibility = () => { if (document.visibilityState === 'hidden') pause(); };
+    const timer = setInterval(() => metric((tracker) => tracker.flushIfDue()), 5_000);
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', visibility);
+    if (typeof window !== 'undefined') window.addEventListener('pagehide', pause);
+    return () => {
+      clearInterval(timer);
+      if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', visibility);
+      if (typeof window !== 'undefined') window.removeEventListener('pagehide', pause);
+      pause();
+    };
+  }, [metric]);
   const saveFailedRef = useRef(session.saveFailed);
   saveFailedRef.current = session.saveFailed;
   const backupReminder = useBackupReminder(activeDocument, session.saveFailed && session.dirty);
@@ -116,32 +155,36 @@ export function useEditorController(options: EditorControllerOptions) {
   /** なぞり描きの途中の書き換え。指を離したときの`commitStroke`で1件の履歴になる。 */
   const strokeChanged = useCallback(() => {
     strokePendingRef.current = true;
+    metric((tracker) => tracker.activity());
     analytics.trackFirstEdit();
     markChanged();
-  }, [analytics, markChanged]);
+  }, [analytics, markChanged, metric]);
   const commitStroke = useCallback(() => {
     if (!strokePendingRef.current) return;
     strokePendingRef.current = false;
-    commitEdit();
+    recordedCellsRef.current = undefined;
+    if (commitEdit() && board) metric((tracker) => tracker.forwardEdit(board, recordedCellsRef.current));
     countEdit();
-  }, [commitEdit, countEdit]);
+  }, [commitEdit, countEdit, board, metric]);
   /** 1回で終わる書き換え（貼り付け、盤面設定）。すぐ1件の履歴にする。 */
   const changed = useCallback(() => {
     strokePendingRef.current = false;
     analytics.trackFirstEdit();
     markChanged();
-    commitEdit();
+    recordedCellsRef.current = undefined;
+    if (commitEdit() && board) metric((tracker) => tracker.forwardEdit(board, recordedCellsRef.current));
     countEdit();
-  }, [analytics, markChanged, commitEdit, countEdit]);
+  }, [analytics, markChanged, commitEdit, countEdit, board, metric]);
 
   const stepHistory = useCallback((direction: 'undo' | 'redo') => {
     const moved = direction === 'undo' ? session.undo() : session.redo();
     if (!moved) return;
+    if (board) metric((tracker) => tracker.historyStep(board));
     countEdit();
     // 寸法が戻ると選択範囲が盤面の外を指しうるので、選択は解除する。
     setSelection(undefined);
     notify(direction === 'undo' ? '元に戻しました' : 'やり直しました');
-  }, [session.undo, session.redo, notify, countEdit]);
+  }, [session.undo, session.redo, notify, countEdit, board, metric]);
   const undo = useCallback(() => stepHistory('undo'), [stepHistory]);
   const redo = useCallback(() => stepHistory('redo'), [stepHistory]);
   useHistoryShortcuts({ onUndo: undo, onRedo: redo });
@@ -285,8 +328,15 @@ export function useEditorController(options: EditorControllerOptions) {
     if (!validation.valid) { notify(`${validation.reason}。PDF保存をおすすめします。`); return; }
     setBusy('PNGを生成中');
     try {
-      await platform.saveFile(await renderPng(board, cellSize, session.backgroundColor, { ...options, title: activeDocument.name }), `${activeDocument.name}.png`);
-      analytics.track('chart_exported', { export_format: 'png', board_size_bucket: boardSizeBucket(board.rows, board.cols) });
+      const progress = metric((tracker) => tracker.exportParams(board, session.backgroundColor));
+      const blob = await renderPng(board, cellSize, session.backgroundColor, { ...options, title: activeDocument.name });
+      const outcome = await platform.saveFile(blob, `${activeDocument.name}.png`);
+      const extra: AnalyticsParameters = progress ? { export_state: progress.export_state, progress_bucket: progress.progress_bucket, chart_origin: progress.chart_origin } : {};
+      analytics.track('chart_exported', { export_format: 'png', board_size_bucket: boardSizeBucket(board.rows, board.cols), ...extra });
+      // 共有シートの完了待ちは処理中表示を延長しない。
+      void outcome.saved.then((saved) => {
+        if (saved !== false && progress) metric((tracker) => tracker.commitExport(progress.token, 'png'));
+      }).catch(() => undefined);
     } catch (error) { reportFailure('png_export', error); }
     finally { setBusy(undefined); }
   };
@@ -296,8 +346,15 @@ export function useEditorController(options: EditorControllerOptions) {
     notify('');
     setBusy('PDFを生成中');
     try {
-      await platform.saveFile(await renderPdf(board, { ...pdfOptions, title: activeDocument.name }, session.backgroundColor), `${activeDocument.name}.pdf`);
-      analytics.track('chart_exported', { export_format: 'pdf', pdf_layout: pdfOptions.layout, board_size_bucket: boardSizeBucket(board.rows, board.cols) });
+      const progress = metric((tracker) => tracker.exportParams(board, session.backgroundColor));
+      const blob = await renderPdf(board, { ...pdfOptions, title: activeDocument.name }, session.backgroundColor);
+      const outcome = await platform.saveFile(blob, `${activeDocument.name}.pdf`);
+      const extra: AnalyticsParameters = progress ? { export_state: progress.export_state, progress_bucket: progress.progress_bucket, chart_origin: progress.chart_origin } : {};
+      analytics.track('chart_exported', { export_format: 'pdf', pdf_layout: pdfOptions.layout, board_size_bucket: boardSizeBucket(board.rows, board.cols), ...extra });
+      // 共有シートの完了待ちは処理中表示を延長しない。
+      void outcome.saved.then((saved) => {
+        if (saved !== false && progress) metric((tracker) => tracker.commitExport(progress.token, 'pdf'));
+      }).catch(() => undefined);
     } catch (error) { reportFailure('pdf_export', error); }
     finally { setBusy(undefined); }
   };
@@ -306,6 +363,7 @@ export function useEditorController(options: EditorControllerOptions) {
     const name = (await askText('編み図名を入力してください', '新しい編み図'))?.trim();
     if (!name || !(await saveBeforeManagement('編み図を作成'))) return;
     const document = await createDocument(name);
+    metric((tracker) => tracker.registerOrigin(document.id, 'new'));
     session.updateDocument(document);
     // 作成と開く編み図の設定は、同じトランザクションで保存済み。
     await switchDocument(document, false, false);
@@ -325,6 +383,7 @@ export function useEditorController(options: EditorControllerOptions) {
     // 保存の成否や書き込み中の編集に依存せず、押した時点の盤面を独立した配列へコピーする。
     const snapshot = document.id === activeDocument?.id ? session.activeSnapshot() : undefined;
     const copy = await duplicateDocument(document.id, snapshot?.id === document.id ? snapshot : undefined);
+    metric((tracker) => tracker.registerOrigin(copy.id, 'duplicated', boardFromDocument(copy), backgroundColorOf(copy)));
     session.updateDocument(copy);
     notify('編み図を複製しました');
   });
@@ -343,6 +402,7 @@ export function useEditorController(options: EditorControllerOptions) {
     if (active && !(await saveBeforeManagement('編み図を削除'))) return;
     // 削除が失敗したら、開いている編み図も一覧も変えない。
     await deleteDocuments([...ids], active ? remaining[0].id : undefined);
+    metric((tracker) => tracker.forget(ids));
     for (const id of ids) session.removeDocument(id);
     if (active) await switchDocument(remaining[0], false, false, true);
   });
@@ -383,6 +443,9 @@ export function useEditorController(options: EditorControllerOptions) {
       if (outcome === 'pending') { notify(PENDING_RESTORE_MESSAGE); return; }
       if (outcome === 'failed') return;
       const result = await importBackup(file);
+      metric((tracker) => tracker.registerOrigins(result.documents.map((restored) => ({
+        documentId: restored.id, board: boardFromDocument(restored), backgroundColor: backgroundColorOf(restored),
+      })), 'restored'));
       await refreshDocuments();
       await refreshBlocks();
       const switched = result.documents[0] ? await switchDocument(result.documents[0]) : 'switched';
@@ -404,7 +467,14 @@ export function useEditorController(options: EditorControllerOptions) {
 
   return {
     boardZoomRef, zoomBoard, pointerZoomGesture: options.pointerZoomGesture,
-    session,
+    session: {
+      ...session,
+      setBackgroundColor: (color: string) => {
+        const before = session.backupGeneration();
+        session.setBackgroundColor(color);
+        if (board && before !== session.backupGeneration()) metric((tracker) => tracker.forwardEdit(board));
+      },
+    },
     changed, strokeChanged, commitStroke,
     undo, redo,
     notify, message, notificationAction,

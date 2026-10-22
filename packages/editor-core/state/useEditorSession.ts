@@ -34,6 +34,7 @@ export interface EditorSessionInit {
 }
 
 export interface EditorSessionOptions {
+  onCellsRecorded?: (indices: Uint32Array) => void;
   /** ホストが指定する自動保存の待ち時間。省略時は400ms。 */
   autosaveDelayMs?: number;
   /** 端末内データの読み出し。Web版は旧localStorageからの移行、iOS版はタイムアウトを挟む。 */
@@ -69,7 +70,7 @@ export interface EditorSession {
   /** 盤面を編集したときに呼ぶ。自動保存の待ち時間を測り直す。履歴には積まない。 */
   changed: () => void;
   /** ここまでの編集を元に戻す単位として1件にまとめる。なぞり描きは指を離したときに呼ぶ。 */
-  commitEdit: () => void;
+  commitEdit: () => boolean;
   canUndo: boolean;
   canRedo: boolean;
   /** 盤面を書き換えたときだけ`true`を返す。自動保存の対象になる。 */
@@ -149,7 +150,7 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
   }, []);
 
   const resetHistory = useCallback((target: Board) => {
-    historyRef.current = new BoardHistory(target);
+    historyRef.current = new BoardHistory(target, { onCellsRecorded: (indices) => optionsRef.current.onCellsRecorded?.(indices) });
     syncHistory();
   }, [syncHistory]);
 
@@ -251,7 +252,9 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
 
   const commitEdit = useCallback(() => {
     const target = boardRef.current;
-    if (target && historyRef.current?.record(target)) syncHistory();
+    const recorded = !!target && !!historyRef.current?.record(target);
+    if (recorded) syncHistory();
+    return recorded;
   }, [syncHistory]);
 
   const stepHistory = useCallback((direction: 'undo' | 'redo') => {

@@ -165,3 +165,27 @@ it('線の消去だけでも1件の履歴となり、元に戻す・やり直す
   history.redo(board);
   expect(board.lines).toEqual([]);
 });
+
+it('reports only actual recorded cell differences, never applied history or layouts', () => {
+  const board = new Board(4, 4);
+  const recorded: number[][] = [];
+  const history = new BoardHistory(board, { onCellsRecorded: (indices) => recorded.push([...indices]) });
+  expect(history.record(board)).toBe(false);
+  board.place(1, 2, 'knit', '#111111');
+  expect(history.record(board)).toBe(true);
+  expect(recorded).toEqual([[6]]);
+  history.undo(board);
+  history.redo(board);
+  board.resize(5, 5);
+  history.record(board);
+  expect(recorded).toEqual([[6]]);
+});
+
+it('keeps recorded history when the observer throws', () => {
+  const board = new Board(4, 4);
+  const history = new BoardHistory(board, { onCellsRecorded: () => { throw new Error('observer'); } });
+  board.place(0, 0, 'knit', '#111111');
+  expect(history.record(board)).toBe(true);
+  expect(history.undo(board)).toBe(true);
+  expect(board.occupiedStitchCount).toBe(0);
+});
