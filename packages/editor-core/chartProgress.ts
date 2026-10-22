@@ -108,6 +108,7 @@ export class ChartProgressTracker {
   private bitmap = new Uint8Array(0);
   private bitmapShape = '';
   private lastActivityAt?: number;
+  private lastRequestedAt = -1;
   private clock: () => number;
   constructor(private options: Options) { this.clock = options.now ?? Date.now; this.records = this.read(); this.persisted = new Set(Object.keys(this.records)); }
 
@@ -150,8 +151,11 @@ export class ChartProgressTracker {
     this.bitmap = new Uint8Array(0); this.bitmapShape = '';
     this.forgotten.delete(documentId);
     // flushが未保存の集合・差分も統合する。古い保存値で置き換えない。
-    if (this.retired.has(documentId)) return;
+    if (this.retired.delete(documentId)) delete this.records[documentId];
     if (!this.records[documentId]) {
+      // 明示的な再訪は現在の盤面から再開し、古い保存済み判定を持ち越さない。
+      this.persisted.delete(documentId);
+      this.deltas.delete(documentId);
       this.records[documentId] = { baseOccupied: board.occupiedStitchCount, baseHash: boardStateHash(board, backgroundColor),
         origin: this.pending.get(documentId) ?? originHint ?? (board.occupiedStitchCount === 0 ? 'new' : 'existing'),
         maxNet: 0, reached: {}, exportedThresholds: [], editDays: 0, activeMs: 0, touched: 0, updatedAt: this.clock() };
@@ -249,8 +253,10 @@ export class ChartProgressTracker {
     if (!record) return undefined;
     const hash = boardStateHash(board, backgroundColor);
     const state = hash === record.baseHash ? 'unedited' : hash === record.lastExportHash ? 'same_state' : record.lastExportHash === undefined ? 'edited_first' : 'edited_since_export';
+    const requestedAt = Math.max(this.clock(), this.lastRequestedAt + 1);
+    this.lastRequestedAt = requestedAt;
     return { export_state: state, progress_bucket: progressBucket(record.maxNet), chart_origin: record.origin,
-      token: { documentId: this.activeId, hash, state, requestedAt: this.clock(), reached: { ...record.reached } } };
+      token: { documentId: this.activeId, hash, state, requestedAt, reached: { ...record.reached } } };
   }
   /** 保存・共有を取りやめなかった出力だけを記録する。 */
   commitExport(token: ChartExportToken, format: string): void {

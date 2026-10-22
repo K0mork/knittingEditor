@@ -231,3 +231,46 @@ it('registers a large restore batch with bounded writes and at most 200 records'
   expect(records).toHaveLength(200);
   for (const record of records) expect(record).toMatchObject({ origin: 'restored', baseOccupied: 20, maxNet: 0 });
 });
+
+it('tracks the first chart opened after restoring over 200 records with an advancing clock', () => {
+  const s = setup(); let time = new Date(2026, 9, 19, 12).getTime();
+  const tracker = new ChartProgressTracker({ storage: s.storage, send: s.send, now: () => time++ });
+  const board = new Board(); fill(board, 100);
+  tracker.registerOrigins(Array.from({ length: 201 }, (_, i) => ({ documentId: `r${i}`, board, backgroundColor: '#fff' })), 'restored');
+  expect(s.record('r0')).toBeUndefined();
+  tracker.open('r0', board, '#fff');
+  expect(tracker.exportParams(board, '#fff')).toMatchObject({ export_state: 'unedited', progress_bucket: '0' });
+  tracker.forwardEdit(board, fill(board, 20, 100));
+  expect(s.record('r0')).toMatchObject({ baseOccupied: 100, maxNet: 20 });
+  expect(events(s, 'chart_progress')).toHaveLength(1);
+  expect(Object.keys(JSON.parse(s.raw()!).charts)).toHaveLength(200);
+});
+
+it('starts a fresh baseline when explicitly revisiting a chart evicted by another tab', () => {
+  const s = setup(); const board = new Board(); s.tracker.open('a', board, '#fff');
+  s.tracker.forwardEdit(board, fill(board, 20));
+  const other = s.make();
+  for (let i = 0; i < 200; i++) { s.advance(1); other.open(`new${i}`, new Board(1, 1), '#fff'); }
+  s.tracker.flush(); expect(s.record()).toBeUndefined();
+  s.advance(1); s.tracker.open('a', board, '#fff');
+  expect(s.tracker.exportParams(board, '#fff')).toMatchObject({ export_state: 'unedited', progress_bucket: '0' });
+  expect(s.record()).toMatchObject({ baseOccupied: 20, maxNet: 0, touched: 0, reached: {} });
+  s.tracker.forwardEdit(board, fill(board, 20, 20));
+  expect(s.record().maxNet).toBe(20);
+  expect(events(s, 'chart_progress')).toHaveLength(2);
+  expect(Object.keys(JSON.parse(s.raw()!).charts)).toHaveLength(200);
+});
+
+it('keeps the newest export hash when same-millisecond requests complete in reverse order', () => {
+  const s = setup(); const board = new Board(); s.tracker.open('a', board, '#fff');
+  s.tracker.forwardEdit(board, fill(board, 20));
+  const older = s.tracker.exportParams(board, '#fff')!.token;
+  s.tracker.forwardEdit(board, fill(board, 1, 20));
+  const newer = s.tracker.exportParams(board, '#fff')!.token;
+  expect(newer.requestedAt).toBeGreaterThan(older.requestedAt);
+  s.advance(7 * 86_400_000);
+  s.tracker.commitExport(newer, 'png'); s.tracker.commitExport(older, 'pdf');
+  expect(s.record()).toMatchObject({ lastExportHash: newer.hash, lastExportAt: newer.requestedAt });
+  expect(s.tracker.exportParams(board, '#fff')!.export_state).toBe('same_state');
+  expect(events(s, 'chart_progress_exported')).toEqual([expect.objectContaining({ export_lag_bucket: '0' })]);
+});
