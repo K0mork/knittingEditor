@@ -55,6 +55,8 @@
       th, td { padding: 8px 10px; border: 1px solid #d5dbd3; text-align: left; vertical-align: top; }
       th { background: #e8ece4; }
       td code { white-space: nowrap; }
+      /* 長いイベント名だけは、狭い画面で区切りの位置から折り返す。 */
+      td code.wrap { white-space: normal; }
       @media (prefers-color-scheme: dark) {
         :root { color: #e2e8e3; background: #171c19; }
         footer { border-top-color: #3c4741; }
@@ -124,7 +126,7 @@
             <tr><td><code>chart_exported</code></td><td>PNG・PDFを生成し、ブラウザへ保存・共有を求めたとき</td><td>形式（PNG・PDF）、PDFのページの割り方、編み図の大きさの区分（マス数で4段階）、描いた記号の増加量の区分、編み図の作り始め方の区分、出力した時点の編み図の状態の区分（未編集・前回と同じ・初めて編集後に出力・前回から変更）</td></tr>
             <tr><td><code>chart_progress</code></td><td>描いた記号の増加量が一定の段階に初めて達したとき</td><td>到達した量の区分、編み図の作り始め方の区分、編集した日数の区分、操作していた時間の区分、変更したマス数の区分、編み図の大きさの区分、到達した週</td></tr>
             <tr><td><code>chart_resumed</code></td><td>以前に編集した編み図を、別の日に初めて編集したとき</td><td>編集した日数の区分、前回編集からの日数の区分、描いた記号の増加量の区分、編み図の作り始め方の区分</td></tr>
-            <tr><td><code>chart_progress_exported</code></td><td>一定の増加量に達した編み図を、編集した状態で初めて出力したとき（到達段階ごとに1回）</td><td>到達した量の区分、到達した週、到達から出力までの日数の区分、出力の形式</td></tr>
+            <tr><td><code class="wrap">chart_progress_<wbr>exported</code></td><td>一定の増加量に達した編み図を、編集した状態で初めて出力したとき（到達段階ごとに1回）</td><td>到達した量の区分、到達した週、到達から出力までの日数の区分、出力の形式</td></tr>
             <tr><td><code>backup_exported</code></td><td><code>.knit</code> バックアップを書き出したとき</td><td>範囲（この編み図・全データ）</td></tr>
             <tr><td><code>backup_restored</code></td><td>バックアップから復元したとき</td><td>復元した編み図の数の区分</td></tr>
             <tr><td><code>save_failed</code></td><td>端末内への保存に失敗したとき</td><td>保存のきっかけ（自動保存・手動・バックグラウンド移行時）と失敗の分類（保存容量の不足、その他の保存領域の失敗、分類不明）。エラーの文面は送りません</td></tr>
