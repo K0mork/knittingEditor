@@ -1,0 +1,24 @@
+# 2026-10-22 — パネルのドラッグを左の余白で行い、保存画面の問い合わせ待ちを避ける
+
+- 影響: iOS UIテストの夜間の失敗（#317）への対処。アプリの動作は変えていない。
+  - main `db6b921` の夜間 Full iOS validation（run 39681979012）で、2件が再試行でも失敗した。同じコミットのマージ時の Full 検証は全ジョブ成功していた。
+  - iPhone 17 の`testLandscapeExportPanelUsesRightColumn`: `assertHittableAfterScrolling`は対象ボタンの横位置でパネルをドラッグしていた。横向きで「PDFを保存」を見せるドラッグの開始点 (679, 347) が「PNGを保存」の上にあった。押下がタップとして成立して「ファイルを保存」のアラートが開き、以後のドラッグがすべて効かなかった。#44 に記録した以前の失敗も同じ開始点だった。
+    - ドラッグはパネルの左の余白で行うようにした。パネルの枠は、「閉じる」を直接の子に持つ要素として、画面の木を1回取得して求める。左右の余白は同じ幅なので、「閉じる」の右に残る幅の半分だけ左端から入った位置を押す。見つからない場合はこれまでどおり対象の横位置を使う。
+    - 最初は右の余白を試したが、手元の iPad では横向きの出力パネルが動かなかった。スクロールバーをつかんだとみている。中央に出る記号の選択画面では、外側の背景に当たって選択画面が閉じた。このため左の余白にした。
+    - ドラッグ後にアラートが出ていたら、残りのドラッグを続けず、原因の分かる失敗にして打ち切る。
+  - iPad (A16) の`testBlockSaveAndFullBackupRestoreFollowGuide`:
+    - 1回目: 復元のファイル選択画面で「On My iPad」の`isHittable`を読んだところ、「Failed to determine hittability … Activation point invalid」がテストの失敗として記録された。枠は空でなく、画面とも重なっていた。この失敗だけを想定内として「押せない」と扱う`isHittableWithoutFailing`を足した（`XCTExpectFailure`の非厳密オプション、`issueMatcher`でこの文言だけに限る）。保存場所の候補探し、`waitForHittable`、「ブラウズ」の押し直しの判定で使う。
+    - 再試行: 「全データを書き出す」の保存画面で「保存」を押した後、閉じかけの保存画面（別プロセス）への`replace.exists`の問い合わせが約42秒止まった。そのため45秒の待機が切れた。ファイル名を実行ごとの名前にできたときは置き換えの確認が出ないので、`replace`を問い合わせず、保存画面が閉じるのだけを待つ。既定名のときはこれまでどおり置き換えの確認も見る。
+- 主なファイル: `ios/UITests/KnittingEditorUITests/KnittingEditorUITests.swift`
+- テスト: 上の補助処理を更新した。テストケースの追加・削除は無く、PRスモークの選択も変えていない（`node scripts/check-pr-smoke-ui-tests.mjs`成功）。
+- 検証: 手元は Xcode 27.1 で、CI の Xcode 26.6・iOS 26.5 とは版が違う。Simulator は1台ずつ動かした。
+  - `xcodegen generate --spec ios/project.yml`と`xcodebuild build-for-testing`（iOS Simulator）が成功した。
+  - 右の余白を使った版:
+    - KE verify iPhone（iOS 27.0）では、5件中4件が成功した。`testLandscapeExportPanelUsesRightColumn`も成功した。`testNarrowToolbarKeepsLongStitchAndPasteBandUsable`は、変更より前の行（`:1317`）で記号の選択画面が開かず失敗した。単独で再実行すると成功した。
+    - KE verify iPad（iPadOS 27.0）では、上記のとおり出力パネルが動かず、記号の選択画面が閉じて失敗した。`testBlockSaveAndFullBackupRestoreFollowGuide`は、新規の編み図の盤面が安定するのを待つところ（`:379`、今回の変更の前の手順）で1件失敗した。その後の書き出しの待機と復元は、失敗なく最後まで進んだ。
+  - 左の余白にした最終版:
+    - KE verify iPad では、`testLandscapeExportPanelUsesRightColumn`、`testNarrowToolbarKeepsLongStitchAndPasteBandUsable`、`testShareSheetsDismissBackToEditor`、`testAccessibilityExtraExtraExtraLargeKeepsPrimaryControlsUsable`、`testBlockSaveAndFullBackupRestoreFollowGuide`の5件が成功した。
+    - KE verify iPhone では、`testLandscapeExportPanelUsesRightColumn`、`testNarrowToolbarKeepsLongStitchAndPasteBandUsable`、`testAccessibilityExtraExtraExtraLargeKeepsPrimaryControlsUsable`、`testOversizedPngExplainsLimitAndDisablesSave`、`testShareSheetStaysUsableAfterRotatingWhileOpen`、`testShareSheetsDismissBackToEditorInLandscape`の6件が成功した。
+    - ドラッグの開始点の横位置は、すべてパネルの左の余白だった。iPad は記号の選択画面 37、縦の出力パネル 437、横の出力パネル 797。iPhone は横 515、縦 7。
+  - CI の版での確認と、ほかの UI テストへの影響の確認は、PR の`ios`ジョブと、このブランチで手動実行する`ios-full.yml`に任せる。
+- デプロイ影響: なし。iOSのUIテストだけで、Pagesの配信物もアプリも変わらない。
