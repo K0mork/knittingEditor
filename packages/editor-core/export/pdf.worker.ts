@@ -1,5 +1,5 @@
 import { normalizeGuideLines, type GuideLine } from '../model/guideLines';
-import { guideLineColor } from '../canvas/guideLines';
+import { GUIDE_LINE_SHAPE, guideLineColor } from '../canvas/guideLines';
 /// <reference lib="webworker" />
 import { exportLegend } from './annotations';
 import { Zlib, strToU8, zlibSync } from 'fflate';
@@ -158,11 +158,12 @@ function tileGrid(tile: PdfTile, request: PdfRequest, originX: number, originY: 
 /** PDF座標では下向きが負。指定時は点線の下端に矢印を描く。 */
 export function pdfGuideLine(x: number, top: number, bottom: number, cell: number, background: string, arrow: boolean): string {
   if (top <= bottom) return '';
-  const size = cell * 0.18;
+  const size = cell * GUIDE_LINE_SHAPE.arrowLength;
+  const halfWidth = cell * GUIDE_LINE_SHAPE.arrowHalfWidth;
   const color = pdfRgb(guideLineColor(background));
   const end = bottom + (arrow ? size : 0);
-  let commands = `q ${color} RG ${color} rg ${(cell * 0.045).toFixed(3)} w [${(cell * 0.09).toFixed(3)} ${(cell * 0.1).toFixed(3)}] 0 d ${x.toFixed(3)} ${top.toFixed(3)} m ${x.toFixed(3)} ${end.toFixed(3)} l S\n`;
-  if (arrow) commands += `[] 0 d ${x.toFixed(3)} ${bottom.toFixed(3)} m ${(x - size * 0.55).toFixed(3)} ${(bottom + size).toFixed(3)} l ${(x + size * 0.55).toFixed(3)} ${(bottom + size).toFixed(3)} l h f\n`;
+  let commands = `q ${color} RG ${color} rg ${(cell * GUIDE_LINE_SHAPE.width).toFixed(3)} w [${(cell * GUIDE_LINE_SHAPE.dash).toFixed(3)} ${(cell * GUIDE_LINE_SHAPE.gap).toFixed(3)}] 0 d ${x.toFixed(3)} ${top.toFixed(3)} m ${x.toFixed(3)} ${end.toFixed(3)} l S\n`;
+  if (arrow) commands += `[] 0 d ${x.toFixed(3)} ${bottom.toFixed(3)} m ${(x - halfWidth).toFixed(3)} ${(bottom + size).toFixed(3)} l ${(x + halfWidth).toFixed(3)} ${(bottom + size).toFixed(3)} l h f\n`;
   return commands + 'Q\n';
 }
 
