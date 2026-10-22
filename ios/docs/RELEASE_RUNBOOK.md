@@ -120,7 +120,7 @@ MacとApple Vision Proは[#86の決定コメント](https://github.com/K0mork/kn
 
 [実機ゲートの記録ルール](REAL_DEVICE_RELEASE_CHECKLIST.md#記録ルール)と[開発ログの書式](../../docs/dev-log/README.md)に従い、実施日、コミット、提出・公開したビルド番号、端末／OS、結果、残件、配布影響、証跡の場所を残す。提出チェックリストとM6を実施結果に合わせて更新する。個人情報・テスターの識別情報・登録画面等の非公開証跡は公開せず、ルートの `private/` 内の保管場所だけを記す。
 
-変更・確認の記録は該当PRの `docs/dev-log/` に含め、マージ後に行った確認はそのPRへのコメントで残す。結果の追記だけのPRは作らない。Issueの古い本文が凍結済みの `DEVELOPMENT_LOG.md` を指していても、新しい記録は `docs/dev-log/` を使う。完了条件を満たしたIssueだけを、完了するPRの `Closes #番号` で閉じる。
+変更・確認の記録は該当PRの `docs/dev-log/` に含め、マージ後に行った確認はそのPRへのコメントで残す。結果の追記だけのPRは作らない。Issueの古い本文が凍結済みの [`DEVELOPMENT_LOG.md`](../DEVELOPMENT_LOG.md) を指していても、新しい記録は `docs/dev-log/` を使う。完了条件を満たしたIssueだけを、完了するPRの `Closes #番号` で閉じる。
 
 - **完了の目安:** 承認とストア公開を確認し、公開版の主要フローとチェックリストの証跡・記録がそろった。未実施項目は明示されている。
 - **関係するIssue／項目:** [#25](https://github.com/K0mork/knittingEditor/issues/25)・[#26](https://github.com/K0mork/knittingEditor/issues/26)・[#27](https://github.com/K0mork/knittingEditor/issues/27)、提出チェックリスト末尾の承認確認、実機ゲートM6・記録ルール。

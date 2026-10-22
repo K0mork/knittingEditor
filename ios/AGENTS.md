@@ -2,7 +2,7 @@
 
 ## Project Goal
 
-このディレクトリは、ルートのWeb版と共通基盤を共有する、完全オフラインのiOS・iPadOSアプリです。`DEVELOPMENT.md`と`SPECIFICATION.md`を実装上の基準とし、P0要件を勝手に緩和してはいけません。リポジトリ全体の構成・CI・Pages公開方針はルートの`AGENTS.md`と`docs/ARCHITECTURE.md`を正とします。
+このディレクトリは、ルートのWeb版と共通基盤を共有する、完全オフラインのiOS・iPadOSアプリです。[`DEVELOPMENT.md`](DEVELOPMENT.md)と[`SPECIFICATION.md`](SPECIFICATION.md)を実装上の基準とし、P0要件を勝手に緩和してはいけません。リポジトリ全体の構成・CI・Pages公開方針はルートの[`AGENTS.md`](../AGENTS.md)と[`docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md)を正とします。
 
 ## Source Repository Boundary
 
@@ -45,7 +45,7 @@ ios/docs/            additional app design and release records
 
 - 新しい外部URL、SDK、パッケージ、通信処理を追加する前に、オフライン要件への影響を説明する。
 - Webアセットはアプリに同梱し、`https://knittingeditor.com/`を`WKWebView`へ読み込まない。
-- 同梱の使い方ページのサポートページ（`https://knittingeditor.com/support/`）、アプリのプライバシーポリシー（`https://knittingeditor.com/privacy/app/`）とメールのリンクは、実行時の外部依存禁止の例外とする。ユーザー操作時のみSafariまたはメールアプリで開き、オフラインの編集・保存・ヘルプの閲覧と分離する（`scripts/check-app-bundle.sh`もこれらのリンクを検査対象から除く）。
+- 外部を開いてよいのは、[`SPECIFICATION.md`](SPECIFICATION.md)の「3. オフライン・ネットワーク仕様」に挙げた、利用者が選んだときだけ開くリンクに限る。新しく足すときは先に仕様を変える。
 - リリースビルドにGoogle AnalyticsやGoogle Tag Managerを含めない。
 - テストでは予期しないネットワーク要求を検出し、失敗として扱う。
 
@@ -59,32 +59,20 @@ ios/docs/            additional app design and release records
 
 ## 非公開情報
 
-リポジトリ、その履歴、GitHub上のIssue・PR・コメント・コミットメッセージ・CIログ・添付画像はすべて公開される。ルートの`AGENTS.md`の「Confidential Information」に従い、利用分析・Search Console・App Store Connect・売上の数値、非公開のダッシュボードへのリンクやアカウントID、公開前の価格・収益試算・事業計画、個人情報を載せない。必要な数値や価格、未公表の予定、個人の税務・法務の情報はGit管理外のルート`private/`に置き、文書には定性的な結論とその置き場所だけを書く。`private/`はメインのチェックアウトのルートにだけあり（同期フォルダへのシンボリックリンクの場合がある）、worktreeからはメインのチェックアウトの`private/`を使う。App Storeの審査メモや提出資料の下書き（`docs/`）も同じ扱いとする。
+リポジトリ、その履歴、GitHub上のIssue・PR・コメント・コミットメッセージ・CIログ・添付画像はすべて公開される。ルートの[`AGENTS.md`](../AGENTS.md)の「Confidential Information」に従い、利用分析・Search Console・App Store Connect・売上の数値、非公開のダッシュボードへのリンクやアカウントID、公開前の価格・収益試算・事業計画、個人情報を載せない。必要な数値や価格、未公表の予定、個人の税務・法務の情報はGit管理外のルート`private/`に置き、文書には定性的な結論とその置き場所だけを書く。`private/`はメインのチェックアウトのルートにだけあり（同期フォルダへのシンボリックリンクの場合がある）、worktreeからはメインのチェックアウトの`private/`を使う。App Storeの審査メモや提出資料の下書き（`docs/`）も同じ扱いとする。
 
 ## Development Log
 
-記録は、PRごとに`docs/dev-log/`へ1ファイルを足して書きます（ルートの`AGENTS.md`の「Development Log」、書式は`docs/dev-log/README.md`）。iOS側の変更も同じです。ルートの`DEVELOPMENT_LOG.md`（2026-10-06までの記録）と`ios/DEVELOPMENT_LOG.md`（統合前のアプリ履歴）は凍結アーカイブで、追記しません。
+記録の置き場所・書式・時期は、ルートの[`AGENTS.md`](../AGENTS.md)の「Development Log」と[`docs/dev-log/README.md`](../docs/dev-log/README.md)に従う。iOS側の変更も同じで、`ios/DEVELOPMENT_LOG.md`は統合前の凍結アーカイブとして追記しない。
 
-すべてのユーザー可視変更、挙動変更、データ移行、記号同期、テスト・ビルド・署名・配布設定変更で記録を足してください。以下を必ず記録します。
-
-- 日付と短い要約
-- 影響する挙動・方針と主なファイル
-- 追加・更新したテスト
-- 実行したコマンドと成功・失敗
-- 実行できなかった検証と理由
-- TestFlight／App Storeへの影響と必要な事後確認
-
-記録は、その変更を入れるPRに含め、マージ前に揃っていることを確認します。書くのは、変えた内容とマージ前に行った検証です。マージ後のCIやデプロイの結果を記録するためだけのPRは作りません（実行結果はGitHub Actionsと`github-pages`環境の履歴に残ります）。人が行ったマージ後の確認は、マージしたPRへのコメントで残します。依存の更新だけのDependabotのPRには記録は不要で、そのブランチへコミットもpushしません（リリースノートに一覧が出ます）。
-
-実際に実行していないテストを成功と記録してはいけません。
+iOS側の変更では、ルートの項目に加えて、TestFlight／App Storeへの影響と必要な事後確認を書く。記号の同期と、署名・配布設定の変更も記録の対象とする。実際に実行していないテストを成功と記録してはいけない。
 
 ## Issue Management
 
-- 未完了の作業はすべて[GitHub Issues](https://github.com/K0mork/knittingEditor/issues)で管理する。初回リリースに必要な項目はマイルストーン`iOS 1.0`に入れ、優先度を`priority:P0`／`P1`／`P2`、iOS版の作業を`platform:ios`、実機・Apple署名・TestFlightが必要な作業を`needs-device`のラベルで示す。
-- 作業開始時に対象Issueの本文で現状と完了条件を確認する。
-- 新しい必須作業が判明した場合は、Issueを作成する。
-- 完了したPRの本文に`Closes #番号`を書いてIssueを閉じる。部分完了では閉じず、残りをIssueのコメントに書く。`needs-device`のIssueはSimulatorの結果だけで閉じない。
-- 仕様変更時は`DEVELOPMENT.md`、`SPECIFICATION.md`、関係するIssueの不整合を残さない。
+Issueの管理（ラベル、マイルストーン`iOS 1.0`、`Closes #番号`）はルートの[`AGENTS.md`](../AGENTS.md)の「GitHub Workflow」に従う。iOS版では加えて次を守る。
+
+- `needs-device`のIssueはSimulatorの結果だけで閉じない。実機の手順は[`docs/REAL_DEVICE_RELEASE_CHECKLIST.md`](docs/REAL_DEVICE_RELEASE_CHECKLIST.md)に従う。
+- 仕様変更時は[`DEVELOPMENT.md`](DEVELOPMENT.md)、[`SPECIFICATION.md`](SPECIFICATION.md)、関係するIssueの不整合を残さない。
 
 ## Testing Requirements
 
@@ -98,22 +86,14 @@ ios/docs/            additional app design and release records
 - データ形式変更: Web→アプリ、アプリ→Webの`.knit`往復試験
 - リリース候補: 機内モードでP0フローを通すオフライン試験
 
+CIの構成、PR・マージ後に確かめるジョブ、ローカルで行う検査は、ルートの[`AGENTS.md`](../AGENTS.md)の「Change-specific Test Requirements」と[`docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md)の「ビルドと公開」を正とする。具体的なコマンドと端末は両ワークフローを正とする。
+
 ## Simulator運用と容量管理
 
 - 最新OSを確認するときは、各ランタイムにつき検証用のiPhone・iPadを原則1台ずつに限定する。Xcodeが自動生成した未使用デバイスは、UDIDを一覧で確認してから明示的に削除する。
-- 検証前後に`xcrun simctl list runtimes`、`xcrun simctl list devices available`、`du -sh /Users/komorikouki/Library/Developer/CoreSimulator`、`df -h /`を記録する。
+- 検証前後に`xcrun simctl list runtimes`、`xcrun simctl list devices available`、`du -sh ~/Library/Developer/CoreSimulator`、`df -h /`を記録する。
 - 検証終了後は全Simulatorをshutdownする。最新OS用に新規作成したデバイスはテストデータを`erase`して保持し、既存のCI基準デバイスはユーザーの明示なしに消去しない。
 - ランタイム自体、既存のユーザーデータ、実機データを容量都合で削除しない。XcodeBuildMCPの古い生成ログ・テスト成果物を整理する場合は、対象と保持する最新証跡を先に列挙し、復元可能なゴミ箱移動を優先する。
-
-PRの検証（`.github/workflows/ci.yml`）は、変更範囲に応じてWeb E2E（Chromium・WebKit）、iOS Webの型検査・Vitest、iPhone 17の全単体テストと`ios/UITests/pr-smoke-ui-tests.txt`のUIスモークテスト、Debugオフラインbundle検査を実行する。App Store文書・UIスモーク一覧の静的検査は常時実行し、必要なジョブを`ci-gate`で必須にする。
-
-全検証は別の`.github/workflows/ios-full.yml`で、関連するマージ後、毎晩（18:23 UTC）、手動実行時に行う。iPhone 17・iPad (A16)の全単体／UIテストとDebug bundle検査、両端末の`app_update`、unsigned Release Archiveとオフライン資産検査が対象で、Pagesのゲートには含めない。iPadのUI除外一覧は使わない。`main`・夜間の失敗は`bug`・`priority:P1`・`platform:ios`付きIssueを作成し、同名の未完了Issueがある場合は実行URLをコメントする。失敗は調査・修正する。
-
-iOS・共通コードの完了確認には、マージ後のコミット、または変更を含む後続の`main`コミットで全検証の成功が必要。同じブランチの古いrunはキャンセルされるため、連続マージ時は変更を含む最新コミットで確認する。夜間runもその変更を含む必要がある。保存・移行、Files・共有、iPadのレイアウト・キーボード・回転、Swift・ビルド設定・依存、スモーク対象外テストなどリスクの高い変更は、マージ前にもfeatureブランチで全検証を手動実行し、そのSHAの全ジョブの成功を確認する。
-
-ローカルでは、packages/やios/Web/の変更でiOS Webの型検査・テスト、Swift・XcodeGen・ビルド設定の変更でプロジェクト生成・アプリのビルド、変更したスクリプト・文書の静的検査と対象テストを行う。Simulatorの全検証をローカルで繰り返すのは、診断が必要な失敗の調査とCIで確認できない変更に限る。開発ログではローカル検査とPR・全検証CIに任せた検査を分ける。
-
-具体的なコマンドと端末は両ワークフローを正とする。Markdownだけの変更はapp_store_docsで文書・UIスモーク一覧を検査し、PRのWeb・Simulatorとマージ時の全検証は実行しない。夜間・手動の全検証は別途実行される。
 
 ## Generated Files and Secrets
 
@@ -124,52 +104,23 @@ iOS・共通コードの完了確認には、マージ後のコミット、ま�
 
 ## Commits
 
-- コードベースを変更したら、指示がなくてもコミットする。
-- 1コミット1目的とし、フォーマットだけの変更は分離する。
-- Conventional Commit形式を使う。例: `docs: define offline app architecture`、`feat: add local web container`、`fix: flush saves on background`。
-- コミット前に差分、未追跡ファイル、実行済みテスト、`docs/dev-log/`の記録を確認する。
-- 統合先の正式なリモートは`https://github.com/K0mork/knittingEditor.git`とする。
-- 各作業で作成したコミットは、ユーザーから個別の指示がなくても同じ作業内で必ずGitHubへpushする。
-- push後に`git status --short --branch`または同等の方法で、ローカルHEADとリモート追跡ブランチの一致を確認する。
-- PRのレビューとマージは利用者が行う。エージェントはPRを作ってレビュー待ちであることを報告し、マージしない。利用者がそのPRのマージを明示的に指示した場合に限り、`ci-gate`の成功後にマージする。あるPRのマージ指示は、続きのPRや新しく開かれたPRには及ばない。
+コミットの粒度・メッセージ、PRのレビューとマージ、force-pushの禁止は、ルートの[`AGENTS.md`](../AGENTS.md)の「Commit & Pull Request Guidelines」「Deployment Procedure」「Branches, Worktrees & Cleanup」に従う。iOS版では加えて次を守る。
+
+- コードベースを変更したら、指示がなくてもコミットし、同じ作業内でGitHubへpushする。push後に`git status --short --branch`などで、ローカルHEADとリモート追跡ブランチの一致を確かめる。
 - pushが失敗した場合は作業完了とせず、原因とリモート未反映であることを報告し、開発ログにも記録する。
 - **push後はCIの結果を必ず確認する。** 詳細は「CI確認」節に従う。
-- force-push、履歴改変、リモートブランチ削除は、ユーザーが対象と目的を明示した場合だけ行う。
-- TestFlight upload、App Store提出、GitHub Release作成は、ユーザーの明示的な依頼なしに行わない。
+- TestFlight upload、App Store提出、GitHub Release作成、タグ作成は、ユーザーの明示的な依頼なしに行わない。
 
 ## CI確認
 
 featureブランチをpushしたら、PRを作成してから、そのcommitのCIが完了するまで確認し、結果をユーザーへ報告する。既存PRへのpushも対象とする。`ci.yml`のイベントは`pull_request`、`main`へのpush、`workflow_dispatch`だけなので、PR作成前のfeatureブランチへのpushではrunを待たない。**CIを確認しないまま作業完了と報告しない。**
 
-PRが存在することを`gh pr view --json url,headRefOid,state`で確認し、次を実行する。runの出現は最大5分待ち、取得失敗または期限超過なら確認を中断して原因を調べる。
-
-```sh
-SHA=$(git rev-parse HEAD)
-RUN=''
-DEADLINE=$(( $(date +%s) + 300 ))
-while [ "$(date +%s)" -lt "$DEADLINE" ]; do
-  RUN=$(gh run list --workflow ci.yml --commit "$SHA" --limit 1 --json databaseId --jq '.[0].databaseId // empty') || break
-  [ -z "$RUN" ] || break
-  sleep 10
-done
-if [ -n "$RUN" ]; then
-  gh run watch "$RUN" --compact --interval 30 > /dev/null
-  gh run view "$RUN" --json headSha,conclusion,jobs --jq '"RUN: \(.conclusion) (\(.headSha))", (.jobs[] | "  \(.name): \(.conclusion)")'
-else
-  echo '対象SHAのCI runを取得できませんでした。PR、push先、Actionsの状態を確認してください。' >&2
-fi
-```
-
-runが現れない場合は、`gh pr view --json url,headRefOid,state`でPRがopenか、headが対象SHAかを確認する。`git status --short --branch`でpush先を、`gh run list --workflow ci.yml --limit 10`とGitHub Actions画面でイベント・承認待ち・ワークフロー無効化・取得エラーを調べる。原因を報告し、CI未確認のまま完了としない。ワークフローのイベント条件は変更しない。
+runの待ち方のコマンド、runが現れないときの調べ方、ローカルでは再現しなかった過去の失敗例は[`DEVELOPMENT.md`](DEVELOPMENT.md)の「CIの結果の確かめ方」にある。ワークフローのイベント条件は変更しない。
 
 runは、pushしたコミットのSHA（完全な40桁）と`ci.yml`で絞って選ぶ。`gh run list --limit 1`だけでは、CodeQLのrunや、別のブランチ・別のセッションのrunを拾い、他人の結果を見て完了と報告してしまう。
 
 - `changes`、`app_store_docs`、変更範囲に応じた`web`、`ios_web`、`ios`（iPhone 17）、`ci-gate`を個別に確認する。Web影響のある`main`更新では`deploy`と`smoke`も確認する。`RUN: success`だけを見て済ませない。
 - マージ後は`gh run list --workflow ios-full.yml --commit <SHA>`で変更を含むコミットのrunを選び、`gh run view <id> --json headSha,conclusion,jobs`で`ios_full`×2、`app_update`×2、`release_archive`の成功を個別に確認する。PRゲートだけでiOS作業完了としない。
-- 失敗したら、そのpushで完了とせずに原因を特定して直す。`gh run view <id> --log-failed`で失敗ジョブのログを読む。ローカルで再現できない場合は、CI環境（macos-26、Xcode 26.6、iOS 26.5 Simulator）との差を疑う。
-- ローカルのSimulatorが通ってもCIが落ちることがある。過去の実例は次のとおりで、いずれもローカルでは再現しなかった。
-  - 入力欄の中央タップでキャレットが先頭に入り、削除が効かず初期値が残った（Xcode 15.4 Simulator）。
-  - `-only-testing`の対象テストを誤って削除し、「Executed 0 tests」が成功扱いになった。テスト関数を消していないか、変更前コミットとの関数一覧の差分で確認する。
-  - UIテストがランナーの遅さで実行時間の上限を超えた（`exceeded execution time allowance`）。`-retry-tests-on-failure`はタイムアウトを救ってくれないため、`-default-test-execution-time-allowance`／`-maximum-test-execution-time-allowance`とジョブの`timeout-minutes`を見直す。
+- 失敗したら、そのpushで完了とせずに原因を特定して直す。
 - 断続的に失敗するテストは、原因を特定できるまで「直った」と記録しない。失敗時の診断情報と画面添付を仕込み、次の発生を待つ。
 - CIが赤いまま別の作業へ移る場合は、赤であることと原因の切り分け状況をユーザーへ明示する。

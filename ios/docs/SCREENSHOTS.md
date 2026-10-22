@@ -68,6 +68,5 @@
 - iPad横画面は`testPrimaryControlsRemainUsableInPortraitAndLandscape`の横画面安定後に取得し、画面全体の主要操作が見えることを確認した。
 - アプリを削除して再インストールした直後に起動し、`UILaunchScreen`表示中の画面を取得した。
 - 端末内のテストデータや個人情報は含めていない。
-- ステータスバーはSimulatorの表示を含む。起動画面の色・Safe Areaと解像度の確認用であり、App Store Connect登録前に実機またはTestFlightで撮り直す。
-- これらはSimulator下書きであり、App Store Connect向けの実機／TestFlight最終素材ではない。
+- ステータスバーはSimulatorの表示を含む。起動画面の色・Safe Areaと解像度の確認用で、提出には使わない。提出には上の「App Store Connect提出用（最終版）」を使う。
 - iOS／iPadOS 27.0の2枚は最新OSの実UI確認証跡であり、XcodeBuildMCPの最適化スクリーンショットを含むため提出用解像度ではない。

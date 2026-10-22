@@ -131,7 +131,7 @@
 
 ## 2026-10-21 起動画面の確認（Simulator）
 
-`main`の`fda7bbf`をXcode 27.1でReleaseビルドし、KE verify iPhone・KE verify iPad（iOS 27.0 Simulator）へ入れ直して、ライト・ダークの両方で起動を録画した。どれも「起動画面（`LaunchBackground`の緑）→準備中の表示（同じ緑）→編集画面」と移り、白や黒の全面表示は1コマも出なかった。ダークでは編集画面も暗い配色になった。iOS 27のSimulatorで起動画面の緑が準備中の緑より鮮やかに見える件（#117）は変わらないが、実機では起きないことを2026-10-09にiPhone 17で確かめている（`REAL_DEVICE_RELEASE_CHECKLIST.md`）。提出ビルドでの最終確認は`REAL_DEVICE_RELEASE_CHECKLIST.md`のM6で行う
+`main`の`fda7bbf`をXcode 27.1でReleaseビルドし、KE verify iPhone・KE verify iPad（iOS 27.0 Simulator）へ入れ直して、ライト・ダークの両方で起動を録画した。どれも「起動画面（`LaunchBackground`の緑）→準備中の表示（同じ緑）→編集画面」と移り、白や黒の全面表示は1コマも出なかった。ダークでは編集画面も暗い配色になった。iOS 27のSimulatorで起動画面の緑が準備中の緑より鮮やかに見える件（#117）は変わらないが、実機では起きないことを2026-10-09にiPhone 17で確かめている（[`REAL_DEVICE_RELEASE_CHECKLIST.md`](REAL_DEVICE_RELEASE_CHECKLIST.md)）。提出ビルドでの最終確認は[`REAL_DEVICE_RELEASE_CHECKLIST.md`](REAL_DEVICE_RELEASE_CHECKLIST.md)のM6で行う
 
 ## 2026-10-21 提出用アーカイブの試作（手元のXcode 27.1）
 

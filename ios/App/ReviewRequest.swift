@@ -5,7 +5,7 @@ import UIKit
 /// App Storeの評価の依頼（StoreKitのシステムの依頼画面）を出すかどうかの判定（#84）。
 ///
 /// 依頼はPNG・PDFを保存・共有し終えた作業の区切りでだけ検討し、初回の起動直後や編集の途中には出さない。
-/// 条件と理由は`ios/docs/NATIVE_BRIDGE.md`の「App Storeの評価の依頼」に書く。
+/// 条件と理由は`ios/SPECIFICATION.md`の「2.8 App Storeの評価の依頼」に書く。
 /// システムは条件を満たしても画面を出さないことがあり（1年に3回まで、TestFlightでは出ない）、
 /// 出たかどうかはアプリから分からない。そのため、依頼を試みた時点で記録する。
 enum ReviewRequestPolicy {

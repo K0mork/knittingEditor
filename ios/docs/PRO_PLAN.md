@@ -1,6 +1,6 @@
 # 有料機能（Pro）実装検討
 
-iOS版に買い切りのアプリ内課金「Pro」を追加するための検討メモ。**まだ実装しない。** 実装に入るときはこの文書を仕様の起点にし、確定した内容を`SPECIFICATION.md`・`NATIVE_BRIDGE.md`・`WEB_SYNC.md`へ移す。
+iOS版に買い切りのアプリ内課金「Pro」を追加するための検討メモ。**まだ実装しない。** 実装に入るときはこの文書を仕様の起点にし、確定した内容を[`SPECIFICATION.md`](../SPECIFICATION.md)・[`NATIVE_BRIDGE.md`](NATIVE_BRIDGE.md)・[`docs/WEB_SYNC.md`](../../docs/WEB_SYNC.md)へ移す。
 
 ## 1. 方針
 
@@ -35,7 +35,7 @@ iOS版に買い切りのアプリ内課金「Pro」を追加するための検�
 | 名前 | 棒針編み図エディタ Pro |
 | 種類 | 非消耗型（Non-Consumable）。買い切り |
 | Product ID | `com.k0mork.knittingEditor.pro` |
-| 価格 | 買い切り。価格は公開前の非公開メモで管理し、発売時にApp Store Connectで設定する（日本を基準価格にし、他の配信地域はApp Storeの自動換算。EU加盟国では配信しない：`APP_STORE_METADATA.md`の「配信地域」） |
+| 価格 | 買い切り。価格は公開前の非公開メモで管理し、発売時にApp Store Connectで設定する（日本を基準価格にし、他の配信地域はApp Storeの自動換算。EU加盟国では配信しない：[`APP_STORE_METADATA.md`](APP_STORE_METADATA.md)の「配信地域」） |
 | ファミリー共有 | 有効にする（推奨。未決事項を参照） |
 | 発売時の内容 | 編み進めモード（第1弾）。購入案内には、そのバージョンで実際に使える機能だけを書く |
 | 将来候補 | 自動バックアップ（第2弾）など。未実装機能や「今後の全専用機能」を購入時の約束にしない |
@@ -278,13 +278,13 @@ Swift → Web（`CustomEvent`の`detail`）:
 
 | 対象 | 変更 |
 |---|---|
-| `SPECIFICATION.md` | §8「初回リリースの非対象」の「課金、広告」から課金を外し、Proの仕様を追記する。広告なしは残す |
+| [`SPECIFICATION.md`](../SPECIFICATION.md) | §8「初回リリースの非対象」の「課金、広告」から課金を外し、Proの仕様を追記する。広告なしは残す |
 | `public/privacy/app/index.html`（リポジトリルート） | 購入はAppleが処理し、アプリ内で利用権限を確認するが開発者のサーバーへ購入情報を送信しないことを追記する。第2弾ではオプトインの自動バックアップと、iCloud等のファイルプロバイダによる配送も説明する |
-| `docs/APP_REVIEW_NOTES.md` | 「課金なし」の記述を改め、Proの確認手順（Sandbox、購入案内の出し方、復元の場所）と、オフライン時に購入済みの判定がどう動くかを書く |
+| [`docs/APP_REVIEW_NOTES.md`](APP_REVIEW_NOTES.md) | 「課金なし」の記述を改め、Proの確認手順（Sandbox、購入案内の出し方、復元の場所）と、オフライン時に購入済みの判定がどう動くかを書く |
 | `public/support/index.html`（サポートページ） | Pro公開時に、買い切りで約束することと約束しないこと（§2「提供を続ける範囲」）、購入・復元の問い合わせ先、返金はAppleへ申請することを書く |
-| `docs/APP_STORE_METADATA.md` | Pro公開時に無料の編集・出力、10段までの無料体験、全段利用の買い切りを明示し、アプリ内課金の登録内容（名前・説明・審査用スクリーンショット）を加える。発売時に使える機能だけを掲載する |
-| `docs/NATIVE_BRIDGE.md` | 5.2のメッセージを正式な仕様として移す |
-| `docs/WEB_SYNC.md` | `EditorView`の`knitting`プロパティと、iOS版だけが渡すことを追記する |
+| [`docs/APP_STORE_METADATA.md`](APP_STORE_METADATA.md) | Pro公開時に無料の編集・出力、10段までの無料体験、全段利用の買い切りを明示し、アプリ内課金の登録内容（名前・説明・審査用スクリーンショット）を加える。発売時に使える機能だけを掲載する |
+| [`docs/NATIVE_BRIDGE.md`](NATIVE_BRIDGE.md) | 5.2のメッセージを正式な仕様として移す |
+| [`docs/WEB_SYNC.md`](../../docs/WEB_SYNC.md)（リポジトリルート） | `EditorView`の`knitting`プロパティと、iOS版だけが渡すことを追記する |
 | `App/PrivacyInfo.xcprivacy` | 収集データが増えないことを確認する（StoreKitだけなら変更なしの見込み） |
 | 特定商取引法の表記ページ | §5.5の内容でページを作り、サイトマップと`check-dist`・`check-live-site`の検査に加える。サポートページとPro購入案内からリンクする |
 | App Store Connect | 有料アプリ契約・税務・口座の登録、スモールビジネスプログラムの申請、アプリ内課金の作成。課金のある最初のバージョンでは、アプリ内課金を一緒に審査へ出す |
