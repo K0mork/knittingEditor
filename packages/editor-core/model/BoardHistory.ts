@@ -15,6 +15,7 @@ export const HISTORY_ENTRY_LIMIT = 100;
 export const HISTORY_BYTE_LIMIT = 64 * 1024 * 1024;
 
 export interface BoardHistoryOptions {
+  onCellsRecorded?: (indices: Uint32Array) => void;
   entryLimit?: number;
   byteLimit?: number;
 }
@@ -44,7 +45,7 @@ export class BoardHistory {
   private readonly entryLimit: number;
   private readonly byteLimit: number;
 
-  constructor(board: Board, options: BoardHistoryOptions = {}) {
+  constructor(board: Board, private options: BoardHistoryOptions = {}) {
     this.baseline = copyState(board);
     this.entryLimit = options.entryLimit ?? HISTORY_ENTRY_LIMIT;
     this.byteLimit = options.byteLimit ?? HISTORY_BYTE_LIMIT;
@@ -61,6 +62,9 @@ export class BoardHistory {
     this.bytes += entryBytes(entry);
     this.redoStack = [];
     this.trim();
+    if (entry.kind === 'cells') {
+      try { this.options.onCellsRecorded?.(entry.indices); } catch { /* 計測の失敗で履歴を壊さない。 */ }
+    }
     return true;
   }
 

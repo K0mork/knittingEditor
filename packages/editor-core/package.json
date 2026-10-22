@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     "./analytics": "./analytics.ts",
+    "./chartProgress": "./chartProgress.ts",
     "./platform": "./platform.ts",
     "./canvas/BoardCanvas": "./canvas/BoardCanvas.tsx",
     "./export/*": "./export/*.ts",

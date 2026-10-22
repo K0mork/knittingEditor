@@ -1,3 +1,4 @@
+import { CHART_PROGRESS_KEY } from '@knitting-editor/editor-core/chartProgress';
 import type { AnalyticsParameters, EditorAnalytics } from '@knitting-editor/editor-core/analytics';
 
 const MEASUREMENT_ID = 'G-VVE0G4ZFL4';
@@ -45,14 +46,16 @@ export function initializeAnalytics(analyticsEnabled = shouldSendAnalytics({
   userAgent: navigator.userAgent,
   optedOut: isAnalyticsOptedOut(),
 })): void {
+  if (isAnalyticsOptedOut()) {
+    try { window.localStorage.removeItem(CHART_PROGRESS_KEY); } catch { /* 保存領域の障害は無視する。 */ }
+  }
   if (!analyticsEnabled || initialized) return;
-  enabled = true;
-  initialized = true;
-
   const script = document.createElement('script');
   script.async = true;
   script.src = `https://www.googletagmanager.com/gtag/js?id=${MEASUREMENT_ID}`;
   document.head.appendChild(script);
+  enabled = true;
+  initialized = true;
 
   gtag('js', new Date());
   gtag('config', MEASUREMENT_ID);
@@ -72,4 +75,16 @@ export function trackFirstEdit(): void {
 export const webAnalytics: EditorAnalytics = {
   track: trackAnalyticsEvent,
   trackFirstEdit,
+  chartProgressStorage: () => {
+    if (isAnalyticsOptedOut()) {
+      try { window.localStorage.removeItem(CHART_PROGRESS_KEY); } catch { /* 保存領域の障害は無視する。 */ }
+      return undefined;
+    }
+    if (!enabled) return undefined;
+    return {
+      read: () => window.localStorage.getItem(CHART_PROGRESS_KEY),
+      write: (value) => window.localStorage.setItem(CHART_PROGRESS_KEY, value),
+      remove: () => window.localStorage.removeItem(CHART_PROGRESS_KEY),
+    };
+  },
 };
