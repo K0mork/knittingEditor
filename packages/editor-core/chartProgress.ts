@@ -29,6 +29,8 @@ export interface ChartExportToken {
   readonly documentId: string;
   readonly hash: string;
   readonly state: ExportState;
+  readonly requestedAt: number;
+  readonly reached: Readonly<Record<string, string>>;
 }
 
 /** 端末の暦日。UTCの日付へ丸めない。 */
@@ -94,6 +96,9 @@ function merge(stored: ChartProgressRecord, local: ChartProgressRecord): ChartPr
 /** 通信・DOMに依存しない端末内の計測。無効な環境ではインスタンスを作らない。 */
 export class ChartProgressTracker {
   private records: Record<string, ChartProgressRecord> = Object.create(null);
+  private persisted = new Set<string>();
+  private retired = new Set<string>();
+  private readSucceeded = true;
   private pending = new Map<string, ChartOrigin>();
   private forgotten = new Set<string>();
   private deltas = new Map<string, { activeMs: number; touched: number }>();
@@ -104,11 +109,13 @@ export class ChartProgressTracker {
   private bitmapShape = '';
   private lastActivityAt?: number;
   private clock: () => number;
-  constructor(private options: Options) { this.clock = options.now ?? Date.now; this.records = this.read(); }
+  constructor(private options: Options) { this.clock = options.now ?? Date.now; this.records = this.read(); this.persisted = new Set(Object.keys(this.records)); }
 
   private read(): Record<string, ChartProgressRecord> {
+    this.readSucceeded = false;
     try {
       const raw = this.options.storage.read();
+      this.readSucceeded = true;
       if (!raw) return Object.create(null);
       const parsed = JSON.parse(raw);
       if (parsed?.v !== 1 || !parsed.charts || typeof parsed.charts !== 'object' || Array.isArray(parsed.charts)
@@ -118,7 +125,7 @@ export class ChartProgressTracker {
       }
       return Object.assign(Object.create(null), parsed.charts);
     } catch {
-      try { this.options.storage.remove?.(); } catch { /* 保存領域の障害は無視する。 */ }
+      try { if (this.readSucceeded) this.options.storage.remove?.(); } catch { /* 保存領域の障害は無視する。 */ }
       return Object.create(null);
     }
   }
@@ -142,8 +149,8 @@ export class ChartProgressTracker {
     this.lastActivityAt = undefined;
     this.bitmap = new Uint8Array(0); this.bitmapShape = '';
     this.forgotten.delete(documentId);
-    const fresh = this.read()[documentId];
-    if (fresh) this.records[documentId] = fresh;
+    // flushが未保存の集合・差分も統合する。古い保存値で置き換えない。
+    if (this.retired.has(documentId)) return;
     if (!this.records[documentId]) {
       this.records[documentId] = { baseOccupied: board.occupiedStitchCount, baseHash: boardStateHash(board, backgroundColor),
         origin: this.pending.get(documentId) ?? originHint ?? (board.occupiedStitchCount === 0 ? 'new' : 'existing'),
@@ -152,8 +159,24 @@ export class ChartProgressTracker {
     }
     this.pending.delete(documentId);
   }
-  /** 復元・複製などの由来を初回表示まで保持する。 */
-  registerOrigin(documentId: string, origin: ChartOrigin): void { this.pending.set(documentId, origin); }
+  /** 復元・複製は表示前に基準と由来を保存する。非表示の盤面にbitmapは作らない。 */
+  registerOrigin(documentId: string, origin: ChartOrigin): void;
+  registerOrigin(documentId: string, origin: ChartOrigin, board: Board, backgroundColor: string): void;
+  registerOrigin(documentId: string, origin: ChartOrigin, board?: Board, backgroundColor?: string): void {
+    if (!board || backgroundColor === undefined) { this.pending.set(documentId, origin); return; }
+    this.registerOrigins([{ documentId, board, backgroundColor }], origin);
+  }
+  /** 復元全体で保存をまとめ、件数によらず同期書き込みを抑える。 */
+  registerOrigins(entries: ReadonlyArray<{ documentId: string; board: Board; backgroundColor: string }>, origin: ChartOrigin): void {
+    this.flush();
+    for (const { documentId, board, backgroundColor } of entries) {
+      if (this.records[documentId] || this.retired.has(documentId)) continue;
+      this.records[documentId] = { baseOccupied: board.occupiedStitchCount, baseHash: boardStateHash(board, backgroundColor),
+        origin, maxNet: 0, reached: {}, exportedThresholds: [], editDays: 0, activeMs: 0, touched: 0, updatedAt: this.clock() };
+      this.mark();
+    }
+    this.flush();
+  }
   /** 実際の編集活動間の短い間隔だけを加算する。 */
   activity(now = this.clock()): void {
     const record = this.active;
@@ -169,7 +192,8 @@ export class ChartProgressTracker {
     // 日の一度きり判定は保存済みの最新状態と突き合わせる。
     const day = localDay(this.clock());
     if (this.active.lastEditDay !== day) this.flush();
-    const record = this.active!;
+    const record = this.active;
+    if (!record) return;
     this.activity();
     this.prepareBitmap(board, day);
     for (const index of changedIndices) {
@@ -208,6 +232,7 @@ export class ChartProgressTracker {
       if (record.maxNet < threshold || record.reached[threshold]) continue;
       this.flush();
       const current = this.active!;
+      if (!current) return;
       if (current.reached[threshold]) continue;
       const day = localDay(this.clock());
       current.reached[threshold] = day; this.mark(); this.flush();
@@ -220,28 +245,32 @@ export class ChartProgressTracker {
   exportParams(board: Board, backgroundColor: string): { export_state: ExportState; progress_bucket: string; chart_origin: ChartOrigin; token: ChartExportToken } | undefined {
     if (!this.active || this.activeId === undefined) return undefined;
     this.flush();
-    const record = this.active!;
+    const record = this.active;
+    if (!record) return undefined;
     const hash = boardStateHash(board, backgroundColor);
     const state = hash === record.baseHash ? 'unedited' : hash === record.lastExportHash ? 'same_state' : record.lastExportHash === undefined ? 'edited_first' : 'edited_since_export';
     return { export_state: state, progress_bucket: progressBucket(record.maxNet), chart_origin: record.origin,
-      token: { documentId: this.activeId, hash, state } };
+      token: { documentId: this.activeId, hash, state, requestedAt: this.clock(), reached: { ...record.reached } } };
   }
   /** 保存・共有を取りやめなかった出力だけを記録する。 */
   commitExport(token: ChartExportToken, format: string): void {
     this.flush();
     const record = this.records[token.documentId];
     if (!record) return;
-    record.lastExportHash = token.hash; record.lastExportAt = this.clock(); record.updatedAt = this.clock();
+    if (token.requestedAt >= (record.lastExportAt ?? -1)) {
+      record.lastExportHash = token.hash; record.lastExportAt = token.requestedAt;
+    }
+    record.updatedAt = Math.max(record.updatedAt, token.requestedAt);
     this.mark(); this.flush();
     if (token.state === 'unedited') return;
     for (const threshold of PROGRESS_THRESHOLDS) {
       this.flush();
       const current = this.records[token.documentId];
-      const day = current?.reached[threshold];
-      if (!day || current.exportedThresholds.includes(threshold)) continue;
+      const day = token.reached[threshold];
+      if (!current || !day || current.exportedThresholds.includes(threshold)) continue;
       current.exportedThresholds.push(threshold); this.mark(); this.flush();
       this.emit('chart_progress_exported', { progress_threshold: String(threshold), cohort_week: isoWeek(day),
-        export_lag_bucket: exportLagBucket(daysBetween(day, localDay(this.clock()))), export_format: format });
+        export_lag_bucket: exportLagBucket(daysBetween(day, localDay(token.requestedAt))), export_format: format });
     }
   }
   /** 非表示中の時間を次の活動へ持ち越さない。 */
@@ -251,6 +280,9 @@ export class ChartProgressTracker {
   /** 最新保存値にこのタブの未保存差分だけを足す。例外時はタブ内の状態を保持する。 */
   flush(): void {
     const fresh = this.read();
+    for (const id of Object.keys(fresh)) this.persisted.add(id);
+    // 読み出し障害を削除と誤認しない。未保存deltaもそのまま保持する。
+    if (!this.readSucceeded) return;
     for (const [id, local] of Object.entries(this.records)) {
       const stored = fresh[id];
       if (stored) {
@@ -258,16 +290,22 @@ export class ChartProgressTracker {
         fresh[id] = merge(stored, local);
         fresh[id].activeMs += delta?.activeMs ?? 0;
         fresh[id].touched += delta?.touched ?? 0;
+      } else if (this.persisted.has(id)) {
+        this.retired.add(id); this.deltas.delete(id);
       } else fresh[id] = { ...local, reached: { ...local.reached }, exportedThresholds: [...local.exportedThresholds] };
     }
     for (const id of this.forgotten) delete fresh[id];
     const entries = Object.entries(fresh).sort((a, b) => b[1].updatedAt - a[1].updatedAt).slice(0, 200);
     const merged = Object.assign(Object.create(null), Object.fromEntries(entries)) as Record<string, ChartProgressRecord>;
+    for (const id of Object.keys(fresh)) {
+      if (!merged[id]) { this.retired.add(id); this.deltas.delete(id); }
+    }
     // 読み直しは必要だが、変更がなければ書き込まない。
     if (!this.dirty) { this.records = merged; return; }
     this.records = merged;
     try {
       this.options.storage.write(JSON.stringify({ v: 1, charts: merged }));
+      for (const id of Object.keys(merged)) this.persisted.add(id);
       this.deltas.clear(); this.forgotten.clear(); this.dirty = false;
     } catch { /* 保存できなくても、このタブでは一度きりの判定を維持する。 */ }
   }

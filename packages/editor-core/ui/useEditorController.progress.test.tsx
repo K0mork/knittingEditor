@@ -21,8 +21,9 @@ const read = vi.fn(() => raw);
 const storage: ChartProgressStorage = { read, write: (value) => { raw = value; }, remove: () => { raw = null; } };
 const records = () => JSON.parse(raw!).charts;
 
-async function mount(analytics: EditorAnalytics = { track, trackFirstEdit: vi.fn(), chartProgressStorage: () => storage }) {
+async function mount(analytics: EditorAnalytics = { track, trackFirstEdit: vi.fn(), chartProgressStorage: () => storage }, backgroundColor?: string) {
   const source = await database.createDocument('計測テスト', 5, 5);
+  source.backgroundColor = backgroundColor;
   const other = await database.createDocument('切替先', 5, 5);
   function Probe() {
     editor = useEditorController({
@@ -107,6 +108,7 @@ it('forgets deleted charts and opens duplicated charts with their origin', async
   const source = await mount(); await draw();
   await act(async () => { await editor.duplicateChart(editor.session.activeDocument!); });
   const copy = editor.session.documents.find((chart) => chart.name.endsWith('のコピー'))!;
+  expect(records()[copy.id]).toMatchObject({ origin: 'duplicated', baseOccupied: 20, maxNet: 0 });
   await act(async () => { await editor.switchDocument(copy); });
   expect(records()[copy.id]).toMatchObject({ origin: 'duplicated', baseOccupied: 20, maxNet: 0 });
   await act(async () => { await editor.deleteChart(source); });
@@ -160,4 +162,44 @@ it('adds progress parameters to PDF exports and commits successful sharing', asy
   await act(async () => { await editor.runPdfExport({ layout: 'single', orientation: 'portrait', cellMillimeters: 5 }); });
   expect(events('chart_exported')[0][1]).toMatchObject({ export_format: 'pdf', pdf_layout: 'single', export_state: 'edited_first' });
   expect(events('chart_progress_exported')[0][1].export_format).toBe('pdf');
+});
+
+it('does not count later progress as an earlier shared snapshot', async () => {
+  const source = await mount();
+  await act(async () => {
+    editor.session.board!.place(0, 0, 'knit', '#112233'); editor.strokeChanged(); editor.commitStroke();
+  });
+  let finish!: (saved: boolean) => void;
+  shareResult = new Promise((resolve) => { finish = resolve; });
+  await png();
+  await act(async () => {
+    for (let i = 1; i < 20; i++) editor.session.board!.place(Math.floor(i / 5), i % 5, 'knit', '#112233');
+    editor.strokeChanged(); editor.commitStroke(); finish(true);
+  });
+  expect(events('chart_progress')).toHaveLength(1);
+  expect(events('chart_progress_exported')).toHaveLength(0);
+  expect(records()[source.id].exportedThresholds).toEqual([]);
+});
+
+it('registers every restored chart before opening only the first one', async () => {
+  await mount();
+  const sources = editor.session.documents;
+  const blob = encodeBackup(sources, []);
+  await act(async () => { await editor.restore(new File([blob], 'restore.knit')); });
+  const restored = editor.session.documents.filter((chart) => !sources.some((source) => source.id === chart.id));
+  expect(restored).toHaveLength(2);
+  for (const chart of restored) expect(records()[chart.id]).toMatchObject({ origin: 'restored', baseOccupied: 0 });
+});
+
+it.each([undefined, '#ABCDEF', '#ABC'])('exports an untouched copy with background %s as unedited', async (backgroundColor) => {
+  await mount(undefined, backgroundColor);
+  const duplicate = database.duplicateDocument;
+  vi.spyOn(database, 'duplicateDocument').mockImplementation(async (...args) => ({
+    ...await duplicate(...args), backgroundColor,
+  }));
+  await act(async () => { await editor.duplicateChart(editor.session.activeDocument!); });
+  const copy = editor.session.documents.find((chart) => chart.name.endsWith('のコピー'))!;
+  await act(async () => { await editor.switchDocument(copy); });
+  await png();
+  expect(events('chart_exported')[0][1]).toMatchObject({ chart_origin: 'duplicated', export_state: 'unedited' });
 });

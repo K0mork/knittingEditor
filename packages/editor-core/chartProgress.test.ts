@@ -46,7 +46,7 @@ describe('chart progress', () => {
     const cancelled = s.tracker.exportParams(b, '#fff')!;
     expect(events(s, 'chart_progress_exported')).toHaveLength(0);
     s.advance(6 * 86_400_000); s.tracker.commitExport(cancelled.token, 'pdf');
-    expect(events(s, 'chart_progress_exported')).toEqual([{ progress_threshold: '20', cohort_week: '2026-W43', export_lag_bucket: '1-6', export_format: 'pdf' }]);
+    expect(events(s, 'chart_progress_exported')).toEqual([{ progress_threshold: '20', cohort_week: '2026-W43', export_lag_bucket: '0', export_format: 'pdf' }]);
     const same = s.tracker.exportParams(b, '#fff')!; expect(same.export_state).toBe('same_state');
     s.tracker.commitExport(same.token, 'png'); expect(events(s, 'chart_progress_exported')).toHaveLength(1);
     b.place(1, 1, 'purl', '#000', false); s.tracker.forwardEdit(b, [21]);
@@ -139,6 +139,63 @@ describe('chart progress', () => {
     expect(s.record('chart0')).toBeUndefined(); s.tracker.forget(['chart204', 'chart203']); expect(s.record('chart204')).toBeUndefined();
     s.tracker.flush(); expect(Object.keys(JSON.parse(s.raw()!).charts)).toHaveLength(198);
   });
+  it('binds export thresholds and lag to the request snapshot and keeps the newest export hash', () => {
+    const s = setup(); const board = new Board(); s.tracker.open('a', board, '#fff');
+    s.tracker.forwardEdit(board, fill(board, 1));
+    const old = s.tracker.exportParams(board, '#fff')!.token;
+    s.advance(1000); s.tracker.forwardEdit(board, fill(board, 19, 1));
+    s.tracker.commitExport(old, 'png');
+    expect(events(s, 'chart_progress_exported')).toHaveLength(0);
+    const reached = s.tracker.exportParams(board, '#fff')!.token;
+    s.advance(86_400_000); s.tracker.forwardEdit(board, fill(board, 1, 20));
+    const newest = s.tracker.exportParams(board, '#fff')!.token;
+    s.tracker.commitExport(newest, 'png'); s.tracker.commitExport(reached, 'pdf');
+    expect(s.record()).toMatchObject({ lastExportHash: newest.hash, lastExportAt: newest.requestedAt });
+    expect(s.tracker.exportParams(board, '#fff')!.export_state).toBe('same_state');
+    expect(events(s, 'chart_progress_exported')).toHaveLength(1);
+  });
+  it('does not resurrect a record deleted by another tab on unrelated edits or a late export', () => {
+    const s = setup(); const board = new Board(); s.tracker.open('a', board, '#fff');
+    const other = s.make(); other.open('a', board, '#fff');
+    const token = other.exportParams(board, '#fff')!.token;
+    other.open('b', board, '#fff'); s.tracker.forget(['a']);
+    other.forwardEdit(board, [0]); other.flush(); other.commitExport(token, 'png');
+    expect(s.record()).toBeUndefined(); expect(s.record('b').touched).toBe(1);
+  });
+  it('does not resurrect a record evicted by another tab', () => {
+    const s = setup(); const board = new Board(1, 1); s.tracker.open('a', board, '#fff');
+    const other = s.make(); other.open('a', board, '#fff'); other.open('b', board, '#fff');
+    for (let i = 0; i < 200; i++) { s.advance(1); s.tracker.open(`new${i}`, board, '#fff'); }
+    other.forwardEdit(board, [0]); other.flush();
+    expect(s.record()).toBeUndefined(); expect(s.record('b')).toBeUndefined();
+    expect(Object.keys(JSON.parse(s.raw()!).charts)).toHaveLength(200);
+  });
+  it('preserves unsaved milestones, days, exports and deltas when reopening during quota failures', () => {
+    const s = setup(); const board = new Board(); s.tracker.open('a', board, '#fff');
+    const write = s.storage.write.getMockImplementation()!;
+    s.storage.write.mockImplementation(() => { throw new Error('quota'); });
+    s.tracker.forwardEdit(board, fill(board, 20));
+    s.advance(1000); s.tracker.forwardEdit(board, [20]);
+    const token = s.tracker.exportParams(board, '#fff')!.token; s.tracker.commitExport(token, 'png');
+    s.advance(86_400_000); s.tracker.forwardEdit(board, [21]);
+    s.tracker.open('b', new Board(), '#fff'); s.tracker.open('a', board, '#fff');
+    s.tracker.forwardEdit(board); s.tracker.commitExport(token, 'png');
+    expect(s.tracker.exportParams(board, '#fff')!.export_state).toBe('same_state');
+    s.storage.write.mockImplementation(write); s.tracker.forwardEdit(board); s.tracker.flush(); s.tracker.flush();
+    expect(events(s, 'chart_progress')).toHaveLength(1);
+    expect(events(s, 'chart_progress_exported')).toHaveLength(1);
+    expect(events(s, 'chart_resumed')).toHaveLength(1);
+    expect(s.record()).toMatchObject({ editDays: 2, touched: 22, activeMs: 1000, lastExportHash: token.hash });
+  });
+  it.each(['restored', 'duplicated'] as const)('persists %s origin and baseline before first open', (origin) => {
+    const s = setup(); const board = new Board(); fill(board, 100);
+    s.tracker.registerOrigin('a', origin, board, '#abcdef');
+    expect(s.record()).toMatchObject({ origin, baseOccupied: 100, baseHash: boardStateHash(board, '#abcdef') });
+    const reloaded = s.make(); reloaded.open('a', board, '#abcdef');
+    expect(reloaded.exportParams(board, '#abcdef')!.export_state).toBe('unedited');
+    reloaded.forwardEdit(board, fill(board, 20, 100));
+    expect(events(s, 'chart_progress')[0]).toMatchObject({ chart_origin: origin, progress_threshold: '20' });
+  });
   it('does not read any board cells during 1000 small edits on a million-cell board', () => {
     const s = setup(); const board = new Board(1000, 1000); s.tracker.open('a', board, '#fff');
     const cells = board.cells; let reads = 0;
@@ -160,4 +217,17 @@ describe('calendar and board hashes', () => {
     b.addLine(1, 0, 2); expect(boardStateHash(b, '#fff')).not.toBe(initial); b.clear();
     b.resize(10, 40); expect(boardStateHash(b, '#fff')).not.toBe(initial);
   });
+});
+
+it('registers a large restore batch with bounded writes and at most 200 records', () => {
+  const s = setup();
+  const board = new Board();
+  fill(board, 20);
+  s.tracker.registerOrigins(Array.from({ length: 300 }, (_, i) => ({
+    documentId: `restored-${i}`, board, backgroundColor: '#ffffff',
+  })), 'restored');
+  expect(s.storage.write.mock.calls.length).toBeLessThanOrEqual(2);
+  const records = Object.values(JSON.parse(s.raw()!).charts);
+  expect(records).toHaveLength(200);
+  for (const record of records) expect(record).toMatchObject({ origin: 'restored', baseOccupied: 20, maxNet: 0 });
 });

@@ -1,3 +1,4 @@
+import { backgroundColorOf } from '../model/boardColors';
 import { ChartProgressTracker } from '../chartProgress';
 import { failureReason } from '../analyticsFailure';
 import { WorkerVersionError } from '../util/workerStarter';
@@ -13,7 +14,7 @@ import { useBackupReminder } from '../state/useBackupReminder';
 import { useEditorSession, type EditorSessionInit, type SaveTrigger } from '../state/useEditorSession';
 import { STITCHES, type StitchDefinition } from '../stitches/catalog';
 import {
-  createDocument, deleteBlock, deleteDocuments, duplicateDocument, exportBackup, importBackup,
+  boardFromDocument, createDocument, deleteBlock, deleteDocuments, duplicateDocument, exportBackup, importBackup,
   renameDocument, saveBlock, type ChartDocument,
 } from '../storage/database';
 import { errorMessage } from '../util/errors';
@@ -382,7 +383,7 @@ export function useEditorController(options: EditorControllerOptions) {
     // 保存の成否や書き込み中の編集に依存せず、押した時点の盤面を独立した配列へコピーする。
     const snapshot = document.id === activeDocument?.id ? session.activeSnapshot() : undefined;
     const copy = await duplicateDocument(document.id, snapshot?.id === document.id ? snapshot : undefined);
-    metric((tracker) => tracker.registerOrigin(copy.id, 'duplicated'));
+    metric((tracker) => tracker.registerOrigin(copy.id, 'duplicated', boardFromDocument(copy), backgroundColorOf(copy)));
     session.updateDocument(copy);
     notify('編み図を複製しました');
   });
@@ -442,7 +443,9 @@ export function useEditorController(options: EditorControllerOptions) {
       if (outcome === 'pending') { notify(PENDING_RESTORE_MESSAGE); return; }
       if (outcome === 'failed') return;
       const result = await importBackup(file);
-      for (const restored of result.documents) metric((tracker) => tracker.registerOrigin(restored.id, 'restored'));
+      metric((tracker) => tracker.registerOrigins(result.documents.map((restored) => ({
+        documentId: restored.id, board: boardFromDocument(restored), backgroundColor: backgroundColorOf(restored),
+      })), 'restored'));
       await refreshDocuments();
       await refreshBlocks();
       const switched = result.documents[0] ? await switchDocument(result.documents[0]) : 'switched';
