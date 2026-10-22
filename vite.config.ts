@@ -9,7 +9,7 @@ const shared = sharedViteConfig();
 export default defineConfig({
   ...shared,
   define: { ...shared.define, __APP_BUILD__: JSON.stringify(appBuild()) },
-  // Web版の配信物だけにCSPのmetaを入れる。iOS版は`ios/docs/WEB_SYNC.md`の差分を参照。
+  // Web版の配信物だけにCSPのmetaを入れる。iOS版は`docs/WEB_SYNC.md`の差分を参照。
   plugins: [...(shared.plugins ?? []), contentSecurityPolicy(), publicDirectoryIndex()],
   test: {
     ...shared.test,

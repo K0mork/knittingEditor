@@ -1,6 +1,6 @@
 # Native bridge specification
 
-M3では、編集機能をWeb資産に残し、ファイル操作だけをiOSネイティブへ委譲する。WebViewがない通常のブラウザでは、既存の`<a download>`と`<input type=file>`へフォールバックする。
+編集機能はWeb資産に残し、ファイル操作、メニュー、トラックパッド・Apple Pencilの入力、折り姿勢など、OSとの統合が要るものだけをiOSネイティブへ委譲する。この文書は、そのためのWebとSwiftの間のメッセージとイベントを定める。WebViewがない通常のブラウザでは、既存の`<a download>`と`<input type=file>`へフォールバックする。
 
 ## Web → Swift
 
@@ -154,39 +154,7 @@ AirDropや他のアプリの共有から受け取った`.knit`は、`Documents/I
 
 `test-fixtures/knitting-editor-v2-interop.knit.b64`をWeb側の`.knit`復元fixtureとして管理する。Swiftブリッジテストは同じファイルをテストバンドルへ同梱して読み、Base64をテストコードへ複製しない。アプリは`.knit`のgzip JSONを解釈・再シリアライズせず、そのバイト列をDocument Picker、`onOpenURL`、WebViewイベントの間で搬送する。このため、fixtureをWeb側で復元できることと、Swiftブリッジでバイト列が変わらないことを別々に検証する。
 
-Webのfixture復元、アプリWeb bundleのexport→bridge payload→import往復、Swiftのpayload保持、ready前後の配送方針を自動テストする。これはFiles／AirDropを使った実機往復の代替ではないため、実機またはTestFlightでの入出力確認は別の配布前ゲートとして残す。
-
-## App Storeの評価の依頼
-
-App Storeの評価は、StoreKitのシステムの依頼画面（`AppStore.requestReview(in:)`）だけで依頼する（App Review Guidelines 5.6.1）。独自の確認画面や、評価と引き換えの特典は出さない。判定は`ReviewRequestPolicy`（`App/ReviewRequest.swift`）にまとめ、`ReviewRequestTests`で確かめる。
-
-依頼を検討するのは、PNGまたはPDFを「ファイルに保存」で保存し終えたとき（Document Pickerの`didPickDocumentsAt`）と、共有シートで共有を終えたとき（`completionWithItemsHandler`の`completed`が真）だけである。取り消したとき、`.knit`のバックアップを書き出したとき、編集の途中、起動直後には出さない。次の条件をすべて満たすときに依頼する。
-
-| 条件 | 値 | 理由 |
-|---|---|---|
-| 初めて起動してからの時間 | 3日以上 | 初回の起動時や使い始めた直後には出さない。この版より前から使っている端末では、この版を初めて起動した日時から数える |
-| 前回の依頼のあと（初めてなら最初から）にPNG・PDFを保存・共有し終えた回数 | 3回以上 | 編み図を何度か完成させ、使い続けている人にだけ聞く |
-| 同じバージョンで依頼したか | していない | 同じ版では一度だけ |
-| 前回の依頼からの時間 | 120日以上 | 新しい版になっても続けて聞かない |
-| 画面の状態 | アプリが前面にあり、保存画面・共有シート・警告が出ていない | 保存画面が閉じ切るのを1秒待ってから確かめる |
-
-依頼を試みたら、そのバージョンと日時を記録し、書き出しの回数を0へ戻す。画面の状態の条件を満たさず出せなかったときは記録せず、次の書き出しで改めて判定する。記録は`UserDefaults`（`reviewRequest.`で始まるキー）に置き、端末の外へは送らない。
-
-システムは条件を満たしても画面を出さないことがあり、出たかどうかはアプリから分からない。同じアプリで1年に3回までしか表示されず、TestFlightでは表示されない。開発ビルド（Xcodeから実行したSimulator・実機）では毎回表示されるが、送信はされない。このため、表示の確認はSimulatorで行い、表示条件は単体テストで確かめる。Simulatorで条件を満たした状態を作るには、アプリを止めてから`reviewRequest.firstLaunchDate`を3日以上前の日時へ書き換え、PNGかPDFを3回保存する。
-
-「使い方」からApp Storeのレビューを書くページ（`https://apps.apple.com/app/id<App ID>?action=write-review`）へのリンクは、App IDが決まっていないため、まだ置かない（#84）。
-
-## 実機確認
-
-iPad Air（第5世代）は2026-09-22、iPhone 17は2026-10-09に、PNG・PDF・`.knit`のFiles保存、共有、`.knit`の復元を確認済みである。異常系は一部を確認済みである。欠損ファイルの例外処理、Files・共有（`readIncomingBackup`／`handleIncomingURL`）とDocument Pickerのエラー通知、起動直後・使い方ページ表示中の保留と準備後の一度だけの配送は、`NativeErrorDeliveryTests`で検証する。実機ではiPhone・iPadで、読み込み直前にLLDBからテスト用ファイルを削除する手順と、未ダウンロードのiCloud Driveファイルをオフラインで開く手順の確認、およびTestFlight提出ビルドによる最終往復が残る。単体テスト名、手順の詳細とリリース判定は`REAL_DEVICE_RELEASE_CHECKLIST.md`のM3を正とする。
-
-## DEBUGの自動保存遅延（#196）
-
-XCUITestは起動前に`app.launchEnvironment["KNITTING_EDITOR_AUTOSAVE_DELAY_MS"] = "3600000"`を設定できる。単位はミリ秒で、0〜2147483647の整数だけを受け付ける。未指定・不正値は通常の400msのまま。1時間の指定で、テスト中の自動保存と、文書切替・Home移行の即時保存を区別する。即時保存の待ち時間は変えない。
-
-`DebugEditorConfiguration`とWebViewへの登録はともに`#if DEBUG`内にあり、Releaseには環境変数の読み取り・設定の注入を含めない。DEBUGネイティブはメインフレームの文書開始時に`window.knittingEditorDebugConfiguration = Object.freeze({ autosaveDelayMs: 3600000 })`を渡す。iOS Webはこの値だけを検証してcontroller/sessionへ渡し、URL・localStorage・Webの環境変数からは設定しない。通常のWeb版はこの設定を読まない。
-
-`testDocumentSwitchSavesWithoutAutosave`と`testHomeSavesWithoutAutosave`は編集後の「保存中」を確認し、切替・Home移行の後にDBから再起動復元する。前面へ戻るときも`inactive`を通って`flushPendingSave()`が呼ばれるため、Home移行のテストはアプリを前面へ戻さず、バックグラウンドのまま終了する。検証時には文書切替の`saveNow()`、ネイティブの`flushPendingSave()`経路（Home移行時には呼ばず、前面へ戻ったときだけ呼ぶ変更を含む）をそれぞれ一時的に外し、対応するテストが失敗することを確かめてから必ず戻す。実機でサスペンドまでに保存が完了する保証は別の確認とする。
+Webのfixture復元、アプリWeb bundleのexport→bridge payload→import往復、Swiftのpayload保持、ready前後の配送方針を自動テストする。これはFiles／AirDropを使った実機往復の代替ではないため、実機またはTestFlightでの入出力確認は別の配布前ゲート（[`REAL_DEVICE_RELEASE_CHECKLIST.md`](REAL_DEVICE_RELEASE_CHECKLIST.md)のM3）として残す。欠損ファイルのエラー配送を確かめる単体テストと、実機で残る手順も同じ節にある。
 
 ## 折り目の操作禁止帯（#96）
 

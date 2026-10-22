@@ -23,7 +23,7 @@
 - ホーム画面の表示名（`App/Info.plist`の`CFBundleDisplayName`と`CFBundleName`）は「棒針編み図」にした。App名とは別の値で、アイコンの下に表示される。
 - 表示名の長さには、Appleの文書に上限も推奨値もない（`CFBundleName`は15文字までとある）。切れるかどうかは文字の幅とアイコンの列幅で決まるため、2026-10-02にSimulatorのホーム画面で実測した。iPhone SE（第3世代、iOS 18.2）とiPhone 17（iOS 27.0）では、全角9文字の「棒針編み図エディタ」が標準の文字サイズで切れた。全角7文字は、標準では切れないが、文字サイズを大きくすると切れた（SEはアクセシビリティを使わない最大のサイズ、iPhone 17はアクセシビリティの最大サイズ）。全角6文字は、どの文字サイズでも切れなかった。iPhone 17 Pro MaxとiPad (A16)は列幅が広く、9文字でも切れなかった。
 - このため、表示名は全角6文字以内とし、余裕のある5文字の「棒針編み図」を選んだ。`scripts/check-app-store-docs.sh`は、この表の値と`App/Info.plist`の表示名が一致し、6文字以内であることを検査する。
-- 「拡大表示」（画面表示の拡大）と太字テキストでの表示名は、まだ確かめていない。確認先としていた#23は、Dynamic Typeの確認で閉じており、この2つは記録されていない。`REAL_DEVICE_RELEASE_CHECKLIST.md`のM4の項目で、実機で確かめる（加入前の無料Personal Teamの開発ビルドでも確かめられる）。
+- 「拡大表示」（画面表示の拡大）と太字テキストでの表示名は、まだ確かめていない。確認先としていた#23は、Dynamic Typeの確認で閉じており、この2つは記録されていない。[`REAL_DEVICE_RELEASE_CHECKLIST.md`](REAL_DEVICE_RELEASE_CHECKLIST.md)のM4の項目で、実機で確かめる（加入前の無料Personal Teamの開発ビルドでも確かめられる）。
 
 ## 販売元と著作権表記
 
@@ -60,7 +60,7 @@ App Store Connectの年齢制限は、質問票への回答から決まる（202
 - サポートURLは`https://knittingeditor.com/support/`（`public/support/index.html`）。メールの連絡先、問い合わせに書いてほしいこと、よくある質問、GitHub Issuesへのリンクを載せる。App Review Guidelines 1.5（利用者が簡単に連絡できる手段）に対応する。
 - アプリ内の「使い方」の「サポート」から、メール（`mailto:`、メールアプリで開く）とサポートページ（Safariで開く）に進める。
 - GitHub Issuesは、アカウントを持つ人が公開の場で報告する場所として残す。
-- メールの受信はApp Store Connectへの登録前に確かめる（`APP_STORE_CHECKLIST.md`）。
+- メールの受信はApp Store Connectへの登録前に確かめる（[`APP_STORE_CHECKLIST.md`](APP_STORE_CHECKLIST.md)）。
 
 ## 製品ページの任意項目
 
@@ -90,7 +90,7 @@ App Store Connectの年齢制限は、質問票への回答から決まる（202
 
 - 製品ページに、アクセシビリティ機能への対応を表示できる。2026-10-09時点では任意だが、Appleはいずれ新しいアプリと更新の提出に必須にするとしている（[Overview of Accessibility Nutrition Labels](https://developer.apple.com/help/app-store-connect/manage-app-accessibility/overview-of-accessibility-nutrition-labels/)）。回答は版を出さずに変えられる。
 - 「対応」と答えられるのは、アプリの主な操作（このアプリでは、編み図を作る・記号と色を選んで置く・消す・範囲をコピーして貼る・盤面の大きさを変える・PNG／PDFとバックアップを保存する・編み図を切り替える、と初回の起動）を、その機能を使ったまますべて行えるときだけ。対応する端末（iPhoneとiPad）ごとに確かめる。確かめていない機能は「対応」と答えない。
-- 2026-10-09時点の判断は次のとおり。Dynamic Typeの実機確認（#23）は完了済みである（`REAL_DEVICE_RELEASE_CHECKLIST.md`のM4）。以下の回答方針は維持し、提出ビルドで各機能の主な操作を確認してからApp Store Connectへ入力する。VoiceOverは名前と状態の自動テストを確認済みだが、盤面を操作できないため「対応」とは答えない。
+- 2026-10-09時点の判断は次のとおり。Dynamic Typeの実機確認（#23）は完了済みである（[`REAL_DEVICE_RELEASE_CHECKLIST.md`](REAL_DEVICE_RELEASE_CHECKLIST.md)のM4）。以下の回答方針は維持し、提出ビルドで各機能の主な操作を確認してからApp Store Connectへ入力する。VoiceOverは名前と状態の自動テストを確認済みだが、盤面を操作できないため「対応」とは答えない。
 
 | 機能 | 回答 | 根拠と残り |
 |---|---|---|
@@ -132,7 +132,7 @@ App Store Connectの年齢制限は、質問票への回答から決まる（202
 - サポートURL: `https://knittingeditor.com/support/`。下記「サポート窓口」
 - プライバシーポリシーURL: `https://knittingeditor.com/privacy/app/`（App Store Connect登録前に公開状態と表示を確認）。正本はリポジトリルートの`public/privacy/app/index.html`。登録は#27で行う。
 - 審査メモ: [`APP_REVIEW_NOTES.md`](APP_REVIEW_NOTES.md)の4.2説明と機内モード手順を、英語と日本語の両方で転記する。
-- スクリーンショット: 提出に使う最終版（iPhone 6.9インチ・iPad 13インチ、説明文入り各5枚）は[`SCREENSHOTS.md`](SCREENSHOTS.md#app-store-connect提出用最終版)のとおり用意済み（#290）。実機での撮り直しは任意。提出ビルドでは、最終版と同じ画面になることを確かめる（`RELEASE_RUNBOOK.md`の手順6）。
+- スクリーンショット: 提出に使う最終版（iPhone 6.9インチ・iPad 13インチ、説明文入り各5枚）は[`SCREENSHOTS.md`](SCREENSHOTS.md#app-store-connect提出用最終版)のとおり用意済み（#290）。実機での撮り直しは任意。提出ビルドでは、最終版と同じ画面になることを確かめる（[`RELEASE_RUNBOOK.md`](RELEASE_RUNBOOK.md)の手順6）。
 
 ## 配信地域
 
@@ -161,13 +161,8 @@ App Store Connectの年齢制限は、質問票への回答から決まる（202
 - ビルド番号（`CURRENT_PROJECT_VERSION`）は`project.yml`では`1`のままにする。App Store Connectは、同じバージョンの中で前回より大きいビルド番号しか受け付けない。
 - XcodeのOrganizerからアップロードするときは、配布オプションの「Manage Version and Build Number」をオンにする。Xcodeが、App Store Connectにあるビルドより大きい番号を付けてアップロードする。
 - コマンドラインでArchiveするときは、`xcodebuild archive ... CURRENT_PROJECT_VERSION=<番号>`で、前回より大きい番号を指定する。
-- アップロードしたビルド番号は、`REAL_DEVICE_RELEASE_CHECKLIST.md`のM6の証跡と`docs/dev-log/`の記録に書く。
+- アップロードしたビルド番号は、[`REAL_DEVICE_RELEASE_CHECKLIST.md`](REAL_DEVICE_RELEASE_CHECKLIST.md)のM6の証跡と`docs/dev-log/`の記録に書く。
 
 ## 申請前確認
 
-- [ ] App名、サブタイトル、プロモーションテキスト、説明文、キーワードの文字数をApp Store Connectで確認する。
-- [ ] アクセシビリティの表示を、上の「アクセシビリティの表示」を実機で確かめ直したうえで入力する。
-- [ ] App Privacyの回答をPrivacy Manifestと照合する。
-- [x] Privacy Policy本文をリポジトリルートの`public/privacy/app/index.html`へ用意する（公開URL: https://knittingeditor.com/privacy/app/、登録は#27）。
-- [ ] 公開Privacy Policy URLをApp Store Connectへ登録し、審査端末から表示できることを確認する。
-- [x] スクリーンショットとアイコンを最終版へ差し替える（スクリーンショットは#290、アイコンは#78。`APP_STORE_CHECKLIST.md`の「実装・資産」）。
+提出前に確かめる項目は[`APP_STORE_CHECKLIST.md`](APP_STORE_CHECKLIST.md)の「検証・配布」にまとめてある。この文書の値を転記したら、そちらのチェック欄を更新する。

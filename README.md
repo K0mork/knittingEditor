@@ -56,6 +56,16 @@ cd Web
 
 未完了の作業はWeb版・iOS版とも[GitHub Issues](https://github.com/K0mork/knittingEditor/issues)で管理します。iOS版の初回リリースに必要な実機検証・署名・TestFlight・App Store提出の作業は、マイルストーン[iOS 1.0](https://github.com/K0mork/knittingEditor/milestone/1)にまとめています。
 
+## ドキュメント
+
+- [AGENTS.md](AGENTS.md): 開発・公開・記録の規則（エージェント向けを兼ねる）
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): Web・iOS共通基盤の構成、CIと公開の流れ
+- [docs/WEB_SYNC.md](docs/WEB_SYNC.md): Web版とiOS版で共通にするコードと、分けるファイル
+- [docs/ANALYTICS.md](docs/ANALYTICS.md): Web版で送る製品イベントと計測の範囲
+- [packages/editor-core/README.md](packages/editor-core/README.md): 共通コードの範囲と永続記号ID
+- [docs/dev-log/](docs/dev-log/README.md): PRごとの変更と検証の記録（2026-10-06までは[DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md)）
+- [ios/README.md](ios/README.md): iOS・iPadOSアプリの文書の入口
+
 ## ライセンス
 
 ソースコードは公開していますが、オープンソースではありません（All rights reserved）。閲覧と、Issue・Pull Requestのための複製・変更は自由です。許可なく再配布したり、アプリやWebサイトとして公開したりすることはできません。公式版で作成した編み図と出力ファイルの権利は利用者にあります。詳細は[`LICENSE`](LICENSE)を参照してください。

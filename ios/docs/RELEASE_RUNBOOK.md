@@ -22,7 +22,7 @@
 - **完了の目安:** 加入が承認され、有料のDeveloper TeamをXcodeで選べる。
 - **関係するIssue／項目:** [#17の決定](https://github.com/K0mork/knittingEditor/issues/17#issuecomment-5947707637)、提出チェックリスト「Apple Developer Team、Bundle ID、署名証明書、Provisioning Profile」。
 
-2026-10-21の状況: Webで個人情報を入力した後、登録申請が審査中となり、登録を続けるためAppleへの問い合わせを求められた。Eメールで問い合わせを送信し、受付完了を確認した。Appleからの回答内容は未確認。契約・支払い・メンバーシップ有効化は未完了。その後の対応を#17で追跡し、署名確認の項目は未完了のままとする。非公開の経緯、問い合わせ文、受付番号と時刻付きの履歴はメインチェックアウトの `private/ACCOUNTS.md` に記録する。
+加入の進み具合は[#17](https://github.com/K0mork/knittingEditor/issues/17)のコメントで追う。非公開の経緯、問い合わせ文、受付番号と時刻付きの履歴はメインチェックアウトの `private/ACCOUNTS.md` に記録する。
 
 ## 3. XcodeでAutomatic署名を設定する
 
@@ -96,7 +96,7 @@ SKUは製品管理用の一意な文字列を利用者が決め、登録値は�
 
 MacとApple Vision Proは[#86の決定コメント](https://github.com/K0mork/knittingEditor/issues/86#issuecomment-6010786273)に従い、**v1.0では既定のまま配信を止めない**。両環境の動作確認はv1.0の必須条件に追加しない。提出チェックリストの未チェック欄は、この決定への参照とともに扱いを記録する。
 
-- **完了の目安:** #27の入力がそろい、[申請前確認](APP_STORE_METADATA.md#申請前確認)と実機ゲートM6の登録内容照合を終え、未解決の必須項目がない。
+- **完了の目安:** #27の入力がそろい、[提出チェックリストの「検証・配布」](APP_STORE_CHECKLIST.md#検証配布)と実機ゲートM6の登録内容照合を終え、未解決の必須項目がない。
 - **関係するIssue／項目:** [#27](https://github.com/K0mork/knittingEditor/issues/27)、[#86](https://github.com/K0mork/knittingEditor/issues/86)、提出チェックリストのApp Privacyから配信地域までの各登録項目、実機ゲートM6。
 
 ## 8. 審査に提出し、結果へ対応する
@@ -120,7 +120,7 @@ MacとApple Vision Proは[#86の決定コメント](https://github.com/K0mork/kn
 
 [実機ゲートの記録ルール](REAL_DEVICE_RELEASE_CHECKLIST.md#記録ルール)と[開発ログの書式](../../docs/dev-log/README.md)に従い、実施日、コミット、提出・公開したビルド番号、端末／OS、結果、残件、配布影響、証跡の場所を残す。提出チェックリストとM6を実施結果に合わせて更新する。個人情報・テスターの識別情報・登録画面等の非公開証跡は公開せず、ルートの `private/` 内の保管場所だけを記す。
 
-変更・確認の記録は該当PRの `docs/dev-log/` に含め、マージ後に行った確認はそのPRへのコメントで残す。結果の追記だけのPRは作らない。Issueの古い本文が凍結済みの `DEVELOPMENT_LOG.md` を指していても、新しい記録は `docs/dev-log/` を使う。完了条件を満たしたIssueだけを、完了するPRの `Closes #番号` で閉じる。
+変更・確認の記録は該当PRの `docs/dev-log/` に含め、マージ後に行った確認はそのPRへのコメントで残す。結果の追記だけのPRは作らない。Issueの古い本文が凍結済みの [`DEVELOPMENT_LOG.md`](../DEVELOPMENT_LOG.md) を指していても、新しい記録は `docs/dev-log/` を使う。完了条件を満たしたIssueだけを、完了するPRの `Closes #番号` で閉じる。
 
 - **完了の目安:** 承認とストア公開を確認し、公開版の主要フローとチェックリストの証跡・記録がそろった。未実施項目は明示されている。
 - **関係するIssue／項目:** [#25](https://github.com/K0mork/knittingEditor/issues/25)・[#26](https://github.com/K0mork/knittingEditor/issues/26)・[#27](https://github.com/K0mork/knittingEditor/issues/27)、提出チェックリスト末尾の承認確認、実機ゲートM6・記録ルール。

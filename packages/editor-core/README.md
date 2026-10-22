@@ -30,7 +30,7 @@ PDFの推定ページ数は`export/pdfLayout.ts`をPDF Workerと共有し、用�
 
 ここへ置かないもの: SEO、分析、旧Safari移行、`WKWebView`ブリッジ、Files・共有シート、
 そして`App.tsx`と`styles.css`（両ビルドで内容が異なる。`App.tsx`は共通の編集画面へ差分を渡すだけにする）。差分の一覧は
-`ios/docs/WEB_SYNC.md`にある。
+[`docs/WEB_SYNC.md`](../../docs/WEB_SYNC.md)にある。
 
 ## 永続記号IDスナップショット
 

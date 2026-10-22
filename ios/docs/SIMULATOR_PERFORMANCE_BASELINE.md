@@ -1,5 +1,7 @@
 # Simulator／Web基準値
 
+> リポジトリ統合前（2026-09-21）の観測記録で、内容は当時のまま残す。表のコマンドは旧アプリリポジトリの配置（`ios/`直下で実行、Webのテストは`Web/src/`）のもので、現在は共通コードのテストが`packages/editor-core`にあり、ルートの`npm test`で実行する（[`docs/WEB_SYNC.md`](../../docs/WEB_SYNC.md)の「テストの置き場所」）。実機での測定結果は[`RELEASE_VERIFICATION_RECORDS.md`](RELEASE_VERIFICATION_RECORDS.md)にある。
+
 M6の実機・TestFlight検証へ進む前に、WebロジックとSimulator向け資産の回帰基準を記録する。ここに記載する時間は開発Mac上のVitest（jsdom、fake-indexeddb）での観測値であり、iPhone／iPad実機の性能保証やTestFlightのクラッシュ・メモリ検証を代替しない。
 
 ## 2026-09-21の観測
