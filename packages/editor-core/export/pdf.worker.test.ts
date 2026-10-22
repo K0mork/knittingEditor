@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { unzlibSync } from 'fflate';
 import { Board, packCell } from '../model/Board';
 import { STITCHES, STITCH_BY_KEY } from '../stitches/catalog';
-import { buildPdf, type PdfRequest } from './pdf.worker';
+import { buildPdf, pdfGuideLine, type PdfRequest } from './pdf.worker';
 import { pdfPageLayout } from './pdfLayout';
 
 function request(rows: number, cols: number, dense: boolean): PdfRequest {
@@ -215,6 +215,12 @@ it('線だけを使った編み図にも一覧の最後に線の見本を加え�
   const pages = gridPages(buildPdf(input));
   expect(pages.join('\n')).toContain('<7dda> Tj');
   expect((pages.join('\n').match(/ l h f/g) ?? []).length).toBe(2);
+});
+
+it('PDFの点線を盤面と同じ比率で描く（線はマスの9%、矢印は長さ46%・幅52%）', () => {
+  const commands = pdfGuideLine(50, 200, 100, 20, '#ffffff', true);
+  expect(commands).toContain('1.800 w [2.800 2.000] 0 d 50.000 200.000 m 50.000 109.200 l S');
+  expect(commands).toContain('[] 0 d 50.000 100.000 m 44.800 109.200 l 55.200 109.200 l h f');
 });
 
 it.each([-1, 0, 1, 2])('重なりのあるA4分割の境目から%i段の下端に矢印を正しいページへ1回だけ描く', (offset) => {

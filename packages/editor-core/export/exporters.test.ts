@@ -176,7 +176,8 @@ it('copies PDF cells only once after ready and transfers that copy', async () =>
 });
 
 it.each(['#ffffff', '#1e1e1e'])('PNGの点線を両端の縁の間に描き、一覧にも線を加える（%s）', async (background) => {
-  const paths: Array<{ color: string; points: number[][]; dash: number[] }> = [];
+  const paths: Array<{ color: string; points: number[][]; dash: number[]; width: number }> = [];
+  const fills: number[][][] = [];
   let points: number[][] = [];
   let dash: number[] = [];
   const context = {
@@ -186,8 +187,8 @@ it.each(['#ffffff', '#1e1e1e'])('PNGの点線を両端の縁の間に描き、�
     moveTo: (...point: number[]) => points.push(point),
     lineTo: (...point: number[]) => points.push(point),
     setLineDash: (value: number[]) => { dash = value; },
-    closePath: vi.fn(), fill: vi.fn(),
-    stroke: () => paths.push({ color: context.strokeStyle, points: [...points], dash: [...dash] }),
+    closePath: vi.fn(), fill: () => fills.push([...points]),
+    stroke: () => paths.push({ color: context.strokeStyle, points: [...points], dash: [...dash], width: context.lineWidth }),
   };
   const canvas = { width: 0, height: 0, getContext: () => context, toBlob: (callback: BlobCallback) => callback(new Blob(['png'])) };
   vi.stubGlobal('document', { createElement: () => canvas });
@@ -197,7 +198,14 @@ it.each(['#ffffff', '#1e1e1e'])('PNGの点線を両端の縁の間に描き、�
     await renderPng(board, 24, background);
     const line = paths.find((path) => path.dash.length)!;
     expect(line.color).toBe(background === '#ffffff' ? '#333333' : '#e6e6e6');
-    expect(line.points).toEqual([[60, 48], [60, 120 - 24 * 0.18]]);
+    // 線は編み目記号の線と同じマスの9%、矢印は長さ46%・幅52%。
+    expect(line.width).toBeCloseTo(24 * 0.09);
+    expect(line.dash.map((value) => value / 24)).toEqual([expect.closeTo(0.14), expect.closeTo(0.1)]);
+    expect(line.points).toEqual([[60, 48], [60, expect.closeTo(120 - 24 * 0.46)]]);
+    const arrow = fills.find((fill) => fill.length === 3 && fill[0][1] === 120)!;
+    expect(arrow[0]).toEqual([60, 120]);
+    expect(arrow[2][0] - arrow[1][0]).toBeCloseTo(24 * 0.52);
+    expect(arrow[1][1]).toBeCloseTo(120 - 24 * 0.46);
     await renderPng(board, 24, background, { includeTitleAndLegend: true });
     expect(context.fillText).toHaveBeenCalledWith('線', expect.any(Number), expect.any(Number), expect.any(Number));
     expect(validatePngSize(board, 24, { includeTitleAndLegend: true }).height).toBeGreaterThan(validatePngSize(new Board(6, 3), 24, { includeTitleAndLegend: true }).height);
