@@ -973,10 +973,12 @@ final class KnittingEditorUITests: XCTestCase {
         // 実行ごとに名前を変えてシステムの置き換え確認を避ける。
         // CIのiPhoneではファイル名の入力欄が公開されないことがあるため、その場合は既定名を使う。
         var backupFileName = "knitting-editor-backup"
+        var mayAskToReplace = true
         let filename = app.textFields["DOCPicker.filenameTextField"]
         if filename.waitForExistence(timeout: 10) {
             backupFileName = "knitting-editor-backup-\(suffix)"
             replaceText(backupFileName, in: filename, app: app)
+            mayAskToReplace = false
         }
         // 保存先はシステムの前回の場所に依存する。iPhoneでの確認時は「このiPhone内」が開いた。
         let saveInPicker = app.buttons.matching(NSPredicate(format: "label IN %@", ["保存", "Save"])).firstMatch
@@ -985,15 +987,16 @@ final class KnittingEditorUITests: XCTestCase {
         saveInPicker.tap()
         // 名前を変えられず、前回の同名ファイルが残っているときだけ、確認が出るので置き換える。
         let replace = app.buttons.matching(NSPredicate(format: "label IN %@", ["置き換え", "Replace"])).firstMatch
+        // 別プロセスの保存画面が閉じる途中はreplace.existsの問い合わせに17〜42秒かかることがある（#317）。
+        // 実行ごとの名前にできたときは置き換えの確認が出ないので、問い合わせずに保存画面が閉じるのだけを待つ。
         let exportFinishedOrReplaceAppeared = XCTNSPredicateExpectation(
-            predicate: NSPredicate { _, _ in !exportPicker.exists || replace.exists },
+            predicate: NSPredicate { _, _ in !exportPicker.exists || (mayAskToReplace && replace.exists) },
             object: exportPicker
         )
-        // 別プロセスの保存画面が閉じる途中はreplace.existsの問い合わせに17〜19秒かかることがある。
         // 保存済みでも20秒では1回しか判定できず失敗したため、エディターの表示と同じ時間待つ。
         let exportWaitResult = XCTWaiter.wait(for: [exportFinishedOrReplaceAppeared], timeout: Self.editorAppearanceTimeout)
         XCTAssertEqual(exportWaitResult, .completed, app.debugDescription)
-        if exportPicker.exists && replace.exists {
+        if mayAskToReplace && exportPicker.exists && replace.exists {
             waitUntilStill(replace)
             replace.tap()
             assertDisappears(exportPicker, from: app)
@@ -1525,6 +1528,17 @@ final class KnittingEditorUITests: XCTestCase {
             XCTFail("パネルの閉じるボタンが見つからない: \(app.debugDescription)")
             return
         }
+        // 対象ボタンの横位置でドラッグすると、押した位置の別のボタンがタップとして成立することがある。
+        // 横向きiPhoneでは「PNGを保存」が押されて保存のアラートが開き、以後のドラッグが効かなかった（#317）。
+        // パネルの左の余白なら操作対象が無い。右の余白はiPadでスクロールバーをつかんでしまい、
+        // 中央に出る記号の選択画面では外側の背景に当たって閉じるので使わない。
+        // 余白はパネルの左右で同じ幅のため、「閉じる」の右に残る幅の半分だけ左端から入った位置を押す。
+        let dragX: CGFloat
+        if let panel = panelFrame(in: app) {
+            dragX = panel.minX + (panel.maxX - close.frame.maxX) / 2
+        } else {
+            dragX = element.frame.midX
+        }
         for scrolls in 0...maximumScrolls {
             let bounds = app.windows.firstMatch.frame
             // ヘッダーの下余白も避け、ボタン全体が見えるまでスクロールする。
@@ -1542,12 +1556,15 @@ final class KnittingEditorUITests: XCTestCase {
             let direction: CGFloat = frame.minY < visible.minY ? 1 : -1
             let remaining = direction > 0 ? visible.minY - frame.minY : frame.maxY - visible.maxY
             let distance = max(40, min(remaining + 8, visible.height * 0.6))
-            // iPadの右側パネルでもパネル内をドラッグするため、対象ボタンの横位置を使う。
-            let dragX = min(max(frame.midX, visible.minX), visible.maxX)
             let start = app.coordinate(withNormalizedOffset: .zero)
                 .withOffset(CGVector(dx: dragX, dy: visible.midY - direction * distance / 2))
             let end = start.withOffset(CGVector(dx: 0, dy: direction * distance))
             start.press(forDuration: 0.05, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.1)
+            // アラートが開くとパネルを覆い、残りのドラッグがすべて効かなくなるので打ち切る。
+            if app.alerts.firstMatch.exists {
+                XCTFail("ドラッグがパネル内のタップになり、アラートが開いた: \(app.debugDescription)")
+                return
+            }
             // predicateの約1秒刻みの待機を避け、ドラッグ後だけ短く位置を確認する。
             let deadline = Date().addingTimeInterval(1)
             var previous = element.frame
@@ -1560,6 +1577,19 @@ final class KnittingEditorUITests: XCTestCase {
             }
         }
         XCTFail("スクロールしても操作対象がパネル内に見えない: \(app.debugDescription)")
+    }
+
+    /// 開いているパネル（「閉じる」を直接の子に持つ要素）の枠を、画面の木を1回だけ取得して求める。
+    private func panelFrame(in app: XCUIApplication) -> CGRect? {
+        guard let root = try? app.snapshot() else { return nil }
+        var pending: [XCUIElementSnapshot] = [root]
+        while let node = pending.popLast() {
+            if node.children.contains(where: { $0.elementType == .button && $0.label == "閉じる" }) {
+                return node.frame
+            }
+            pending.append(contentsOf: node.children)
+        }
+        return nil
     }
 
     /// 保存シートを閉じる。
@@ -1896,6 +1926,7 @@ final class KnittingEditorUITests: XCTestCase {
             .matching(NSPredicate(format: "label IN %@", ["このiPhone内", "このiPad内", "On My iPhone", "On My iPad"]))
         // 同じ名前の見出しや非表示のサイドバーも一致するため、画面内で押せる候補を探す。
         // 空や画面外のframeでisHittableを読むと、falseではなくXCTestの失敗になる。
+        // 画面内の枠でも失敗になったため（#317）、isHittableは失敗を記録しない形で読む。
         func waitForLocation(timeout: TimeInterval) -> XCUIElement? {
             var location: XCUIElement?
             let hittable = XCTNSPredicateExpectation(
@@ -1904,7 +1935,7 @@ final class KnittingEditorUITests: XCTestCase {
                     location = locations.allElementsBoundByIndex.first { element in
                         guard element.exists else { return false }
                         let frame = element.frame
-                        return !frame.isEmpty && window.intersects(frame) && element.isHittable
+                        return !frame.isEmpty && window.intersects(frame) && self.isHittableWithoutFailing(element)
                     }
                     return location != nil
                 },
@@ -1920,7 +1951,7 @@ final class KnittingEditorUITests: XCTestCase {
             if waitForHittable(browse, timeout: 5) {
                 browse.tap()
                 // もう一度押すと「ブラウズ」の先頭へ戻り、保存場所の一覧が出る。
-                if waitForLocation(timeout: 3) == nil, browse.isHittable {
+                if waitForLocation(timeout: 3) == nil, isHittableWithoutFailing(browse) {
                     browse.tap()
                 }
             }
@@ -1958,11 +1989,29 @@ final class KnittingEditorUITests: XCTestCase {
             predicate: NSPredicate { _, _ in
                 guard element.exists else { return false }
                 let frame = element.frame
-                return !frame.isEmpty && app.windows.firstMatch.frame.intersects(frame) && element.isHittable
+                return !frame.isEmpty
+                    && app.windows.firstMatch.frame.intersects(frame)
+                    && self.isHittableWithoutFailing(element)
             },
             object: element
         )
         return XCTWaiter.wait(for: [hittable], timeout: timeout) == .completed
+    }
+
+    /// isHittableを読み、XCTestが押す位置を決められなかった場合は押せないとして扱う。
+    ///
+    /// 復元のファイル選択画面で、枠が空でなく画面と重なる「On My iPad」でも
+    /// 「Failed to determine hittability … Activation point invalid」がテストの失敗として記録された（#317）。
+    /// この失敗だけを想定内とし、ほかの失敗はそのまま記録する。
+    private func isHittableWithoutFailing(_ element: XCUIElement) -> Bool {
+        let options = XCTExpectedFailure.Options()
+        options.isStrict = false
+        options.issueMatcher = { $0.compactDescription.contains("Failed to determine hittability") }
+        var hittable = false
+        XCTExpectFailure("押す位置を決められない要素は押せないとして扱う", options: options) {
+            hittable = element.isHittable
+        }
+        return hittable
     }
 
     /// 書き出しの確認アラートのボタン（「共有」「ファイルに保存」）を押し、アラートが閉じたかを返す。
