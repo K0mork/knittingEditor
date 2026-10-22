@@ -165,9 +165,4 @@ App Store Connectの年齢制限は、質問票への回答から決まる（202
 
 ## 申請前確認
 
-- [ ] App名、サブタイトル、プロモーションテキスト、説明文、キーワードの文字数をApp Store Connectで確認する。
-- [ ] アクセシビリティの表示を、上の「アクセシビリティの表示」を実機で確かめ直したうえで入力する。
-- [ ] App Privacyの回答をPrivacy Manifestと照合する。
-- [x] Privacy Policy本文をリポジトリルートの`public/privacy/app/index.html`へ用意する（公開URL: https://knittingeditor.com/privacy/app/、登録は#27）。
-- [ ] 公開Privacy Policy URLをApp Store Connectへ登録し、審査端末から表示できることを確認する。
-- [x] スクリーンショットとアイコンを最終版へ差し替える（スクリーンショットは#290、アイコンは#78。`APP_STORE_CHECKLIST.md`の「実装・資産」）。
+提出前に確かめる項目は[`APP_STORE_CHECKLIST.md`](APP_STORE_CHECKLIST.md)の「検証・配布」にまとめてある。この文書の値を転記したら、そちらのチェック欄を更新する。
