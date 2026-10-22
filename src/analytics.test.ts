@@ -108,3 +108,25 @@ describe('analytics', () => {
     ]);
   });
 });
+
+it('exposes metrics storage only after analytics initialization', async () => {
+  const { webAnalytics, initializeAnalytics } = await loadAnalytics();
+  expect(webAnalytics.chartProgressStorage?.()).toBeUndefined();
+  initializeAnalytics(false);
+  expect(webAnalytics.chartProgressStorage?.()).toBeUndefined();
+  initializeAnalytics(true);
+  const storage = webAnalytics.chartProgressStorage!()!;
+  storage.write('test');
+  expect(storage.read()).toBe('test');
+  storage.remove!();
+  expect(storage.read()).toBeNull();
+});
+
+it('removes metrics on opted-out initialization and exposes no storage', async () => {
+  localStorage.setItem('knitting-editor:chart-progress:v1', 'old');
+  localStorage.setItem('knitting-editor:analytics-opt-out', '1');
+  const { webAnalytics, initializeAnalytics } = await loadAnalytics();
+  initializeAnalytics();
+  expect(webAnalytics.chartProgressStorage?.()).toBeUndefined();
+  expect(localStorage.getItem('knitting-editor:chart-progress:v1')).toBeNull();
+});

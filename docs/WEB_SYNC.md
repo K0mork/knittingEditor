@@ -17,6 +17,7 @@ Web版とiOS版は同じリポジトリで管理する。以前の固定コミ�
 | 共通ファイル | 内容 |
 |---|---|
 | `state/useEditorSession.ts` | 編み図の読み込み、自動保存、即時保存、編み図切り替え、`beforeunload`確認。保存経路はここ1本にまとめ、自動保存も即時保存も同じ世代番号の確認を通す。保存後は結果の1件だけを一覧へ反映し、全件を読み直さない。書き切れていないときは盤面を差し替えず、`switchDocument`が中止理由（`switched`／`pending`／`failed`）を返す。`failed`は`onSaveError`が通知するので、呼び出し側は`pending`のときだけ自前で通知する。 |
+| `chartProgress.ts` | 制作量・編集日・編集後の出力の区分と端末内の重複排除。Web版で解析が有効なときだけ動かし、iOS版は計測状態の作成・保存も行わない。送信実装はWeb固有の`src/analytics.ts`に置く。 |
 | `ui/useEditorController.ts` | 編集画面の状態と操作。記号・色・モード・選択範囲・貼り付け・パネル、編み図とブロックの操作、PNG/PDF出力、バックアップと復元。入力ダイアログ（`askText`・`askConfirm`）、ファイルの受け渡し（`platform`）、分析（`analytics`、省略時は送らない）を引数で受け取る。保存失敗の文言は`saveErrorMessage`にまとめる。 |
 | `ui/EditorView.tsx` | 編集画面の組み立て。見出し（`renderTitle`）、使い方リンクの処理（`onGuideClick`）、復元要求の横取り（`requestRestore`）、案内文（`backupNote`）、「編み図」パネルの一覧の後ろの案内（`documentsNote`、省略時は出さない）、重ねる要素（`children`）だけを各ビルドから受け取る。 |
 | `ui/StitchPicker.tsx` | 記号ピッカー。フォーカストラップとEscapeでの閉じ方を含む。 |

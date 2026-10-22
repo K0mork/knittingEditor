@@ -397,3 +397,21 @@ describe('useEditorSession', () => {
     await view.unmount();
   });
 });
+
+it('returns whether commitEdit recorded a change and forwards cell indices only', async () => {
+  const onCellsRecorded = vi.fn();
+  const view = await renderSession({ onCellsRecorded });
+  try {
+    await act(async () => {
+      expect(view.session.commitEdit()).toBe(false);
+      view.session.board!.place(1, 2, 'knit', '#112233');
+      view.session.changed();
+      expect(view.session.commitEdit()).toBe(true);
+      expect(view.session.commitEdit()).toBe(false);
+      view.session.undo();
+      view.session.redo();
+    });
+    expect(onCellsRecorded).toHaveBeenCalledTimes(1);
+    expect([...onCellsRecorded.mock.calls[0][0]]).toEqual([6]);
+  } finally { await view.unmount(); }
+});

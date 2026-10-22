@@ -61,6 +61,7 @@ cd Web
 - [AGENTS.md](AGENTS.md): 開発・公開・記録の規則（エージェント向けを兼ねる）
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): Web・iOS共通基盤の構成、CIと公開の流れ
 - [docs/WEB_SYNC.md](docs/WEB_SYNC.md): Web版とiOS版で共通にするコードと、分けるファイル
+- [docs/ANALYTICS.md](docs/ANALYTICS.md): Web版で送る製品イベントと計測の範囲
 - [packages/editor-core/README.md](packages/editor-core/README.md): 共通コードの範囲と永続記号ID
 - [docs/dev-log/](docs/dev-log/README.md): PRごとの変更と検証の記録（2026-10-06までは[DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md)）
 - [ios/README.md](ios/README.md): iOS・iPadOSアプリの文書の入口
