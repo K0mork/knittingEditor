@@ -104,11 +104,12 @@ CIの構成、PR・マージ後に確かめるジョブ、ローカルで行う�
 
 ## Commits
 
-コミットの粒度・メッセージ、PRのレビューとマージ、force-pushの禁止は、ルートの[`AGENTS.md`](../AGENTS.md)の「Commit & Pull Request Guidelines」「Deployment Procedure」「Branches, Worktrees & Cleanup」に従う。iOS版では加えて次を守る。
+コミットの粒度・メッセージ、PRのレビューとマージは、ルートの[`AGENTS.md`](../AGENTS.md)の「Commit & Pull Request Guidelines」「Deployment Procedure」「Branches, Worktrees & Cleanup」に従う。iOS版では加えて次を守る。
 
 - コードベースを変更したら、指示がなくてもコミットし、同じ作業内でGitHubへpushする。push後に`git status --short --branch`などで、ローカルHEADとリモート追跡ブランチの一致を確かめる。
 - pushが失敗した場合は作業完了とせず、原因とリモート未反映であることを報告し、開発ログにも記録する。
 - **push後はCIの結果を必ず確認する。** 詳細は「CI確認」節に従う。
+- force-push、履歴改変、リモートブランチ削除は、ユーザーが対象と目的を明示した場合だけ行う。
 - TestFlight upload、App Store提出、GitHub Release作成、タグ作成は、ユーザーの明示的な依頼なしに行わない。
 
 ## CI確認

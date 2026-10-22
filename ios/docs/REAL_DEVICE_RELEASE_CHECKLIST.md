@@ -23,7 +23,7 @@ M0〜M6は、統合前の開発計画の段階の番号です（M0 基盤とオ�
 
 実機へインストールする前に、XcodeのSigning & CapabilitiesでTeam、Bundle ID、証明書、Provisioning Profileを確定し、`xcodebuild -showBuildSettings`の`DEVELOPMENT_TEAM`と`PRODUCT_BUNDLE_IDENTIFIER`を記録する。Teamや証明書をリポジトリへ保存しない。
 
-実機作業の開始時は、`ios/scripts/check-device-readiness.sh`を実行する。署名Team、Bundle ID、ペアリング済み実機の接続状態を読み取り、未設定なら失敗する。個人Team IDをプロジェクトへ保存しない場合は、`KNITTING_EDITOR_DEVELOPMENT_TEAM=XXXXXXXXXX scripts/check-device-readiness.sh`のように、そのターミナルでだけ環境変数を指定する。Team IDはApple DeveloperのMembership detailsまたは署名証明書から確認し、シェル設定やリポジトリへ書き込まない。現在の開発環境での失敗は実機ゲート未実施の証跡であり、Simulatorの結果で置き換えない。
+実機作業の開始時は、`ios/scripts/check-device-readiness.sh`を実行する。署名Team、Bundle ID、ペアリング済み実機の接続状態を読み取り、未設定なら失敗する。個人Team IDをプロジェクトへ保存しない場合は、`KNITTING_EDITOR_DEVELOPMENT_TEAM=XXXXXXXXXX ios/scripts/check-device-readiness.sh`のように、そのターミナルでだけ環境変数を指定する。Team IDはApple DeveloperのMembership detailsまたは署名証明書から確認し、シェル設定やリポジトリへ書き込まない。現在の開発環境での失敗は実機ゲート未実施の証跡であり、Simulatorの結果で置き換えない。
 
 ### 接続状態の見方
 
@@ -39,7 +39,7 @@ M0〜M6は、統合前の開発計画の段階の番号です（M0 基盤とオ�
 機内モード試験のようにケーブルが必須の作業では、次のように実行して有線接続を強制する。
 
 ```sh
-KNITTING_EDITOR_DEVELOPMENT_TEAM=XXXXXXXXXX KNITTING_EDITOR_REQUIRE_WIRED=1 scripts/check-device-readiness.sh
+KNITTING_EDITOR_DEVELOPMENT_TEAM=XXXXXXXXXX KNITTING_EDITOR_REQUIRE_WIRED=1 ios/scripts/check-device-readiness.sh
 ```
 
 ## M0: オフライン起動とWeb API PoC

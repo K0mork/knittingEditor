@@ -36,7 +36,7 @@
 - [ ] TestFlight内部テストでクラッシュログとメモリ警告を確認する。
 - [ ] App Store ConnectのApp Privacy回答をPrivacy Manifestと照合し、「データを収集しない」と入力する（[`docs/APP_STORE_METADATA.md`](APP_STORE_METADATA.md)の「App Store Connectの質問への回答」）。
 - [ ] 第三者のコンテンツの権利、DSAの事業者申告、審査の連絡先、サインインの要否、価格を、[`docs/APP_STORE_METADATA.md`](APP_STORE_METADATA.md)の「App Store Connectの質問への回答」のとおり入力する。審査の連絡先の値はルートの`private/APP_STORE_CONNECT.md`。
-- [ ] Privacy Policy URLをApp Store Connectへ登録し、公開状態を確認する。
+- [ ] Privacy Policy URLをApp Store Connectへ登録し、公開状態と、審査端末から表示できることを確認する。
 - [x] 外部のアドレスから`support@knittingeditor.com`へ送ったメールが届き、同じアドレスから返信できることを確かめる（2026-10-21までに利用者が確かめた）。
 - [ ] サポートURL`https://knittingeditor.com/support/`をApp Store Connectへ登録する。
 - [ ] 審査メモへ[`docs/APP_REVIEW_NOTES.md`](APP_REVIEW_NOTES.md)の要点を英語と日本語で転記する。
@@ -45,5 +45,5 @@
 - [ ] App Store Connectの配信地域からEU加盟国と中国本土を外す（[`docs/APP_STORE_METADATA.md`](APP_STORE_METADATA.md)の「配信地域」）。
 - [ ] アップロードのたびに、前回より大きいビルド番号を付ける（[`docs/APP_STORE_METADATA.md`](APP_STORE_METADATA.md)の「バージョンとビルド番号」）。
 - [ ] App名、サブタイトル、プロモーションテキスト、説明文、キーワードの文字数をApp Store Connectの画面で確かめる（[`APP_STORE_METADATA.md`](APP_STORE_METADATA.md)の「基本情報」「説明文案」）。
-- [ ] アクセシビリティの表示を、[`APP_STORE_METADATA.md`](APP_STORE_METADATA.md)の「アクセシビリティの表示」を実機で確かめ直したうえで入力する。
+- [ ] [`APP_STORE_METADATA.md`](APP_STORE_METADATA.md)の「アクセシビリティの表示」の回答を実機で確かめ直してから、App Store Connectへ入力する。
 - [ ] 提出後の承認を確認するまで、App Store配布完了とは報告しない。

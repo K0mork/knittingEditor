@@ -72,6 +72,8 @@
 - 復元データには新しいUUIDを割り当て、既存データを上書きしない。
 - Filesアプリおよび共有先から`.knit`をアプリで開けるよう独自UTTypeを登録する。
 
+SafariのIndexedDB・`localStorage`からの直接移行は仕様外です。Web版利用者はWeb版から`.knit`を書き出し、アプリで復元します。
+
 書き出しを勧める帯:
 
 - 最後に`.knit`を書き出した日時を編み図ごとに設定（`lastBackupAt:<編み図ID>`）へ記録する。編み図の記録と`.knit`には入れない。保存・共有を取りやめたときは記録しない。
@@ -103,8 +105,6 @@ App Storeの評価は、StoreKitのシステムの依頼画面（`AppStore.reque
 システムは条件を満たしても画面を出さないことがあり、出たかどうかはアプリから分からない。同じアプリで1年に3回までしか表示されず、TestFlightでは表示されない。開発ビルド（Xcodeから実行したSimulator・実機）では毎回表示されるが、送信はされない。このため、表示の確認はSimulatorで行い、表示条件は単体テストで確かめる。Simulatorで条件を満たした状態を作るには、アプリを止めてから`reviewRequest.firstLaunchDate`を3日以上前の日時へ書き換え、PNGかPDFを3回保存する。
 
 「使い方」からApp Storeのレビューを書くページ（`https://apps.apple.com/app/id<App ID>?action=write-review`）へのリンクは、App IDが決まっていないため、まだ置かない（#84）。
-
-SafariのIndexedDB・`localStorage`からの直接移行は仕様外です。Web版利用者はWeb版から`.knit`を書き出し、アプリで復元します。
 
 ## 3. オフライン・ネットワーク仕様
 

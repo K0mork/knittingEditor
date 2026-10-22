@@ -10,5 +10,5 @@
   - `vite.config.ts`と`ios/App/ReviewRequest.swift`のコメントにある文書の場所を、移した先に直した（コードの変更はない）。
 - 主なファイル: `docs/ARCHITECTURE.md`、`docs/WEB_SYNC.md`、`ios/AGENTS.md`、`ios/DEVELOPMENT.md`、`ios/SPECIFICATION.md`、`ios/README.md`、`ios/docs/REAL_DEVICE_RELEASE_CHECKLIST.md`、`ios/docs/RELEASE_VERIFICATION_RECORDS.md`、`ios/docs/APP_STORE_CHECKLIST.md`、`ios/docs/NATIVE_BRIDGE.md`、`README.md`
 - テスト: 追加・更新なし。
-- 検証: `ios/scripts/check-app-store-docs.sh`、`node scripts/check-pr-smoke-ui-tests.mjs`、`npm run typecheck`、`npm test`、`npm run build`、`npm run check:dist`、`npm run test:e2e`、`xcodegen generate --spec ios/project.yml`（プロジェクトに差分なし）、iOS Simulator向けのDebugビルドを実行した。Markdown内の相対リンクと見出しへのリンクが全部たどれることを、一時スクリプトで確かめた。ローカルのNode.jsは26.8.1で、24ではない。iPhone・iPadのテストはPRのCIに任せた。
+- 検証: `ios/scripts/check-app-store-docs.sh`、`node scripts/check-pr-smoke-ui-tests.mjs`、`npm run typecheck`、`npm test`、`npm run build`、`npm run check:dist`、`npm run test:e2e`、`xcodegen generate --spec ios/project.yml`（プロジェクトに差分なし）、iOS Simulator向けのDebugビルドを実行した。Markdown内の相対リンクと見出しへのリンクが全部たどれることを、一時スクリプトで確かめた。差分をCodexにも読ませ、失われた規則・壊れた参照の指摘（履歴改変とリモートブランチ削除の制限、審査端末でのプライバシーポリシーの表示、節の位置など）を直した。ローカルのNode.jsは26.8.1で、24ではない。iPhone・iPadのテストはPRのCIに任せた。
 - デプロイ影響: なし（`vite.config.ts`の変更はコメントだけで、配信物は変わらない）。マージ後は`deploy`と`smoke`の成功を確かめる。
