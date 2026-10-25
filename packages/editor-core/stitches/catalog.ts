@@ -80,7 +80,3 @@ STITCH_BY_KEY.set('purl_twisst_stitch', STITCH_BY_ID.get(24)!);
 export function stitchSvg(key: string): string {
   return STITCH_BY_KEY.get(key)?.svg ?? '';
 }
-
-export function svgDataUrl(key: string): string {
-  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(stitchSvg(key))}`;
-}
