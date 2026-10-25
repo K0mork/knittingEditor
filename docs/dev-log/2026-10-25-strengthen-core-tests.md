@@ -1,0 +1,22 @@
+# 2026-10-25 — 使われていないSVGのdata URL関数を消し、記号描画と復元順のテストを強める
+
+- 影響: 利用者に見える挙動は変わらない。
+  - 記号のSVGをdata URLにする`svgDataUrl`は、アプリ・スクリプト・テストのどこからも呼ばれていなかったので削除した。記号のSVG文字列を返す`stitchSvg`（旧版の綴り間違いの互換名を含む）は残す。
+  - 記号をCanvas（盤面・PNG）とPDFに描くテストは、Canvasの線・円・曲線の命令を何もしない関数に置き換えて`stroke`の回数だけを数えていた。PDFも命令があることだけを確かめていた。そのため、かけ目の円やねじり目の曲線の命令が抜けても検出できなかった。代表の記号について命令の並びを座標まで固定し、全記号について命令の数を記号の定義と照らし合わせるようにした。
+  - 復元した編み図の並び順のテストにあった`expect(await listDocuments()).toEqual(await listDocuments())`は、同じ関数の結果どうしを比べていて失敗しようがなかった。作成日時とIDを固定し、一覧が更新日時・名前・作成日時・IDの順に並ぶことを、保存キーの順と違う期待値で確かめるようにした。
+- 主なファイル: `packages/editor-core/stitches/catalog.ts`、`packages/editor-core/stitches/glyphs.test.ts`、`packages/editor-core/stitches/newStitches.test.ts`、`packages/editor-core/storage/restoreDates.test.ts`。
+- テスト:
+  - `packages/editor-core/stitches/glyphs.test.ts`：Canvasへの命令を引数ごと記録する。かけ目（円）、ねじり目（4本の3次曲線）、裏目左上ねじり目交差（線3本と曲線の別々のパス）、右上2目一度（折れ線と線）について、Canvasの命令の並びとPDFの命令の文字列を固定した。全記号について、Canvasの`save`・`translate`・`scale`・`beginPath`から`stroke`・`restore`までの順序、線の色・太さ・形、パス命令の数を、PDFでは前後の座標変換と線の設定、演算子ごとの数値の個数、`m`・`l`・`c`の数を確かめる。
+  - `packages/editor-core/stitches/newStitches.test.ts`：右増し目・左増し目・浮き目について、最初の`moveTo`だけでなく全ての`moveTo`・`lineTo`と、PDFの命令全体を確かめるようにした。
+  - `packages/editor-core/storage/restoreDates.test.ts`：上記の並び順の検査に置き換えた。
+  - 描画処理から円・曲線・折れ線・PDFの曲線や線の命令を一時的に抜くと新しいテストが失敗すること、`listDocuments`の並べ替えを一時的に外すと新しい並び順のテストが失敗することを確かめ、元に戻した。
+- 検証:
+  - 手元のNodeはv26.8.1（CIはNode 24）。
+  - `npm run typecheck`：成功。
+  - `npm test`：71ファイル・792件成功。
+  - `npm run build`：成功。
+  - `npm run check:dist`：成功（dist verified）。
+  - `ios/Web`で`../../node_modules/.bin/tsc -p tsconfig.app.json --noEmit`：成功。`../../node_modules/.bin/vitest run --config vite.config.ts`：16ファイル・139件成功。
+  - コミット後に`npm test -- --maxWorkers=2`（792件成功）と`npm run test:e2e`（全project、524件成功・7件スキップ）を実行した。
+  - iPhone・iPadの検証は手元では実行していない。PRのCIに任せる。
+- デプロイ影響: なし（描画と保存の挙動は変わらない。Pagesへは同じ動作のまま配信される）。
