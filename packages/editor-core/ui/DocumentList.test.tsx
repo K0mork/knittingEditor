@@ -34,6 +34,7 @@ afterEach(() => {
   container?.remove();
   root = undefined;
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 const knit = STITCH_BY_KEY.get('knit')!.id;
@@ -197,4 +198,37 @@ describe('DocumentList', () => {
     expect(bar()).toBeNull();
     expect(checkbox('地模様').checked).toBe(false);
   });
+});
+
+it('defers off-screen thumbnails and disconnects observers on visibility, document changes and unmount', () => {
+  const observers: Array<{ observe: ReturnType<typeof vi.fn>; disconnect: ReturnType<typeof vi.fn>; intersect: (visible: boolean) => void }> = [];
+  vi.stubGlobal('IntersectionObserver', class {
+    observe = vi.fn();
+    disconnect = vi.fn();
+    constructor(callback: IntersectionObserverCallback) {
+      observers.push({ observe: this.observe, disconnect: this.disconnect,
+        intersect: (visible) => callback([{ isIntersecting: visible } as IntersectionObserverEntry], this as unknown as IntersectionObserver) });
+    }
+  });
+  render({ documents: [chart('lazy', '遅延描画', 1)] });
+  const canvas = container!.querySelector('canvas')!;
+  expect(observers[0].observe).toHaveBeenCalledWith(canvas);
+  expect(drawn).toHaveLength(0);
+  act(() => observers[0].intersect(false));
+  expect(drawn).toHaveLength(0);
+  expect(observers[0].disconnect).not.toHaveBeenCalled();
+  render({ documents: [chart('lazy', '遅延描画', 2, [packCell(knit, 0xff_0000), 0, 0, 0])] });
+  expect(observers[0].disconnect).toHaveBeenCalledOnce();
+  expect(observers[1].observe).toHaveBeenCalledWith(canvas);
+  expect(drawn).toHaveLength(0);
+  act(() => observers[1].intersect(true));
+  expect(observers[1].disconnect).toHaveBeenCalledOnce();
+  expect(drawn).toHaveLength(1);
+  expect(drawn[0].data.slice(0, 4)).toEqual([255, 0, 0, 255]);
+  render({ documents: [chart('lazy', '遅延描画', 3)] });
+  expect(observers[1].disconnect).toHaveBeenCalledTimes(2);
+  expect(drawn).toHaveLength(1);
+  act(() => root!.unmount());
+  root = undefined;
+  expect(observers[2].disconnect).toHaveBeenCalledOnce();
 });

@@ -1,7 +1,7 @@
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { expect, it, vi } from 'vitest';
-import { NOTIFICATION_DURATION_MS, useModalFocus, useNotifier } from './hooks';
+import { NOTIFICATION_DURATION_MS, useModalFocus, useNotifier, usePanelFocus } from './hooks';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -107,6 +107,86 @@ it('clears a toast and its action together after the notification duration', asy
     expect(latest.message).toBe('');
     expect(latest.notificationAction).toBeUndefined();
     expect(action.run).not.toHaveBeenCalled();
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+    vi.useRealTimers();
+  }
+});
+
+it('cycles Tab and Shift+Tab between visible enabled modal controls only', async () => {
+  vi.useFakeTimers();
+  // jsdomにはレイアウトがないため、表示中の要素にだけ矩形を与える。
+  const rects = vi.spyOn(HTMLElement.prototype, 'getClientRects').mockImplementation(function (this: HTMLElement) {
+    return (this.dataset.offscreen ? [] : [{}]) as unknown as DOMRectList;
+  });
+  const container = document.body.appendChild(document.createElement('div'));
+  const root = createRoot(container);
+  function Modal() {
+    const ref = useModalFocus<HTMLElement>(() => undefined);
+    return <section ref={ref}><button hidden>非表示</button><button disabled>無効</button>
+      <button data-offscreen="true">矩形なし</button><button>最初</button><input /><button>最後</button></section>;
+  }
+  const tab = (target: HTMLElement, shiftKey = false) => {
+    const event = new KeyboardEvent('keydown', { key: 'Tab', shiftKey, bubbles: true, cancelable: true });
+    target.dispatchEvent(event);
+    return event.defaultPrevented;
+  };
+  try {
+    await act(async () => root.render(<Modal />));
+    await act(async () => { vi.advanceTimersByTime(20); });
+    const first = container.querySelectorAll('button')[3];
+    const last = container.querySelectorAll('button')[4];
+    expect(document.activeElement).toBe(first);
+    expect(tab(first, true)).toBe(true);
+    expect(document.activeElement).toBe(last);
+    expect(tab(last)).toBe(true);
+    expect(document.activeElement).toBe(first);
+    expect(tab(first)).toBe(false);
+    expect(tab(document.body)).toBe(false);
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+    rects.mockRestore();
+    vi.useRealTimers();
+  }
+});
+
+it('moves drawer focus to its heading, preserves user input focus, and returns to its trigger', async () => {
+  vi.useFakeTimers();
+  const container = document.body.appendChild(document.createElement('div'));
+  const root = createRoot(container);
+  function Drawer({ open }: { open: boolean }) {
+    const { panelRef, rememberTrigger } = usePanelFocus<HTMLElement>(open);
+    return <><button onClick={rememberTrigger}>開く</button>{open && <section ref={panelRef}>
+      <h2 tabIndex={-1}>設定</h2><input /></section>}</>;
+  }
+  const render = async (open: boolean) => { await act(async () => root.render(<Drawer open={open} />)); };
+  const frame = async () => { await act(async () => { vi.advanceTimersByTime(20); }); };
+  try {
+    await render(false);
+    const trigger = container.querySelector('button')!;
+    trigger.focus();
+    await act(async () => trigger.click());
+    await render(true);
+    await frame();
+    expect(document.activeElement).toBe(container.querySelector('h2'));
+    await render(false);
+    await frame();
+    expect(document.activeElement).toBe(trigger);
+    await render(true);
+    const input = container.querySelector('input')!;
+    input.focus();
+    await frame();
+    expect(document.activeElement).toBe(input);
+    await render(false);
+    await frame();
+    expect(document.activeElement).toBe(trigger);
+    // 開くフレームを待つ前に閉じても、見出しへ移動する処理が残らない。
+    await render(true);
+    await render(false);
+    await frame();
+    expect(document.activeElement).toBe(trigger);
   } finally {
     await act(async () => root.unmount());
     container.remove();
