@@ -211,9 +211,11 @@ export function decodeBackup(data: Uint8Array): ImportBackupResult & { blocks: P
     const { backgroundColor: rawBackground, guideLines: rawLines, ...rest } = item;
     const backgroundColor = normalizeBackgroundColor(rawBackground);
     const lines = normalizeGuideLines(rawLines, item.rows, item.cols);
+    // `base64ToBytes`は編み図ごとにちょうどの長さの新しいバッファを作り、検証は読むだけなので、
+    // コピーせずにそのまま渡しても他の編み図とバッファを共有しない。
     return {
       ...rest, ...(lines.length ? { guideLines: lines } : {}), ...(backgroundColor ? { backgroundColor } : {}),
-      id: crypto.randomUUID(), name: `${item.name}（復元）`, cells: bytes.slice().buffer as ArrayBuffer,
+      id: crypto.randomUUID(), name: `${item.name}（復元）`, cells: bytes.buffer,
       // 一覧の順序のため更新日時だけ元の値を保つ。作成日時は復元時刻にし、
       // 復元した直後に「まだバックアップしていません」の勧めが出ないようにする。
       createdAt: now,
