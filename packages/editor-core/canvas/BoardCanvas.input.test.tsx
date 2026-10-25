@@ -11,7 +11,8 @@ function setup(mode: CanvasMode, selected?: Rect) {
   vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });
   vi.stubGlobal('requestAnimationFrame', () => 1);
   vi.stubGlobal('cancelAnimationFrame', () => {});
-  const board = new Board(20, 20);
+  let board = new Board(20, 20);
+  let revision = 0;
   const onChange = vi.fn();
   const onPasteComplete = vi.fn();
   const onEditEnd = vi.fn();
@@ -22,7 +23,7 @@ function setup(mode: CanvasMode, selected?: Rect) {
   const host = document.createElement('div');
   document.body.append(host);
   const root = createRoot(host);
-  const render = () => root.render(<BoardCanvas board={board} revision={0} mode={mode} stitchKey="knit" color="#000000"
+  const render = () => root.render(<BoardCanvas board={board} revision={revision} mode={mode} stitchKey="knit" color="#000000"
     selection={selection} pasteBlock={pasteBlock} onChange={onChange} onSelectionChange={(next) => { selection = next; render(); }} onPasteComplete={onPasteComplete} onEditEnd={onEditEnd} />);
   act(render);
   const canvas = host.querySelector('canvas')!;
@@ -32,7 +33,7 @@ function setup(mode: CanvasMode, selected?: Rect) {
     Object.assign(event, { pointerId: id, clientX: x, clientY: y, pointerType, button: 0 });
     canvas.dispatchEvent(event);
   });
-  return { board, onChange, onPasteComplete, onEditEnd, pointer, canvas, setMode: (next: CanvasMode) => act(() => { mode = next; render(); }), selection: () => selection, close: () => act(() => root.unmount()) };
+  return { setBoard: (next: Board) => act(() => { board = next; render(); }), revise: () => act(() => { revision++; render(); }), board, onChange, onPasteComplete, onEditEnd, pointer, canvas, setMode: (next: CanvasMode) => act(() => { mode = next; render(); }), selection: () => selection, close: () => act(() => root.unmount()) };
 }
 
 describe('canvas touch editing', () => {
@@ -242,4 +243,98 @@ it('始点から同じ列の2段以上下なら、既存の線の途中でも作
   expect(ui.board.lines).toEqual([{ col: 1, top: 1, bottom: 3 }]);
   expect(ui.onChange).toHaveBeenCalledTimes(1);
   ui.close();
+});
+
+for (const mode of ['draw', 'erase'] as const) {
+  for (const moved of [false, true]) {
+    it(`discards ${mode} touch after a board switch (moved: ${moved})`, () => {
+      const ui = setup(mode);
+      ui.board.place(1, 1, 'knit', '#000000');
+      ui.pointer('pointerdown', 1, 75, 75);
+      if (moved) ui.pointer('pointermove', 1, 105, 75);
+      const next = new Board(10, 10);
+      next.place(9, 9, 'knit', '#ff0000');
+      const before = next.cells.slice();
+      ui.setBoard(next);
+      ui.pointer('pointermove', 1, 135, 75);
+      ui.pointer('pointerup', 1, 135, 75);
+      expect(next.rows).toBe(10);
+      expect(next.cells).toEqual(before);
+      expect(ui.onChange).not.toHaveBeenCalled();
+      ui.close();
+    });
+
+    it(`discards ${mode} touch after an external revision (moved: ${moved})`, () => {
+      const ui = setup(mode);
+      ui.board.place(1, 1, 'knit', '#000000');
+      ui.pointer('pointerdown', 1, 75, 75);
+      if (moved) ui.pointer('pointermove', 1, 105, 75);
+      ui.board.restore(10, 10, new Uint32Array(100));
+      ui.revise();
+      ui.pointer('pointerup', 1, 105, 75);
+      expect(ui.board.rows).toBe(10);
+      expect(ui.board.occupiedStitchCount).toBe(0);
+      expect(ui.onChange).not.toHaveBeenCalled();
+      ui.close();
+    });
+  }
+}
+
+it('does not copy the board for a pinch or an empty erase stroke', () => {
+  for (const mode of ['draw', 'erase'] as const) {
+    const ui = setup(mode);
+    const copy = vi.spyOn(ui.board.cells, 'slice');
+    ui.pointer('pointerdown', 1, 75, 75);
+    expect(copy).not.toHaveBeenCalled();
+    if (mode === 'draw') {
+      ui.pointer('pointerdown', 2, 135, 75);
+      ui.pointer('pointerup', 2, 135, 75);
+    } else {
+      ui.pointer('pointermove', 1, 105, 75);
+    }
+    ui.pointer('pointerup', 1, 105, 75);
+    expect(copy).not.toHaveBeenCalled();
+    copy.mockRestore();
+    ui.close();
+  }
+});
+it('keeps the viewport stable when the active pinch fingers change', () => {
+  const frames: FrameRequestCallback[] = [];
+  let rects: number[][] = [];
+  const context = new Proxy({}, {
+    get: (_target, key) => {
+      if (key === 'measureText') return () => ({ width: 10 });
+      if (key === 'clearRect') return () => { rects = []; };
+      if (key === 'fillRect') return (...args: number[]) => rects.push(args);
+      return () => {};
+    },
+    set: () => true,
+  });
+  const spy = vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => context as CanvasRenderingContext2D);
+  Object.defineProperty(HTMLCanvasElement.prototype, 'clientWidth', { configurable: true, get: () => 600 });
+  Object.defineProperty(HTMLCanvasElement.prototype, 'clientHeight', { configurable: true, get: () => 400 });
+  const ui = setup('draw');
+  vi.stubGlobal('requestAnimationFrame', (frame: FrameRequestCallback) => frames.push(frame));
+  const flush = () => act(() => { while (frames.length) frames.shift()!(0); });
+  try {
+    ui.pointer('pointerdown', 1, 100, 100);
+    ui.pointer('pointerdown', 2, 200, 100);
+    ui.pointer('pointermove', 2, 220, 100);
+    flush();
+    ui.pointer('pointerdown', 3, 300, 100);
+    ui.pointer('pointerup', 1, 100, 100);
+    flush();
+    const before = rects.map((rect) => [...rect]);
+    ui.pointer('pointermove', 2, 220, 100);
+    flush();
+    expect(rects).toHaveLength(before.length);
+    rects.forEach((rect, i) => rect.forEach((value, j) => expect(value).toBeCloseTo(before[i][j], 8)));
+    expect(before[1][3]).toBe(36);
+    expect(rects[1][3]).toBe(36);
+  } finally {
+    ui.close();
+    spy.mockRestore();
+    delete (HTMLCanvasElement.prototype as unknown as Record<string, unknown>).clientWidth;
+    delete (HTMLCanvasElement.prototype as unknown as Record<string, unknown>).clientHeight;
+  }
 });
