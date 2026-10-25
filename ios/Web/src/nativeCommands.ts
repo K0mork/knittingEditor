@@ -80,19 +80,25 @@ export function nativeHistoryState(history: { canUndo: boolean; canRedo: boolean
 /**
  * 入力欄にフォーカスがあるかを見張り、変わったときに知らせる。
  * `focusout`の時点では移動先がまだ決まっていないことがあるため、次のタスクで読み直す。
+ * 返した関数で見張りをやめると、読み直しの予約も取り消し、以後は知らせない。
  */
 export function watchTextEditing(listener: (editing: boolean) => void, doc: Document = document): () => void {
   let editing = isEditableTarget(doc.activeElement);
   let timer: number | undefined;
   const check = () => {
-    timer = undefined;
     const next = isEditableTarget(doc.activeElement);
     if (next === editing) return;
     editing = next;
     listener(next);
   };
+  // 予約のIDは、予約したタイマー自身が実行されたときだけ捨てる。`focusin`の読み直しで
+  // 捨てると、まだ実行されていないタイマーを見張りの終了時に取り消せなくなる。
+  const runScheduledCheck = () => {
+    timer = undefined;
+    check();
+  };
   const scheduleCheck = () => {
-    if (timer === undefined) timer = window.setTimeout(check, 0);
+    if (timer === undefined) timer = window.setTimeout(runScheduledCheck, 0);
   };
   doc.addEventListener('focusin', check);
   doc.addEventListener('focusout', scheduleCheck);
@@ -101,6 +107,7 @@ export function watchTextEditing(listener: (editing: boolean) => void, doc: Docu
     doc.removeEventListener('focusin', check);
     doc.removeEventListener('focusout', scheduleCheck);
     if (timer !== undefined) window.clearTimeout(timer);
+    timer = undefined;
   };
 }
 

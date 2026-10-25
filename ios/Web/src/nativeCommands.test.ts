@@ -6,6 +6,29 @@ import {
   MENU_PDF_OPTIONS, nativeCommandHandlers, nativeHistoryState, runNativeCommand, watchTextEditing, type NativeCommandHandlers,
 } from './nativeCommands';
 
+/**
+ * `window.setTimeout`で予約され、まだ実行も取り消しもされていないタイマーのID。
+ * jsdomはフォーカスの処理で内部のタイマーも使うため、`vi.getTimerCount()`ではなくこれで数える。
+ */
+function trackWindowTimers(): Set<number> {
+  const pending = new Set<number>();
+  const setTimeout = window.setTimeout.bind(window);
+  const clearTimeout = window.clearTimeout.bind(window);
+  vi.spyOn(window, 'setTimeout').mockImplementation(((callback: () => void, delay?: number) => {
+    const id = setTimeout(() => {
+      pending.delete(id);
+      callback();
+    }, delay);
+    pending.add(id);
+    return id;
+  }) as typeof window.setTimeout);
+  vi.spyOn(window, 'clearTimeout').mockImplementation((id?: number) => {
+    if (id !== undefined) pending.delete(id);
+    clearTimeout(id);
+  });
+  return pending;
+}
+
 function fakeHandlers(): NativeCommandHandlers {
   return Object.fromEntries(NATIVE_COMMANDS.map((command) => [command, vi.fn()])) as unknown as NativeCommandHandlers;
 }
@@ -118,6 +141,57 @@ describe('native menu commands', () => {
     stop();
     document.querySelector('input')!.focus();
     expect(listener).toHaveBeenCalledTimes(3);
+  });
+
+  it('cancels the pending focus check when watching stops', () => {
+    vi.useFakeTimers();
+    try {
+      const pending = trackWindowTimers();
+      document.body.innerHTML = '<input aria-label="入力"><button>決定</button>';
+      const listener = vi.fn();
+      const stop = watchTextEditing(listener);
+      document.querySelector('input')!.focus();
+      // `focusout`で読み直しを予約した直後に`focusin`が届き、予約はまだ実行されていない。
+      document.querySelector('button')!.focus();
+      expect(listener.mock.calls).toEqual([[false], [true], [false]]);
+      expect(pending.size).toBe(1);
+
+      stop();
+      expect(pending.size).toBe(0);
+      document.querySelector('input')!.focus();
+      vi.runAllTimers();
+      expect(listener.mock.calls).toEqual([[false], [true], [false]]);
+    } finally {
+      vi.restoreAllMocks();
+      vi.useRealTimers();
+    }
+  });
+
+  it('still reports focus leaving to the page after a pending check from an earlier move', () => {
+    vi.useFakeTimers();
+    try {
+      const pending = trackWindowTimers();
+      document.body.innerHTML = '<input aria-label="入力"><button>決定</button>';
+      const listener = vi.fn();
+      const stop = watchTextEditing(listener);
+      const input = document.querySelector('input')!;
+      input.focus();
+      document.querySelector('button')!.focus();
+      input.focus();
+      expect(listener.mock.calls).toEqual([[false], [true], [false], [true]]);
+
+      // 入力欄からページへフォーカスが外れると、移動先が決まる次のタスクで知らせる。
+      input.blur();
+      expect(listener).toHaveBeenCalledTimes(4);
+      vi.runAllTimers();
+      expect(listener).toHaveBeenLastCalledWith(false);
+      expect(listener).toHaveBeenCalledTimes(5);
+      expect(pending.size).toBe(0);
+      stop();
+    } finally {
+      vi.restoreAllMocks();
+      vi.useRealTimers();
+    }
   });
 
   it('exports with the same defaults the save panel opens with', () => {
