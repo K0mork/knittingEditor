@@ -35,7 +35,7 @@ Web版とiOS版は同じリポジトリで管理する。以前の固定コミ�
 
 | ファイル | 差分の理由 |
 |---|---|
-| `App.tsx` | `useEditorController`と`EditorView`へ差分を渡すだけにする。iOS版はネイティブブリッジ、アプリ内ダイアログ（`AppDialog.tsx`、`window.prompt`/`confirm`の代替）、ストレージ初期化タイムアウト、使い方ページ遷移前・バックグラウンド移行前の保存flushを持つ。Web版は`window.prompt`、旧データ移行つきの初期化、GA4、SEO向けの説明表示を持ち、`documentsNote`でプライバシーポリシー（`/privacy/`）へのリンクを渡す。iOS版はアクセス解析を送らないので`documentsNote`を渡さず、何も表示しない。 |
+| `App.tsx` | `useEditorController`と`EditorView`へ差分を渡す。両版とも共通の`ui/guideNavigation.ts`の`createGuideNavigation`で使い方ページへの遷移前に保存を確認する。Web版だけは修飾キー付きクリックや主ボタン以外のクリックをブラウザ本来の動作に任せる。iOS版はネイティブブリッジ、アプリ内ダイアログ（`AppDialog.tsx`、`window.prompt`/`confirm`の代替）、ストレージ初期化タイムアウト、バックグラウンド移行前の保存flushを持つ。Web版は`window.prompt`・`window.confirm`、旧データ移行つきの初期化、GA4、SEO向けの説明表示を持つ。`useShareOffer`で共有確認ダイアログを管理し、`shareDialog`を`EditorView`の`children`へ渡す。また、`documentsNote`でプライバシーポリシー（`/privacy/`）へのリンクを渡す。iOS版はアクセス解析を送らないので`documentsNote`を渡さず、何も表示しない。 |
 | `analytics.ts` | Web版だけが持ち、Webのビルド時に埋め込む短いコミット識別子を全製品イベントへ付け、GA4を初期化して`EditorAnalytics`を実装する。iOS版にはファイル自体が無く、分析を渡さないのでイベントも外部スクリプトも発生させない。 |
 | `workerPrefetch.ts` | Web版だけが持ち、`fetch`でWorkerの中身を先読みし、起動できないときにWorkerのファイルが404かを確かめる（`main.tsx`が共通の`workerStarter`へ渡す）。iOS版にはファイル自体が無く、同梱Web資産に通信APIを含めない（`ios/scripts/check-app-bundle.sh`が検査する）。 |
 | `main.tsx` | iOS版は`initializeAnalytics()`を呼ばない。Workerの先読みも呼ばず、同梱URLから起動する。Web本番版だけページ読み込み後にPDF・バックアップWorkerを先読みし、保持した内容のBlobからタスクごとに起動する。開発サーバーはURLから起動する。 |
@@ -58,8 +58,8 @@ Web版とiOS版は同じリポジトリで管理する。以前の固定コミ�
 現在の内訳は次のとおりで、共通テストの二重管理は解消済みである。
 
 - `packages/editor-core`：盤面モデル、記号カタログ、ベクター記号、Canvas、PNG/PDF出力、PDFレイアウト計算、IndexedDBと`.knit`入出力（大盤面の保存・復元を含む）、編集セッション、編集画面、最後のバックアップ日時と書き出しの勧め（既存データの読み出しを含む）、base64変換、分析バケット。
-- `src/`（Web固有）：旧Safari `localStorage`からの移行、GA4アナリティクス、iPhone・iPad Safariの共有シート判定と確認ダイアログ。
-- `ios/Web/src/`（iOS固有）：ネイティブブリッジ、`webReady`を編集画面が画面に出てから送ること（`editorReady.test.ts`）、`async`のタイムアウト、使い方ページのバージョン表示（`guideVersion.test.ts`）、ブリッジ経由の`.knit`入出力と`.knit`相互運用fixture（`backupInterchange.test.ts`、`ios/test-fixtures/`）。
+- `src/`（Web固有）：旧Safari `localStorage`からの移行、GA4アナリティクス、iPhone・iPad Safariの共有シート判定と確認ダイアログ、Worker先読みローダー（`workerPrefetch.test.ts`）、使い方ページ遷移前の保存確認と修飾キー付きクリック（`App.guide.test.tsx`）。
+- `ios/Web/src/`（iOS固有）：ネイティブブリッジ、ネイティブ操作と入力欄のフォーカス監視（`nativeCommands.test.ts`）、自動保存間隔（`nativeEditorConfiguration.test.ts`）、アプリ内ダイアログ（`AppDialog.test.tsx`）、使い方ページ遷移前の保存確認（`App.guide.test.tsx`）、バックグラウンド移行前の保存（`App.backgroundSave.test.tsx`）、ネイティブズーム（`App.zoom.test.tsx`）、共有失敗時の案内（`shareResult.test.tsx`）、折り目の操作禁止帯（`nativeFold.test.ts`）、WebViewのviewport設定（`webViewBehaviors.test.ts`）、`webReady`を編集画面が画面に出てから送ること（`editorReady.test.ts`）、`async`のタイムアウト、使い方ページのバージョン表示（`guideVersion.test.ts`）とフッターのリンク（`guideFooter.test.ts`）、ファイル受け渡し（`platform.test.ts`）、ブリッジ経由の`.knit`入出力と`.knit`相互運用fixture（`backupInterchange.test.ts`、`ios/test-fixtures/`）。
 
 両ビルドのVitest設定は`*.test.tsx`に対応するが、対象ディレクトリは異なる。ルートの`npm test`は`packages/`の共通テストを実行する（CIでは`web`ジョブ）。iOS単独のVitestは`ios/Web/src/`の固有テストだけを実行し、共通テストは実行しない。
 

@@ -123,12 +123,27 @@ window.dispatchEvent(new CustomEvent('knittingEditorNativeExportFinished', { det
 | 確認アラートの「キャンセル」 | `false` |
 | 保存画面のキャンセル・下へスワイプして閉じた（`documentPickerWasCancelled(_:)`） | `false` |
 | 共有シートを取り消した・閉じた（`completed`が偽） | `false` |
+| 共有シートがエラーを返した | `false`（`status: 'error'`と案内を添える） |
 | 保存画面を出せない、一時ファイルを用意できない、メッセージを検証できない | `false`（`knittingEditorNativeError`も送る） |
 | 結果の前に次の`exportFile`が届いた | 前の要求へ`false` |
 
+結果の`detail`には、次の任意項目も添えられる。ブリッジのバージョンは`version: 1`のままで、従来の`{ id, saved }`だけの結果もそのまま受け付ける。
+
+| 項目 | 内容 |
+|---|---|
+| `status` | `completed`（共有完了）、`cancelled`（共有取り消し）、`error`（共有失敗）。現在は共有シートの終了時に付ける。省略時は従来どおり`saved`で判定する。 |
+| `message` | 失敗時に表示する案内。`status: 'error'`で空でない文字列が無ければ「共有に失敗しました。もう一度共有を試してください。」を使う。 |
+| `guideSection` | 使い方ページの節ID。`^[a-z][a-z0-9-]{0,63}$`に合う文字列だけを受け付け、不正な値は無視する。案内の「やり方を見る」ボタンで`/guide/#<guideSection>`へ保存を確認してから移動する。 |
+
+`status: 'error'`は`saved`より優先し、Web側は`saved: false`として要求を完了する。同時に`message`と有効な`guideSection`を使って、Web内で`knittingEditorNativeError`を再配送する。この共有失敗の経路では、要求IDがある場合にSwiftから別の`knittingEditorNativeError`は送らない。要求IDが無い場合はSwift側でエラーを表示する。
+
+たとえば「画像を保存」で写真への追加が拒否された場合は、`status: 'error'`、設定アプリで写真への追加を許可するよう促す`message`、`guideSection: 'allow-photos'`を返す（#208）。単なる取り消しではエラー案内を出さない。
+
+`knittingEditorNativeError`の`detail`は、空でない案内文字列、または`{ message, guideSection }`の形式を受け付ける。オブジェクト形式でも`message`は空でない文字列が必須で、`guideSection`は上記の形式で検証する。有効な節IDが無ければ案内だけを表示する。
+
 Web側（`ios/Web/src/nativeBridge.ts`の`saveBlobWithNativeBridge`）は要求IDごとに結果を待ち、`iosPlatform.saveFile`が`SaveFileOutcome.saved`として返す。共有の編集画面は`saved`が`false`のときだけ最後のバックアップ日時を記録しない。このため「最後のバックアップ」は、保存・共有を終えた日時になり、取りやめたときは変わらず、書き出しを勧める帯も残る。PNG・PDFも同じ経路で結果を返すが、使い道はない（評価の依頼はSwift側で判定する）。
 
-要求を送った文書が別の文書に置き換わったとき（使い方ページへ移った、同梱ページを読み直した）は、待っていたWebの処理ごと消えている。Swiftは`didCommit`で要求IDを捨て、新しい文書へ古い結果を送らない（一時ファイルは保存画面を閉じたときに消す）。Webは知らないIDの結果を捨て、`saved`が真偽値でない結果は不明（`undefined`）として扱う。不明のときは、Web版のダウンロードと同じく渡した時点を書き出した日時とする。
+要求を送った文書が別の文書に置き換わったとき（使い方ページへ移った、同梱ページを読み直した）は、待っていたWebの処理ごと消えている。Swiftは`didCommit`で要求IDを捨て、新しい文書へ古い結果を送らない（一時ファイルは保存画面を閉じたときに消す）。Webは知らないIDの結果を捨て、`status: 'error'`でなく`saved`が真偽値でない結果は不明（`undefined`）として扱う。不明のときは、Web版のダウンロードと同じく渡した時点を書き出した日時とする。
 
 ## アプリ情報（Swift → Web）
 
