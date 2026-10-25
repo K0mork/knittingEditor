@@ -1,0 +1,22 @@
+# 2026-10-25 — 共有checkoutの保護フックと本番確認スクリプトを堅くする
+
+- 影響:
+  - 共有checkoutの保護フック（`scripts/guard-shared-checkout.mjs`）が、前置コマンドのオプションを読むようにした。これまでは`env`・`time`・`command`・`exec`・`nohup`の名前と変数の代入しか飛ばさず、`env -u FOO git reset --hard`、`env -i …`、`time -p …`、`command -p …`、`exec -a NAME …`のようにオプションを付けると、後ろのGitを見つけられず止めていなかった。値を取るオプション（`env -u/-C/-P/-S`、`--unset`・`--chdir`・`--split-string`、`time -o/-f`、`exec -a`）、続けて書いた値（`-uFOO`、`--unset=FOO`）、`--`と`env -`を扱う。`env -C DIR`はそのコマンドの場所として扱い（展開を含む場所は不明として止める）、`env -S`の文字列は単語に分けて読み直す。`command -v/-V`は実行しない調べものとして扱う。あわせて、`env cd …`・`nohup cd …`のように別プロセスで動くcdをシェルの場所の移動と見なさないようにした（これまでは`env cd .claude/worktrees/x; git reset --hard`を共有checkoutで止めていなかった）。
+  - 本番確認（`scripts/check-live-site.mjs`、`npm run check:live`とCIの`smoke`）が、確認を始める前に引数を検証するようにした。`--attempts`は1以上の整数、`--interval`は0以上の秒数（setTimeoutが扱える上限まで）でなければ、接続せずに終了コード1で終わる。これまでは`--attempts bad`で試行回数がNaNになり、終わらずに再試行し続けた。また、1回の取得（本文を読み終えるまで）に30秒の上限を付け、止まった取得はその試行の失敗として次の試行へ回すようにした。既定値（10回・30秒間隔）とCIの呼び出しは変えていない。テストのため、引数の解析・確認の本体を関数として公開し、直接実行したときだけ動くようにした。
+  - DOMを使わないスクリプトのテスト5ファイルに`// @vitest-environment node`を付け、ほかのスクリプトのテストとそろえた（jsdomを作らない）。
+- 主なファイル: `scripts/guard-shared-checkout.mjs`、`scripts/check-live-site.mjs`。
+- テスト:
+  - `scripts/guard-shared-checkout.test.mjs`: 前置コマンドのオプション（短い・長い・続けて書いた値・`--`・入れ子）、`env -S`、`command -v`、オプションの値をコマンドと取り違えないこと、共有checkoutでの拒否とworktreeでの許可、`env -C`の場所、別プロセスのcdのテストを追加した。追加したテストは変更前のスクリプトでは11件失敗することを確かめた。
+  - `scripts/check-live-site.test.mjs`（新規）: 引数の既定値と不正な値の拒否、スタブのfetchでの成功・配信物との一致待ち・問題の報告・試行回数の上限・止まった取得の打ち切り、127.0.0.1のローカルサーバーで本文の途中で止まる応答を打ち切ること、不正な引数ではfetchを呼ばずに終了コード1になること（子プロセスでfetchを差し替えて確認）。本番サイトには接続しない。
+  - `scripts/app-build.test.mjs`、`scripts/clean-worktrees.test.mjs`、`scripts/content-security-policy.test.mjs`、`scripts/guard-shared-checkout.test.mjs`、`scripts/third-party-notices.test.mjs`: node環境の指定を追加した。
+- 検証:
+  - 手元のNodeはv26.8.1（CI指定はNode 24）。
+  - `npx vitest run scripts`: 12ファイル・143件成功。
+  - `npm run typecheck`: 成功。
+  - `npm test`: 72ファイル・828件成功。
+  - `npm run build`: 成功。
+  - `npm run check:dist`: 成功（`dist verified`）。
+  - `node scripts/check-live-site.mjs --attempts bad`が接続せずにエラー・終了コード1で終わること、fetchを失敗させる前処理を入れた`--attempts 2 --interval 0`が2回で終了コード1になることを手元で確かめた。
+  - コミット後に`npm run typecheck`（成功）、`npm test -- --maxWorkers=2`（828件成功）、`npm run test:e2e`（全project、524件成功・7件スキップ）を実行した。
+  - iOSの検証は手元で実行していない。PRのCIに任せる。
+- デプロイ影響: 配信物は変わらない。`scripts/`の変更なのでマージ後にPagesへの配信と`smoke`ジョブが走り、`smoke`は新しい`check-live-site.mjs`（既定値は同じ、1回の取得に30秒の上限）で本番を確認する。配信後に`CI and deploy Pages`の`smoke`ジョブが成功したことを確かめる。
