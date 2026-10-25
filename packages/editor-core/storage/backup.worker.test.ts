@@ -16,7 +16,9 @@ it.each(['invalid_backup', 'backup_limit'] as const)('sends a typed codec error 
     : { operation: 'encode', documents: Array(BACKUP_LIMITS.maxDocuments + 1).fill({}), blocks: [] },
   } as MessageEvent);
   const response = postMessage.mock.calls.at(-1)![0];
-  expect(response.code).toBe(expected);
+  expect(response).toMatchObject({ ok: false, code: expected });
+  // 失敗の応答は転送するバッファを持たない。
+  expect(postMessage.mock.calls.at(-1)).toHaveLength(1);
   // resetModules後の同じクラス定義で復元する。
   const errors = await import('./backupErrors');
   const analytics = await import('../analyticsFailure');

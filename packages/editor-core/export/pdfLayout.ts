@@ -2,7 +2,7 @@ import type { ExportAnnotations } from './annotations';
 
 /**
  * PDFの用紙分割計算。出力設定の「推定ページ数」とPDF Workerの実際の分割が
- * 食い違わないよう、余白・フッター・セル寸法の扱いはここだけに置く。
+ * 食い違わないよう、余白・フッター・題名と一覧の領域・セル寸法の扱いはここだけに置く。
  */
 
 export interface PdfLayoutOptions extends ExportAnnotations {
@@ -23,6 +23,10 @@ export interface PdfPageLayout {
   pageHeight: number;
   margin: number;
   footer: number;
+  /** 盤面の上に取る題名の高さ。題名と一覧を入れる1ページ版だけで取り、分割版の題名は上余白に収める。 */
+  titleHeight: number;
+  /** 一覧だけのページで、題名の下から一覧の1行目を始めるy座標（PDF座標、下が0）。 */
+  legendPageTop: number;
   /** 左右の段番号の帯の幅と、上下の目番号の帯の高さ。PNGと同じく四辺に番号を置く。 */
   rowLabelWidth: number;
   colLabelHeight: number;
@@ -42,6 +46,10 @@ export interface PdfPageLayout {
 }
 
 export const PDF_LEGEND_CELL_SIZE = 12;
+/** 一覧の1行で、記号の高さに足す余白（pt）。 */
+export const PDF_LEGEND_ROW_PADDING = 8;
+/** 題名に取る高さ（pt）。1ページ版の盤面の上と、一覧だけのページの上端に取る。 */
+const PDF_TITLE_HEIGHT = 24;
 export const pdfLegendColumns = (pageWidth: number): number => pageWidth > 700 ? 4 : 3;
 
 export interface PdfLegendRow {
@@ -57,7 +65,7 @@ export function pdfLegendRows(options: ExportAnnotations, pageWidth: number): Pd
   const rows: PdfLegendRow[] = [];
   for (let start = 0; start < count; start += columns) {
     const heights = options.legendHeights?.slice(start, start + columns) ?? [2];
-    rows.push({ start, count: Math.min(columns, count - start), height: Math.max(1, ...heights) * PDF_LEGEND_CELL_SIZE + 8 });
+    rows.push({ start, count: Math.min(columns, count - start), height: Math.max(1, ...heights) * PDF_LEGEND_CELL_SIZE + PDF_LEGEND_ROW_PADDING });
   }
   return rows;
 }
@@ -67,16 +75,22 @@ function pdfLegendPages(options: PdfLayoutOptions, pageWidth: number, pageHeight
   const rows = pdfLegendRows(options, pageWidth);
   if (rows.length === 0) return [];
   const pages: PdfLegendRow[][] = [[]];
-  let remaining = pageHeight - PAGE_MARGIN * 2 - 24;
+  // 一覧は題名の下から下余白までに並べる。
+  const capacity = pdfLegendPageTop(pageHeight) - PAGE_MARGIN;
+  let remaining = capacity;
   for (const row of rows) {
     if (row.height > remaining) {
       pages.push([]);
-      remaining = pageHeight - PAGE_MARGIN * 2 - 24;
+      remaining = capacity;
     }
     pages[pages.length - 1].push(row);
     remaining -= row.height;
   }
   return pages;
+}
+
+function pdfLegendPageTop(pageHeight: number): number {
+  return pageHeight - PAGE_MARGIN - PDF_TITLE_HEIGHT;
 }
 
 const A4_LONG_SIDE = 841.89;
@@ -100,6 +114,7 @@ interface PdfGrid {
   pageWidth: number;
   pageHeight: number;
   footer: number;
+  titleHeight: number;
   rowLabelWidth: number;
   colLabelHeight: number;
   availableWidth: number;
@@ -122,7 +137,7 @@ function pdfGrid(rows: number, cols: number, options: PdfLayoutOptions): PdfGrid
   const colLabelHeight = PDF_LABEL_FONT_SIZE + PDF_LABEL_GAP * 2;
   const availableWidth = pageWidth - PAGE_MARGIN * 2 - rowLabelWidth * 2;
   // 分割時の題名は既存の上余白へ収め、盤面の分割・位置を変えない。
-  const titleHeight = options.includeTitleAndLegend && !tiled ? 24 : 0;
+  const titleHeight = options.includeTitleAndLegend && !tiled ? PDF_TITLE_HEIGHT : 0;
   const legendHeight = !tiled && options.includeTitleAndLegend
     ? pdfLegendRows(options, pageWidth).reduce((sum, row) => sum + row.height, 16) : 0;
   const availableHeight = pageHeight - PAGE_MARGIN * 2 - footer - colLabelHeight * 2 - titleHeight - legendHeight;
@@ -132,7 +147,7 @@ function pdfGrid(rows: number, cols: number, options: PdfLayoutOptions): PdfGrid
   const tileCols = tiled ? Math.max(1, Math.floor(availableWidth / cellSize)) : cols;
   const tileRows = tiled ? Math.max(1, Math.floor(availableHeight / cellSize)) : rows;
   return {
-    pageWidth, pageHeight, footer, rowLabelWidth, colLabelHeight, availableWidth, availableHeight, cellSize, tileRows, tileCols,
+    pageWidth, pageHeight, footer, titleHeight, rowLabelWidth, colLabelHeight, availableWidth, availableHeight, cellSize, tileRows, tileCols,
     // 分割時は隣のページと1列・1段だけ重ねて読み継ぎやすくする。
     stepCols: Math.max(1, tileCols - (tiled ? 1 : 0)),
     stepRows: Math.max(1, tileRows - (tiled ? 1 : 0)),
@@ -159,6 +174,7 @@ export function pdfPageLayout(rows: number, cols: number, options: PdfLayoutOpti
   return {
     ...grid,
     margin: PAGE_MARGIN,
+    legendPageTop: pdfLegendPageTop(grid.pageHeight),
     pageRows: tiled ? axisPageCount(rows, grid.tileRows, grid.stepRows) : 1,
     pageCols: tiled ? axisPageCount(cols, grid.tileCols, grid.stepCols) : 1,
     pageCount: tiles.length + legendPages.length,

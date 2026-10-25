@@ -1,0 +1,28 @@
+# 2026-10-25 — PDF・バックアップWorkerの受け渡しを型でつなぎ、PDFは保存を始めた時点の盤面を出力する
+
+- 影響:
+  - PDF保存は、ボタンを押した時点の盤面（セル・線・段数・目数）を写してからWorkerの起動を待つ。これまではWorkerの起動を待ってから盤面を読んだので、待つ間に元に戻す（Ctrl/Cmd+Z）などで盤面を変えると、変えた後の盤面がPDFに入ることがあった。題名・地の色は以前から押した時点の値だった。写しはこれまでどおり起動確認後に1回だけ転送し、失敗しても送り直さない。
+  - PNG保存は、エンコードが終わった後（失敗したときも）描画用のCanvasの幅と高さを0にして、大きな描画面をGCを待たずに手放す。続けて大きなPNGを保存するとき、前の描画面がメモリの上限に数えられないようにするため。出力されるPNGは変わらない。
+  - Workerを動かす共通処理（`createWorkerTask().run`）は、応答を検証した結果をそのまま返すようにした。PDFとバックアップは、要求と応答の型をWorkerと呼び出し側で共有し、Worker側の送信も同じ型で検査する。バックアップは成功時に要求と同じ種類（書き出し・読み込み）を返し、種類が違えば処理の失敗にする。ready待ち、Blobから起動できないときのURL起動、転送したデータを送り直さない規則、バックアップの`InvalidBackupError`・`BackupLimitError`の区別は変えない。
+  - PDFの題名と一覧の領域（1ページ版で盤面の上に取る題名の高さ、一覧だけのページの開始位置、一覧の行の余白）を`pdfLayout.ts`だけで計算し、推定ページ数とWorkerの描画が同じ値を使うようにした。生成されるPDFは変わらない。
+  - 保存形式（IndexedDB、`.knit`）は変わらない。
+- 主なファイル: `packages/editor-core/util/workerStarter.ts`、`packages/editor-core/export/exporters.ts`、`packages/editor-core/export/pdf.worker.ts`、`packages/editor-core/export/pdfLayout.ts`、`packages/editor-core/storage/backupTask.ts`、`packages/editor-core/storage/backup.worker.ts`。
+- テスト:
+  - `packages/editor-core/util/workerStarter.test.ts`：`run`が`receive`の返した値で解決すること（Blobから起動できずURLで起動し直した場合も）、結果の後に届いた応答を無視することを確かめる。
+  - `packages/editor-core/storage/backupTask.test.ts`：読み込みのテストが書き出しの応答でも通っていたので、種類ごとに正しい形の応答を返して戻り値を確かめるようにした。違う種類の応答を失敗にするテストと、実際の`backup.worker.ts`の処理を通した書き出し・読み込みの往復（戻り値と転送するバッファ）のテストを追加した。
+  - `packages/editor-core/storage/backup.worker.test.ts`：失敗の応答が`ok: false`と分類を持ち、転送するバッファを持たないことを確かめる。
+  - `packages/editor-core/export/exporters.test.ts`：PDFのセルを保存開始時に1回だけ写し、ready後にその写しを転送すること、ready前の元に戻す・段の挿入が出力に入らないこと、形の崩れた応答を再試行の案内で失敗させることを確かめる。PNGのCanvasを、エンコード中は縮めず、成功・空のBlob・2D context無し・`toBlob`の例外・描画中の例外のどの場合も最後に0×0にすることを確かめる。
+  - `packages/editor-core/export/pdfStreams.test-helper.ts`（新規、テスト用）：PDFの圧縮ストリームの展開を1つにまとめた。展開できないもの、`/Length`と長さが合わないもの、圧縮されていないもの、チェックサム（Adler-32。fflateは照合しない）が合わないものがあれば失敗させる。これまで`pdf.worker.test.ts`の展開処理は、展開できないストリームを黙って除いていた。`pdf.worker.test.ts`と`exportAnnotations.test.ts`がこれを使い、`pdf.worker.test.ts`に壊れたPDFで失敗することのテストを追加した。
+  - `packages/editor-core/export/pdfLayout.test.ts`・`exportAnnotations.test.ts`：題名の高さを1ページ版で題名と一覧を入れるときだけ取ること、一覧だけのページが題名の下から下余白までに収まること、一覧だけのページの1行目が`legendPageTop`から始まることを確かめる。
+  - `tests/e2e/pdf-export-snapshot.spec.ts`（新規）：PDF Workerのreadyを止めている間に元に戻しても、Workerへ送る盤面と保存したPDFに元に戻す前の記号が入っていることを確かめる。
+- 検証:
+  - 手元のNodeはv26.8.1（CI指定はNode 24）。
+  - `npm run typecheck`：成功。
+  - `npm test`：71ファイル・809件成功。
+  - `npm run build`：成功。`npm run check:dist`：`dist verified`。配信物のJSにテスト用ヘルパーが入っていないことを`grep`で確かめた。
+  - `ios/Web`で`../../node_modules/.bin/tsc -p tsconfig.app.json --noEmit`：成功。`../../node_modules/.bin/vitest run --config vite.config.ts`：16ファイル・139件成功。
+  - `npx playwright test tests/e2e/pdf-export-snapshot.spec.ts tests/e2e/export-title-and-legend.spec.ts tests/e2e/prefetch-web-workers.spec.ts tests/e2e/backup-pipeline.spec.ts tests/e2e/editor.spec.ts`（chromium-mobile・webkit-mobile・chromium-desktop）：128件成功・4件スキップ。
+  - 変更前の盤面の読み取り時点に一時的に戻すと、追加したVitestとE2Eが失敗することを確かめた（確認後に戻した）。また、変更前の`pdf.worker.ts`・`pdfLayout.ts`と、盤面・向き・分割・題名と一覧・セル寸法の96通りで、生成したPDFのバイト列とページ分割の計算結果が一致することを一時的なテストで確かめた（テストは削除した）。
+  - コミット後に`npm test -- --maxWorkers=2`（809件成功）、`npm run test:e2e`（全project、527件成功・7件スキップ）を再実行した。
+  - iPhone・iPadの検証は手元で実行していない。PRのCIと`ios-full.yml`（このブランチで手動実行）に任せる。
+- デプロイ影響: Pagesへ配信される。配信後に本番でPNG・PDF（1ページ・分割、題名と一覧のあり・なし）とバックアップの書き出し・復元ができることを確かめる。

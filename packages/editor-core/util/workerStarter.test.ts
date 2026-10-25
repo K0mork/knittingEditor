@@ -25,15 +25,16 @@ function setup(failures: number) {
     postMessage() { queueMicrotask(() => this.onmessage?.({ data: 'done' })); }
   });
   const task = createWorkerTask('/worker.js');
-  const receive = vi.fn();
-  const run = () => task.run<string>((worker) => worker.postMessage({}), receive, fallback);
+  const receive = vi.fn((data: string) => `received ${data}`);
+  const run = () => task.run<string, string>((worker) => worker.postMessage({}), receive, fallback);
   return { task, run, urls, revoke, terminate, download, isMissing, loader, receive };
 }
 describe('worker tasks', () => {
   it('uses prefetched contents and releases each task', async () => {
     const state = setup(0);
     await Promise.all([state.task.preload(state.loader), state.task.preload(state.loader)]);
-    await state.run();
+    await expect(state.run()).resolves.toBe('received done');
+    expect(state.receive).toHaveBeenCalledExactlyOnceWith('done');
     expect(state.download).toHaveBeenCalledTimes(1);
     expect(state.urls).toEqual(['blob:test']);
     expect(state.revoke).toHaveBeenCalledWith('blob:test');
@@ -48,7 +49,7 @@ describe('worker tasks', () => {
   });
   it('uses the bundled URL successfully without any runtime fetch', async () => {
     const state = setup(0);
-    await state.run();
+    await expect(state.run()).resolves.toBe('received done');
     expect(state.urls).toEqual(['/worker.js']);
     expect(state.download).not.toHaveBeenCalled();
     expect(state.isMissing).not.toHaveBeenCalled();
@@ -74,7 +75,8 @@ describe('worker tasks', () => {
   it('falls back after asynchronous blob startup failure', async () => {
     const state = setup(1);
     await state.task.preload(state.loader);
-    await state.run();
+    // 再試行したURL起動の応答を、そのまま結果として返す。
+    await expect(state.run()).resolves.toBe('received done');
     expect(state.urls).toEqual(['blob:test', '/worker.js']);
     expect(state.revoke).toHaveBeenCalledWith('blob:test');
   });
@@ -188,7 +190,7 @@ it('waits for URL startup without a timeout', async () => {
   instance.onmessage?.call(instance, { data: { ready: true } } as MessageEvent);
   expect(send).toHaveBeenCalledExactlyOnceWith(instance);
   instance.onmessage?.call(instance, { data: 'done' } as MessageEvent);
-  await pending;
+  await expect(pending).resolves.toBe('received done');
   expect(state.receive).toHaveBeenCalledWith('done');
   expect(state.terminate).toHaveBeenCalledOnce();
 });
@@ -222,4 +224,22 @@ it('marks response errors after ready as processing failures', async () => {
   await expect(state.task.run((worker) => worker.postMessage({}), () => {
     throw new Error('処理エラー');
   }, fallback)).rejects.toBeInstanceOf(WorkerProcessingError);
+});
+
+it('ignores messages after the result and settles with the first response only', async () => {
+  let instance!: Worker;
+  const terminate = vi.fn();
+  vi.stubGlobal('Worker', class {
+    onmessage = null;
+    terminate = terminate;
+    constructor() { instance = this as unknown as Worker; }
+  });
+  const receive = vi.fn((data: { value: number }) => data.value * 2);
+  const pending = createWorkerTask('/worker.js').run<{ value: number }, number>(() => {}, receive, fallback);
+  instance.onmessage?.call(instance, { data: { ready: true } } as MessageEvent);
+  instance.onmessage?.call(instance, { data: { value: 21 } } as MessageEvent);
+  instance.onmessage?.call(instance, { data: { value: 50 } } as MessageEvent);
+  await expect(pending).resolves.toBe(42);
+  expect(receive).toHaveBeenCalledOnce();
+  expect(terminate).toHaveBeenCalledOnce();
 });

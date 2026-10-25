@@ -1,19 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { unzlibSync } from 'fflate';
 import { STITCHES } from '../stitches/catalog';
 import { Board } from '../model/Board';
 import { usedStitches } from './annotations';
 import { renderPng, validatePngSize } from './exporters';
 import { buildPdf, pdfJapaneseTextWidth, pdfJapaneseText, pdfPageRange, type PdfRequest } from './pdf.worker';
 import { pdfLegendRows, pdfPageCount, pdfPageLayout } from './pdfLayout';
+import { pdfStreams } from './pdfStreams.test-helper';
 
-function streams(pdf: Uint8Array): string {
-  const binary = Array.from(pdf, (byte) => String.fromCharCode(byte)).join('');
-  return [...binary.matchAll(/\/Length (\d+) \/Filter \/FlateDecode >>\nstream\n/g)].map((match) => {
-    const start = match.index! + match[0].length;
-    return new TextDecoder().decode(unzlibSync(pdf.subarray(start, start + Number(match[1]))));
-  }).join('');
-}
+const streams = (pdf: Uint8Array): string => pdfStreams(pdf).join('');
 
 function sample() {
   const board = new Board(20, 20);
@@ -99,6 +93,20 @@ describe('export title and legend', () => {
     expect(commands).toContain(`24.000 ${(center - 6).toFixed(3)} m 36.000 ${(center - 6).toFixed(3)} l`);
     expect(commands).toContain(pdfJapaneseText('表目', 108, center - 8 * (0.752 - 0.221) / 2));
     expect(commands).toContain(pdfJapaneseText('すべり目', 108 + (layout.pageWidth - layout.margin * 2) / 3, center - 8 * (0.752 - 0.221) / 2));
+  });
+
+  it('starts a legend-only page at the layout top below the title', () => {
+    const board = new Board(20, 20);
+    board.place(0, 0, 'knit', '#111111', false);
+    const input = { ...request(board), layout: 'tiled' as const, includeTitleAndLegend: true, title: '一覧', legendCount: 1, legendHeights: [1] };
+    const layout = pdfPageLayout(board.rows, board.cols, input);
+    expect(layout.legendPages).toHaveLength(1);
+    const legendPage = pdfStreams(buildPdf(input)).at(-1)!;
+    // 1段の記号の行は20pt。余白8ptを除いた12ptの枠の上端を、一覧の始まりにそろえる。
+    const top = layout.legendPageTop;
+    expect(legendPage).toContain(`24.000 ${top.toFixed(3)} m 36.000 ${top.toFixed(3)} l 24.000 ${(top - 12).toFixed(3)} m 36.000 ${(top - 12).toFixed(3)} l`);
+    expect(legendPage).toContain(pdfJapaneseText('表目', 108, top - 6 - 8 * (0.752 - 0.221) / 2));
+    expect(legendPage).toContain(pdfJapaneseText('一覧', layout.margin, layout.pageHeight - layout.margin - 16, 14));
   });
 
   it.each(['single', 'tiled'] as const)('includes PDF title, names and legend glyphs in %s mode only when on', (layout) => {
