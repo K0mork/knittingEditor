@@ -134,3 +134,60 @@ it.each(['段', '列'])('deletes a stitch at a specified displayed position with
   expect(board.occupiedStitchCount).toBe(0);
   expect(view.changed).toHaveBeenCalledOnce();
 });
+
+it.each([
+  ['上に段', 5, 4, 2, 1],
+  ['下に段', 5, 4, 1, 1],
+  ['左に列', 4, 5, 1, 2],
+  ['右に列', 4, 5, 1, 1],
+] as const)('adds the requested edge and preserves the stitch: %s', async (name, rows, cols, row, col) => {
+  const board = new Board(4, 4);
+  board.place(1, 1, 'knit', '#123456');
+  const value = board.valueAt(1, 1);
+  const view = await renderControls(board);
+  await act(async () => [...container.querySelectorAll('button')].find((button) => button.textContent === name)!.click());
+  expect([board.rows, board.cols]).toEqual([rows, cols]);
+  expect(board.valueAt(row, col)).toBe(value);
+  expect(board.occupiedStitchCount).toBe(1);
+  expect(view.changed).toHaveBeenCalledOnce();
+  expect(view.notify).not.toHaveBeenCalled();
+});
+
+it.each(['段を挿入', '列を挿入', '段を削除', '列を削除'])('rejects invalid positions and accepts cancellation: %s', async (name) => {
+  const board = new Board(4, 4);
+  board.place(1, 1, 'knit', '#123456');
+  const cells = board.cells.slice();
+  const view = await renderControls(board);
+  const click = async () => { await act(async () => [...container.querySelectorAll('button')].find((button) => button.textContent === name)!.click()); };
+  for (const value of ['', '0', '-1', '1.5', '5', 'abc']) {
+    view.askText.mockResolvedValue(value);
+    await click();
+    expect(view.notify).toHaveBeenLastCalledWith('1〜4の整数を入力してください');
+  }
+  expect(view.notify).toHaveBeenCalledTimes(6);
+  view.askText.mockResolvedValue(null);
+  await click();
+  expect(view.notify).toHaveBeenCalledTimes(6);
+  expect([board.rows, board.cols]).toEqual([4, 4]);
+  expect(board.cells).toEqual(cells);
+  expect(view.changed).not.toHaveBeenCalled();
+});
+
+it('clears the board only after confirmation and notifies once', async () => {
+  const board = new Board(4, 4);
+  board.place(1, 1, 'knit', '#123456');
+  const cells = board.cells.slice();
+  const view = await renderControls(board);
+  const click = async () => { await act(async () => [...container.querySelectorAll('button')].find((button) => button.textContent === '全体をクリア')!.click()); };
+  await click();
+  expect(view.askConfirm).toHaveBeenCalledWith('盤面をすべて消去しますか？');
+  expect(board.cells).toEqual(cells);
+  expect(view.changed).not.toHaveBeenCalled();
+  expect(view.notify).not.toHaveBeenCalled();
+  view.askConfirm.mockResolvedValue(true);
+  await click();
+  expect(board.occupiedStitchCount).toBe(0);
+  expect([board.rows, board.cols]).toEqual([4, 4]);
+  expect(view.changed).toHaveBeenCalledOnce();
+  expect(view.notify).toHaveBeenCalledExactlyOnceWith('盤面を消去しました');
+});
