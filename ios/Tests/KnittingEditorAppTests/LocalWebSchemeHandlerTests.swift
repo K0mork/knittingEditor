@@ -265,10 +265,10 @@ final class LocalWebSchemeHandlerTests: XCTestCase {
         let webView = try makeWebView(networkProbe: true)
         defer { dispose(webView) }
         try await loadIndex(in: webView)
-        try await Task.sleep(nanoseconds: 500_000_000)
+        try await waitForEditor(in: webView)
 
         let hasNoRequests = try await webView.evaluateJavaScript(
-            "(window.__knittingEditorNetworkRequests ?? []).length === 0"
+            "window.__knittingEditorNetworkRequests.length === 0"
         )
         XCTAssertEqual(hasNoRequests as? Int, 1)
     }
@@ -289,7 +289,7 @@ final class LocalWebSchemeHandlerTests: XCTestCase {
         let webView = try makeWebView(networkProbe: true)
         defer { dispose(webView) }
         try await loadIndex(in: webView)
-        try await Task.sleep(nanoseconds: 1_000_000_000)
+        try await waitForEditor(in: webView)
 
         // 機内モードになっていない状態で成功したことにしない。
         let online = try await webView.evaluateJavaScript("navigator.onLine")
@@ -307,7 +307,7 @@ final class LocalWebSchemeHandlerTests: XCTestCase {
 
         // 実行中に通信APIを一切呼んでいない。
         let requests = try await webView.evaluateJavaScript(
-            "JSON.stringify(window.__knittingEditorNetworkRequests ?? [])"
+            "JSON.stringify(window.__knittingEditorNetworkRequests)"
         )
         XCTAssertEqual(requests as? String, "[]", "機内モードで通信APIが呼ばれた")
     }
@@ -419,6 +419,29 @@ final class LocalWebSchemeHandlerTests: XCTestCase {
         webView.navigationDelegate = nil
         webView.uiDelegate = nil
         webView.configuration.userContentController.removeAllUserScripts()
+    }
+
+    /// 初期化前や通信プローブ未注入の状態を「通信なし」として通さない。
+    @MainActor
+    private func waitForEditor(in webView: WKWebView) async throws {
+        let clock = ContinuousClock()
+        let deadline = clock.now.advanced(by: .seconds(15))
+        while clock.now < deadline {
+            let ready = try await webView.evaluateJavaScript(
+                "document.querySelector('canvas.board-canvas') !== null"
+            )
+            if (ready as? NSNumber)?.boolValue == true {
+                let hasProbe = try await webView.evaluateJavaScript(
+                    "Array.isArray(window.__knittingEditorNetworkRequests)"
+                )
+                // 空配列は正常（通信なし）。配列自体の欠落は明示的に失敗させる。
+                XCTAssertEqual((hasProbe as? NSNumber)?.boolValue, true, "通信プローブが注入されていない")
+                return
+            }
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        XCTFail("15秒以内に編集画面の準備が完了しなかった")
+        throw NavigationWaitError.timedOut(.seconds(15))
     }
 
     @MainActor
