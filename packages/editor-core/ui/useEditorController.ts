@@ -365,8 +365,8 @@ export function useEditorController(options: EditorControllerOptions) {
     const document = await createDocument(name);
     metric((tracker) => tracker.registerOrigin(document.id, 'new'));
     session.updateDocument(document);
-    // 作成と開く編み図の設定は、同じトランザクションで保存済み。
-    await switchDocument(document, false, false);
+    // 作成の待機中に入った編集も保存してから開く。
+    await switchDocument(document);
     analytics.track('chart_created');
   });
 
@@ -376,7 +376,7 @@ export function useEditorController(options: EditorControllerOptions) {
     if (document.id === activeDocument?.id && !(await saveBeforeManagement('編み図の名前を変更'))) return;
     const renamed = await renameDocument(document.id, name);
     session.updateDocument(renamed);
-    if (session.activeSnapshot()?.id === renamed.id) applyActiveDocumentName(renamed.name, renamed.updatedAt);
+    applyActiveDocumentName(renamed.id, renamed.name, renamed.updatedAt);
   });
 
   const duplicateChart = (document: ChartDocument) => runManagementOperation('chart_duplicate', '編み図の複製', async () => {

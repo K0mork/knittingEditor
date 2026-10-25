@@ -91,7 +91,7 @@ export interface EditorSession {
   removeBlock: (id: string) => void;
   refreshDocuments: () => Promise<void>;
   refreshBlocks: () => Promise<void>;
-  applyActiveDocumentName: (name: string, updatedAt?: number) => void;
+  applyActiveDocumentName: (id: string, name: string, updatedAt?: number) => void;
   /** 地の色を変える。盤面の編集と同じく自動保存するが、元に戻す履歴には積まない。 */
   setBackgroundColor: (color: string) => void;
 }
@@ -286,13 +286,17 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
 
   const switchDocument = useCallback(async (document: ChartDocument, saveCurrent = true, remember = true): Promise<SwitchOutcome> => {
     if (document.id === activeDocumentRef.current?.id) return 'switched';
+    const generation = editGenerationRef.current;
     if (saveCurrent) {
       // 書き切れていないまま盤面を差し替えると、直前の編集がどこにも残らない。
       const outcome = await saveNow();
       if (outcome === 'failed' || outcome === 'pending') return outcome;
     }
+    const activeId = activeDocumentRef.current?.id;
     const nextBoard = boardFromDocument(document);
     if (remember) await setSetting('activeDocumentId', document.id);
+    // 設定の書き込み中にも描画・取り消しは届く。盤面と履歴を破棄せず再試行してもらう。
+    if (editGenerationRef.current !== generation || activeDocumentRef.current?.id !== activeId) return 'pending';
     activeDocumentRef.current = document;
     boardRef.current = nextBoard;
     backgroundRef.current = backgroundColorOf(document);
@@ -330,10 +334,10 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
   const refreshDocuments = useCallback(async () => setDocuments(await listDocuments()), []);
   const refreshBlocks = useCallback(async () => setBlocks(await listBlocks()), []);
 
-  const applyActiveDocumentName = useCallback((name: string, updatedAt?: number) => {
+  const applyActiveDocumentName = useCallback((id: string, name: string, updatedAt?: number) => {
     // 再描画を待たずにrefへ入れる。直後の保存が古い更新日時を使わないようにするため。
     const current = activeDocumentRef.current;
-    if (!current) return;
+    if (!current || current.id !== id) return;
     const renamed = { ...current, name, updatedAt: updatedAt ?? current.updatedAt };
     activeDocumentRef.current = renamed;
     setActiveDocument(renamed);
@@ -350,13 +354,9 @@ export function useEditorSession(options: EditorSessionOptions): EditorSession {
   const backupGeneration = useCallback(() => `${activeDocumentRef.current?.id}:${editGenerationRef.current}`, []);
 
   const backupSnapshot = useCallback((): ChartDocument | undefined => {
-    const document = activeDocumentRef.current;
-    const target = boardRef.current;
-    if (!document || !target) return undefined;
-    return { ...document, backgroundColor: backgroundRef.current, rows: target.rows, cols: target.cols,
-      guideLines: target.lines.length ? target.lines.map((line) => ({ ...line })) : undefined,
-      cells: target.cells.slice().buffer as ArrayBuffer, updatedAt: Date.now() };
-  }, []);
+    const snapshot = activeSnapshot();
+    return snapshot && { ...snapshot, updatedAt: Date.now() };
+  }, [activeSnapshot]);
 
   const markBackupExported = useCallback((generation: string) => {
     if (backupGeneration() !== generation) return undefined;
