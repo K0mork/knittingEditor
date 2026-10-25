@@ -1,5 +1,5 @@
 import { resizeBoardFromInitialView } from './board-helpers';
-import { expect, test, type Page } from './fixtures';
+import { downloadInsteadOfShare, expect, test, type Page } from './fixtures';
 
 async function savedLines(page: Page) {
   return page.evaluate(async () => {
@@ -21,7 +21,7 @@ async function savedLines(page: Page) {
 
 for (const input of ['tap', 'drag'] as const) {
   test(`線を${input}で引き、保存・再読み込み・消去・履歴に反映する`, async ({ page }) => {
-    await page.addInitScript(() => Object.defineProperty(Navigator.prototype, 'canShare', { value: undefined, configurable: true }));
+    await downloadInsteadOfShare(page);
     await page.setViewportSize({ width: 1200, height: 900 });
     await page.goto('/');
     const canvas = page.getByLabel('編み図編集盤面');

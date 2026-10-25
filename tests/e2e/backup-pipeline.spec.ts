@@ -1,9 +1,9 @@
 import { readFile } from 'node:fs/promises';
 import { gunzipSync } from 'node:zlib';
-import { expect, test } from './fixtures';
+import { downloadInsteadOfShare, expect, stubShareSheet, test } from './fixtures';
 
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => Object.defineProperty(Navigator.prototype, 'canShare', { value: undefined, configurable: true }));
+  await downloadInsteadOfShare(page);
   await page.goto('/');
   await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
 });
@@ -117,16 +117,7 @@ test('updates the busy indicator and handles events during a twenty-chart backup
 });
 
 test('keeps the shared generation unrecorded when undo runs while the iPhone share dialog is open', async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== 'webkit-mobile', 'iPhone Safariだけの保存導線');
-  await page.addInitScript(() => {
-    const state = { shared: [] as string[] };
-    Object.assign(window, { shareState: state });
-    Object.defineProperty(navigator, 'canShare', { value: (data: ShareData) => (data.files?.length ?? 0) > 0, configurable: true });
-    Object.defineProperty(navigator, 'share', {
-      configurable: true,
-      value: async (data: ShareData) => { state.shared.push(...(data.files ?? []).map((file) => file.name)); },
-    });
-  });
+  const shareSheet = await stubShareSheet(page, testInfo);
   await page.reload();
   const canvas = page.getByLabel('編み図編集盤面');
   const box = (await canvas.boundingBox())!;
@@ -141,6 +132,6 @@ test('keeps the shared generation unrecorded when undo runs while the iPhone sha
   await expect(canvas).toHaveAttribute('aria-label', /記号0個/);
   await dialog.getByRole('button', { name: '共有・保存' }).click();
   await expect(dialog).toBeHidden();
-  expect(await page.evaluate(() => (window as unknown as { shareState: { shared: string[] } }).shareState.shared)).toEqual(['新しい編み図.knit']);
+  expect(await shareSheet.sharedNames()).toEqual(['新しい編み図.knit']);
   await expect(page.locator('#app-drawer')).toContainText('この編み図はまだバックアップしていません。');
 });

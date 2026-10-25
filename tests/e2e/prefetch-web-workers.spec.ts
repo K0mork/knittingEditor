@@ -1,8 +1,8 @@
-import { expect, test } from './fixtures';
+import { downloadInsteadOfShare, expect, test } from './fixtures';
 
 const workerPattern = /\/assets\/(pdf|backup)\.worker-[^/]+\.js(?:\?.*)?$/;
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => Object.defineProperty(Navigator.prototype, 'canShare', { value: undefined, configurable: true }));
+  await downloadInsteadOfShare(page);
 });
 
 test('keeps PDF and backup export/restore working after worker assets disappear', async ({ page }) => {

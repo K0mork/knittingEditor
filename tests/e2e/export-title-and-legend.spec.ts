@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
-import { expect, test } from './fixtures';
+import { downloadInsteadOfShare, expect, test } from './fixtures';
 
 test('keeps empty tiled PDF page counts unchanged when title and legend are enabled', async ({ page }) => {
-  await page.addInitScript(() => Object.defineProperty(Navigator.prototype, 'canShare', { value: undefined, configurable: true }));
+  await downloadInsteadOfShare(page);
   await page.goto('/');
   await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
   await page.getByRole('button', { name: '出力', exact: true }).click();
@@ -25,7 +25,7 @@ test('keeps empty tiled PDF page counts unchanged when title and legend are enab
 });
 
 test('exports PNG and single/tiled PDF with the optional title and legend on and off', async ({ page }) => {
-  await page.addInitScript(() => Object.defineProperty(Navigator.prototype, 'canShare', { value: undefined, configurable: true }));
+  await downloadInsteadOfShare(page);
   await page.goto('/');
   const canvas = page.getByLabel('編み図編集盤面');
   await expect(canvas).toBeVisible();
