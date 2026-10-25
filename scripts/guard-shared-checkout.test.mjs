@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { blockedReasons, findInvocations, splitSegments, violationOf } from './guard-shared-checkout.mjs';
 
@@ -26,6 +27,45 @@ describe('findInvocations', () => {
     expect(findInvocations('GIT_PAGER=cat git -C ../other -c core.x=1 --no-pager switch feature')).toEqual([
       { program: 'git', dir: '../other', subcommand: 'switch', args: ['feature'] },
     ]);
+  });
+
+  it('skips the options of prefix commands', () => {
+    const resetHard = { program: 'git', dir: null, subcommand: 'reset', args: ['--hard'] };
+    for (const prefix of [
+      'env -u FOO',
+      'env -uFOO',
+      'env --unset FOO',
+      'env --unset=FOO',
+      'env -i',
+      'env -iu FOO',
+      'env -',
+      'env -0 -v',
+      'env -P /usr/bin',
+      'env -i -- FOO=1',
+      'env --ignore-environment BAR=2',
+      'time -p',
+      'time -o out.txt --format=%e',
+      'command -p',
+      'exec -a name',
+      'exec -cl',
+      'nohup --',
+      'env -u FOO time -p command -p nohup',
+    ]) {
+      expect(findInvocations(`${prefix} git reset --hard`), prefix).toEqual([resetHard]);
+    }
+  });
+
+  it('splits the string of env -S into words', () => {
+    expect(findInvocations("env -S 'git reset --hard'")).toEqual([{ program: 'git', dir: null, subcommand: 'reset', args: ['--hard'] }]);
+    expect(findInvocations('env -S"-u FOO git" stash pop')).toEqual([{ program: 'git', dir: null, subcommand: 'stash', args: ['pop'] }]);
+    expect(findInvocations('env --split-string="git commit" -m x')).toEqual([{ program: 'git', dir: null, subcommand: 'commit', args: ['-m', 'x'] }]);
+  });
+
+  it('does not treat command -v lookups or option values as programs', () => {
+    expect(findInvocations('command -v git reset --hard')).toEqual([]);
+    expect(findInvocations('command -pV git')).toEqual([]);
+    expect(findInvocations('exec -a git echo reset')).toEqual([]);
+    expect(findInvocations('env -u git echo reset')).toEqual([]);
   });
 
   it('finds gh pr checkout and ignores git mentioned as an argument', () => {
@@ -140,6 +180,46 @@ describe('blockedReasons', () => {
     expect(reasonsAt(ROOT, `printf x | (cd ${WORKTREE}; cd ${WORKTREE}); git reset --hard`)).toHaveLength(1);
     expect(reasonsAt(ROOT, `printf x | cd ${WORKTREE}; cd ${WORKTREE}; git commit -m x`)).toEqual([]);
     expect(reasonsAt(ROOT, `printf x | cd ${WORKTREE}; git -C ${WORKTREE} commit -m x`)).toEqual([]);
+  });
+
+  it.each([
+    'env -u FOO',
+    'env --unset=FOO',
+    'env -i',
+    'env -i PATH=/usr/bin',
+    'time -p',
+    'command -p',
+    'exec -a name',
+    'nohup',
+  ])('blocks destructive operations behind the prefix command: %s', (prefix) => {
+    expect(reasonsAt(ROOT, `${prefix} git reset --hard`)).toHaveLength(1);
+    expect(reasonsAt(ROOT, `${prefix} git -C /repo stash pop`)).toHaveLength(1);
+    expect(reasonsAt(ROOT, `${prefix} gh pr checkout 54`)).toHaveLength(1);
+    expect(reasonsAt(ROOT, `${prefix} git status`)).toEqual([]);
+    expect(reasonsAt(WORKTREE, `${prefix} git reset --hard`)).toEqual([]);
+  });
+
+  it('runs the command of env -C in that directory', () => {
+    expect(reasonsAt(WORKTREE, 'env -C /repo git reset --hard')).toHaveLength(1);
+    expect(reasonsAt(WORKTREE, 'env -C/repo git reset --hard')).toHaveLength(1);
+    expect(reasonsAt(WORKTREE, 'env --chdir=/repo git commit -m x')).toHaveLength(1);
+    expect(reasonsAt(WORKTREE, 'env --chdir ../../.. gh pr checkout 54')).toHaveLength(1);
+    expect(reasonsAt(ROOT, 'env -C .claude/worktrees/feature git commit -m x')).toEqual([]);
+    expect(reasonsAt(ROOT, 'env -C .claude -C worktrees/feature git commit -m x')).toEqual([]);
+    expect(reasonsAt(ROOT, 'env -C /repo git -C .claude/worktrees/feature commit -m x')).toEqual([]);
+    expect(reasonsAt(WORKTREE, 'env -C "$TARGET" git reset --hard')).toHaveLength(1);
+    expect(reasonsAt(WORKTREE, 'env --chdir=$TARGET git reset --hard')).toHaveLength(1);
+    expect(reasonsAt(WORKTREE, 'env -C /repo git status')).toEqual([]);
+    // env -Cはそのコマンドだけの場所で、シェルの場所は変えない。
+    expect(reasonsAt(WORKTREE, 'env -C /repo git status && git reset --hard')).toEqual([]);
+  });
+
+  it('keeps the shell directory for cd run by env, exec or nohup', () => {
+    expect(reasonsAt(ROOT, 'env cd .claude/worktrees/feature; git reset --hard')).toHaveLength(1);
+    expect(reasonsAt(ROOT, 'nohup cd .claude/worktrees/feature && git commit -m x')).toHaveLength(1);
+    expect(reasonsAt(WORKTREE, 'env -u FOO cd /repo && git reset --hard')).toEqual([]);
+    expect(reasonsAt(ROOT, 'time -p cd .claude/worktrees/feature && git commit -m x')).toEqual([]);
+    expect(reasonsAt(WORKTREE, 'command -p cd /repo && git reset --hard')).toHaveLength(1);
   });
 
   it('allows the cleanup steps in the main checkout', () => {
