@@ -39,7 +39,7 @@ describe('increase and float stitches', () => {
     ]);
   });
 
-  it.each(additions)('draws %s on the board/PNG and PDF using the same geometry', (key, id) => {
+  it.each(additions)('draws %s on the board/PNG and PDF using the same geometry', (key, id, _name, height) => {
     const context = {
       save: vi.fn(), translate: vi.fn(), scale: vi.fn(), beginPath: vi.fn(),
       moveTo: vi.fn(), lineTo: vi.fn(), stroke: vi.fn(), restore: vi.fn(),
@@ -47,12 +47,18 @@ describe('increase and float stitches', () => {
     drawCell(context, packCell(id, 0x123456), 10, 20, 30);
     expect(context.stroke).toHaveBeenCalledOnce();
     expect(context.strokeStyle).toBe('#123456');
-    const primitives = getGlyphDefinition(key)!.primitives;
-    const lines = primitives.flatMap((primitive) => primitive.kind === 'line' ? [primitive.from, primitive.to] : primitive.kind === 'polyline' ? primitive.points : []);
-    expect(context.moveTo).toHaveBeenCalledWith(lines[0].x, lines[0].y);
-    for (const point of lines.slice(1)) {
-      expect(glyphPdfCommands(key)!.commands).toContain(`${point.x} ${point.y}`);
-    }
+    expect(context.translate).toHaveBeenCalledWith(10, 20);
+    expect(context.scale).toHaveBeenCalledWith(0.3, 0.3);
+    // 追加3記号は線と折れ線だけでできている。要素ごとに始点へ移り、残りの点を順に結ぶ。
+    const subpaths = getGlyphDefinition(key)!.primitives.map((primitive) => {
+      if (primitive.kind === 'line') return [primitive.from, primitive.to];
+      if (primitive.kind === 'polyline') return primitive.points;
+      throw new Error(`${key} uses ${primitive.kind}`);
+    });
+    expect(vi.mocked(context.moveTo).mock.calls).toEqual(subpaths.map(([start]) => [start.x, start.y]));
+    expect(vi.mocked(context.lineTo).mock.calls).toEqual(subpaths.flatMap((points) => points.slice(1).map((point) => [point.x, point.y])));
+    const pdfPath = subpaths.map(([start, ...rest]) => [`${start.x} ${start.y} m`, ...rest.map((point) => `${point.x} ${point.y} l`)].join(' ')).join(' ');
+    expect(glyphPdfCommands(key)!.commands).toBe(`q 1 0 0 -1 0 ${height * 100} cm 9 w 1 J 1 j ${pdfPath} S Q`);
     expect(STITCH_BY_KEY.get(key)!.svg).toContain('<svg');
   });
 
