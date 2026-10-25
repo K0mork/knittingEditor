@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Board, parseColor } from '../model/Board';
+import { BoardHistory } from '../model/BoardHistory';
 import { defaultPngCellSize, PNG_CELL_SIZE_RANGE, PNG_PREFERRED_CELL_SIZE, pngGridStyles, pngLabelLayout, renderPdf, renderPng, validatePngSize } from './exporters';
 
 describe('defaultPngCellSize', () => {
@@ -145,34 +146,130 @@ describe('renderPdf worker failures', () => {
 });
 
 
-it('copies PDF cells only once after ready and transfers that copy', async () => {
-  let instance!: Worker;
-  const postMessage = vi.fn();
-  const board = new Board(2, 2);
-  const slice = vi.spyOn(board.cells.buffer, 'slice');
-  vi.stubGlobal('Worker', class {
-    onmessage = null;
-    terminate() {}
-    postMessage = postMessage;
-    constructor() { instance = this as unknown as Worker; }
-  });
-  try {
-    const pending = renderPdf(board, { layout: 'single', orientation: 'portrait', cellMillimeters: 5 });
-    expect(slice).not.toHaveBeenCalled();
-    instance.onmessage?.call(instance, { data: { ready: true } } as MessageEvent);
-    expect(slice).toHaveBeenCalledExactlyOnceWith(0);
-    const [request, transfer] = postMessage.mock.calls[0];
+describe('renderPdf board snapshot', () => {
+  const options = { layout: 'single', orientation: 'portrait', cellMillimeters: 5 } as const;
+  afterEach(() => vi.unstubAllGlobals());
+
+  /** readyを手で送るWorker。送られた要求と転送リストを記録する。 */
+  function heldWorker() {
+    const state = { instance: undefined as Worker | undefined, postMessage: vi.fn() };
+    vi.stubGlobal('Worker', class {
+      onmessage = null;
+      terminate() {}
+      postMessage = state.postMessage;
+      constructor() { state.instance = this as unknown as Worker; }
+    });
+    const message = (data: unknown) => state.instance!.onmessage?.call(state.instance!, { data } as MessageEvent);
+    return { state, message };
+  }
+
+  it('copies PDF cells once when export starts and transfers that copy after ready', async () => {
+    const { state, message } = heldWorker();
+    const board = new Board(2, 2);
+    board.place(1, 1, 'knit', '#111111', false);
+    const slice = vi.spyOn(board.cells, 'slice');
+    const pending = renderPdf(board, options);
+    expect(slice).toHaveBeenCalledOnce();
+    expect(state.postMessage).not.toHaveBeenCalled();
+    message({ ready: true });
+    const [request, transfer] = state.postMessage.mock.calls[0];
     expect(request.cells).not.toBe(board.cells.buffer);
     expect(new Uint32Array(request.cells)).toEqual(board.cells);
+    expect(transfer).toEqual([request.cells]);
     expect(transfer[0]).toBe(request.cells);
-    instance.onmessage?.call(instance, { data: { ready: true } } as MessageEvent);
+    // 重複したreadyでは送り直さない。
+    message({ ready: true });
+    expect(state.postMessage).toHaveBeenCalledOnce();
     expect(slice).toHaveBeenCalledOnce();
-    instance.onmessage?.call(instance, { data: { ok: true, pdf: new ArrayBuffer(8) } } as MessageEvent);
+    message({ ok: true, pdf: new ArrayBuffer(8) });
+    const blob = await pending;
+    expect(blob.type).toBe('application/pdf');
+    expect(blob.size).toBe(8);
+  });
+
+  it.each(['undo', 'insert row'] as const)('exports the board as it was when export started after %s before the worker is ready', async (change) => {
+    const { state, message } = heldWorker();
+    const board = new Board(4, 2);
+    const history = new BoardHistory(board);
+    board.place(0, 0, 'knit', '#c83264', false);
+    board.addLine(1, 0, 2);
+    history.record(board);
+    const cells = Array.from(board.cells);
+    const lines = board.lines;
+    const pending = renderPdf(board, options, '#1e1e1e');
+    // Workerの起動を待つ間に盤面を変える。
+    if (change === 'undo') expect(history.undo(board)).toBe(true);
+    else board.insertRow(0);
+    expect(Array.from(board.cells)).not.toEqual(cells);
+    expect(board.lines).not.toEqual(lines);
+    message({ ready: true });
+    const [request] = state.postMessage.mock.calls[0];
+    expect(request).toMatchObject({ rows: 4, cols: 2, background: '#1e1e1e', layout: 'single' });
+    expect(Array.from(new Uint32Array(request.cells))).toEqual(cells);
+    expect(request.lines).toEqual([{ col: 1, top: 0, bottom: 2 }]);
+    expect(request.lines).toBe(lines);
+    message({ ok: true, pdf: new ArrayBuffer(8) });
     await pending;
-  } finally {
-    slice.mockRestore();
-    vi.unstubAllGlobals();
+  });
+
+  it.each([
+    { ok: true },
+    { ok: true, pdf: null },
+    { ok: false },
+    {},
+  ])('rejects a malformed PDF response with the retry message: %o', async (response) => {
+    const { message } = heldWorker();
+    const pending = renderPdf(new Board(1, 1), options);
+    message({ ready: true });
+    message(response);
+    await expect(pending).rejects.toThrow('PDFを生成できませんでした。もう一度お試しください。');
+  });
+});
+
+describe('renderPng canvas release', () => {
+  /** 描画命令を何もしない関数で受けるCanvasの代わり。 */
+  function fakeCanvas(overrides: { context?: object | null; toBlob?: (callback: BlobCallback) => void } = {}) {
+    const context = overrides.context === undefined
+      ? new Proxy({} as Record<string | symbol, unknown>, {
+        get: (target, key) => key in target ? target[key] : (target[key] = vi.fn()),
+        set: (target, key, value) => { target[key] = value; return true; },
+      })
+      : overrides.context;
+    const canvas = {
+      width: 0, height: 0,
+      getContext: () => context,
+      toBlob: overrides.toBlob ?? ((callback: BlobCallback) => callback(new Blob(['png'], { type: 'image/png' }))),
+    };
+    vi.stubGlobal('document', { createElement: () => canvas });
+    return canvas;
   }
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('keeps the canvas until encoding completes and then shrinks it', async () => {
+    let complete!: BlobCallback;
+    const canvas = fakeCanvas({ toBlob: (callback) => { complete = callback; } });
+    const board = new Board(2, 2);
+    const size = validatePngSize(board, 24);
+    const pending = renderPng(board, 24);
+    await Promise.resolve();
+    // エンコード中は描画面を縮めない。
+    expect([canvas.width, canvas.height]).toEqual([size.width, size.height]);
+    const blob = new Blob(['png'], { type: 'image/png' });
+    complete(blob);
+    expect(await pending).toBe(blob);
+    expect([canvas.width, canvas.height]).toEqual([0, 0]);
+  });
+
+  it.each([
+    ['an empty blob', () => fakeCanvas({ toBlob: (callback) => callback(null) }), 'PNG生成に失敗しました'],
+    ['no 2D context', () => fakeCanvas({ context: null }), 'Canvasを利用できません'],
+    ['a toBlob exception', () => fakeCanvas({ toBlob: () => { throw new Error('toBlob失敗'); } }), 'toBlob失敗'],
+    ['a drawing exception', () => fakeCanvas({ context: { fillRect: () => { throw new Error('描画失敗'); } } }), '描画失敗'],
+  ] as const)('shrinks the canvas after %s', async (_name, create, message) => {
+    const canvas = create();
+    await expect(renderPng(new Board(2, 2), 24)).rejects.toThrow(message);
+    expect([canvas.width, canvas.height]).toEqual([0, 0]);
+  });
 });
 
 it.each(['#ffffff', '#1e1e1e'])('PNGの点線を両端の縁の間に描き、一覧にも線を加える（%s）', async (background) => {

@@ -13,6 +13,9 @@ export class WorkerVersionError extends Error {
 export class WorkerStartError extends Error {}
 export class WorkerProcessingError extends Error {}
 
+/** Workerが読み込みを終えたときに最初に送る通知。これを受けてから要求を転送する。 */
+export interface WorkerReadyMessage { ready: true }
+
 export function createWorkerTask(url: string) {
   let loader: WorkerLoader | undefined;
   let prefetch: Promise<void> | undefined;
@@ -25,8 +28,12 @@ export function createWorkerTask(url: string) {
       } catch { /* オフライン時は利用時のURL起動へ戻す。 */ }
     })();
   };
-  async function run<T>(send: (worker: Worker) => void, receive: (data: T) => void, fallback: string): Promise<void> {
-    const attempt = (blob?: Blob) => new Promise<void>((resolve, reject) => {
+  /**
+   * Workerを起動し、readyを受けてから`send`で要求を1回だけ送る。
+   * 応答は`receive`が検証して結果に変換し、その値で解決する。`receive`の例外は処理の失敗として扱う。
+   */
+  async function run<TResponse, TResult>(send: (worker: Worker) => void, receive: (data: TResponse) => TResult, fallback: string): Promise<TResult> {
+    const attempt = (blob?: Blob) => new Promise<TResult>((resolve, reject) => {
       let worker: Worker | undefined;
       let objectUrl: string | undefined;
       let ready = false;
@@ -49,7 +56,7 @@ export function createWorkerTask(url: string) {
       try {
         if (blob) objectUrl = URL.createObjectURL(blob);
         worker = new Worker(objectUrl ?? url, { type: 'module' });
-        worker.onmessage = (event: MessageEvent<T | { ready: true }>) => {
+        worker.onmessage = (event: MessageEvent<TResponse | WorkerReadyMessage>) => {
           if (settled) return;
           if (event.data && typeof event.data === 'object' && 'ready' in event.data && event.data.ready === true) {
             if (ready) return;
@@ -61,10 +68,10 @@ export function createWorkerTask(url: string) {
           }
           if (!ready) { fail(new Error(fallback)); return; }
           try {
-            receive(event.data as T);
+            const result = receive(event.data as TResponse);
             settled = true;
             cleanup();
-            resolve();
+            resolve(result);
           } catch (error) { fail(error); }
         };
         worker.onerror = (event) => { event.preventDefault?.(); fail(new Error(event.message?.trim() || fallback)); };
@@ -75,12 +82,12 @@ export function createWorkerTask(url: string) {
     });
     try {
       if (contents) {
-        try { await attempt(contents); return; }
+        try { return await attempt(contents); }
         catch (error) {
           if (!(error instanceof WorkerStartError)) throw error;
         }
       }
-      await attempt();
+      return await attempt();
     } catch (error) {
       if (!(error instanceof WorkerStartError)) throw error;
       if (loader) {

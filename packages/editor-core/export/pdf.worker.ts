@@ -7,8 +7,9 @@ import { STITCH_BY_ID, STITCHES } from '../stitches/catalog';
 import { GLYPH_CELL, glyphPdfCommands } from '../stitches/glyphs';
 import { cellColor, cellStitchId, parseColor } from '../model/Board';
 import { boardSurface, DEFAULT_BACKGROUND_COLOR } from '../model/boardColors';
-import { PDF_LEGEND_CELL_SIZE, pdfLegendColumns, pdfLegendRows, type PdfLegendRow, PDF_LABEL_FONT_SIZE, PDF_LABEL_GAP, pdfLabelWidth, pdfPageLayout, type PdfLayoutOptions, type PdfTile } from './pdfLayout';
+import { PDF_LEGEND_CELL_SIZE, PDF_LEGEND_ROW_PADDING, pdfLegendColumns, pdfLegendRows, type PdfLegendRow, PDF_LABEL_FONT_SIZE, PDF_LABEL_GAP, pdfLabelWidth, pdfPageLayout, type PdfLayoutOptions, type PdfTile } from './pdfLayout';
 import { errorMessage } from '../util/errors';
+import type { WorkerReadyMessage } from '../util/workerStarter';
 import { labelStride, showsLabel } from './labels';
 import { majorGridLines } from '../model/gridLines';
 
@@ -21,13 +22,16 @@ export interface PdfRequest extends PdfLayoutOptions {
   background?: string;
 }
 
+/** PDF Workerの応答。成功時だけ`pdf`を持つ。 */
+export type PdfResponse = { ok: true; pdf: ArrayBuffer } | { ok: false; error: string };
+
 type PdfObject = Uint8Array;
 const maxStitchWidth = Math.max(...STITCHES.map((stitch) => stitch.width));
 const maxStitchHeight = Math.max(...STITCHES.map((stitch) => stitch.height));
 const encoder = new TextEncoder();
 const ascii = (value: string) => encoder.encode(value);
 
-function concat(parts: Uint8Array[]): Uint8Array {
+function concat(parts: Uint8Array[]): Uint8Array<ArrayBuffer> {
   const length = parts.reduce((sum, part) => sum + part.byteLength, 0);
   const result = new Uint8Array(length);
   let offset = 0;
@@ -180,13 +184,12 @@ export function tileGuideLines(tile: PdfTile, request: PdfRequest, x: number, y:
   return commands;
 }
 
-export function buildPdf(request: PdfRequest): Uint8Array {
+export function buildPdf(request: PdfRequest): Uint8Array<ArrayBuffer> {
   const cells = new Uint32Array(request.cells);
   const lines = normalizeGuideLines(request.lines, request.rows, request.cols);
   const legend = request.includeTitleAndLegend ? exportLegend(cells, lines.length > 0) : [];
   const options = { ...request, legendCount: legend.length, legendHeights: legend.map((stitch) => stitch.height) };
-  const titleHeight = request.includeTitleAndLegend && request.layout === 'single' ? 24 : 0;
-  const { pageWidth, pageHeight, margin, rowLabelWidth, colLabelHeight, cellSize, tiles, legendPages, pageCount } = pdfPageLayout(request.rows, request.cols, options);
+  const { pageWidth, pageHeight, margin, titleHeight, legendPageTop, rowLabelWidth, colLabelHeight, cellSize, tiles, legendPages, pageCount } = pdfPageLayout(request.rows, request.cols, options);
 
   const objects: PdfObject[] = [];
   objects.push(ascii('<< /Type /Catalog /Pages 2 0 R >>'));
@@ -226,7 +229,7 @@ export function buildPdf(request: PdfRequest): Uint8Array {
         const stitch = legend[row.start + column];
         const x = margin + column * columnWidth;
         const height = stitch.height * PDF_LEGEND_CELL_SIZE;
-        const y = top - (row.height - 8 + height) / 2;
+        const y = top - (row.height - PDF_LEGEND_ROW_PADDING + height) / 2;
         if (stitch.key === 'guide-line') {
           yield pdfGuideLine(x + PDF_LEGEND_CELL_SIZE / 2, top - 4, top - row.height + 12, PDF_LEGEND_CELL_SIZE, '#ffffff', true);
         } else {
@@ -301,7 +304,7 @@ export function buildPdf(request: PdfRequest): Uint8Array {
   legendPages.forEach((rows, index) => {
     function* commands(): Generator<string> {
       yield titleCommands(false);
-      yield* legendCommands(rows, pageHeight - margin - 24);
+      yield* legendCommands(rows, legendPageTop);
       yield pdfJapaneseText(`${tiles.length + index + 1}/${pageCount}ページ`, margin, 10);
     }
     addPage(commands());
@@ -326,13 +329,13 @@ export function buildPdf(request: PdfRequest): Uint8Array {
 }
 
 if (typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScope) {
-  self.postMessage({ ready: true });
+  self.postMessage({ ready: true } satisfies WorkerReadyMessage);
   self.onmessage = (event: MessageEvent<PdfRequest>) => {
     try {
       const pdf = buildPdf(event.data);
-      self.postMessage({ ok: true, pdf: pdf.buffer }, { transfer: [pdf.buffer] });
+      self.postMessage({ ok: true, pdf: pdf.buffer } satisfies PdfResponse, { transfer: [pdf.buffer] });
     } catch (error) {
-      self.postMessage({ ok: false, error: errorMessage(error) });
+      self.postMessage({ ok: false, error: errorMessage(error) } satisfies PdfResponse);
     }
   };
 }

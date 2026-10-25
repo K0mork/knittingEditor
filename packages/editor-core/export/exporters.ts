@@ -7,6 +7,7 @@ import { boardSurface, DEFAULT_BACKGROUND_COLOR } from '../model/boardColors';
 import { drawCell } from '../stitches/drawCell';
 import { strokeGrid, type GridLineStyle } from '../canvas/strokeGrid';
 import type { PdfLayoutOptions } from './pdfLayout';
+import type { PdfRequest, PdfResponse } from './pdf.worker';
 import { labelStride, showsLabel } from './labels';
 
 const PNG_MAX_SIDE = 16_384;
@@ -91,6 +92,17 @@ export async function renderPng(board: Board, cellSize: number, background: stri
   const size = validatePngSize(board, cellSize, { ...options, legendCount: legend.length });
   if (!size.valid) throw new Error(`${size.reason}。PDF保存を利用してください。`);
   const canvas = document.createElement('canvas');
+  try {
+    return await paintPng(canvas, size, board, cellSize, background, options, legend);
+  } finally {
+    // 大きな描画面はGCを待たずに縮める。続けて書き出すとき、前の描画面がメモリの上限に数えられないようにする。
+    canvas.width = 0;
+    canvas.height = 0;
+  }
+}
+
+/** `canvas`へPNGの内容を描き、エンコードを終えたBlobを返す。 */
+async function paintPng(canvas: HTMLCanvasElement, size: { width: number; height: number }, board: Board, cellSize: number, background: string, options: ExportAnnotations, legend: ReturnType<typeof exportLegend>): Promise<Blob> {
   canvas.width = size.width;
   canvas.height = size.height;
   const context = canvas.getContext('2d');
@@ -172,16 +184,21 @@ const PDF_WORKER_ERROR = 'PDFを生成できませんでした。もう一度お
 const pdfTask = createWorkerTask(pdfWorkerUrl);
 export const prefetchPdfWorker = pdfTask.preload;
 
+/**
+ * 盤面をPDFにする。盤面は呼び出した時点で写し取り、Workerの起動を待つ間に
+ * 元に戻す・描くなどで盤面が変わっても、保存を始めた時点の内容を出力する。
+ */
 export async function renderPdf(board: Board, options: PdfLayoutOptions, background: string = DEFAULT_BACKGROUND_COLOR): Promise<Blob> {
-  let result!: Blob;
-  await pdfTask.run<{ ok: boolean; pdf?: ArrayBuffer; error?: string }>((worker) => {
-    const cells = board.cells.buffer.slice(0);
-    worker.postMessage({ rows: board.rows, cols: board.cols, cells, lines: board.lines, background, ...options }, [cells]);
+  // セルは写しを取る。線の配列は変更のたびに作り直されて凍結されているので、参照を持てば足りる。
+  const cells = board.cells.slice().buffer;
+  const request: PdfRequest = { rows: board.rows, cols: board.cols, cells, lines: board.lines, background, ...options };
+  return pdfTask.run<PdfResponse, Blob>((worker) => {
+    // 写しは起動確認後に1回だけ転送する。
+    worker.postMessage(request, [cells]);
   }, (data) => {
-    if (!data.ok || !data.pdf) throw new Error(data.error?.trim() || PDF_WORKER_ERROR);
-    result = new Blob([data.pdf], { type: 'application/pdf' });
+    if (!data.ok || !data.pdf) throw new Error((!data.ok && data.error?.trim()) || PDF_WORKER_ERROR);
+    return new Blob([data.pdf], { type: 'application/pdf' });
   }, PDF_WORKER_ERROR);
-  return result;
 }
 
 export function downloadBlob(blob: Blob, filename: string): void {

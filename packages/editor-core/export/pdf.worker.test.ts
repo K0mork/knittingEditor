@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { unzlibSync } from 'fflate';
 import { Board, packCell } from '../model/Board';
 import { STITCHES, STITCH_BY_KEY } from '../stitches/catalog';
 import { buildPdf, pdfGuideLine, type PdfRequest } from './pdf.worker';
 import { pdfPageLayout } from './pdfLayout';
+import { pdfStreams as decodedStreams } from './pdfStreams.test-helper';
 
 function request(rows: number, cols: number, dense: boolean): PdfRequest {
   const cells = new Uint32Array(rows * cols);
@@ -12,19 +12,6 @@ function request(rows: number, cols: number, dense: boolean): PdfRequest {
     rows, cols, cells: cells.buffer,
     layout: 'single', orientation: 'portrait', cellMillimeters: 5,
   };
-}
-
-function decodedStreams(pdf: Uint8Array): string[] {
-  const binary = Array.from(pdf, (byte) => String.fromCharCode(byte)).join('');
-  const streams: string[] = [];
-  const pattern = /\/Length (\d+) \/Filter \/FlateDecode >>\nstream\n/g;
-  for (const match of binary.matchAll(pattern)) {
-    const start = match.index! + match[0].length;
-    const length = Number(match[1]);
-    try { streams.push(new TextDecoder().decode(unzlibSync(pdf.subarray(start, start + length)))); }
-    catch { /* Image streams need not decode into text for this assertion. */ }
-  }
-  return streams;
 }
 
 /** ページの命令から、通常の罫線を除いた太線の横線のy座標と縦線のx座標を取り出す。 */
@@ -260,4 +247,43 @@ it('一覧の線と記号の名前を同じ文字サイズで見本の縦中央�
   const shaft = [...commands.matchAll(/\[[\d.]+ [\d.]+\] 0 d [\d.]+ ([\d.]+) m/g)].at(-1)!;
   const center = (Number(shaft[1]) + Number(sample[1])) / 2;
   expect(Number(names[1][2]) + 8 * (0.752 - 0.221) / 2).toBeCloseTo(center, 2);
+});
+
+describe('PDF stream test helper', () => {
+  const pdf = () => buildPdf(request(3, 3, true));
+  /** `index`番目の圧縮ストリームの中身の始まりの位置と長さ。 */
+  function stream(bytes: Uint8Array, index: number): { start: number; length: number; header: number } {
+    const binary = new TextDecoder('latin1').decode(bytes);
+    const match = [...binary.matchAll(/\/Length (\d+) \/Filter \/FlateDecode >>\nstream\n/g)][index];
+    return { start: match.index + match[0].length, length: Number(match[1]), header: match.index };
+  }
+
+  it('decodes every compressed stream of a generated PDF', () => {
+    const bytes = pdf();
+    const count = new TextDecoder('latin1').decode(bytes).split('\nstream\n').length - 1;
+    const streams = decodedStreams(bytes);
+    expect(streams).toHaveLength(count);
+    expect(streams.join('\n')).toMatch(/50 12 m 50 88 l/);
+  });
+
+  it.each([
+    ['a broken zlib header', (bytes: Uint8Array) => { bytes[stream(bytes, 0).start] = 0; }, /展開できません/],
+    ['a changed compressed byte', (bytes: Uint8Array) => { const { start, length } = stream(bytes, 0); bytes[start + length - 1] ^= 0xff; }, /チェックサムが合いません/],
+    ['a truncated last stream', (bytes: Uint8Array) => {
+      // 最後のストリーム（ページの命令）の/Lengthを短くする。他のストリームは正常なまま。
+      const binary = new TextDecoder('latin1').decode(bytes);
+      const all = [...binary.matchAll(/\/Length (\d+) /g)];
+      const last = all.at(-1)!;
+      const shorter = String(Number(last[1]) - 1).padStart(last[1].length, '0');
+      bytes.set(new TextEncoder().encode(shorter), last.index + '/Length '.length);
+    }, /長さが\/Lengthと合いません/],
+    ['an uncompressed stream', (bytes: Uint8Array) => {
+      const { header } = stream(bytes, 0);
+      bytes.set(new TextEncoder().encode('/Filter /FlateDecodX'), new TextDecoder('latin1').decode(bytes).indexOf('/Filter', header));
+    }, /圧縮されていないストリーム/],
+  ] as const)('fails instead of skipping %s', (_name, corrupt, message) => {
+    const bytes = pdf();
+    corrupt(bytes);
+    expect(() => decodedStreams(bytes)).toThrow(message);
+  });
 });
