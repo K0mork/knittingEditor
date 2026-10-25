@@ -216,6 +216,7 @@ export function BoardCanvas(props: Props) {
   const pendingTapRef = useRef<Point | undefined>(undefined);
   const provisionalRef = useRef<Board | undefined>(undefined);
   const touchChangedRef = useRef(false);
+  const touchOriginRef = useRef<{ board: Board; revision: number } | undefined>(undefined);
   const previousSelectionRef = useRef<Rect | undefined>(undefined);
   const bandRef = useRef(LABEL_SIZE);
   const propsRef = useRef(props);
@@ -428,6 +429,14 @@ export function BoardCanvas(props: Props) {
     return () => window.removeEventListener('keydown', cancel);
   }, []);
 
+  useEffect(() => {
+    const origin = touchOriginRef.current;
+    if (origin && (origin.board !== props.board || origin.revision !== props.revision)) {
+      provisionalRef.current = undefined;
+      touchChangedRef.current = false;
+    }
+  }, [props.board, props.revision]);
+
   useEffect(requestDraw, [props.board, props.background, props.revision, props.selection, props.mode, props.pasteBlock]);
 
   /** 移動・拡大の結果を範囲に収めて反映する。 */
@@ -487,7 +496,31 @@ export function BoardCanvas(props: Props) {
     else propsRef.current.onChange();
   };
 
+  const touchIsCurrent = () => {
+    const origin = touchOriginRef.current;
+    return !origin || (origin.board === propsRef.current.board && origin.revision === propsRef.current.revision);
+  };
+
+  // ピンチになる可能性のある接触だけでは、盤面全体を複製しない。
+  const editableBoard = () => {
+    if (touchOriginRef.current && !provisionalRef.current) {
+      const board = touchOriginRef.current.board;
+      provisionalRef.current = new Board(board.rows, board.cols, board.cells, board.lines);
+    }
+    return provisionalRef.current ?? propsRef.current.board;
+  };
+
+  const resetGesture = () => {
+    const [a, b] = [...pointersRef.current.values()];
+    gestureRef.current = a && b ? {
+      distance: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)),
+      center: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
+      viewport: { ...viewportRef.current },
+    } : undefined;
+  };
+
   const applyStroke = (from: Point, to: Point) => {
+    if (!touchIsCurrent()) return;
     const { stitchKey, color } = propsRef.current;
     const board = provisionalRef.current ?? propsRef.current.board;
     const stitch = STITCH_BY_KEY.get(stitchKey);
@@ -498,7 +531,8 @@ export function BoardCanvas(props: Props) {
       const footprint: number[] = [];
       for (let y = 0; y < stitch.height; y++) for (let x = 0; x < stitch.width; x++) footprint.push(board.index(point.row + y, point.col + x));
       if (footprint.some((index) => strokeFootprintRef.current.has(index))) continue;
-      if (board.place(point.row, point.col, stitchKey, color, false)) {
+      if (point.row + stitch.height > board.rows || point.col + stitch.width > board.cols) continue;
+      if (editableBoard().place(point.row, point.col, stitchKey, color, false)) {
         footprint.forEach((index) => strokeFootprintRef.current.add(index));
         changed = true;
       }
@@ -510,12 +544,16 @@ export function BoardCanvas(props: Props) {
   };
 
   const applyErase = (from: Point, to: Point) => {
+    if (!touchIsCurrent()) return;
     const board = provisionalRef.current ?? propsRef.current.board;
     let changed = false;
     for (const point of rasterLine(from, to)) {
       if (!board.inBounds(point.row, point.col)) continue;
-      const erasedLine = board.eraseLinesAt(point.row, point.col);
-      if (board.clearAt(point.row, point.col) || erasedLine) changed = true;
+      const current = provisionalRef.current ?? board;
+      if (current.ownerAt(point.row, point.col) < 0 && !current.lineThrough(point.row, point.col)) continue;
+      const target = editableBoard();
+      const erasedLine = target.eraseLinesAt(point.row, point.col);
+      if (target.clearAt(point.row, point.col) || erasedLine) changed = true;
     }
     if (changed) {
       if (provisionalRef.current) touchChangedRef.current = true;
@@ -528,6 +566,7 @@ export function BoardCanvas(props: Props) {
     const position = eventPosition(event);
     pointersRef.current.set(event.pointerId, position);
     pointerButtonsRef.current.set(event.pointerId, event.button);
+    resetGesture();
     const cell = cellAt(position);
     lastCellRef.current = cell;
     if (pointersRef.current.size === 2) {
@@ -540,12 +579,6 @@ export function BoardCanvas(props: Props) {
       if (props.mode === 'select') props.onSelectionChange(previousSelectionRef.current);
       selectionStartRef.current = undefined;
       requestDraw();
-      const [a, b] = [...pointersRef.current.values()];
-      gestureRef.current = {
-        distance: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)),
-        center: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
-        viewport: { ...viewportRef.current },
-      };
       return;
     }
     if (pointersRef.current.size !== 1 || gestureBlockedRef.current) return;
@@ -553,11 +586,11 @@ export function BoardCanvas(props: Props) {
     if (!cell) return;
     strokeStartedRef.current = true;
     if (event.pointerType === 'touch' && (props.mode === 'draw' || props.mode === 'erase')) {
-      provisionalRef.current = new Board(props.board.rows, props.board.cols, props.board.cells, props.board.lines);
+      touchOriginRef.current = { board: props.board, revision: props.revision };
       touchChangedRef.current = false;
     }
     if (event.button === 2) {
-      if ((provisionalRef.current ?? props.board).clearAt(cell.row, cell.col)) changed();
+      if (props.board.ownerAt(cell.row, cell.col) >= 0 && editableBoard().clearAt(cell.row, cell.col)) changed();
       return;
     }
     if (props.mode === 'line' && !props.board.inBounds(cell.row, cell.col)) return;
@@ -632,7 +665,7 @@ export function BoardCanvas(props: Props) {
     const button = pointerButtonsRef.current.get(event.pointerId);
     pointerButtonsRef.current.delete(event.pointerId);
     pointersRef.current.delete(event.pointerId);
-    if (pointersRef.current.size < 2) gestureRef.current = undefined;
+    resetGesture();
 
     // 1本指で触れて離した場合だけ、保留していたタップを確定する。
     const pendingTap = cellAt(eventPosition(event)) ? pendingTapRef.current : undefined;
@@ -667,7 +700,7 @@ export function BoardCanvas(props: Props) {
       props.onSelectionChange(props.board.normalizeSelection(props.selection));
     }
     if (pointersRef.current.size === 0) {
-      if (provisionalRef.current && touchChangedRef.current && event.type !== 'pointercancel') {
+      if (provisionalRef.current && touchChangedRef.current && touchIsCurrent() && event.type !== 'pointercancel') {
         const temporary = provisionalRef.current;
         props.board.restore(temporary.rows, temporary.cols, temporary.cells, temporary.lines);
         props.onChange();
@@ -675,6 +708,7 @@ export function BoardCanvas(props: Props) {
       lineDragRef.current = undefined;
       provisionalRef.current = undefined;
       touchChangedRef.current = false;
+      touchOriginRef.current = undefined;
       props.onEditEnd?.();
       gestureBlockedRef.current = false;
       strokeStartedRef.current = false;
