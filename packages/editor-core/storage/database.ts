@@ -40,8 +40,20 @@ export interface ImportBackupResult {
 const DB_NAME = 'knitting-editor-v2';
 let databasePromise: Promise<IDBPDatabase<KnittingDB>> | undefined;
 
+/**
+ * 接続は1つを使い回す。ブラウザが接続を閉じた場合（`terminated`）、別の接続が版の変更や
+ * 削除を待っている場合（`blocking`）、開けなかった場合は覚えた接続を捨て、次の操作で開き直す。
+ * 書き込みの自動再送はしない。失敗した操作は呼び出し元へそのまま返す。
+ */
 function database(): Promise<IDBPDatabase<KnittingDB>> {
-  databasePromise ??= openDB<KnittingDB>(DB_NAME, 1, {
+  databasePromise ??= openDatabase();
+  return databasePromise;
+}
+
+function openDatabase(): Promise<IDBPDatabase<KnittingDB>> {
+  // 古い接続の通知が、開き直した新しい接続を捨てないよう、同じ試行かを確かめてから忘れる。
+  const forget = () => { if (databasePromise === opening) databasePromise = undefined; };
+  const opening: Promise<IDBPDatabase<KnittingDB>> = openDB<KnittingDB>(DB_NAME, 1, {
     upgrade(db) {
       const documents = db.createObjectStore('documents', { keyPath: 'id' });
       documents.createIndex('updatedAt', 'updatedAt');
@@ -49,8 +61,15 @@ function database(): Promise<IDBPDatabase<KnittingDB>> {
       blocks.createIndex('createdAt', 'createdAt');
       db.createObjectStore('settings', { keyPath: 'key' });
     },
+    blocking(_currentVersion, _blockedVersion, event) {
+      forget();
+      // 閉じないと相手の版の変更や削除が止まったままになる。実行中のトランザクションは閉じる前に完了する。
+      (event.target as IDBDatabase).close();
+    },
+    terminated: forget,
   });
-  return databasePromise;
+  opening.catch(forget);
+  return opening;
 }
 
 export function boardFromDocument(document: ChartDocument): Board {
@@ -74,24 +93,44 @@ export const DEFAULT_CHART_ROWS = 150;
 export const DEFAULT_CHART_COLS = 60;
 
 export async function createDocument(name = '新しい編み図', rows = DEFAULT_CHART_ROWS, cols = DEFAULT_CHART_COLS): Promise<ChartDocument> {
-  const board = new Board(rows, cols);
-  const now = Date.now();
-  const document: ChartDocument = {
-    id: crypto.randomUUID(), name, rows, cols,
-    cells: board.cells.slice().buffer as ArrayBuffer, createdAt: now, updatedAt: now,
-  };
+  const document = documentFromBoard(name, new Board(rows, cols));
   const db = await database();
   const transaction = db.transaction(['documents', 'settings'], 'readwrite');
-  try {
+  await finishTransaction(transaction, async () => {
     await transaction.objectStore('documents').put(document);
     await transaction.objectStore('settings').put({ key: 'activeDocumentId', value: document.id });
-    await transaction.done;
-  } catch (error) {
-    try { transaction.abort(); } catch { /* すでに中止されたトランザクション。 */ }
-    await transaction.done.catch(() => undefined);
-    throw error;
-  }
+  });
   return document;
+}
+
+/**
+ * 設定`markerKey`がまだ無ければ、盤面を新しい編み図として追加して開く編み図にし、`markerKey`をtrueにする。
+ * 設定の確認と3件の書き込みを1つのトランザクションで行う。途中で失敗すれば何も残らず、
+ * 同時に呼ばれても（別のタブからでも）追加は1件だけになる。追加しなかったときは`undefined`を返す。
+ */
+export async function createDocumentOnce(markerKey: string, name: string, board: Board): Promise<ChartDocument | undefined> {
+  const document = documentFromBoard(name, board);
+  const db = await database();
+  const transaction = db.transaction(['documents', 'settings'], 'readwrite');
+  let created = false;
+  await finishTransaction(transaction, async () => {
+    const settings = transaction.objectStore('settings');
+    if ((await settings.get(markerKey))?.value) return;
+    await transaction.objectStore('documents').put(document);
+    await settings.put({ key: 'activeDocumentId', value: document.id });
+    await settings.put({ key: markerKey, value: true });
+    created = true;
+  });
+  return created ? document : undefined;
+}
+
+function documentFromBoard(name: string, board: Board): ChartDocument {
+  const now = Date.now();
+  return {
+    id: crypto.randomUUID(), name, rows: board.rows, cols: board.cols,
+    cells: board.cells.slice().buffer as ArrayBuffer, createdAt: now, updatedAt: now,
+    ...(board.lines.length ? { guideLines: board.lines.map((line) => ({ ...line })) } : {}),
+  };
 }
 
 export async function saveDocument(

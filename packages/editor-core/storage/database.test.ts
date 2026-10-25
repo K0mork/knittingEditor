@@ -4,8 +4,9 @@ import { gunzipSync, gzipSync, strFromU8, strToU8 } from 'fflate';
 import { Board, packCell } from '../model/Board';
 import { STITCH_BY_KEY, STITCH_CATALOG_VERSION } from '../stitches/catalog';
 import {
-  BACKUP_LIMITS, boardFromDocument, createDocument, exportBackup, importBackup, initializeStorage,
-  listBlocks, saveBlock, listDocuments, saveDocument, setSetting, deleteDocument, recordBackup, lastBackupKey, getLastBackupAt, UNREADABLE_BACKUP_MESSAGE,
+  BACKUP_LIMITS, boardFromDocument, createDocument, createDocumentOnce, exportBackup, importBackup, initializeStorage,
+  listBlocks, saveBlock, listDocuments, saveDocument, getSetting, setSetting, deleteDocument, recordBackup, lastBackupKey, getLastBackupAt,
+  UNREADABLE_BACKUP_MESSAGE,
 } from './database';
 
 function backupBlob(payload: unknown): Blob {
@@ -323,6 +324,71 @@ describe('backup pipeline', () => {
   });
 });
 
+
+/** 指定した設定キーへの書き込みを、既存キーへのaddにして非同期に失敗させる。 */
+function failSettingWrite(key: string) {
+  const original = IDBObjectStore.prototype.put;
+  return vi.spyOn(IDBObjectStore.prototype, 'put').mockImplementation(function (this: IDBObjectStore, value, storeKey) {
+    if (this.name === 'settings' && (value as { key?: string }).key === key) return this.add({ key: 'activeDocumentId', value: 'x' });
+    return original.call(this, value, storeKey);
+  });
+}
+
+describe('document creation transactions', () => {
+  it('rolls back a new chart when making it the open chart fails', async () => {
+    const existing = await createDocument('作成前から開いている編み図', 1, 1);
+    const before = await listDocuments();
+    const spy = failSettingWrite('activeDocumentId');
+    try {
+      await expect(createDocument('作られない編み図', 1, 1)).rejects.toMatchObject({ name: 'ConstraintError' });
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    } finally { spy.mockRestore(); }
+    expect(await listDocuments()).toEqual(before);
+    expect(await getSetting('activeDocumentId')).toBe(existing.id);
+  });
+
+  it('adds a chart only while its marker is unset, opening it and setting the marker together', async () => {
+    const board = new Board(1, 2);
+    board.place(0, 1, 'knit', '#123456', false);
+    const before = (await listDocuments()).length;
+
+    const created = await createDocumentOnce('testMarker:once', '一度だけの編み図', board);
+    expect(created).toMatchObject({ name: '一度だけの編み図', rows: 1, cols: 2 });
+    expect(boardFromDocument(created!).cells).toEqual(board.cells);
+    expect(await getSetting('activeDocumentId')).toBe(created!.id);
+    expect(await getSetting('testMarker:once')).toBe(true);
+
+    expect(await createDocumentOnce('testMarker:once', '一度だけの編み図', board)).toBeUndefined();
+    expect((await listDocuments()).length).toBe(before + 1);
+  });
+
+  it('adds one chart when two callers race for the same marker', async () => {
+    const before = (await listDocuments()).length;
+    const results = await Promise.all([
+      createDocumentOnce('testMarker:race', '同時の編み図', new Board(1, 1)),
+      createDocumentOnce('testMarker:race', '同時の編み図', new Board(1, 1)),
+    ]);
+    expect(results.filter((item) => item !== undefined)).toHaveLength(1);
+    expect((await listDocuments()).length).toBe(before + 1);
+  });
+
+  it('leaves nothing behind when setting the marker fails, so a retry adds exactly one chart', async () => {
+    const existing = await createDocument('失敗前から開いている編み図', 1, 1);
+    const before = await listDocuments();
+    const spy = failSettingWrite('testMarker:failure');
+    try {
+      await expect(createDocumentOnce('testMarker:failure', '失敗する編み図', new Board(1, 1)))
+        .rejects.toMatchObject({ name: 'ConstraintError' });
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    } finally { spy.mockRestore(); }
+    expect(await listDocuments()).toEqual(before);
+    expect(await getSetting('activeDocumentId')).toBe(existing.id);
+    expect(await getSetting('testMarker:failure')).toBeUndefined();
+
+    expect(await createDocumentOnce('testMarker:failure', '失敗する編み図', new Board(1, 1))).toBeDefined();
+    expect((await listDocuments()).length).toBe(before.length + 1);
+  });
+});
 
 it.each(['delete', 'record'] as const)('handles an asynchronous settings failure during %s', async (operation) => {
   const existing = await createDocument('失敗時に保持', 1, 1);
