@@ -1,4 +1,4 @@
-import { expect, test } from './fixtures';
+import { downloadInsteadOfShare, expect, test } from './fixtures';
 
 test('guide explains chart reading, block reuse and backup scope', async ({ page }) => {
   await page.goto('/guide/');
@@ -24,7 +24,7 @@ test('guide explains chart reading, block reuse and backup scope', async ({ page
 });
 
 test('follows guide steps for a second chart, reusable block and all-data restore', async ({ page }) => {
-  await page.addInitScript(() => Object.defineProperty(Navigator.prototype, 'canShare', { value: undefined, configurable: true }));
+  await downloadInsteadOfShare(page);
   await page.goto('/');
   const canvas = page.getByLabel('編み図編集盤面');
   await expect(canvas).toBeVisible();

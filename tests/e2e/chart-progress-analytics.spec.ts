@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { expect, test } from './fixtures';
+import { downloadInsteadOfShare, expect, test } from './fixtures';
 
 const PROGRESS_KEY = 'knitting-editor:chart-progress:v1';
 
@@ -10,8 +10,7 @@ test('keeps automated editing and PNG export free of analytics state and request
       analyticsRequests.push(request.url());
     }
   });
-  // iPhone相当でも共有シートではなく実際のダウンロードを検証する。
-  await page.addInitScript(() => Object.defineProperty(Navigator.prototype, 'canShare', { value: undefined, configurable: true }));
+  await downloadInsteadOfShare(page);
   await page.goto('/');
   const canvas = page.getByLabel('編み図編集盤面');
   await expect(canvas).toBeVisible();

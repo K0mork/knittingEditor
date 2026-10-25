@@ -1,39 +1,14 @@
 import { readFileSync } from 'node:fs';
-import { resizeBoardFromInitialView } from './board-helpers';
+import { delayAutosave, expectAutosaveDelayed, resizeBoardFromInitialView } from './board-helpers';
 import { packCell } from '../../packages/editor-core/model/Board';
 import { STITCH_BY_KEY } from '../../packages/editor-core/stitches/catalog';
-import { expect, test, type Page } from './fixtures';
+import { downloadInsteadOfShare, expect, stubShareSheet, test, type Page } from './fixtures';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: '棒針編み図エディタ' })).toBeVisible();
   await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
 });
-
-/** `packages/editor-core/state/useEditorSession.ts`の`AUTOSAVE_DELAY_MS`と同じ値にする。 */
-const AUTOSAVE_DELAY_MS = 400;
-
-type AutosaveDelayWindow = Window & { delayedAutosaveCount?: number };
-
-/** 自動保存のタイマーだけを延ばし、以前の固定待機より遅くする。延ばした回数を数える。 */
-async function delayAutosave(page: Page, delay: number) {
-  await page.evaluate(({ autosaveDelay, delay }) => {
-    const target = window as AutosaveDelayWindow;
-    const original = window.setTimeout.bind(window);
-    target.delayedAutosaveCount = 0;
-    window.setTimeout = ((handler: TimerHandler, timeout?: number, ...args: unknown[]) => {
-      if (timeout !== autosaveDelay) return original(handler, timeout, ...args);
-      target.delayedAutosaveCount! += 1;
-      return original(handler, delay, ...args);
-    }) as typeof window.setTimeout;
-  }, { autosaveDelay: AUTOSAVE_DELAY_MS, delay });
-}
-
-/** 自動保存のタイマーを実際に延ばしたことを確かめる。値が変わって何も遅らせていない場合に失敗させる。 */
-async function expectAutosaveDelayed(page: Page) {
-  const count = await page.evaluate(() => (window as AutosaveDelayWindow).delayedAutosaveCount ?? 0);
-  expect(count, '延ばした自動保存のタイマー').toBeGreaterThan(0);
-}
 
 /** 操作後の盤面が示す記号数まで待ち、途中の保存を完了とみなさない。 */
 async function waitForDrawnStitches(page: Page) {
@@ -331,7 +306,7 @@ test('picks a color used in the chart from the color list and draws with it', as
 
 test('creates a block and exports backup and PDF', async ({ page }) => {
   // iPhone相当の設定では共有シートへ渡す（別のテストで確かめる）。ここではダウンロードした`.knit`で往復を確かめる。
-  await page.addInitScript(() => Object.defineProperty(Navigator.prototype, 'canShare', { value: undefined, configurable: true }));
+  await downloadInsteadOfShare(page);
   await page.reload();
   await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
   await page.getByRole('button', { name: '範囲' }).click();
@@ -377,7 +352,7 @@ test('creates a block and exports backup and PDF', async ({ page }) => {
 });
 
 test('draws the ten-stitch major lines in the PNG at the numbered tens', async ({ page }) => {
-  await page.addInitScript(() => Object.defineProperty(Navigator.prototype, 'canShare', { value: undefined, configurable: true }));
+  await downloadInsteadOfShare(page);
   await page.reload();
   await page.getByRole('button', { name: '盤面' }).click();
   await page.getByLabel('段数').fill('25');
@@ -420,20 +395,10 @@ test('draws the ten-stitch major lines in the PNG at the numbered tens', async (
 
 test('hands PNG and PDF to the share sheet on iPhone Safari without leaving the editor', async ({ page }, testInfo) => {
   // iOSのSafariは<a download>のPDFで編集中のタブを置き換えるため、共有シートで渡す。
-  // Playwrightのブラウザには共有APIが無いので、iPhone相当の設定で差し替えて確かめる。
-  test.skip(testInfo.project.name !== 'webkit-mobile', 'iPhone Safariだけの保存導線');
-  await page.addInitScript(() => {
-    const shared: Array<Array<[string, string]>> = [];
-    Object.assign(window, { sharedFiles: shared });
-    Object.assign(navigator, {
-      canShare: (data: ShareData) => (data.files?.length ?? 0) > 0,
-      share: async (data: ShareData) => { shared.push((data.files ?? []).map((file) => [file.name, file.type])); },
-    });
-  });
+  const { sharedFiles } = await stubShareSheet(page, testInfo);
   await page.reload();
   await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
   const editorUrl = page.url();
-  const sharedFiles = () => page.evaluate(() => (window as unknown as { sharedFiles: Array<Array<[string, string]>> }).sharedFiles);
 
   await page.getByRole('button', { name: '出力' }).click();
   await page.getByRole('button', { name: 'PNGを保存' }).click();
@@ -589,7 +554,7 @@ test('copies colored symbols including a multi-cell stitch to new positions and 
 });
 
 test('exports real symbol pixels and restores a full backup block for pasting', async ({ page }) => {
-  await page.addInitScript(() => Object.defineProperty(Navigator.prototype, 'canShare', { value: undefined, configurable: true }));
+  await downloadInsteadOfShare(page);
   await page.reload();
   const { origin, expected } = await drawRealContent(page);
   await page.getByRole('button', { name: '盤面', exact: true }).click();
@@ -749,6 +714,7 @@ test('resizes to one million cells without creating cell DOM nodes', async ({ pa
   await page.getByLabel('段数').fill('1000');
   await page.getByLabel('列数').fill('1000');
   await page.getByRole('button', { name: '変更' }).click();
+  await expect(page.getByLabel('編み図編集盤面')).toHaveAttribute('aria-label', /1000段、1000目/);
   await expect(page.locator('.board-canvas')).toHaveCount(1);
   expect(await page.locator('.cell').count()).toBe(0);
 });
@@ -910,8 +876,7 @@ test('explains why a switch is blocked by an edit that lands during the save', a
 });
 
 test('keeps the chosen board background after reload and exports it to PNG', async ({ page }) => {
-  // iPhone相当の設定では共有シートへ渡すので、PNGをダウンロードとして受け取れるよう共有APIを外す。
-  await page.addInitScript(() => Object.defineProperty(Navigator.prototype, 'canShare', { value: undefined, configurable: true }));
+  await downloadInsteadOfShare(page);
   await page.reload();
   await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
   /** 盤面のCanvasの、CSS座標(x, y)の画素。 */
@@ -1034,7 +999,7 @@ test('shows stitch and rectangular block dimensions with both units', async ({ p
 });
 
 test('reports a PDF worker load failure and clears it when retry succeeds', async ({ page }) => {
-  await page.addInitScript(() => Object.defineProperty(Navigator.prototype, 'canShare', { value: undefined, configurable: true }));
+  await downloadInsteadOfShare(page);
   const workerUrl = /\/pdf\.worker(?:\.ts|-[\w-]+\.js)(?:\?.*)?$/;
   // 先読みと更新確認のHEADも通信失敗にして、404とは区別する。
   await page.route(workerUrl, (route) => route.abort());
@@ -1055,7 +1020,7 @@ test('reports a PDF worker load failure and clears it when retry succeeds', asyn
 });
 
 test('exports an exactly fitting tiled PDF as one estimated and actual page', async ({ page }) => {
-  await page.addInitScript(() => Object.defineProperty(Navigator.prototype, 'canShare', { value: undefined, configurable: true }));
+  await downloadInsteadOfShare(page);
   await page.reload();
   await page.getByRole('button', { name: '盤面', exact: true }).click();
   await page.getByLabel('段数').fill('53');

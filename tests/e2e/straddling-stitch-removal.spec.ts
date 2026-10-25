@@ -1,3 +1,4 @@
+import { expectAutosaved, storedBoards } from './board-helpers';
 import { expect, test, type Page } from './fixtures';
 
 async function clickCell(page: Page, row: number, col: number) {
@@ -55,7 +56,10 @@ for (const axis of ['column', 'row'] as const) {
         await clickCell(page, axis === 'row' ? 3 : 0, axis === 'column' ? 3 : 0);
         await expect(canvas).toHaveAttribute('aria-label', /記号0個/);
       }
-      await page.waitForTimeout(800);
+      // 最後の消去まで保存し終えてから読み込み直す。
+      const size = axis === 'row' ? { rows: insert ? 5 : 3, cols: 1 } : { rows: 1, cols: insert ? 5 : 3 };
+      await expect.poll(() => storedBoards(page)).toEqual([{ ...size, stitches: 0 }]);
+      await expectAutosaved(page);
       await page.reload();
       await expect(canvas).toHaveAttribute('aria-label', /記号0個/);
     });

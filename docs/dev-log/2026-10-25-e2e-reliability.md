@@ -1,0 +1,24 @@
+# 2026-10-25 — E2Eの保存待ちを観測に置き換え、題名どおりの検証と旧データ移行のE2Eを足す
+
+- 影響: アプリの挙動は変わらない。E2Eだけを変えた。
+  - 段・列の挿入・削除のあとに再読み込みするテストは、800msの固定待機をやめ、端末内（IndexedDB）に最後の消去まで保存されたことと「保存済み」の表示を待ってから読み込み直す。
+  - 「書き出した編集が後から自動保存されてもバックアップ日時が新しいままか」のテストは、処理速度で前提が崩れないよう、書き出し終えるまで自動保存を止め（`delayAutosave`の止める形）、書き出し時点で「保存中」だったことを確かめてから保存を再開する。
+  - `delayAutosave`・`expectAutosaveDelayed`を`editor.spec.ts`から`tests/e2e/board-helpers.ts`へ移して共通にし、保存を止めて後から再開する`releaseAutosave`、保存済みを待つ`expectAutosaved`、保存された盤面の段数・列数・記号数を読む`storedBoards`を足した。
+  - 番号のラベルのテストは、スクリーンショットの添付だけでassertionがなかった。描いた番号を記録し、ルートの文字を大きくすると帯と文字が大きくなること、最小倍率で10の倍数に間引いて隣と重ならないこと、最大倍率で間引かずに重ならないことを確かめる。固定100msの待機もやめた。
+  - 100万マスへのリサイズのテストに、盤面が実際に1000段・1000目になったことの確認を足した。
+  - iPhone相当のプロジェクトで書き出しをダウンロードとして受け取るための初期化スクリプト（14か所）と、共有シートの模擬（3通り）を`tests/e2e/fixtures.ts`の`downloadInsteadOfShare`・`stubShareSheet`にまとめた。期待値は変えていない。
+  - 旧Web版の`localStorage`（`knittingChartData`）から、Web版の起動時に移行するE2Eを追加した。移行後の盤面とセルをUIと生のIndexedDBで確かめ、再読み込みしても2回目の移行をしない（旧データは残り、編み図は1件のまま、内容も変わらない）ことを確かめる。
+- 主なファイル: `tests/e2e/fixtures.ts`、`tests/e2e/board-helpers.ts`、`tests/e2e/legacy-migration.spec.ts`（新規）、`tests/e2e/canvas-input-and-labels.spec.ts`、`tests/e2e/straddling-stitch-removal.spec.ts`、`tests/e2e/backup-reminder.spec.ts`、`tests/e2e/editor.spec.ts`、`tests/e2e/backup-pipeline.spec.ts`、ほか`downloadInsteadOfShare`へ置き換えたspec（`chart-progress-analytics`・`export-title-and-legend`・`guide-content`・`guide-lines`・`prefetch-web-workers`）。
+- テスト: 上記のE2Eを追加・更新した。追加したassertionが退行を検出することを、ソースを一時的に壊して確かめた（確認後に元へ戻した）。
+  - `src/App.tsx`の`initializeStorage`をeditor-core側（移行なし）に替える → 移行のE2Eが失敗。
+  - `src/storage/database.ts`の移行済みの確認を外す → 再読み込みで2件目ができ、移行のE2Eが失敗。
+  - 盤面の目番号の間引きで文字の幅を0として扱う → ラベルのE2Eが失敗。
+  - ルートの文字の大きさを16pxに固定する → ラベルのE2Eが失敗。
+- 検証（Node v26.8.1。CI指定はNode 24）:
+  - `npx playwright test`で変更した11個のspec（`backup-pipeline`・`backup-reminder`・`canvas-input-and-labels`・`chart-progress-analytics`・`editor`・`export-title-and-legend`・`guide-content`・`guide-lines`・`prefetch-web-workers`・`straddling-stitch-removal`・`legacy-migration`）を全プロジェクト（chromium-mobile・webkit-mobile・chromium-desktop）で実行: 215件成功、7件スキップ（iPhone専用の共有シートのテストが他のプロジェクトで6件、既存のタッチ専用のテストが1件）。
+  - `npx playwright test --repeat-each=3`で、`legacy-migration`・`canvas-input-and-labels`・`straddling-stitch-removal`・`backup-reminder`・`guide-lines`を実行: 234件成功、9件スキップ。`editor`・`backup-pipeline`のうち変更・共通化の影響を受けるテスト（`-g`で選択）を実行: 123件成功、12件スキップ。
+  - `npm run typecheck`、`npm run build`、`npm run check:dist`は成功（`dist/CNAME`は`knittingeditor.com`）。
+  - `npm test`は1回目に71ファイル783件すべて成功。その後の3回は、別のworktreeの処理で負荷平均が約276のときに、今回変更していない`packages/editor-core`の実時間しきい値のテスト（`export/pdf.worker.test.ts`の100万マスPDFの15秒、`model/thumbnail.test.ts`の250ms）が1〜2件失敗した。5回目は71ファイル783件すべて成功した（終了コード0）。
+  - コミット後に`npm run typecheck`（成功）、`npm test -- --maxWorkers=2`（783件成功）、`npm run build`・`npm run check:dist`（成功）、`npm run test:e2e`（全project、527件成功・7件スキップ）を実行した。
+  - iOS Web・iOSの確認は手元では行わず、PRのCIに任せる。
+- デプロイ影響: なし（E2Eだけの変更）。

@@ -1,10 +1,10 @@
-import { expect, test, type Page } from './fixtures';
+import { delayAutosave, expectAutosaveDelayed, expectAutosaved, releaseAutosave } from './board-helpers';
+import { downloadInsteadOfShare, expect, stubShareSheet, test, type Page } from './fixtures';
 
 const DAY = 24 * 60 * 60 * 1000;
 
 test.beforeEach(async ({ page }) => {
-  // iPhone相当の設定では共有シートへ渡す。ここではダウンロードで書き出しを確かめる。
-  await page.addInitScript(() => Object.defineProperty(Navigator.prototype, 'canShare', { value: undefined, configurable: true }));
+  await downloadInsteadOfShare(page);
   await page.goto('/');
   await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
 });
@@ -168,28 +168,12 @@ test('keeps the board in place while a stroke is held down and suggests the back
 
 test('records the backup only after the file is shared on iPhone Safari', async ({ page }, testInfo) => {
   // iPhone・iPadのSafariは確認ダイアログから共有シートで渡す。閉じる・取り消しでは書き出したことにしない。
-  test.skip(testInfo.project.name !== 'webkit-mobile', 'iPhone Safariだけの保存導線');
-  await page.addInitScript(() => {
-    const state = { shared: [] as string[], cancelNext: false };
-    Object.assign(window, { shareState: state });
-    Object.defineProperty(navigator, 'canShare', { value: (data: ShareData) => (data.files?.length ?? 0) > 0, configurable: true });
-    Object.defineProperty(navigator, 'share', {
-      configurable: true,
-      value: async (data: ShareData) => {
-        if (state.cancelNext) {
-          state.cancelNext = false;
-          throw new DOMException('cancelled', 'AbortError');
-        }
-        state.shared.push(...(data.files ?? []).map((file) => file.name));
-      },
-    });
-  });
+  const shareSheet = await stubShareSheet(page, testInfo);
   await ageChart(page, 8);
   await page.reload();
   const reminder = page.getByRole('region', { name: 'バックアップのおすすめ' });
   await expect(reminder).toBeVisible();
   const dialog = page.getByRole('dialog', { name: '「新しい編み図.knit」の準備ができました' });
-  const shared = () => page.evaluate(() => (window as unknown as { shareState: { shared: string[] } }).shareState.shared);
 
   // 確認ダイアログを閉じると、帯は残り、日時も記録しない。
   await reminder.getByRole('button', { name: '書き出す' }).click();
@@ -198,12 +182,12 @@ test('records the backup only after the file is shared on iPhone Safari', async 
   await expect(reminder).toBeVisible();
 
   // 共有シートを取り消したときも同じ。
-  await page.evaluate(() => { (window as unknown as { shareState: { cancelNext: boolean } }).shareState.cancelNext = true; });
+  await shareSheet.cancelNext();
   await reminder.getByRole('button', { name: '書き出す' }).click();
   await dialog.getByRole('button', { name: '共有・保存' }).click();
   await expect(dialog).toBeHidden();
   await expect(reminder).toBeVisible();
-  expect(await shared()).toEqual([]);
+  expect(await shareSheet.sharedNames()).toEqual([]);
   expect(await readSetting(page, `lastBackupAt:${await chartId(page)}`)).toBeUndefined();
   await page.getByRole('button', { name: '出力', exact: true }).click();
   await expect(page.locator('#app-drawer')).toContainText('この編み図はまだバックアップしていません。');
@@ -212,27 +196,27 @@ test('records the backup only after the file is shared on iPhone Safari', async 
   await page.locator('#app-drawer').getByRole('button', { name: 'この編み図を書き出す' }).click();
   await dialog.getByRole('button', { name: '共有・保存' }).click();
   await expect(dialog).toBeHidden();
-  expect(await shared()).toEqual(['新しい編み図.knit']);
+  expect(await shareSheet.sharedNames()).toEqual(['新しい編み図.knit']);
   await expect(page.locator('#app-drawer')).toContainText('この編み図の最後のバックアップ：');
 });
 
 test('keeps the backup date at or after the autosave of the exported edits', async ({ page }) => {
   // 書き出しは保存を待たない。書き出した盤面が後から保存されても、次に開いたとき変更ありと判定させない。
-  const box = (await page.getByLabel('編み図編集盤面').boundingBox())!;
+  // 処理速度によらず保存より先に書き出すよう、書き出し終えるまで自動保存を止めておく。
+  await delayAutosave(page);
+  const canvas = page.getByLabel('編み図編集盤面');
+  const box = (await canvas.boundingBox())!;
   await page.mouse.click(box.x + 75, box.y + 75);
+  await expect(canvas).toHaveAttribute('aria-label', /記号1個/);
+  await expectAutosaveDelayed(page);
+  await page.getByRole('button', { name: '出力', exact: true }).click();
+  await expect(page.locator('.app-document-name')).toContainText('保存中');
   const download = page.waitForEvent('download');
-  // 自動保存（400ms後）より先に書き出す。操作のたびに待つと、遅い環境では保存が先に済んでしまう。
-  const exportedUnsaved = await page.evaluate(async () => {
-    const button = (name: string) => Array.from(document.querySelectorAll('button')).find((item) => item.textContent === name);
-    button('出力')!.click();
-    while (!button('この編み図を書き出す')) await new Promise((resolve) => requestAnimationFrame(resolve));
-    const unsaved = document.querySelector('.app-document-name')!.textContent!.includes('保存中');
-    button('この編み図を書き出す')!.click();
-    return unsaved;
-  });
-  expect(exportedUnsaved).toBe(true);
+  await page.locator('#app-drawer').getByRole('button', { name: 'この編み図を書き出す' }).click();
   await download;
-  await expect(page.locator('.app-document-name')).toContainText('保存済み');
+  await expect(page.locator('.app-document-name')).toContainText('保存中');
+  await releaseAutosave(page);
+  await expectAutosaved(page);
   const id = await chartId(page);
   const updatedAt = await page.evaluate(async (documentId) => {
     const request = indexedDB.open('knitting-editor-v2');
