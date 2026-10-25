@@ -9,7 +9,19 @@ import { isAbsolute, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const SEPARATORS = new Set(['&&', '||', ';', '|', '&', '(', ')', '{', '}']);
-const PREFIX_COMMANDS = new Set(['command', 'env', 'exec', 'nohup', 'time']);
+// 後ろのコマンドを実行する前置コマンドと、そのオプション（GNU・BSDの両方）。
+//   values: 値を取る短いオプション。`-uNAME`のように続けて書いた値も読む。
+//   long: 値を取る長いオプション（`--unset NAME`と`--unset=NAME`）。
+//   external: 後ろのコマンドを別プロセスで動かすので、そこでのcdはシェルの場所を変えない。
+//   lookup: 指定するとコマンドを実行せず、場所や種類を表示するだけ（`command -v`）。
+// ここにないオプションは値を取らないものとして飛ばす。
+const PREFIX_COMMANDS = new Map([
+  ['command', { values: '', long: [], external: false, lookup: 'vV' }],
+  ['env', { values: 'CLPSUu', long: ['--chdir', '--split-string', '--unset'], external: true, lookup: '' }],
+  ['exec', { values: 'a', long: [], external: true, lookup: '' }],
+  ['nohup', { values: '', long: [], external: true, lookup: '' }],
+  ['time', { values: 'fo', long: ['--format', '--output'], external: false, lookup: '' }],
+]);
 const GIT_OPTIONS_WITH_VALUE = new Set(['-C', '-c', '--git-dir', '--work-tree', '--namespace', '--exec-path']);
 const ALWAYS_BLOCKED = new Set(['am', 'cherry-pick', 'clean', 'commit', 'merge', 'rebase', 'reset', 'restore', 'revert']);
 const READ_ONLY_STASH = new Set(['list', 'show']);
@@ -116,13 +128,83 @@ function changeDirectory(cwd, words, dynamic, start) {
   return isAbsolute(target) ? resolve(target) : cwd === null ? null : resolve(cwd, target);
 }
 
-/** 単語列の先頭の環境変数の代入と`env`などを飛ばし、実行されるコマンドの位置を返す。 */
-function commandStart(words) {
+/** git -C・env -Cの移動先。展開を含む・省略した移動先は不明（null）。 */
+function resolveDirectory(base, target, isDynamic, legacy) {
+  if (!target || isDynamic) return null;
+  if (isAbsolute(target)) return resolve(target);
+  if (base) return resolve(base, target);
+  return legacy ? target : null;
+}
+
+/**
+ * 単語列の先頭の環境変数の代入と`env`などの前置コマンド（オプションを含む）を飛ばし、
+ * 実際に実行されるコマンドを返す。`env -S`は文字列を単語に分けて差し込み、`env -C`は場所を変える。
+ *   start: 実行されるコマンドの位置。`command -v`のように実行しない場合はwords.length
+ *   dir: そのコマンドが動く場所（不明ならnull）
+ *   external: cdが別プロセスで動き、シェルの場所を変えないならtrue
+ */
+function resolveCommand(initialWords, initialDynamic, initialDir, legacy) {
+  let words = initialWords;
+  let dynamic = initialDynamic;
+  let dir = initialDir;
+  let external = false;
   let index = 0;
-  while (index < words.length && (/^[A-Za-z_][A-Za-z0-9_]*=/.test(words[index]) || PREFIX_COMMANDS.has(words[index]))) {
+  while (index < words.length) {
+    const prefix = words[index];
+    if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(prefix)) {
+      index += 1;
+      continue;
+    }
+    const spec = PREFIX_COMMANDS.get(prefix);
+    if (!spec) break;
+    external ||= spec.external;
     index += 1;
+    // 値を受け取ったオプションを反映し、次に読む位置を返す。valueIndexは値を含む単語の位置。
+    // `env -S`は分けた単語を、元の位置に並べたオプションとして読み直す（env(1)と同じ）。
+    const apply = (option, value, valueIndex, next) => {
+      if (prefix === 'env' && (option === '-C' || option === '--chdir')) {
+        dir = resolveDirectory(dir, value, dynamic[valueIndex], legacy);
+      }
+      if (prefix === 'env' && (option === '-S' || option === '--split-string') && value !== undefined) {
+        const split = shellSegments(value).filter((segment) => segment.words.length > 0);
+        words = [...words.slice(0, index), ...split.flatMap((segment) => segment.words), ...words.slice(next)];
+        dynamic = [...dynamic.slice(0, index), ...split.flatMap((segment) => segment.dynamic), ...dynamic.slice(next)];
+        return index;
+      }
+      return next;
+    };
+    while (index < words.length) {
+      const option = words[index];
+      if (option === '--') {
+        index += 1;
+        break;
+      }
+      if (option === '-' && prefix === 'env') {
+        index += 1;
+        continue;
+      }
+      if (!option.startsWith('-') || option === '-') break;
+      if (option.startsWith('--')) {
+        const equals = option.indexOf('=');
+        const name = equals < 0 ? option : option.slice(0, equals);
+        if (equals >= 0) index = apply(name, option.slice(equals + 1), index, index + 1);
+        else if (spec.long.includes(name)) index = apply(name, words[index + 1], index + 1, index + 2);
+        else index += 1;
+        continue;
+      }
+      let next = index + 1;
+      for (let position = 1; position < option.length; position += 1) {
+        const flag = option[position];
+        if (spec.lookup.includes(flag)) return { words, dynamic, start: words.length, dir, external };
+        if (!spec.values.includes(flag)) continue;
+        const rest = option.slice(position + 1);
+        next = rest ? apply(`-${flag}`, rest, index, index + 1) : apply(`-${flag}`, words[index + 1], index + 1, index + 2);
+        break;
+      }
+      index = next;
+    }
   }
-  return index;
+  return { words, dynamic, start: index, dir, external };
 }
 
 /**
@@ -136,7 +218,7 @@ export function findInvocations(command, cwd) {
   const stack = [];
   let pipelineDepth = null;
   let groupDepth = 0;
-  for (const { words, dynamic, separator } of shellSegments(command)) {
+  for (const { words: segmentWords, dynamic: segmentDynamic, separator } of shellSegments(command)) {
     // グループ内の区切りではpipelineを終了しない。右側のcdも親には伝播しない。
     const inPipeline = pipelineDepth !== null || separator === '|';
     if (separator === '|') pipelineDepth = pipelineDepth === null ? groupDepth : Math.min(pipelineDepth, groupDepth);
@@ -148,29 +230,27 @@ export function findInvocations(command, cwd) {
     if (separator === '(') stack.push(directory);
     else if (separator === ')') directory = parentDirectory;
     else if (separator === '||' || separator === '|' || separator === '&') directory = null;
-    const start = commandStart(words);
+    const legacy = cwd === undefined;
+    const resolved = resolveCommand(segmentWords, segmentDynamic, legacy ? null : effectiveDirectory, legacy);
+    const { words, dynamic, start } = resolved;
     const program = words[start];
     if (program === 'cd') {
-      directory = inPipeline ? null : changeDirectory(effectiveDirectory, words, dynamic, start);
+      // `env cd`などは別プロセスのcdで、シェルの場所は変わらない。
+      if (!resolved.external) directory = inPipeline ? null : changeDirectory(effectiveDirectory, words, dynamic, start);
       if (separator === ')') directory = parentDirectory;
       else if (separator === '||' || separator === '|' || separator === '&') directory = null;
       continue;
     }
     if (program === 'gh' && words[start + 1] === 'pr' && words[start + 2] === 'checkout') {
-      invocations.push({ program: 'gh', dir: cwd === undefined ? null : effectiveDirectory, subcommand: 'pr checkout', args: words.slice(start + 3) });
+      invocations.push({ program: 'gh', dir: resolved.dir, subcommand: 'pr checkout', args: words.slice(start + 3) });
       continue;
     }
     if (program !== 'git' && !program?.endsWith('/git')) continue;
     let index = start + 1;
-    let dir = cwd === undefined ? null : effectiveDirectory;
+    let dir = resolved.dir;
     while (index < words.length && words[index].startsWith('-')) {
       const option = words[index];
-      if (option === '-C') {
-        const target = words[index + 1];
-        dir = !target || dynamic[index + 1] ? null
-          : isAbsolute(target) ? resolve(target)
-            : dir ? resolve(dir, target) : cwd === undefined ? target : null;
-      }
+      if (option === '-C') dir = resolveDirectory(dir, words[index + 1], dynamic[index + 1], legacy);
       index += GIT_OPTIONS_WITH_VALUE.has(option) ? 2 : 1;
     }
     if (index >= words.length) continue;
