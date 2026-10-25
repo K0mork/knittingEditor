@@ -322,41 +322,42 @@ export function useEditorController(options: EditorControllerOptions) {
     session.removeBlock(block.id);
   });
 
+  const runChartExport = async (
+    format: 'png' | 'pdf',
+    busyLabel: BusyTask,
+    render: () => Promise<Blob>,
+    extraParams: AnalyticsParameters = {},
+  ) => {
+    if (!board || !activeDocument) return;
+    setBusy(busyLabel);
+    try {
+      const progress = metric((tracker) => tracker.exportParams(board, session.backgroundColor));
+      const blob = await render();
+      const outcome = await platform.saveFile(blob, `${activeDocument.name}.${format}`);
+      const extra: AnalyticsParameters = progress ? { export_state: progress.export_state, progress_bucket: progress.progress_bucket, chart_origin: progress.chart_origin } : {};
+      analytics.track('chart_exported', { export_format: format, ...extraParams, board_size_bucket: boardSizeBucket(board.rows, board.cols), ...extra });
+      // 共有シートの完了待ちは処理中表示を延長しない。
+      void outcome.saved.then((saved) => {
+        if (saved !== false && progress) metric((tracker) => tracker.commitExport(progress.token, format));
+      }).catch(() => undefined);
+    } catch (error) { reportFailure(`${format}_export`, error); }
+    finally { setBusy(undefined); }
+  };
+
   const runPngExport = async (cellSize: number, options: ExportAnnotations = {}) => {
     if (!board || !activeDocument) return;
     const validation = validatePngSize(board, cellSize, options);
     if (!validation.valid) { notify(`${validation.reason}。PDF保存をおすすめします。`); return; }
-    setBusy('PNGを生成中');
-    try {
-      const progress = metric((tracker) => tracker.exportParams(board, session.backgroundColor));
-      const blob = await renderPng(board, cellSize, session.backgroundColor, { ...options, title: activeDocument.name });
-      const outcome = await platform.saveFile(blob, `${activeDocument.name}.png`);
-      const extra: AnalyticsParameters = progress ? { export_state: progress.export_state, progress_bucket: progress.progress_bucket, chart_origin: progress.chart_origin } : {};
-      analytics.track('chart_exported', { export_format: 'png', board_size_bucket: boardSizeBucket(board.rows, board.cols), ...extra });
-      // 共有シートの完了待ちは処理中表示を延長しない。
-      void outcome.saved.then((saved) => {
-        if (saved !== false && progress) metric((tracker) => tracker.commitExport(progress.token, 'png'));
-      }).catch(() => undefined);
-    } catch (error) { reportFailure('png_export', error); }
-    finally { setBusy(undefined); }
+    return runChartExport('png', 'PNGを生成中', () =>
+      renderPng(board, cellSize, session.backgroundColor, { ...options, title: activeDocument.name }));
   };
 
   const runPdfExport = async (pdfOptions: PdfLayoutOptions) => {
     if (!board || !activeDocument) return;
     notify('');
-    setBusy('PDFを生成中');
-    try {
-      const progress = metric((tracker) => tracker.exportParams(board, session.backgroundColor));
-      const blob = await renderPdf(board, { ...pdfOptions, title: activeDocument.name }, session.backgroundColor);
-      const outcome = await platform.saveFile(blob, `${activeDocument.name}.pdf`);
-      const extra: AnalyticsParameters = progress ? { export_state: progress.export_state, progress_bucket: progress.progress_bucket, chart_origin: progress.chart_origin } : {};
-      analytics.track('chart_exported', { export_format: 'pdf', pdf_layout: pdfOptions.layout, board_size_bucket: boardSizeBucket(board.rows, board.cols), ...extra });
-      // 共有シートの完了待ちは処理中表示を延長しない。
-      void outcome.saved.then((saved) => {
-        if (saved !== false && progress) metric((tracker) => tracker.commitExport(progress.token, 'pdf'));
-      }).catch(() => undefined);
-    } catch (error) { reportFailure('pdf_export', error); }
-    finally { setBusy(undefined); }
+    return runChartExport('pdf', 'PDFを生成中', () =>
+      renderPdf(board, { ...pdfOptions, title: activeDocument.name }, session.backgroundColor),
+    { pdf_layout: pdfOptions.layout });
   };
 
   const createNewDocument = () => runManagementOperation('chart_create', '編み図の作成', async () => {

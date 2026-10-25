@@ -20,12 +20,15 @@ let editor: EditorController;
 let source: database.ChartDocument;
 let confirmResult = true;
 const track = vi.fn();
+const saveFile = vi.fn(async () => ({ saved: Promise.resolve(undefined) }));
 const askConfirm = vi.fn(async () => confirmResult);
 let savedBlock: ReturnType<Board['createBlock']>;
 const quota = new DOMException('test quota', 'QuotaExceededError');
 
 beforeEach(async () => {
   track.mockClear();
+  saveFile.mockReset();
+  saveFile.mockResolvedValue({ saved: Promise.resolve(undefined) });
   confirmResult = true;
   askConfirm.mockClear();
   for (const document of await database.listDocuments()) await database.deleteDocument(document.id);
@@ -41,7 +44,7 @@ beforeEach(async () => {
     editor = useEditorController({
       autosaveDelayMs: 60_000,
       initialize: async () => ({ documents: [source, other], activeId: source.id, blocks: [savedBlock] }),
-      platform: { saveFile: async () => ({ saved: Promise.resolve(undefined) }) },
+      platform: { saveFile },
       askText: async () => '変更した名前',
       askConfirm,
       analytics: { track, trackFirstEdit: vi.fn() },
@@ -386,6 +389,28 @@ it('reports the category for export failures', async () => {
   expect(track).toHaveBeenCalledWith('operation_failed', {
     operation_name: 'png_export', failure_reason: 'site_updated',
   });
+});
+
+it.each(['png', 'pdf'] as const)('clears busy and reports a %s file handoff failure without recording success', async (format) => {
+  vi.spyOn(exporters, 'renderPng').mockResolvedValue(new Blob(['png']));
+  vi.spyOn(exporters, 'renderPdf').mockResolvedValue(new Blob(['pdf']));
+  let rejectSave!: (error: Error) => void;
+  saveFile.mockReturnValueOnce(new Promise((_, reject) => { rejectSave = reject; }));
+  let exporting!: Promise<void>;
+  await act(async () => {
+    exporting = format === 'png' ? editor.runPngExport(24)
+      : editor.runPdfExport({ layout: 'single', orientation: 'portrait', cellMillimeters: 5 });
+  });
+  expect(editor.busy).toBe(format === 'png' ? 'PNGを生成中' : 'PDFを生成中');
+  expect(saveFile).toHaveBeenCalledWith(expect.any(Blob), `${source.name}.${format}`);
+  await act(async () => { rejectSave(new WorkerVersionError()); await exporting; });
+  expect(editor.busy).toBeUndefined();
+  expect(editor.message).toContain('サイトが更新されました');
+  expect(editor.notificationAction?.label).toBe('再読み込み');
+  expect(track).toHaveBeenCalledWith('operation_failed', {
+    operation_name: `${format}_export`, failure_reason: 'site_updated',
+  });
+  expect(track.mock.calls.some(([event]) => event === 'chart_exported')).toBe(false);
 });
 
 it('reports the original initialization error category', async () => {
