@@ -21,9 +21,13 @@ enum PencilDoubleTap {
 final class PencilDoubleTapHandler: NSObject, UIPencilInteractionDelegate {
     private weak var model: WebViewModel?
     /// テストで設定の値を差し替える。既定はiPadの設定。
-    private let preferredAction: () -> UIPencilPreferredAction
+    /// `UIPencilInteraction.preferredTapAction`はMainActorでしか読めないので、クロージャの型にもMainActorを付ける。
+    private let preferredAction: @MainActor () -> UIPencilPreferredAction
 
-    init(model: WebViewModel, preferredAction: @escaping () -> UIPencilPreferredAction = { UIPencilInteraction.preferredTapAction }) {
+    init(
+        model: WebViewModel,
+        preferredAction: @escaping @MainActor () -> UIPencilPreferredAction = { UIPencilInteraction.preferredTapAction }
+    ) {
         self.model = model
         self.preferredAction = preferredAction
     }
