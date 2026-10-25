@@ -50,7 +50,7 @@ it.each(['updated', 'deleted'] as const)('activates a conflict copy of a chart %
     expect(session.activeDocument?.id).toBe(saved.id);
     expect(notify).toHaveBeenCalledTimes(1);
     const renamed = await renameDocument(saved.id, '自分で変更');
-    await act(async () => session.applyActiveDocumentName(renamed.name, renamed.updatedAt));
+    await act(async () => session.applyActiveDocumentName(renamed.id, renamed.name, renamed.updatedAt));
     await act(async () => {
       board.place(0, 2, 'knit', '#123456');
       session.changed();
