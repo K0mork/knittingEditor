@@ -40,13 +40,31 @@ describe('restored dates and ordering', () => {
   });
 
   it('keeps equal-date order stable across restores and input orders', async () => {
-    const first = (await importBackup(backup([chart('B', 50, 1), chart('A', 50, 1)]))).documents;
-    const second = (await importBackup(backup([chart('A', 50, 1), chart('B', 50, 1)]))).documents;
-    expect(first.sort(compareDocuments).map((item) => item.name)).toEqual(['A（復元）', 'B（復元）']);
-    expect(second.reverse().sort(compareDocuments).map((item) => item.name)).toEqual(['A（復元）', 'B（復元）']);
-    const same = { ...first[0], name: '同名' };
-    expect([{ ...same, id: 'z' }, { ...same, id: 'a' }].sort(compareDocuments).map((item) => item.id)).toEqual(['a', 'z']);
-    expect(await listDocuments()).toEqual(await listDocuments());
+    // 2回の復元で作成日時をそろえ、同名の編み図の順序がIDだけで決まるようにする。
+    // IDは入力順・保存キー順のどちらとも違う並びになるように割り当てる。
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(7000);
+    const uuid = vi.spyOn(crypto, 'randomUUID')
+      .mockReturnValueOnce('00000000-0000-4000-8000-000000000004')
+      .mockReturnValueOnce('00000000-0000-4000-8000-000000000003')
+      .mockReturnValueOnce('00000000-0000-4000-8000-000000000002')
+      .mockReturnValueOnce('00000000-0000-4000-8000-000000000001');
+    try {
+      const first = (await importBackup(backup([chart('B', 50, 1), chart('A', 50, 1)]))).documents;
+      const second = (await importBackup(backup([chart('A', 50, 1), chart('B', 50, 1)]))).documents;
+      expect([...first, ...second].map((item) => [item.name, item.id.slice(-1)])).toEqual([
+        ['B（復元）', '4'], ['A（復元）', '3'], ['A（復元）', '2'], ['B（復元）', '1'],
+      ]);
+      expect([...first].sort(compareDocuments).map((item) => item.name)).toEqual(['A（復元）', 'B（復元）']);
+      expect([...second].reverse().sort(compareDocuments).map((item) => item.name)).toEqual(['A（復元）', 'B（復元）']);
+      const same = { ...first[0], name: '同名' };
+      expect([{ ...same, id: 'z' }, { ...same, id: 'a' }].sort(compareDocuments).map((item) => item.id)).toEqual(['a', 'z']);
+      // 一覧は更新日時・名前・作成日時・IDの順に並ぶ。保存キー順（1, 2, 3, 4）のままでは通らない。
+      const restoredIds = new Set([...first, ...second].map((item) => item.id));
+      const listed = (await listDocuments()).filter((item) => restoredIds.has(item.id));
+      expect(listed.map((item) => [item.name, item.id.slice(-1)])).toEqual([
+        ['A（復元）', '2'], ['A（復元）', '3'], ['B（復元）', '1'], ['B（復元）', '4'],
+      ]);
+    } finally { uuid.mockRestore(); clock.mockRestore(); }
   });
 
   it('does not show the backup reminder right after restoring an old chart', async () => {
