@@ -1,22 +1,28 @@
 import { Board } from '@knitting-editor/editor-core/model/Board';
 import { STITCH_BY_KEY } from '@knitting-editor/editor-core/stitches/catalog';
 import {
-  createDocument,
+  createDocumentOnce,
   getSetting,
   initializeStorage as initializePackedStorage,
-  saveDocument,
   setSetting,
   type ChartDocument,
 } from '@knitting-editor/editor-core/storage/database';
 
 const LEGACY_KEY = 'knittingChartData';
+const MIGRATION_COMPLETE_KEY = 'legacyMigrationComplete';
 
-/** Web-only compatibility migration for the pre-IndexedDB browser editor. */
+/**
+ * Web-only compatibility migration for the pre-IndexedDB browser editor.
+ *
+ * 編み図の追加、開く編み図の設定、完了の記録は1つのトランザクションで行う。失敗すれば何も残らず
+ * 次の起動でやり直し、2つのタブが同時に始めても移行した編み図は1件だけになる。
+ * 元の`localStorage`のデータは消さない。
+ */
 export async function migrateLegacyData(): Promise<boolean> {
-  if (await getSetting<boolean>('legacyMigrationComplete')) return false;
+  if (await getSetting<boolean>(MIGRATION_COMPLETE_KEY)) return false;
   const raw = localStorage.getItem(LEGACY_KEY);
   if (!raw) {
-    await setSetting('legacyMigrationComplete', true);
+    await setSetting(MIGRATION_COMPLETE_KEY, true);
     return false;
   }
   try {
@@ -40,10 +46,7 @@ export async function migrateLegacyData(): Promise<boolean> {
         if (STITCH_BY_KEY.has(cell.type)) board.place(row, col, cell.type, cell.color ?? '#000000', false);
       }
     }
-    const document = await createDocument('移行した編み図', rows, cols);
-    await saveDocument(document, board);
-    await setSetting('legacyMigrationComplete', true);
-    return true;
+    return await createDocumentOnce(MIGRATION_COMPLETE_KEY, '移行した編み図', board) !== undefined;
   } catch (error) {
     console.error('旧データの移行に失敗しました', error);
     return false;

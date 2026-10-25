@@ -1,0 +1,23 @@
+# 2026-10-25 — 閉じられたIndexedDB接続を開き直し、旧データの移行を1つのトランザクションにする
+
+- 影響:
+  - ブラウザがIndexedDBの接続を閉じた後も、閉じた接続を使い続けて保存・読み込みが失敗し続けていた。接続が閉じられたとき（`terminated`）、別の接続が版の変更や削除を待っているとき（`blocking`、このときは自分の接続を閉じる）、開けなかったときは覚えた接続を捨て、次の操作で開き直す。古い接続の通知が新しい接続を捨てないよう、同じ試行かを確かめる。失敗した書き込みを自動で再送はしない。
+  - Web版の旧Safari `localStorage`からの移行は、空の編み図の作成、盤面の保存、完了の記録を別々のトランザクションで行っていた。途中で失敗すると空の編み図が残り、次の起動でもう1件増え、2つのタブが同時に初めて開くと移行した編み図が2件になった。共通storageに`createDocumentOnce`を足し、完了の記録の確認、編み図の追加、開く編み図の設定、完了の記録を1つのreadwriteトランザクションで行う。失敗すれば何も残らず、元の`localStorage`も残るので次の起動でやり直す。DB名、schema、設定キー（`legacyMigrationComplete`・`activeDocumentId`）、保存形式は変えない。
+  - `createDocument`のトランザクションの完了・中断の処理を、ほかの操作と同じ`finishTransaction`にそろえた（挙動は同じ）。
+  - `.knit`の復元で、編み図ごとに新しく作ったセルのバッファをもう一度コピーしていたのをやめた（最大の盤面1件あたり4MBのコピーが減る）。保存形式は変わらない。
+- 主なファイル: `packages/editor-core/storage/database.ts`、`packages/editor-core/storage/backupCodec.ts`、`src/storage/database.ts`。
+- テスト:
+  - `packages/editor-core/storage/databaseConnection.test.ts`（新規）：接続の使い回し、強制的に閉じられた後の再接続と保存、別の接続による削除で接続を閉じて開き直すこと（削除が待たされないこと）、開けなかった後の再試行、古い接続の終了通知が新しい接続を捨てないこと。
+  - `packages/editor-core/storage/database.test.ts`：`createDocument`で開く編み図の設定が失敗したときに編み図が残らないこと、`createDocumentOnce`が1回だけ追加すること、同時に呼んでも1件だけ追加すること、完了の記録が失敗したときに何も残らず再試行で1件だけ追加すること。
+  - `src/storage/database.test.ts`：移行した編み図の書き込みや完了の記録が失敗したときに編み図が残らず`localStorage`も残ること、次の起動で1件だけ移行すること、2つの起動が同時に移行しても1件になること、旧データが無いときは完了だけを記録すること。
+  - `packages/editor-core/storage/backupCodec.test.ts`：復元した編み図がそれぞれちょうどの長さの別のセルバッファを持つこと。
+  - 新しい接続・移行のテストは、変更前のコードに戻すと失敗することを手元で確かめた。
+- 検証（ローカルはNode v26.8.1。CI指定はNode 24）:
+  - `npm run typecheck`：成功。
+  - `npm test`：72ファイル・798件成功。
+  - `npm run build`：成功。`npm run check:dist`：成功。
+  - `ios/Web`で`../../node_modules/.bin/tsc -p tsconfig.app.json --noEmit`：成功。`../../node_modules/.bin/vitest run --config vite.config.ts`：16ファイル・139件成功。
+  - `npx playwright test tests/e2e/storage-conflicts.spec.ts tests/e2e/stored-chart-preservation.spec.ts tests/e2e/backup-pipeline.spec.ts`（全プロジェクト）：25件成功・2件スキップ。
+  - `npm run test:e2e`（全プロジェクト）：524件成功・7件スキップ。
+  - iPhone・iPadのテストは手元で実行していない。PRのCIと`ios-full.yml`に任せる。WebKitで接続が切れたときに`close`イベントが届くかは実機で確かめていない。
+- デプロイ影響: Pagesへ配信される。配信後に本番で編み図を編集して再読み込みし、保存されていることを確かめる。
