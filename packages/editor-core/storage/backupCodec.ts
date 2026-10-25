@@ -24,21 +24,28 @@ export const BACKUP_LIMITS = {
   maxBlocks: 5_000,
   maxBlockAnchors: MAX_BOARD_SIZE * MAX_BOARD_SIZE,
 } as const;
-/**
- * 記号が占めるセルを`occupied`へ登録する。すでに別の記号が占めていれば`message`で失敗させる。
- * 盤面とブロックの復元で、壊れたデータの重なりを同じ規則で弾く。
- */
-function claimFootprint(occupied: Set<number>, cols: number, row: number, col: number, definition: StitchDefinition, message: string): void {
+function footprintOverlaps(occupied: Set<number>, cols: number, row: number, col: number, definition: StitchDefinition): boolean {
   for (let y = 0; y < definition.height; y++) {
     for (let x = 0; x < definition.width; x++) {
-      const footprintIndex = (row + y) * cols + col + x;
-      if (occupied.has(footprintIndex)) throw new InvalidBackupError(message);
-      occupied.add(footprintIndex);
+      if (occupied.has((row + y) * cols + col + x)) return true;
     }
+  }
+  return false;
+}
+
+function addFootprint(occupied: Set<number>, cols: number, row: number, col: number, definition: StitchDefinition): void {
+  for (let y = 0; y < definition.height; y++) {
+    for (let x = 0; x < definition.width; x++) occupied.add((row + y) * cols + col + x);
   }
 }
 
-function validatePackedCells(rows: number, cols: number, bytes: Uint8Array): void {
+/**
+ * 盤面のセル配列を検査し、先に受け入れた記号と重なる記号を`bytes`から消す。
+ * 重なりは#157の修正前の段・列の削除で保存され得た（その盤面から作ったブロックにも入り得た）ため、
+ * 編み図ごと拒否せず`Board`の読み込みと同じく行優先で先に走査した起点を残す。
+ * 未知の記号とはみ出す記号は破損として拒否する。
+ */
+function normalizePackedCells(rows: number, cols: number, bytes: Uint8Array): void {
   if (bytes.byteLength % Uint32Array.BYTES_PER_ELEMENT !== 0) throw new InvalidBackupError('盤面データが破損しています');
   const cells = new Uint32Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / Uint32Array.BYTES_PER_ELEMENT);
   const legacyEncoding = cells.every((value) => value === 0 || (cellStitchId(value) === 0 && STITCH_BY_ID.has(value)));
@@ -54,7 +61,8 @@ function validatePackedCells(rows: number, cols: number, bytes: Uint8Array): voi
     if (row + definition.height > rows || col + definition.width > cols) {
       throw new InvalidBackupError('盤面データが破損しています');
     }
-    claimFootprint(occupied, cols, row, col, definition, '盤面データが重複しています');
+    if (footprintOverlaps(occupied, cols, row, col, definition)) { cells[index] = 0; continue; }
+    addFootprint(occupied, cols, row, col, definition);
   }
 }
 
@@ -94,7 +102,9 @@ function restoreBlock(value: unknown, now: number): PatternBlock {
     if (!definition || row + definition.height > rows || col + definition.width > cols) {
       throw new InvalidBackupError('ブロックに未対応または不正な記号が含まれています');
     }
-    claimFootprint(occupied, cols, row, col, definition, 'ブロックの記号が重複しています');
+    // 盤面と同じく、先に受け入れた記号と重なる記号は除く。
+    if (footprintOverlaps(occupied, cols, row, col, definition)) continue;
+    addFootprint(occupied, cols, row, col, definition);
     anchors.push({ row, col, value: cellStitchId(packedValue) === 0 ? packCell(packedValue, 0) : packedValue });
   }
   const lines = normalizeGuideLines(block.lines, rows, cols);
@@ -206,13 +216,13 @@ export function decodeBackup(data: Uint8Array): ImportBackupResult & { blocks: P
       throw new InvalidBackupError('盤面データが破損しています');
     }
     if (bytes.byteLength !== item.rows * item.cols * Uint32Array.BYTES_PER_ELEMENT) throw new InvalidBackupError('盤面データが破損しています');
-    validatePackedCells(item.rows, item.cols, bytes);
+    normalizePackedCells(item.rows, item.cols, bytes);
     // 地の色が壊れていても編み図は捨てず、白い地として復元する。
     const { backgroundColor: rawBackground, guideLines: rawLines, ...rest } = item;
     const backgroundColor = normalizeBackgroundColor(rawBackground);
     const lines = normalizeGuideLines(rawLines, item.rows, item.cols);
-    // `base64ToBytes`は編み図ごとにちょうどの長さの新しいバッファを作り、検証は読むだけなので、
-    // コピーせずにそのまま渡しても他の編み図とバッファを共有しない。
+    // `base64ToBytes`は編み図ごとにちょうどの長さの新しいバッファを作るので、正規化で書き換えても、
+    // コピーせずにそのまま渡しても、他の編み図とバッファを共有しない。
     return {
       ...rest, ...(lines.length ? { guideLines: lines } : {}), ...(backgroundColor ? { backgroundColor } : {}),
       id: crypto.randomUUID(), name: `${item.name}（復元）`, cells: bytes.buffer,

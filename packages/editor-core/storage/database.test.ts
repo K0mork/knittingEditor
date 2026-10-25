@@ -148,16 +148,48 @@ describe('backup restore', () => {
     }))).rejects.toThrow('未対応の記号');
   });
 
-  it('rejects overlapping block anchors instead of dropping malformed blocks', async () => {
+  it('restores every chart of a backup that holds a chart with overlapping symbols', async () => {
+    // #157の修正前に保存され得た、起点が重なった編み図。先に走査した起点を残して復元する。
+    const cross = packCell(STITCH_BY_KEY.get('right_cross')!.id, 0x33_6699);
+    const knit = packCell(knitId, 0xd3_3c32);
+    const result = await importBackup(backupBlob({
+      format: 'knitting-editor', version: 2, stitchCatalogVersion: 3,
+      documents: [
+        { name: '重なった編み図', rows: 1, cols: 3, cells: packedCells([cross, knit, knit]) },
+        { name: '正常な編み図', rows: 1, cols: 3, cells: packedCells([knit, cross, 0]) },
+      ],
+      blocks: [],
+    }));
+    expect(result.count).toBe(2);
+    const stored = await listDocuments();
+    const cellsOf = (name: string) => Array.from(new Uint32Array(stored.find((item) => item.name === name)!.cells));
+    expect(cellsOf('重なった編み図（復元）')).toEqual([cross, 0, knit]);
+    expect(cellsOf('正常な編み図（復元）')).toEqual([knit, cross, 0]);
+  });
+
+  it('restores a block with overlapping anchors by keeping the earlier one, together with every chart', async () => {
+    // #157の修正前の盤面から作られ得たブロック。拒否して全体の復元を止めず、先の記号を残す。
+    const cross = packCell(STITCH_BY_KEY.get('right_cross')!.id, 0x33_6699);
     const packedKnit = packCell(knitId, 0x12_3456);
+    const result = await importBackup(backupBlob({
+      format: 'knitting-editor', version: 2, stitchCatalogVersion: 3,
+      documents: [{ name: 'ブロックと一緒の編み図', rows: 1, cols: 1, cells: packedCells([packedKnit]) }],
+      blocks: [{
+        name: '重なったブロック', rows: 1, cols: 2,
+        anchors: [{ row: 0, col: 0, value: cross }, { row: 0, col: 1, value: packedKnit }, { row: 0, col: 0, value: packedKnit }],
+      }],
+    }));
+    expect(result.count).toBe(1);
+    const restored = (await listBlocks()).find((block) => block.name === '重なったブロック（復元）')!;
+    expect(restored.anchors).toEqual([{ row: 0, col: 0, value: cross }]);
+  });
+
+  it('still rejects block anchors that run past the edge of the block', async () => {
     await expect(importBackup(backupBlob({
       format: 'knitting-editor', version: 2, stitchCatalogVersion: 3,
       documents: [],
-      blocks: [{
-        name: '不正ブロック', rows: 1, cols: 1,
-        anchors: [{ row: 0, col: 0, value: packedKnit }, { row: 0, col: 0, value: packedKnit }],
-      }],
-    }))).rejects.toThrow('重複');
+      blocks: [{ name: '不正ブロック', rows: 1, cols: 1, anchors: [{ row: 0, col: 0, value: packCell(twoWideId, 0) }] }],
+    }))).rejects.toThrow('ブロックに未対応または不正な記号が含まれています');
   });
 });
 
