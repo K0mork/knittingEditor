@@ -6,8 +6,19 @@ describe('withTimeout', () => {
 
   it('returns the operation result and clears its timer', async () => {
     vi.useFakeTimers();
-    await expect(withTimeout(Promise.resolve('完了'), 1000, 'timeout')).resolves.toBe('完了');
-    await vi.runOnlyPendingTimersAsync();
+    const result = withTimeout(Promise.resolve('完了'), 1000, 'timeout');
+    expect(vi.getTimerCount()).toBe(1);
+    await expect(result).resolves.toBe('完了');
+    // 結果が先に届いたら、タイムアウトの予約は残さない。
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('passes the operation failure through and clears its timer', async () => {
+    vi.useFakeTimers();
+    const result = withTimeout(Promise.reject(new Error('読み込めませんでした')), 1000, 'timeout');
+    expect(vi.getTimerCount()).toBe(1);
+    await expect(result).rejects.toThrow('読み込めませんでした');
+    expect(vi.getTimerCount()).toBe(0);
   });
 
   it('rejects with the supplied message when the operation stalls', async () => {
