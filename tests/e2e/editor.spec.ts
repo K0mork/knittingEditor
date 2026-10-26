@@ -1038,8 +1038,3 @@ test('exports an exactly fitting tiled PDF as one estimated and actual page', as
   expect(file).not.toBeNull();
   expect(readFileSync(file!).toString('latin1')).toMatch(/\/Type \/Pages \/Kids \[[^\]]*\] \/Count 1\b/);
 });
-
-// #339の確認用。CIで失敗時の診断ファイルが保存されることを確かめたら取り消す。
-test('fails on purpose to check the uploaded Playwright trace (#339)', async ({ page }) => {
-  await expect(page.getByRole('heading', { name: 'わざと失敗させるための見出し' })).toBeVisible({ timeout: 1_000 });
-});
