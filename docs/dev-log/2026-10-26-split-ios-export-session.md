@@ -14,6 +14,6 @@
     - `KeyboardCommandUITests/testFileAndHelpShortcutsOpenEditorActions`
     - キーボードメニューの2件はメニューバーがiPadにのみ表示されるため、設計どおりiPhoneではスキップ。Full iOS validationのiPadジョブで実行する。
   - 変更したSwiftファイルへの`swiftc -frontend -parse`、`WebViewModel`本体のバイト比較（純粋移動を確認）、`node scripts/check-pr-smoke-ui-tests.mjs`、`bash ios/scripts/check-app-store-docs.sh`、`git diff --check`: 成功。
-  - このブランチでの`ios-full.yml`手動実行: `TODO(lead)`。
+  - このブランチ（4dba2d4）での`ios-full.yml`手動実行: iPhone 17・iPad (A16)の`ios_full`と`app_update`、`release_archive`がすべて成功（https://github.com/K0mork/knittingEditor/actions/runs/40253978456 ）。
   - 未実行: NodeのWeb検証（Web・共有コード変更なし）、実機検証。
 - デプロイ影響: Pagesへの影響なし。iOSアプリ更新に含まれる。マージ前の機能ブランチとマージ後のmainでFull iOS validationの全ジョブを確認する。
