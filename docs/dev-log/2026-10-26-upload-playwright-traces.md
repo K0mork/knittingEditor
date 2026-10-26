@@ -14,5 +14,5 @@
   - `cd ios/Web && ../../node_modules/.bin/vitest run --config vite.config.ts`: 17ファイル・145件成功。
   - `npm run test:e2e`: 全project（Chromium・WebKit）で530件成功・7件スキップ。
   - `git diff --check`: 成功。
-  - PRのCIでの確認: TODO(lead)
+  - PRのCIでの確認: E2Eを1件わざと失敗させるコミットを入れて実行した（https://github.com/K0mork/knittingEditor/actions/runs/40251405023 ）。`web`のE2Eステップが失敗し、`Upload Playwright failure artifacts`が成功して`playwright-failure-40251405023-1`が保存された。取得したtraceをtrace viewerで開き、失敗した`toBeVisible`とその時点の画面を確認した。保存のあとも`web`と`ci-gate`は失敗のままで、`deploy`と`smoke`はskipされた。確認用のコミットはrevertで取り消した。
 - デプロイ影響: 配信サイト内容・Pages成果物・deploy／smoke／ci-gateの条件・権限・依存関係は変更なし。配信後の追加確認はなし。
