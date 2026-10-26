@@ -739,7 +739,11 @@ test('describes the board and the current mode for assistive technology', async 
 });
 
 
-type RestoreDecodeWindow = Window & { restoreDecode: { held: boolean; release: () => void } };
+declare global {
+  interface Window {
+    restoreDecode: { held: boolean; release: () => void };
+  }
+}
 
 for (const action of ['draw', 'undo'] as const) {
   test(`saves ${action} during restore decoding before switching charts`, async ({ page }) => {
@@ -747,12 +751,13 @@ for (const action of ['draw', 'undo'] as const) {
       const original = Worker.prototype.postMessage;
       const queued: Array<() => void> = [];
       const state = { held: false, release: () => { queued.splice(0).forEach((send) => send()); } };
-      (window as RestoreDecodeWindow).restoreDecode = state;
-      Worker.prototype.postMessage = function (...args: Parameters<Worker['postMessage']>) {
-        if (args[0]?.operation === 'decode') {
+      window.restoreDecode = state;
+      Worker.prototype.postMessage = function (this: Worker, ...args: [message: unknown, options?: Transferable[] | StructuredSerializeOptions]) {
+        const send = () => { Reflect.apply(original, this, args); };
+        if ((args[0] as { operation?: unknown } | null | undefined)?.operation === 'decode') {
           state.held = true;
-          queued.push(() => original.apply(this, args));
-        } else original.apply(this, args);
+          queued.push(send);
+        } else send();
       };
     });
     await page.reload();
@@ -767,7 +772,7 @@ for (const action of ['draw', 'undo'] as const) {
     await page.locator('input[type="file"]').setInputFiles({
       name: 'restore.knit', mimeType: 'application/gzip', buffer: Buffer.from(fixture, 'base64'),
     });
-    await expect.poll(() => page.evaluate(() => (window as RestoreDecodeWindow).restoreDecode.held)).toBe(true);
+    await expect.poll(() => page.evaluate(() => window.restoreDecode.held)).toBe(true);
     await expect(page.locator('.busy')).toHaveText('バックアップを処理中');
     if (action === 'draw') {
       // 画面中央の「バックアップを処理中」は画面幅によって重なるマスが変わるので、重ならないマスを探して描く。
@@ -783,7 +788,7 @@ for (const action of ['draw', 'undo'] as const) {
     const count = action === 'draw' ? 2 : 0;
     await expect(canvas).toHaveAttribute('aria-label', new RegExp(`記号${count}個`));
     await expectAutosaveDelayed(page);
-    await page.evaluate(() => (window as RestoreDecodeWindow).restoreDecode.release());
+    await page.evaluate(() => window.restoreDecode.release());
     await expect(page.locator('.app-document-name')).toContainText('相互運用fixture（復元）');
     await expect(page.locator('.toast')).toHaveText('1件の編み図を復元しました');
     await page.getByRole('button', { name: '編み図', exact: true }).click();
