@@ -253,3 +253,219 @@ final class NativeErrorDeliveryTests: XCTestCase {
         try harness.assertErrors(["対応していないファイル形式です"])
     }
 }
+
+/// WebContent終了後の復旧と、文書をまたぐ配送の境界を検証する。
+final class WebContentRecoveryTests: XCTestCase {
+    @MainActor
+    private final class RecordingWebView: WKWebView {
+        var currentURL: URL?
+        var loadedRequests: [URLRequest] = []
+        var reloadCount = 0
+
+        override var url: URL? { currentURL }
+
+        override func load(_ request: URLRequest) -> WKNavigation? {
+            loadedRequests.append(request)
+            return nil
+        }
+
+        override func reload() -> WKNavigation? {
+            reloadCount += 1
+            return nil
+        }
+    }
+
+    @MainActor
+    func testInitialLoadFailureRetryLoadsBundledIndexWithoutURL() {
+        let model = WebViewModel()
+        let webView = RecordingWebView(frame: .zero)
+        model.attach(webView)
+        let coordinator = WebViewContainer.Coordinator(model: model)
+        coordinator.webView(webView, didFailProvisionalNavigation: nil, withError: NSError(domain: "test", code: 1))
+        model.retryEditorLoad()
+        XCTAssertEqual(webView.loadedRequests.map(\.url), [LocalWebSchemeHandler.indexURL])
+        XCTAssertEqual(webView.reloadCount, 0)
+        model.webContentDidBecomeReady()
+    }
+
+    @MainActor
+    func testTerminationAndRetryUseDefaultReloadForExistingDocument() {
+        let model = WebViewModel()
+        let webView = RecordingWebView(frame: .zero)
+        webView.currentURL = LocalWebSchemeHandler.indexURL
+        model.attach(webView)
+        model.webContentDidBecomeReady()
+        let coordinator = WebViewContainer.Coordinator(model: model)
+        coordinator.webViewWebContentProcessDidTerminate(webView)
+        XCTAssertEqual(webView.reloadCount, 1)
+        model.editorLoadDidFail()
+        coordinator.webViewWebContentProcessDidTerminate(webView)
+        XCTAssertEqual(webView.reloadCount, 1)
+        XCTAssertNotNil(model.editorLoadFailure)
+        model.retryEditorLoad()
+        XCTAssertEqual(webView.reloadCount, 2)
+        XCTAssertTrue(webView.loadedRequests.isEmpty)
+        model.webContentDidBecomeReady()
+    }
+
+    @MainActor
+    func testCommittedNavigationInvalidatesExportResult() throws {
+        let model = WebViewModel()
+        let webView = RecordingWebView(frame: .zero)
+        webView.currentURL = URL(string: "knitting-local://bundle/guide/")
+        let coordinator = WebViewContainer.Coordinator(model: model)
+        XCTAssertTrue(coordinator.preparePendingExport(data: Data([1]), filename: "chart.knit", mimeType: "application/gzip", requestID: "old"))
+        let directory = try XCTUnwrap(coordinator.pendingExport?.directory)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        coordinator.webView(webView, didCommit: nil)
+        XCTAssertNil(coordinator.pendingExport?.requestID)
+        XCTAssertFalse(model.isPreparingEditor)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: directory.path))
+    }
+
+    @MainActor
+    func testTerminationPreparesEditorAndReadyClearsFailure() {
+        let model = WebViewModel()
+        model.webContentDidBecomeReady()
+        XCTAssertTrue(model.webContentProcessDidTerminate(now: Date(timeIntervalSince1970: 100)))
+        XCTAssertTrue(model.isPreparingEditor)
+        XCTAssertFalse(model.webContentReady)
+        model.webContentDidBecomeReady()
+        XCTAssertFalse(model.isPreparingEditor)
+        XCTAssertTrue(model.webContentReady)
+        XCTAssertNil(model.editorLoadFailure)
+    }
+
+    @MainActor
+    func testRapidRepeatedTerminationStopsEvenAfterReady() {
+        for ready in [true, false] {
+            let model = WebViewModel()
+            XCTAssertTrue(model.webContentProcessDidTerminate(now: Date(timeIntervalSince1970: 100)))
+            if ready { model.webContentDidBecomeReady() }
+            XCTAssertFalse(model.webContentProcessDidTerminate(now: Date(timeIntervalSince1970: 105)))
+            XCTAssertNotNil(model.editorLoadFailure)
+            XCTAssertTrue(model.isPreparingEditor)
+        }
+    }
+
+    @MainActor
+    func testConsecutiveRecoveryCapStopsSlowFailures() {
+        let model = WebViewModel()
+        XCTAssertTrue(model.webContentProcessDidTerminate(now: Date(timeIntervalSince1970: 100)))
+        XCTAssertTrue(model.webContentProcessDidTerminate(now: Date(timeIntervalSince1970: 111)))
+        XCTAssertFalse(model.webContentProcessDidTerminate(now: Date(timeIntervalSince1970: 122)))
+        XCTAssertNotNil(model.editorLoadFailure)
+    }
+
+    @MainActor
+    func testLaterTerminationCanRecoverAgain() {
+        let model = WebViewModel()
+        XCTAssertTrue(model.webContentProcessDidTerminate(now: Date(timeIntervalSince1970: 100)))
+        model.webContentDidBecomeReady()
+        XCTAssertTrue(model.webContentProcessDidTerminate(now: Date(timeIntervalSince1970: 111)))
+        model.webContentDidBecomeReady()
+    }
+
+    @MainActor
+    func testFailedRecoveryAndRetry() {
+        let model = WebViewModel()
+        let webView = WKWebView(frame: .zero)
+        model.attach(webView)
+        var reloads = 0
+        model.reloadWebView = { view in
+            XCTAssertTrue(view === webView)
+            reloads += 1
+        }
+        XCTAssertTrue(model.webContentProcessDidTerminate())
+        model.editorLoadDidFail()
+        XCTAssertNotNil(model.editorLoadFailure)
+        model.retryEditorLoad()
+        XCTAssertEqual(reloads, 1)
+        XCTAssertNil(model.editorLoadFailure)
+        XCTAssertTrue(model.isPreparingEditor)
+        XCTAssertFalse(model.webContentReady)
+        model.webContentDidBecomeReady()
+        XCTAssertNil(model.editorLoadFailure)
+    }
+
+    @MainActor
+    func testTimeoutFailsOnlyWhileRecovering() {
+        let model = WebViewModel()
+        XCTAssertTrue(model.webContentProcessDidTerminate())
+        model.editorRecoveryDidTimeOut(id: UUID())
+        XCTAssertNil(model.editorLoadFailure)
+        model.editorRecoveryDidTimeOut()
+        XCTAssertNotNil(model.editorLoadFailure)
+        model.retryEditorLoad()
+        model.webContentDidBecomeReady()
+        model.editorRecoveryDidTimeOut()
+        XCTAssertNil(model.editorLoadFailure)
+    }
+
+    @MainActor
+    func testLoadFailuresShowRetryOnlyForUnreadyEditor() {
+        let model = WebViewModel()
+        let coordinator = WebViewContainer.Coordinator(model: model)
+        let webView = WKWebView(frame: .zero)
+        let error = NSError(domain: "test", code: 1)
+        coordinator.webView(webView, didFailProvisionalNavigation: nil, withError: error)
+        XCTAssertNotNil(model.editorLoadFailure)
+        model.retryEditorLoad()
+        coordinator.webView(webView, didFail: nil, withError: error)
+        XCTAssertNotNil(model.editorLoadFailure)
+        model.webContentDidBecomeReady()
+        model.editorLoadDidFail()
+        XCTAssertNil(model.editorLoadFailure)
+        model.webContentDidStartNavigation(to: URL(string: "knitting-local://bundle/guide/"))
+        model.editorLoadDidFail()
+        XCTAssertNil(model.editorLoadFailure)
+        XCTAssertTrue(model.webContentProcessDidTerminate())
+        XCTAssertFalse(model.isPreparingEditor)
+    }
+
+    @MainActor
+    func testPendingDeliveriesWaitAndDeliveredNoticesAreNotReplayed() {
+        let model = WebViewModel()
+        let webView = WKWebView(frame: .zero)
+        model.attach(webView)
+        var scripts: [String] = []
+        model.evaluateScript = { _, script in scripts.append(script) }
+        model.presentError("配送済み")
+        model.webContentDidBecomeReady()
+        XCTAssertEqual(scripts.count, 1)
+        model.webContentDidStartNavigation(to: LocalWebSchemeHandler.indexURL)
+        model.deliverBackup(Data([1]), filename: "chart.knit")
+        model.presentError("保留中")
+        XCTAssertTrue(model.webContentProcessDidTerminate())
+        XCTAssertEqual(scripts.count, 1)
+        model.webContentDidBecomeReady()
+        XCTAssertEqual(scripts.count, 3)
+        XCTAssertTrue(scripts[1].contains("chart.knit"))
+        XCTAssertTrue(scripts[2].contains("保留中"))
+        model.webContentDidBecomeReady()
+        XCTAssertEqual(scripts.count, 3)
+    }
+
+    @MainActor
+    func testTerminationInvalidatesExportResultButKeepsFileUntilDismissal() throws {
+        let model = WebViewModel()
+        let coordinator = WebViewContainer.Coordinator(model: model)
+        let webView = WKWebView(frame: .zero)
+        model.reloadWebView = { _ in }
+        var results: [String] = []
+        coordinator.reportExportResult = { id, _, _, _ in results.append(id) }
+        XCTAssertTrue(coordinator.preparePendingExport(data: Data([1]), filename: "chart.knit", mimeType: "application/gzip", requestID: "old"))
+        let directory = try XCTUnwrap(coordinator.pendingExport?.directory)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        model.isPresentingNativeUI = true
+        coordinator.webViewWebContentProcessDidTerminate(webView)
+        XCTAssertNil(coordinator.pendingExport?.requestID)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: directory.path))
+        XCTAssertTrue(model.isPresentingNativeUI)
+        model.webContentDidBecomeReady()
+        coordinator.finishSharing(completed: true)
+        XCTAssertTrue(results.isEmpty)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: directory.path))
+        XCTAssertFalse(model.isPresentingNativeUI)
+    }
+}

@@ -35,6 +35,70 @@ final class WebViewModel {
     /// アプリ内で編集画面へ戻るときとで変える。
     private(set) var hasShownEditor = false
 
+    private(set) var editorLoadFailure: String?
+    @ObservationIgnored private var isEditorDocument = true
+    @ObservationIgnored private var consecutiveRecoveries = 0
+    @ObservationIgnored private var lastAutomaticRecovery: Date?
+    @ObservationIgnored var reloadWebView: (WKWebView) -> Void = { webView in
+        if webView.url == nil {
+            webView.load(URLRequest(url: LocalWebSchemeHandler.indexURL))
+        } else {
+            webView.reload()
+        }
+    }
+    @ObservationIgnored private var recoveryTimeout: Task<Void, Never>?
+    @ObservationIgnored private var recoveryID: UUID?
+
+    /// 保存領域は変更せず、終了した文書の読み込みだけをやり直す。
+    @discardableResult
+    func webContentProcessDidTerminate(now: Date = Date()) -> Bool {
+        webContentReady = false
+        editorCommandState = EditorCommandState()
+        guard isEditorDocument else { return true }
+        isPreparingEditor = true
+        if editorLoadFailure != nil || consecutiveRecoveries >= 2 || lastAutomaticRecovery.map({ now.timeIntervalSince($0) < 10 }) == true {
+            editorLoadDidFail()
+            return false
+        }
+        consecutiveRecoveries += 1
+        lastAutomaticRecovery = now
+        beginEditorRecovery()
+        return true
+    }
+
+    func retryEditorLoad() {
+        lastAutomaticRecovery = nil
+        consecutiveRecoveries = 0
+        beginEditorRecovery()
+        if let webView { reloadWebView(webView) }
+    }
+
+    private func beginEditorRecovery() {
+        webContentReady = false
+        isPreparingEditor = true
+        editorLoadFailure = nil
+        recoveryTimeout?.cancel()
+        let id = UUID()
+        recoveryID = id
+        recoveryTimeout = Task { @MainActor [weak self] in
+            do { try await Task.sleep(nanoseconds: 30_000_000_000) } catch { return }
+            self?.editorRecoveryDidTimeOut(id: id)
+        }
+    }
+
+    func editorRecoveryDidTimeOut(id: UUID? = nil) {
+        guard let recoveryID, id == nil || id == recoveryID else { return }
+        editorLoadDidFail()
+    }
+
+    func editorLoadDidFail() {
+        guard isPreparingEditor, !webContentReady else { return }
+        recoveryTimeout?.cancel()
+        recoveryTimeout = nil
+        recoveryID = nil
+        editorLoadFailure = "編み図を読み込めませんでした。再試行してください。最後の保存後の変更は失われる場合があります。"
+    }
+
     var loadingStyle: EditorLoadingStyle {
         hasShownEditor ? .inApp : .launch
     }
@@ -49,6 +113,11 @@ final class WebViewModel {
     }
 
     func webContentDidBecomeReady() {
+        consecutiveRecoveries = 0
+        recoveryTimeout?.cancel()
+        recoveryTimeout = nil
+        recoveryID = nil
+        editorLoadFailure = nil
         webContentReady = true
         // WebViewからの通知は表示の外で届くので、表示側の`.animation`では消える動きが付かない。
         // ここで動きを付けて、準備中の表示から編集画面へふわっとつなぐ（#117）。
@@ -63,7 +132,14 @@ final class WebViewModel {
     /// 一度破棄される。新しい文書が`webReady`を送るまで配送を保留する。
     func webContentDidStartNavigation(to url: URL?) {
         webContentReady = false
-        isPreparingEditor = Self.isEditorPage(url)
+        isEditorDocument = Self.isEditorPage(url)
+        isPreparingEditor = isEditorDocument
+        if !isPreparingEditor {
+            recoveryTimeout?.cancel()
+            recoveryTimeout = nil
+            recoveryID = nil
+            editorLoadFailure = nil
+        }
     }
 
     /// 同梱ページのうち、Reactの編集画面を読み込むものだけを判定する。
@@ -322,6 +398,7 @@ struct WebViewContainer: UIViewRepresentable {
             var requestID: String?
         }
 
+        private var documentID = UUID()
         private let model: WebViewModel
         private weak var webView: WKWebView?
         private(set) var pendingExport: PendingExport?
@@ -376,12 +453,16 @@ struct WebViewContainer: UIViewRepresentable {
             case let .success(.commandState(state)):
                 model.editorCommandState = state
             case .success(.openBackup):
+                let documentID = self.documentID
                 DispatchQueue.main.async { [weak self] in
-                    self?.presentBackupPicker()
+                    guard let self, self.documentID == documentID else { return }
+                    self.presentBackupPicker()
                 }
             case let .success(.exportFile(data, filename, mimeType, requestID)):
+                let documentID = self.documentID
                 DispatchQueue.main.async { [weak self] in
-                    self?.presentExportOptions(data: data, filename: filename, mimeType: mimeType, requestID: requestID)
+                    guard let self, self.documentID == documentID else { return }
+                    self.presentExportOptions(data: data, filename: filename, mimeType: mimeType, requestID: requestID)
                 }
             case let .failure(error):
                 model.presentError(bridgeErrorMessage(error))
@@ -435,7 +516,16 @@ struct WebViewContainer: UIViewRepresentable {
             return .cancel
         }
 
+        func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+            documentID = UUID()
+            // 表示中の保存・共有画面と一時ファイルは閉じるまで維持し、結果の返却先だけを捨てる。
+            pendingExport?.requestID = nil
+            (webView as? FoldAwareWebView)?.foldPageDidStartNavigation()
+            if model.webContentProcessDidTerminate() { model.reloadWebView(webView) }
+        }
+
         func webView(_ webView: WKWebView, didCommit navigation: WKNavigation?) {
+            documentID = UUID()
             model.webContentDidStartNavigation(to: webView.url)
             (webView as? FoldAwareWebView)?.foldPageDidStartNavigation()
             // 要求を送った文書はもう無い。新しい文書へ古いIDの結果を送らない。
@@ -447,6 +537,7 @@ struct WebViewContainer: UIViewRepresentable {
             didFail navigation: WKNavigation?,
             withError error: Error
         ) {
+            model.editorLoadDidFail()
             NSLog("Local web content failed to load: %@", error.localizedDescription)
         }
 
@@ -455,6 +546,7 @@ struct WebViewContainer: UIViewRepresentable {
             didFailProvisionalNavigation navigation: WKNavigation?,
             withError error: Error
         ) {
+            model.editorLoadDidFail()
             NSLog("Local web content failed to start: %@", error.localizedDescription)
         }
 
