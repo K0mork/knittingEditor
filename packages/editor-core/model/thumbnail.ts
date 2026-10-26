@@ -55,7 +55,7 @@ function stitches(): StitchTable {
  * packed値のセル配列から縮小画像を作る。
  *
  * 記号IDだけを持つ旧形式のセル（色の無い値）は`boardFromDocument`と同じく黒の記号として読む。
- * 未知の記号と盤面からはみ出す記号は、`Board`が読み込むときと同じく描かない。
+ * 未知の記号、盤面からはみ出す記号、先に走査した記号と重なる記号は、`Board`が読み込むときと同じく描かない。
  */
 export function renderThumbnail(rows: number, cols: number, cells: Uint32Array, background: string = DEFAULT_BACKGROUND_COLOR): ChartThumbnail {
   const { width, height, step } = thumbnailSize(rows, cols);
@@ -65,6 +65,7 @@ export function renderThumbnail(rows: number, cols: number, cells: Uint32Array, 
   const blue = new Uint32Array(width * height);
   const covered = new Uint32Array(width * height);
   const total = Math.min(cells.length, rows * cols);
+  const occupied = new Uint8Array(rows * cols);
   for (let index = 0; index < total; index++) {
     const value = cells[index];
     if (!value) continue;
@@ -82,6 +83,12 @@ export function renderThumbnail(rows: number, cols: number, cells: Uint32Array, 
     const row = Math.floor(index / cols);
     const col = index - row * cols;
     if (row + stitchHeight > rows || col + stitchWidth > cols) continue;
+    let overlaps = false;
+    for (let y = row; y < row + stitchHeight && !overlaps; y++) {
+      for (let x = col; x < col + stitchWidth; x++) if (occupied[y * cols + x]) { overlaps = true; break; }
+    }
+    if (overlaps) continue;
+    for (let y = row; y < row + stitchHeight; y++) occupied.fill(1, y * cols + col, y * cols + col + stitchWidth);
     if (table.whiteout[stitchId]) color = WHITE;
     const r = (color >>> 16) & 0xff;
     const g = (color >>> 8) & 0xff;
