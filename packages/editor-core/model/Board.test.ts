@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Board, cellColor, cellStitchId, colorHex, parseColor } from './Board';
+import { Board, cellColor, cellStitchId, colorHex, packCell, parseColor } from './Board';
 import { STITCH_BY_KEY } from '../stitches/catalog';
 
 describe('Board', () => {
@@ -74,6 +74,51 @@ describe('Board', () => {
     board.place(2, 4, 'knit', '#222222');
     expect(board.valueAt(2, 2)).toBe(0);
     expect(cellStitchId(board.valueAt(2, 4))).toBe(STITCH_BY_KEY.get('knit')!.id);
+  });
+
+  it('keeps the earlier-scanned symbol and drops later ones that overlap it when loading saved cells', () => {
+    // #157の修正前に保存され得た、起点が重なった盤面。行優先で先に走査した起点を残す。
+    const cross = packCell(STITCH_BY_KEY.get('right_cross')!.id, 0x33_6699);
+    const knit = packCell(STITCH_BY_KEY.get('knit')!.id, 0xd3_3c32);
+    const slip = packCell(STITCH_BY_KEY.get('slip_stitch')!.id, 0x00_8000);
+    const purl = packCell(STITCH_BY_KEY.get('purl')!.id, 0);
+    // (0,0)右上交差が(0,1)の表目と、(0,2)すべり目が(1,1)の右上交差と、それぞれ重なる。
+    const cells = Uint32Array.of(
+      cross, knit, slip,
+      purl, cross, 0,
+    );
+    const board = new Board(2, 3, cells);
+    expect(Array.from(board.cells)).toEqual([cross, 0, slip, purl, 0, 0]);
+    expect(board.occupiedStitchCount).toBe(3);
+    expect(board.anchorAt(0, 1)).toEqual({ row: 0, col: 0 });
+    expect(board.anchorAt(1, 2)).toEqual({ row: 0, col: 2 });
+    expect(board.anchorAt(1, 1)).toBeUndefined();
+    // 残した記号は1つの単位として消え、所有情報も残らない。
+    expect(board.clearAt(0, 1)).toBe(true);
+    expect(board.anchorAt(0, 0)).toBeUndefined();
+    expect(board.anchorAt(0, 1)).toBeUndefined();
+    expect(board.occupiedStitchCount).toBe(2);
+    // 渡したセル配列は書き換えない。元に戻す・やり直すの復元でも同じ規則にする。
+    expect(cells[1]).toBe(knit);
+    board.restore(2, 3, cells);
+    expect(Array.from(board.cells)).toEqual([cross, 0, slip, purl, 0, 0]);
+    expect(board.occupiedStitchCount).toBe(3);
+  });
+
+  it('pastes a block with overlapping symbols by keeping the earlier anchor', () => {
+    // #157の修正前の盤面から作られ得たブロック。盤面の読み込みと同じく先の記号を残す。
+    const cross = packCell(STITCH_BY_KEY.get('right_cross')!.id, 0x33_6699);
+    const knit = packCell(STITCH_BY_KEY.get('knit')!.id, 0xd3_3c32);
+    const purl = packCell(STITCH_BY_KEY.get('purl')!.id, 0);
+    const board = new Board(2, 3);
+    board.place(0, 2, 'purl', 0);
+    expect(board.pasteBlock({
+      id: 'b', name: '重なったブロック', rows: 1, cols: 2, createdAt: 0,
+      anchors: [{ row: 0, col: 0, value: cross }, { row: 0, col: 1, value: knit }],
+    }, 0, 0)).toBe(true);
+    expect(Array.from(board.cells)).toEqual([cross, 0, purl, 0, 0, 0]);
+    expect(board.anchorAt(0, 1)).toEqual({ row: 0, col: 0 });
+    expect(board.occupiedStitchCount).toBe(2);
   });
 
   it('keeps the established footprints for decreases and slip stitches', () => {

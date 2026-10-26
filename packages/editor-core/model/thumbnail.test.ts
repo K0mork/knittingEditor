@@ -85,6 +85,14 @@ describe('renderThumbnail', () => {
     for (let x = 0; x < 3; x++) expect(pixel(thumbnail, x, 0)).toEqual([255, 255, 255, 255]);
   });
 
+  it('skips symbols that overlap an earlier-scanned one, as the board does when loading', () => {
+    // (0,0)の右上交差が(0,1)の赤い表目と重なる。先に走査した交差だけを描く。
+    const cells = Uint32Array.of(packCell(id('right_cross'), 0), packCell(id('knit'), 0xff_0000));
+    const thumbnail = renderThumbnail(1, 2, cells);
+    expect(pixel(thumbnail, 0, 0)).toEqual([0, 0, 0, 255]);
+    expect(pixel(thumbnail, 1, 0)).toEqual([0, 0, 0, 255]);
+  });
+
   it('tolerates a cell array shorter than the board', () => {
     const thumbnail = renderThumbnail(2, 2, Uint32Array.of(packCell(id('knit'), 0)));
     expect(pixel(thumbnail, 0, 0)).toEqual([0, 0, 0, 255]);

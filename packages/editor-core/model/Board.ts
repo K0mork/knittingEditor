@@ -259,13 +259,21 @@ export class Board {
       }
     }
     owners.forEach((owner) => this.clearOwner(owner));
+    // 貼付範囲は空けてあるので、占有済みのセルは先に置いたブロックの記号のもの。
+    // #157の修正前に作られ、記号が重なったブロックでは、盤面の読み込みと同じく先の記号を残す。
     for (const anchor of block.anchors) {
       const definition = STITCH_BY_ID.get(cellStitchId(anchor.value));
-      if (definition) this.place(top + anchor.row, left + anchor.col, definition.key, cellColor(anchor.value), false);
+      const row = top + anchor.row;
+      const col = left + anchor.col;
+      if (definition && this.footprintFree(row, col, definition)) this.place(row, col, definition.key, cellColor(anchor.value), false);
     }
     return true;
   }
 
+  /**
+   * セル配列から所有情報を作り直す。未知の記号、はみ出す記号、先に受け入れた記号と重なる記号は消す。
+   * 重なりは#157の修正前の段・列の削除で保存され得た。行優先で先に走査した起点を残す。
+   */
   private rebuildOwners(): void {
     this.owners.fill(-1);
     this.occupiedCount = 0;
@@ -276,7 +284,7 @@ export class Board {
       if (!definition) { this.cells[index] = 0; continue; }
       const row = Math.floor(index / this.cols);
       const col = index % this.cols;
-      if (!this.canFit(row, col, definition)) { this.cells[index] = 0; continue; }
+      if (!this.footprintFree(row, col, definition)) { this.cells[index] = 0; continue; }
       this.occupiedCount += 1;
       this.eachFootprint(row, col, definition, (targetRow, targetCol) => {
         this.owners[this.index(targetRow, targetCol)] = index;
@@ -286,6 +294,16 @@ export class Board {
 
   private canFit(row: number, col: number, definition: StitchDefinition): boolean {
     return row >= 0 && col >= 0 && row + definition.height <= this.rows && col + definition.width <= this.cols;
+  }
+
+  /** 記号が盤面に収まり、占めるセルがどれも他の記号に占められていないか。 */
+  private footprintFree(row: number, col: number, definition: StitchDefinition): boolean {
+    if (!this.canFit(row, col, definition)) return false;
+    let free = true;
+    this.eachFootprint(row, col, definition, (targetRow, targetCol) => {
+      if (this.owners[this.index(targetRow, targetCol)] >= 0) free = false;
+    });
+    return free;
   }
 
   private eachFootprint(row: number, col: number, definition: StitchDefinition, callback: (row: number, col: number) => void): void {
