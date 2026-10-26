@@ -45,14 +45,23 @@ struct ContentView: View {
                     Color(uiColor: style.backgroundColor)
                         .ignoresSafeArea()
                     VStack(spacing: 12) {
-                        ProgressView()
-                            .tint(Color(uiColor: style.foregroundColor))
-                        Text("編み図を準備しています…")
-                            .font(.body)
-                            .foregroundStyle(Color(uiColor: style.foregroundColor))
+                        if let failure = model.editorLoadFailure {
+                            Text(failure)
+                                .multilineTextAlignment(.center)
+                            Button("再試行") { model.retryEditorLoad() }
+                                .buttonStyle(.bordered)
+                                .accessibilityIdentifier("editorLoadRetryButton")
+                        } else {
+                            ProgressView()
+                                .tint(Color(uiColor: style.foregroundColor))
+                            Text("編み図を準備しています…")
+                                .accessibilityLabel("編み図を準備しています")
+                        }
                     }
-                    .accessibilityElement(children: .combine)
-                    .accessibilityLabel("編み図を準備しています")
+                    .font(.body)
+                    .foregroundStyle(Color(uiColor: style.foregroundColor))
+                    .padding(24)
+                    .accessibilityElement(children: .contain)
                     .accessibilityIdentifier("editorLoadingOverlay")
                 }
                 // 出すときはすぐ覆い、消すときだけ編集画面へふわっとつなぐ（#117）。動きは
