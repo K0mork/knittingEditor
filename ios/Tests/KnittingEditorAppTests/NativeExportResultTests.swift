@@ -135,6 +135,61 @@ final class NativeExportResultTests: XCTestCase {
     }
 
     @MainActor
+    func testMissingPresenterCancelsPreviousExportAndReportsNewRequestFailure() throws {
+        let harness = Harness()
+        let directory = try harness.prepareExport()
+        harness.coordinator.presentExportOptions(data: Data([4]), filename: "next.png", mimeType: "image/png", requestID: "next")
+        XCTAssertEqual(harness.reports.map(\.0), ["export-1", "next"])
+        XCTAssertEqual(harness.reports.map(\.1), [false, false])
+        XCTAssertEqual(harness.statuses, [nil, nil])
+        XCTAssertNil(harness.coordinator.pendingExport)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: directory.path))
+    }
+
+    @MainActor
+    func testDetachCleansExportAndDropsLaterDelegateResults() throws {
+        for sharing in [false, true] {
+            let harness = Harness()
+            let directory = try harness.prepareExport()
+            harness.coordinator.pickerPurpose = .exportFile
+            harness.coordinator.detach()
+            if sharing {
+                harness.coordinator.finishSharing(completed: true)
+            } else {
+                harness.coordinator.documentPicker(UIDocumentPickerViewController(forOpeningContentTypes: [.data]), didPickDocumentsAt: [])
+            }
+            harness.coordinator.detach()
+            harness.assertFinished([], directory: directory)
+            XCTAssertNil(harness.coordinator.pickerPurpose)
+        }
+    }
+
+    @MainActor
+    func testSessionFinishesOnceAndRemovesFileBeforeReportingAndReview() throws {
+        let session = try ExportSession(data: Data([1]), filename: "chart.png", mimeType: "image/png", requestID: "session")
+        var events: [String] = []
+        func finish() {
+            session.finish(saved: true, status: .completed, failureNotice: nil, report: { id, saved, status, notice in
+                XCTAssertEqual(id, "session")
+                XCTAssertTrue(saved)
+                XCTAssertEqual(status, .completed)
+                XCTAssertNil(notice)
+                XCTAssertFalse(FileManager.default.fileExists(atPath: session.directory.path))
+                events.append("report")
+                finish()
+            }, reportFailure: { _ in
+                XCTFail("成功時はエラーを表示しない")
+            }, didSave: { mime in
+                XCTAssertEqual(mime, "image/png")
+                events.append("review")
+            })
+        }
+        finish()
+        finish()
+        XCTAssertEqual(events, ["report", "review"])
+    }
+
+    @MainActor
     func testSavingFromDocumentPickerReportsSaved() throws {
         let harness = Harness()
         let directory = try harness.prepareExport()
