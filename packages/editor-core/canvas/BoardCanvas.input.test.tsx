@@ -109,6 +109,36 @@ it('keeps single-finger selection working and ignores the band endpoint', () => 
   ui.close();
 });
 
+it('expands the released selection from the pointerup endpoint without a committed move', () => {
+  for (const [startX, endX] of [[51, 81], [81, 51]]) {
+    const ui = setup('select');
+    for (let row = 0; row < 3; row++) ui.board.place(row, row % 2, 'slip_stitch', '#000000');
+    ui.pointer('pointerdown', 1, startX, 141, 'mouse');
+    expect(ui.selection()).toEqual({ top: 3, left: startX === 51 ? 0 : 1, bottom: 3, right: startX === 51 ? 0 : 1 });
+    // A continuous pointermove need not have rendered before the discrete pointerup.
+    ui.pointer('pointerup', 1, endX, 141, 'mouse');
+    expect(ui.selection()).toEqual({ top: 0, left: 0, bottom: 3, right: 1 });
+    const block = ui.board.createBlock(ui.selection()!, 'chain');
+    expect(block.anchors).toHaveLength(3);
+    ui.close();
+  }
+});
+
+it('uses the released endpoint when move and up arrive before React commits', () => {
+  const ui = setup('select');
+  for (let row = 0; row < 3; row++) ui.board.place(row, row % 2, 'slip_stitch', '#000000');
+  ui.pointer('pointerdown', 1, 51, 141, 'mouse');
+  act(() => {
+    for (const type of ['pointermove', 'pointerup']) {
+      const event = new Event(type, { bubbles: true });
+      Object.assign(event, { pointerId: 1, clientX: 81, clientY: 141, pointerType: 'mouse', button: 0 });
+      ui.canvas.dispatchEvent(event);
+    }
+  });
+  expect(ui.selection()).toEqual({ top: 0, left: 0, bottom: 3, right: 1 });
+  ui.close();
+});
+
 it('does not paste when a visible-cell tap ends in a number band', () => {
   const ui = setup('paste');
   ui.pointer('pointerdown', 1, 75, 75);
