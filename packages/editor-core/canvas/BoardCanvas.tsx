@@ -697,7 +697,14 @@ export function BoardCanvas(props: Props) {
     }
 
     if (pointersRef.current.size === 0 && !gestureBlockedRef.current && selectionStartRef.current && props.mode === 'select' && props.selection) {
-      props.onSelectionChange(props.board.normalizeSelection(props.selection));
+      // pointermoveのReact更新より先にpointerupが届いても、離した位置まで選択する。
+      // 数字帯やキャンセルでは、これまでと同じく最後に反映された範囲を使う。
+      const end = event.type === 'pointerup' ? cellAt(eventPosition(event)) : undefined;
+      const start = selectionStartRef.current;
+      const selection = end
+        ? { top: start.row, left: start.col, bottom: end.row, right: end.col }
+        : props.selection;
+      props.onSelectionChange(props.board.normalizeSelection(selection));
     }
     if (pointersRef.current.size === 0) {
       if (provisionalRef.current && touchChangedRef.current && touchIsCurrent() && event.type !== 'pointercancel') {
