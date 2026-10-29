@@ -17,7 +17,7 @@
   - `node scripts/check-pr-smoke-ui-tests.mjs`、`git diff --check`: 成功。
   - 撮影は使い回しの「KE verify iPhone Duo」（iOS 27.1）で行い、開閉と内側の画面の向きは利用者に`DeviceHub.app`で切り替えてもらった。撮影のあとでアプリを消し、Simulatorを止めた。
   - このSimulatorでは「ほかの色を選ぶ」から色の選択画面が開かなかったため、4枚目は`backgroundColor`を入れた`.knit`を読み込んで撮った（#290のiPadと同じ現象）。
-  - 撮影中、ヒンジを閉じたあとに盤面が外側の画面の一部にしか描かれず、アプリを起動し直すと直った。Simulatorでの1回の観察で、実機と原因は確かめていない。このPRでは直さない。
+  - 撮影中、ヒンジを閉じたあとに盤面が外側の画面の一部にしか描かれず、アプリを起動し直すと直った。Simulatorでの1回の観察で、実機と原因は確かめていない。このPRでは直さず、#367で扱う。
   - App Store Connectで確かめる項目（medium displayの扱い、Duoの外側・内側のどちらが必須か、縦横、枚数）は、Apple Developer Programへの加入後に行うため、#353は閉じない。
   - `npm run typecheck`、`npm run build`、`npm run test:e2e`などのWebの検査は、Webのソース・共有コード・ビルド設定を変えていないため実行していない。PRのCIの`app_store_docs`と、マージ後のFull iOS validationの`release_archive`（`check-release-assets.sh`）で確かめる。
 - デプロイ影響: なし。文書・画像・検査スクリプトだけで、Pagesの配信物もアプリも変わらない。App Store Connectへの登録は、加入後に#27・#353で行う。
