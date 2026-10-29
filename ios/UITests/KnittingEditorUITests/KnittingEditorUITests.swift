@@ -1086,6 +1086,8 @@ final class KnittingEditorUITests: XCTestCase {
     ///
     /// 縦向きは全出力経路、横向きは共通のアンカーとdismissalをPNGで確認する。
     func testShareSheetsDismissBackToEditor() {
+        // 4種類の書き出しで共有シートを開いて閉じるため、CIでは普段から約120〜180秒かかり、既定の3分に近い（#358）。
+        executionTimeAllowance = 240
         assertShareSheetsDismissBackToEditor(landscape: false)
     }
 
@@ -1191,6 +1193,9 @@ final class KnittingEditorUITests: XCTestCase {
     }
 
     func testBackslashDocumentNameReachesAllNativeExportActions() {
+        // 普段は約40〜70秒。CIでは前のテストのアプリの終了で約30秒、起動時の自動化セッションの準備で
+        // 約1分止まることがあり、約160秒まで延びた（#358）。
+        executionTimeAllowance = 240
         assertAllNativeExportActions(documentName: "試作\\修正版")
     }
 
