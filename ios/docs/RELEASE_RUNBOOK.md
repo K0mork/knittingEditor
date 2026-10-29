@@ -48,7 +48,7 @@ SKUは製品管理用の一意な文字列を利用者が決め、登録値は�
 ## 5. 提出用Release Archiveを作成し、検査・アップロードする
 
 1. 提出するソースのコミットを固定する。[検証・配布](APP_STORE_CHECKLIST.md#検証配布)に従い、提出候補PRの `ci-gate` と、その候補を含むmainコミットの `Full iOS validation`（iPhone・iPad全テスト、両端末のapp_update、unsigned Release Archive・資産検査）の成功を確認する。失敗Issueがあれば調査・修正する。
-2. **手元のXcode 27.1（iOS 27.1 SDK）以降**を使う。Xcode 26.6固定のCIアーカイブは提出に使わない。版の根拠と検査条件は提出チェックリストの「提出用のアーカイブ」、CIとの違いは[#289](https://github.com/K0mork/knittingEditor/issues/289)を参照する。
+2. **手元のXcode 27.1（iOS 27.1 SDK）以降**を使う。Xcode 26.6固定のCIアーカイブは提出に使わない。iPhone Duoでの全画面表示（#96）に加え、2027年4月からはiOS 27 SDK以降でのビルドがAppleの必須要件になる。版の根拠と検査条件は提出チェックリストの「提出用のアーカイブ」、CIとの違いは[#289](https://github.com/K0mork/knittingEditor/issues/289)を参照する。
 3. Xcodeでscheme `knittingEditor`、実機向けの汎用destination（Simulatorではない）を選び、Archiveの構成がReleaseであることを確認して、Product > Archiveを実行する。構成・destination・検査の参照元は[`release_archive`ジョブ](../../.github/workflows/ios-full.yml)とする。ただし、ローカルの提出用署名を有効にし、CIの `CODE_SIGNING_ALLOWED=NO`／`CODE_SIGNING_REQUIRED=NO` は付けない。
 4. Organizerで対象ArchiveをFinderに表示し、リポジトリルートから次を実行する。パスは実際のArchiveへ置き換える。
 
@@ -90,7 +90,7 @@ SKUは製品管理用の一意な文字列を利用者が決め、登録値は�
 | 価格 | [質問への回答](APP_STORE_METADATA.md#app-store-connectの質問への回答)のv1.0無料を設定する |
 | 販売元・著作権 | [販売元と著作権表記](APP_STORE_METADATA.md#販売元と著作権表記)。販売元の表示を確認し、著作権欄は同節の公開表記にする |
 | 審査メモ | [質問への回答](APP_STORE_METADATA.md#app-store-connectの質問への回答)から[審査メモ](APP_REVIEW_NOTES.md)の英語・日本語を転記する |
-| スクリーンショット | [スクリーンショットの説明文](APP_STORE_METADATA.md#スクリーンショットの説明文)から[最終版の画面・順・ファイル](SCREENSHOTS.md#app-store-connect提出用最終版)へ進み、iPhone・iPadそれぞれ登録する |
+| スクリーンショット | [スクリーンショットの説明文](APP_STORE_METADATA.md#スクリーンショットの説明文)から[最終版の画面・順・ファイル](SCREENSHOTS.md#app-store-connect提出用最終版)へ進み、iPhone・iPadそれぞれ登録する。2027年4月以降の提出では、[iPhone Duo](SCREENSHOTS.md#iphone-duo)の画像も登録する（iOS 27.1 SDK以降のアプリで必須）。iPhoneで必須のmedium displayの欄と、iPhone Duoの外側・内側のどちらが必須かを登録画面で確かめ、結果に合わせて`SCREENSHOTS.md`を直す（#353） |
 | 輸出コンプライアンス | [輸出コンプライアンス（暗号化）](APP_STORE_METADATA.md#輸出コンプライアンス暗号化)。アップロードしたビルドの設定と質問の有無を確認する |
 | アクセシビリティの表示 | [アクセシビリティの表示](APP_STORE_METADATA.md#アクセシビリティの表示accessibility-nutrition-labels)。実機で確かめた範囲に従い回答する |
 
@@ -127,7 +127,7 @@ MacとApple Vision Proは[#86の決定コメント](https://github.com/K0mork/kn
 
 ## 10. 更新版を提出する
 
-v1.1以降の更新版も、手順5〜9に従ってビルド・確認・入力・提出・公開する。バージョン番号は[バージョンとビルド番号](APP_STORE_METADATA.md#バージョンとビルド番号)に従って上げる。App Review Guidelinesは、新しい機能を審査メモに具体的に書くよう求めており（2.3.1(a)。一般的な説明はリジェクトの対象になる）、説明のない機能を禁じている（2.5.19）。このため、手順7で審査メモを転記する前に、次のとおり[審査メモ](APP_REVIEW_NOTES.md)を直す。
+v1.1以降の更新版も、手順5〜9に従ってビルド・確認・入力・提出・公開する。2027年4月以降の提出では、iOS 27 SDK以降でのビルドとiPhone Duoのスクリーンショットが必要になる（手順5・7）。UIを変えた版では、iPhone Duoの画像も撮り直す。バージョン番号は[バージョンとビルド番号](APP_STORE_METADATA.md#バージョンとビルド番号)に従って上げる。App Review Guidelinesは、新しい機能を審査メモに具体的に書くよう求めており（2.3.1(a)。一般的な説明はリジェクトの対象になる）、説明のない機能を禁じている（2.5.19）。このため、手順7で審査メモを転記する前に、次のとおり[審査メモ](APP_REVIEW_NOTES.md)を直す。
 
 1. 前に公開した版のコミットから提出するコミットまでの、マージ済みPRと `docs/dev-log/` の記録を読み、利用者が使える機能・操作で増えたものと変わったものを書き出す。不具合の修正だけで、操作が変わらないものは除いてよい。
 2. 審査メモの英語・日本語の両方に、その版で増えた機能・変わった操作と、審査担当者が確かめる手順を具体的に書く。「不具合の修正と改善」のような一般的な説明だけにしない。アプリ内課金を加える版では、購入・復元を確かめる手順も書く（[#38](https://github.com/K0mork/knittingEditor/issues/38)）。

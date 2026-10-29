@@ -1,0 +1,23 @@
+# 2026-10-29 — iPhone Duoの提出用スクリーンショットと、2027年4月からの提出要件を加える（#353）
+
+- 影響: 2027年4月から、iOS 27.1 SDK以降でビルドしたアプリの提出にiPhone Duoのスクリーンショットが要り、アップロードするアプリはiOS 27 SDK以降でのビルドが必須になる（Appleの告知、2026-10-05と2026-09-09）。外側（閉じた状態、1398×2034）と内側（開いた状態、2007×2853）の説明文入りスクリーンショットを、既存のiPhone・iPadと同じ5つの画面・順・文面で作った。どちらが必須かは仕様のページに書かれていないため両方を作った。提出チェックリストと手順書に2つの要件を書き、iPhoneで必須の大きさがmedium display（1179×2556など）であることと、6.9インチの画像だけで足りるかは未確認であることを`SCREENSHOTS.md`とチェックリストに書いた。アプリとWebの動作は変えていない。
+- 主なファイル:
+  - `ios/docs/screenshots/app-store-iphone-duo-{outer,inner}-0[1-5]-*.png`（新規、10枚）。
+  - `ios/docs/SCREENSHOTS.md`: iPhone Duoの節（10枚、画面、取得条件）と、App Store Connectが必ず求める大きさの説明。
+  - `ios/docs/APP_STORE_CHECKLIST.md`、`ios/docs/RELEASE_RUNBOOK.md`: 2027年4月からの2つの要件、Duoの画像の登録、App Store Connectで確かめること。
+  - `ios/docs/APP_STORE_METADATA.md`、`ios/docs/REAL_DEVICE_RELEASE_CHECKLIST.md`: Duoの画像が加わったことに合わせた。
+  - `ios/scripts/check-release-assets.sh`: Duoの10枚の解像度を検査する。
+  - `ios/scripts/check-app-store-docs.sh`: Duoの10枚が`SCREENSHOTS.md`に載っていること、チェックリストと手順書に「iPhone Duo」「iOS 27 SDK」「2027年4月」があることを検査する。
+- テスト: `scripts/app-privacy-docs.test.mjs`に、チェックリスト・手順書から要件の記載が抜けたときと、`SCREENSHOTS.md`からDuoの画像が抜けたときに検査が失敗するテストを足した。検査が手順書を読むようになったので、テストが一時フォルダへ写す文書に`RELEASE_RUNBOOK.md`を足した。
+- 検証（Node v26.8.1、Xcode 27.1）:
+  - `sh ios/scripts/check-app-store-docs.sh`: 成功。
+  - `sh ios/scripts/check-release-assets.sh <Releaseの.app>`（`main`の`1d2411d`をXcode 27.1でRelease設定、iPhone Duo Simulator向けにビルドしたもの）: 成功。Duoの10枚の解像度を含む。
+  - 手順書から「iOS 27 SDK」を消したときと、内側の1枚を2007×2000に縮めたときに、それぞれの検査が失敗することを確かめ、元に戻した。
+  - `npm test -- scripts`: 14ファイル・186件成功。
+  - `node scripts/check-pr-smoke-ui-tests.mjs`、`git diff --check`: 成功。
+  - 撮影は使い回しの「KE verify iPhone Duo」（iOS 27.1）で行い、開閉と内側の画面の向きは利用者に`DeviceHub.app`で切り替えてもらった。撮影のあとでアプリを消し、Simulatorを止めた。
+  - このSimulatorでは「ほかの色を選ぶ」から色の選択画面が開かなかったため、4枚目は`backgroundColor`を入れた`.knit`を読み込んで撮った（#290のiPadと同じ現象）。
+  - 撮影中、ヒンジを閉じたあとに盤面が外側の画面の一部にしか描かれず、アプリを起動し直すと直った。Simulatorでの1回の観察で、実機と原因は確かめていない。このPRでは直さず、#367で扱う。
+  - App Store Connectで確かめる項目（medium displayの扱い、Duoの外側・内側のどちらが必須か、縦横、枚数）は、Apple Developer Programへの加入後に行うため、#353は閉じない。
+  - `npm run typecheck`、`npm run build`、`npm run test:e2e`などのWebの検査は、Webのソース・共有コード・ビルド設定を変えていないため実行していない。PRのCIの`app_store_docs`と、マージ後のFull iOS validationの`release_archive`（`check-release-assets.sh`）で確かめる。
+- デプロイ影響: なし。文書・画像・検査スクリプトだけで、Pagesの配信物もアプリも変わらない。App Store Connectへの登録は、加入後に#27・#353で行う。
