@@ -68,7 +68,7 @@ jobs:
                 ios/*)
                   ios=true
                   ;;
-                packages/*|package.json|package-lock.json|vite.config.ts|vite.shared.ts|scripts/third-party-notices.mjs|tsconfig*.json|playwright.config.ts|.github/workflows/*)
+                packages/*|.node-version|package.json|package-lock.json|vite.config.ts|vite.shared.ts|scripts/third-party-notices.mjs|tsconfig*.json|playwright.config.ts|.github/workflows/*)
                   web=true
                   ios=true
                   ;;
@@ -116,7 +116,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
-          node-version: 24
+          node-version-file: .node-version
           cache: npm
       - name: Install workspace dependencies
         run: npm ci --ignore-scripts
@@ -155,7 +155,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
-          node-version: 24
+          node-version-file: .node-version
       - name: Check PR UI smoke test list
         run: node scripts/check-pr-smoke-ui-tests.mjs
       - name: Check the App Store documents
@@ -171,7 +171,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
-          node-version: 24
+          node-version-file: .node-version
           cache: npm
       - name: Install workspace dependencies
         run: npm ci --ignore-scripts
@@ -194,9 +194,15 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - name: Show Xcode and Simulator runtimes
+      # Xcodeのビルドフェーズ（ios/scripts/build-web.sh）がnpmとViteを実行する。ランナーに
+      # 入っているNodeに任せず、Ubuntuのジョブと同じ`.node-version`の版にそろえる。
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: .node-version
+      - name: Show Xcode, Node, and Simulator runtimes
         run: |
           xcodebuild -version
+          node --version
           xcrun simctl list runtimes
       # xcodebuildに任せると、ビルド後に初回起動してすぐテストを始めるため、起動直後の
       # 初期化処理とUIテストが重なってXCUITestの操作1つが数十秒かかることがある。
@@ -314,7 +320,7 @@ jobs:
           sparse-checkout: scripts
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
-          node-version: 24
+          node-version-file: .node-version
       - name: Download the deployed Pages artifact
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:

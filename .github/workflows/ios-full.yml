@@ -8,6 +8,7 @@ on:
       - '!ios/**/*.md'
       - 'packages/**'
       - '!packages/**/*.md'
+      - '.node-version'
       - 'package.json'
       - 'package-lock.json'
       - 'vite.config.ts'
@@ -48,9 +49,15 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - name: Show Xcode and Simulator runtimes
+      # Xcodeのビルドフェーズ（ios/scripts/build-web.sh）がnpmとViteを実行する。ランナーに
+      # 入っているNodeに任せず、Ubuntuのジョブと同じ`.node-version`の版にそろえる。
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: .node-version
+      - name: Show Xcode, Node, and Simulator runtimes
         run: |
           xcodebuild -version
+          node --version
           xcrun simctl list runtimes
       # xcodebuildに任せると、ビルド後に初回起動してすぐテストを始めるため、起動直後の
       # 初期化処理とUIテストが重なってXCUITestの操作1つが数十秒かかることがある。
@@ -125,9 +132,14 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - name: Show Xcode and Simulator runtimes
+      # `ios_full`ジョブと同じ理由で、`.node-version`の版のNodeを使う。
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: .node-version
+      - name: Show Xcode, Node, and Simulator runtimes
         run: |
           xcodebuild -version
+          node --version
           xcrun simctl list runtimes
       # `ios`ジョブと同じ理由で先に起動を始める。完了はスクリプトがビルド前に待つ。
       - name: Boot simulator
@@ -154,9 +166,14 @@ jobs:
       DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - name: Show Xcode and Simulator runtimes
+      # `ios_full`ジョブと同じ理由で、`.node-version`の版のNodeを使う。
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: .node-version
+      - name: Show Xcode, Node, and Simulator runtimes
         run: |
           xcodebuild -version
+          node --version
           xcrun simctl list runtimes
       - name: Install XcodeGen
         run: ios/scripts/install-xcodegen.sh "$RUNNER_TEMP/xcodegen"
