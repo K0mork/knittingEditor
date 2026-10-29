@@ -10,9 +10,10 @@ REVIEW_NOTES="$REPO_ROOT/docs/APP_REVIEW_NOTES.md"
 PRIVACY_POLICY="$REPO_ROOT/../public/privacy/app/index.html"
 PRIVACY_POINTER="$REPO_ROOT/docs/PRIVACY_POLICY.md"
 SCREENSHOTS="$REPO_ROOT/docs/SCREENSHOTS.md"
+RELEASE_RUNBOOK="$REPO_ROOT/docs/RELEASE_RUNBOOK.md"
 PERFORMANCE_BASELINE="$REPO_ROOT/docs/SIMULATOR_PERFORMANCE_BASELINE.md"
 
-for required in "$METADATA" "$CHECKLIST" "$REVIEW_NOTES" "$PRIVACY_POLICY" "$PRIVACY_POINTER" "$SCREENSHOTS" "$PERFORMANCE_BASELINE"; do
+for required in "$METADATA" "$CHECKLIST" "$REVIEW_NOTES" "$PRIVACY_POLICY" "$PRIVACY_POINTER" "$SCREENSHOTS" "$RELEASE_RUNBOOK" "$PERFORMANCE_BASELINE"; do
   if [ ! -f "$required" ]; then
     echo "missing App Store document: $required" >&2
     exit 1
@@ -145,11 +146,27 @@ for submission_shot in \
   app-store-iphone-6.9-01-editor.png app-store-iphone-6.9-02-stitches.png app-store-iphone-6.9-03-export.png \
   app-store-iphone-6.9-04-background.png app-store-iphone-6.9-05-dark.png \
   app-store-ipad-13-01-editor.png app-store-ipad-13-02-stitches.png app-store-ipad-13-03-export.png \
-  app-store-ipad-13-04-background.png app-store-ipad-13-05-dark.png; do
+  app-store-ipad-13-04-background.png app-store-ipad-13-05-dark.png \
+  app-store-iphone-duo-outer-01-editor.png app-store-iphone-duo-outer-02-stitches.png \
+  app-store-iphone-duo-outer-03-export.png app-store-iphone-duo-outer-04-background.png \
+  app-store-iphone-duo-outer-05-dark.png \
+  app-store-iphone-duo-inner-01-editor.png app-store-iphone-duo-inner-02-stitches.png \
+  app-store-iphone-duo-inner-03-export.png app-store-iphone-duo-inner-04-background.png \
+  app-store-iphone-duo-inner-05-dark.png; do
   grep -qF -- "$submission_shot" "$SCREENSHOTS" || {
     echo "App Store submission screenshot is not documented: $submission_shot" >&2
     exit 1
   }
+done
+
+# 2027年4月からの提出要件（#353）を、提出チェックリストと手順書の両方に書いておく。
+for release_doc in "$CHECKLIST" "$RELEASE_RUNBOOK"; do
+  for requirement in 'iPhone Duo' 'iOS 27 SDK' '2027年4月'; do
+    grep -qF -- "$requirement" "$release_doc" || {
+      echo "$(basename "$release_doc") does not mention the April 2027 submission requirement: $requirement" >&2
+      exit 1
+    }
+  done
 done
 
 grep -qE -- 'iphone-16-editor-simulator\.png' "$SCREENSHOTS" || {

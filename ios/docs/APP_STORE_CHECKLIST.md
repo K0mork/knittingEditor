@@ -8,7 +8,8 @@
 - [x] AppIconのAny・Dark・Tintedを1024×1024で登録する（小サイズはXcodeが生成）。素材・再生成手順は`../design/app-icon/README.md`。
 - [x] iPhone・iPadのホーム画面でライト・ダーク・色合いを切り替えて確認した（iOS 18.2）。小サイズは設定のアプリ一覧（iPhone、iOS 27.0）とSpotlight（iPhone・iPad、iOS 18.2）で確認した（#78、PR #94の比較画像）。
 - [x] 起動画面を確認する。（2026-10-21、Xcode 27.1のReleaseビルドをiOS 27.0 Simulatorのライト・ダークで録画し、白や黒の全面表示が出ないことを確認。[記録](RELEASE_VERIFICATION_RECORDS.md#2026-10-21-起動画面の確認simulator)。提出ビルドでの最終確認は実機リリースゲートのM6で行う）
-- [x] App Store Connectの提出サイズ（iPhone 6.9インチ 1320×2868、iPad 13インチ 2064×2752）の、説明文入りの最終スクリーンショットを各5枚、`docs/screenshots/app-store-*.png`へ保存する（2026-10-20、#290。画面・順・文面は[`SCREENSHOTS.md`](SCREENSHOTS.md)）。
+- [x] iPhone 6.9インチ（1320×2868）とiPad 13インチ（2064×2752）の、説明文入りの最終スクリーンショットを各5枚、`docs/screenshots/app-store-*.png`へ保存する（2026-10-20、#290。画面・順・文面は[`SCREENSHOTS.md`](SCREENSHOTS.md)）。App Store Connectが必ず求めるiPhoneの大きさはmedium display（1179×2556など）で、6.9インチの画像だけで足りるかは加入後に確かめる（#353、下の「検証・配布」）。
+- [x] iPhone Duoの外側（1398×2034）と内側（2007×2853）の、説明文入りのスクリーンショットを各5枚、同じ画面・順・文面で保存する（2026-10-29、#353。[`SCREENSHOTS.md`](SCREENSHOTS.md#iphone-duo)）。2027年4月から、iOS 27.1 SDK以降でビルドしたアプリの提出に必要になる。外側・内側のどちらが必須かは加入後に確かめる。
 - [ ] iPhone／iPadの実機スクリーンショットを撮影する（任意。提出要件はSimulator素材で満たしている）。
 - [x] iPhone 16／iPad (10th generation) Simulatorのスクリーンショット下書きを`docs/screenshots/`へ保存する。
 - [x] iPhone 16／iPad (10th generation) Simulatorの起動画面下書きを`docs/screenshots/`へ保存する（最終素材ではない）。
@@ -27,8 +28,11 @@
 
 - [x] GitHub Actionsの文書検査、Web、Release Archive、iPhone／iPad UIテスト、iPhone／iPad app-update、集約ゲートを成功させる（統合先のrun [`35739657855`](https://github.com/K0mork/knittingEditor/actions/runs/35739657855)、失敗ジョブ再実行後に全11ジョブ成功。統合前は旧リポジトリのrun `35572127914`、全6ジョブ）。
 - [ ] 提出候補のPRでci-gate、提出候補を含むmainコミットで別のFull iOS validation（iPhone／iPad全テスト、両端末のapp_update、unsigned Release Archive・オフライン資産検査）の成功を確認する。全検証は関連マージ後・夜間・手動実行で行い、Pagesのゲートには含めない。main・夜間の失敗Issueがあれば調査・修正する。
-- [ ] 提出用のアーカイブはXcode 27.1（iOS 27.1 SDK）以降で作る。Xcode 26.6以前で作ると、iPhone Duoを開いたときに従来のiPhoneの大きさでしか表示されない（#96）。CIのXcodeは26.6のまま（#289）なので、手元のXcodeで作る。アップロード前に、アーカイブ内のアプリの`Info.plist`で`DTSDKName`が`iphoneos27.1`以降、`DTXcodeBuild`がXcode 27.1以降のビルド番号（27.1正式版は`27A9275`）であることを確かめる。
+- [ ] 提出用のアーカイブはXcode 27.1（iOS 27.1 SDK）以降で作る。Xcode 26.6以前で作ると、iPhone Duoを開いたときに従来のiPhoneの大きさでしか表示されない（#96）。また、2027年4月からは、App Store ConnectへアップロードするアプリをiOS 27 SDK以降でビルドすることがAppleの必須要件になる（[Appleの告知](https://developer.apple.com/news/?id=k1mtkt1k)、2026-09-09）。CIのXcodeは26.6のまま（#289）なので、手元のXcodeで作る。アップロード前に、アーカイブ内のアプリの`Info.plist`で`DTSDKName`が`iphoneos27.1`以降、`DTXcodeBuild`がXcode 27.1以降のビルド番号（27.1正式版は`27A9275`）であることを確かめる。
   - 2026-10-21に手元のXcode 27.1で署名なしのReleaseアーカイブを試作し、SDKとXcodeの版の条件を満たすことを確かめた（[記録](RELEASE_VERIFICATION_RECORDS.md#2026-10-21-提出用アーカイブの試作手元のxcode-271)）。提出用は加入後に署名して作り直すので、この欄は未チェックのままにする。
+- [ ] App Store Connectでスクリーンショットを登録するときに、次を確かめて[`SCREENSHOTS.md`](SCREENSHOTS.md)を直す（#353）。2027年4月以降に提出するときは、iPhone Duoのスクリーンショットも登録する。
+  - iPhoneで必須のmedium displayの欄を、6.9インチ（1320×2868）の画像だけで満たせるか。
+  - iPhone Duoの外側・内側のどちらが必須か、縦と横のどちらでもよいか、何枚から登録できるか。
 - [ ] 提出ビルドで実機の機内モードのP0フローを再確認する。開発ビルドではiPad Air（第5世代、2026-09-22）とiPhone 17（2026-10-09）の主要フロー、iPadの機内モード前後の通信監視（2026-10-02）は確認済み。TestFlight等の提出ビルドは未確認なので、この欄は未チェックとする（[`REAL_DEVICE_RELEASE_CHECKLIST.md`](REAL_DEVICE_RELEASE_CHECKLIST.md)のM0・M6）。
 - [ ] 提出ビルドでFiles、AirDrop、共有先、外部`.knit`の往復と残りの異常系を実機で確認する。開発ビルドでのiPhone・iPadの保存・共有・復元は確認済みだが、存在しないファイルなどの異常系とTestFlightでの最終往復が残るため、未チェックとする（[`REAL_DEVICE_RELEASE_CHECKLIST.md`](REAL_DEVICE_RELEASE_CHECKLIST.md)のM3）。
 - [ ] 提出ビルドで、1000×1000盤面のメモリ、PNG拒否、PDF出力時間を記録する。開発ビルドでの記録は[`REAL_DEVICE_RELEASE_CHECKLIST.md`](REAL_DEVICE_RELEASE_CHECKLIST.md)のM2にある。

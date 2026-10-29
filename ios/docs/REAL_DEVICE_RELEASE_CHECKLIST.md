@@ -184,7 +184,7 @@ TEST_RUNNER_KNITTING_EDITOR_MANUAL_WINDOW=1 xcodebuild test \
 - [ ] 署名済みArchiveを作成し、App Store ConnectへTestFlight内部配布する。
 - [x] iPhone／iPadで機内モードの主要フローを実施する。（iPadは2026-09-22（M0）。iPhone 17は2026-10-09に、機内モードでアプリを起動し直し、新しい編み図を作って記号を置き、PNG・PDF・`.knit`を「このiPhone内」へ保存できた）
 - [ ] TestFlightのクラッシュログ、メモリ警告、PNG/PDF出力時間を確認する。
-- [ ] 提出ビルドで、AppIcon、起動画面、iPhone縦横、iPad全画面／可変幅の画面を確かめ、提出用の最終スクリーンショット（[`SCREENSHOTS.md`](SCREENSHOTS.md)、#290で用意済み）と食い違わないことを証跡に残す。
+- [ ] 提出ビルドで、AppIcon、起動画面、iPhone縦横、iPad全画面／可変幅の画面を確かめ、提出用の最終スクリーンショット（[`SCREENSHOTS.md`](SCREENSHOTS.md)、#290とiPhone Duoの#353で用意済み）と食い違わないことを証跡に残す。
 - [ ] App Privacy回答、Privacy Policy URL、サポートURL、審査メモを登録内容と照合する。
 - [ ] [`docs/APP_STORE_CHECKLIST.md`](APP_STORE_CHECKLIST.md)の全項目を更新し、承認前に「配布完了」と報告しない。
 

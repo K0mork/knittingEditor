@@ -78,6 +78,9 @@ check_screenshot() {
 for shot in 01-editor 02-stitches 03-export 04-background 05-dark; do
   check_screenshot "$REPO_ROOT/docs/screenshots/app-store-iphone-6.9-$shot.png" 1320 2868
   check_screenshot "$REPO_ROOT/docs/screenshots/app-store-ipad-13-$shot.png" 2064 2752
+  # iPhone Duoは閉じたときの外側の画面と、開いたときの内側の画面（どちらも縦）。
+  check_screenshot "$REPO_ROOT/docs/screenshots/app-store-iphone-duo-outer-$shot.png" 1398 2034
+  check_screenshot "$REPO_ROOT/docs/screenshots/app-store-iphone-duo-inner-$shot.png" 2007 2853
 done
 
 # 解像度確認用の旧下書き。
