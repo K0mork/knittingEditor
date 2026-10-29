@@ -17,4 +17,9 @@
   - `node scripts/check-pr-smoke-ui-tests.mjs`: 成功（11件）。PRスモークの一覧は変えていない。
   - Webのコードは変えていないため、`npm run typecheck`・`npm test`・`npm run build`・`npm run check:dist`・`npm run test:e2e` は手元では流していない（PRのCIの対象外）。
   - 消える瞬間の再現は手元ではできない。CIはXcode 26.6・iOS 26.5で、手元の版とは違う。最終的な判定はPRのCIと、マージ後のFull iOS validation（iPhone 17・iPad (A16)）で行う。
+  - PRのCI（`6b58467`、run 40808507411）: `changes`・`app_store_docs`・`ios_web`・`ios`（iPhone 17）・`ci-gate` が成功し、`web` はWebの変更が無いため実行されなかった。`ios` のテストの再試行・実行時間上限の超過・テストランナーの再起動はいずれも0件だった。
+  - このブランチで手動実行した Full iOS validation（`6b58467`、run 40808514089）: `ios_full`（iPhone 17・iPad (A16)）、`app_update`（両端末）、`release_archive` がすべて成功した。
+    - iPad (A16): `testBackupExportSheetDismissesBackToEditor` と `testRestorePickerDismissesBackToEditor` は、どちらも「×」を座標で押して閉じ、1回目で成功した。
+    - iPhone 17: 保存シートは下スワイプで、復元の選択画面は「×」の座標でのタップで閉じ、どちらも1回目で成功した。
+    - iPhone 17 で、この変更と関係のない `testDocumentSwitchSavesWithoutAutosave` が1回目に失敗し（盤面が10秒で安定しない、`:379`）、再試行で成功した。要素の問い合わせ1回に4〜9秒かかっていた。#44 に記録した。
 - デプロイ影響: なし（UIテストだけの変更）。
