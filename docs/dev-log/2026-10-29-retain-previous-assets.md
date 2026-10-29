@@ -1,0 +1,21 @@
+# 2026-10-29 — 配信のあとも、前の版の /assets/ のファイルを本番に残す
+
+- 影響: Pagesへの配信は成果物全体を置き換えるため、配信の前から開いていたページが参照する古いJSやWorkerが配信と同時に消え、PDF出力やバックアップで「サイトが更新されました」と再読み込みを求めることがあった（#363）。CIの`web`ジョブで、E2Eのあと、Pagesの成果物を作る前に、本番サイトから前の版の`/assets/`のファイルを取ってdistに加えるようにした。HTMLは新しい版だけを配信する。
+  - 残す範囲: 直前の版は日数によらず必ず残す。それより前の版は、次の版に置き換わってから30日以内のものを、新しい順に最大10世代残す。ソースマップ（`.map`）は前の版の分を残さない。
+  - 残した版とファイルの一覧を`/asset-history.json`（新しい順、先頭が配信する版）に書き、次の配信はこの一覧を本番から取って前の版を決める。一覧がまだない本番（この仕組みより前の版。今回は`fef75b4`）は、各ページのHTMLとJS・CSSの参照をたどって配信中の版のファイルを集める。
+  - 取れなかったとき: 一覧または直前の版のファイルが取れなければ（各3回まで取り直す）、`web`ジョブを失敗させて配信を止める。それより前の版のファイルが取れなければ、警告してその版だけ外し、配信を続ける。
+  - PRのCIでも同じ手順を実行し、本番から取れることを確かめる（PRでは配信しない）。
+  - `check:dist`は、一覧があれば一覧と`assets/`が食い違わないことを確かめ、5MBの上限を今回の版だけに当て、前の版のファイルは別に10MBまでとする。`smoke`（`check-live-site.mjs`）は、`/asset-history.json`が配信物と一致すること、一覧のすべてのファイルが本番で200を返すことを確かめる。
+  - 残す期間を過ぎた場合に備え、`WorkerVersionError`の案内はそのまま残した。
+- 主なファイル: `scripts/retain-previous-assets.mjs`、`scripts/asset-history.mjs`、`scripts/check-dist.mjs`、`scripts/check-live-site.mjs`、`.github/workflows/ci.yml`、`AGENTS.md`
+- テスト: `scripts/retain-previous-assets.test.mjs`を追加した（一覧の検証、残す版の選び方（直前の版、30日、10世代、配信し直し）、オプション、一覧がある場合とない場合の収集、直前の版が取れないときの停止、古い版が取れないときの除外、一覧の取得失敗と破損、2回目の実行の拒否）。`scripts/check-live-site.test.mjs`に、一覧の確認と、一覧のファイルが404のとき・一覧が壊れているときの報告を足した。
+- 検証:
+  - 手元で`npm run build`のあと`node scripts/retain-previous-assets.mjs --commit local-test`を本番に対して実行した。本番に一覧がないため、HTMLから`fef75b4`の版のファイル（`index-*.js`、`index-*.css`、`pdf.worker-*.js`、`backup.worker-*.js`）を集め、今回のビルドと名前が違う`index-*.js`をdistに加えた。そのあとの`npm run check:dist`は成功した。もう一度実行すると、一覧が既にあるため止まることも確かめた。
+  - 配信を模した手動確認（使い捨てのPlaywrightスクリプトとローカルの静的サーバー、Chromium・WebKit）: 本番の`fef75b4`の版を開き、Workerの先読みを失敗させたまま、配信物を新しい版（Workerのハッシュも変わった場合を模した）に入れ替えた。前の版を残した配信物では、再読み込みせずにPDF出力、バックアップの書き出しと復元ができ、キャッシュした古い`index.html`で開いたページも起動した。前の版を残さない配信物では、PDFが出力されず、古い`index.html`のページは`index-*.js`が404で起動しなかった。
+  - `npm run typecheck`: 成功。
+  - `npm test`: 成功（77ファイル、957件）。1回目は、別のセッションのSimulatorテストでマシンの負荷が高く、時間を測る既存のテスト4件（`pdf.worker.test.ts`、`thumbnail.test.ts`、`database.test.ts`、`BackupReminderBar.test.tsx`）が落ちた。その4ファイルを単独で流すと成功し、負荷が下がってから全体を流し直して成功した。
+  - `npm run build`、`npm run check:dist`: 成功。
+  - `npm run test:e2e`: 成功（542件）。
+  - CIと同じ順に、E2Eが作り直したdistへ`node scripts/retain-previous-assets.mjs`を実行し、`npm run check:dist`が成功した。
+  - `smoke`の変更は、配信後にしか本番で確かめられない。マージ後の`smoke`で確かめる。
+- デプロイ影響: Pagesの成果物に前の版の`/assets/`のファイルと`/asset-history.json`が加わる。このPRのマージで、配信を止めていた#356・#357・#359・#360とまとめて配信される。配信後に、`deploy`と`smoke`の成功、`/asset-history.json`の内容、`fef75b4`の`/assets/index-BcVNvkSA.js`が本番で200を返すことを確かめる。

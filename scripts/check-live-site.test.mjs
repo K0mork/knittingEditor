@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { promisify } from 'node:util';
 import { afterEach, describe, expect, it } from 'vitest';
+import { ASSET_HISTORY_FILE } from './asset-history.mjs';
 import { checkLiveSite, fetchWithTimeout, LIVE_SITE_FILES, parseLiveSiteOptions, REQUEST_TIMEOUT_MS } from './check-live-site.mjs';
 
 const ORIGIN = 'https://knittingeditor.com';
@@ -41,8 +42,16 @@ describe('parseLiveSiteOptions', () => {
   });
 });
 
+const HISTORY = JSON.stringify({
+  version: 1,
+  generations: [
+    { commit: 'new', deployedAt: '2026-10-29T00:00:00.000Z', files: ['index-abc.js', 'pdf.worker-abc.js'] },
+    { commit: 'old', deployedAt: '2026-10-28T00:00:00.000Z', files: ['index-old.js', 'pdf.worker-abc.js'] },
+  ],
+});
+
 /** 配信物と同じ内容を返す本番サイトのスタブ。 */
-function fakeSite({ html = '<script src="/assets/index-abc.js"></script>', overrides = {} } = {}) {
+function fakeSite({ html = '<script src="/assets/index-abc.js"></script>', history = HISTORY, overrides = {} } = {}) {
   const calls = [];
   const fetch = async (url, init) => {
     calls.push({ url, init });
@@ -52,7 +61,7 @@ function fakeSite({ html = '<script src="/assets/index-abc.js"></script>', overr
     if (pathname.startsWith('/assets/')) return new Response('asset', { headers: { 'content-type': 'text/javascript' } });
     const file = LIVE_SITE_FILES.find((candidate) => candidate.path === pathname);
     if (!file) return new Response('not found', { status: 404 });
-    const body = file.text ?? (file.type === 'text/html' ? html : `body of ${pathname}`);
+    const body = file.text ?? (file.type === 'text/html' ? html : pathname === `/${ASSET_HISTORY_FILE}` ? history : `body of ${pathname}`);
     return new Response(body, { headers: { 'content-type': file.type ?? 'text/plain' } });
   };
   return { fetch, calls };
@@ -83,7 +92,15 @@ describe('checkLiveSite', () => {
     const { lines, deps } = recorder();
     await expect(checkLiveSite({ origin: ORIGIN, attempts: 3, intervalMs: 1000 }, { ...deps, fetch: site.fetch })).resolves.toBe(true);
     const paths = site.calls.map(({ url }) => new URL(url).pathname);
-    expect(paths).toEqual([...LIVE_SITE_FILES.map((file) => file.path).slice(0, 1), '/assets/index-abc.js', ...LIVE_SITE_FILES.slice(1).map((file) => file.path), '/']);
+    expect(paths).toEqual([
+      ...LIVE_SITE_FILES.map((file) => file.path).slice(0, 1),
+      '/assets/index-abc.js',
+      ...LIVE_SITE_FILES.slice(1).map((file) => file.path),
+      '/assets/index-abc.js',
+      '/assets/pdf.worker-abc.js',
+      '/assets/index-old.js',
+      '/',
+    ]);
     expect(site.calls.at(-1).url).toBe('http://knittingeditor.com/');
     for (const { init } of site.calls) expect(init.signal).toBeInstanceOf(AbortSignal);
     expect(lines.log).toEqual([`live site verified: ${ORIGIN}`]);
@@ -96,7 +113,7 @@ describe('checkLiveSite', () => {
     const html = '<script src="/assets/index-new.js"></script>';
     for (const file of LIVE_SITE_FILES.filter((candidate) => candidate.distFile)) {
       mkdirSync(dirname(join(dist, file.distFile)), { recursive: true });
-      writeFileSync(join(dist, file.distFile), file.type === 'text/html' ? html : `body of ${file.path}`);
+      writeFileSync(join(dist, file.distFile), file.type === 'text/html' ? html : file.distFile === ASSET_HISTORY_FILE ? HISTORY : `body of ${file.path}`);
     }
     let attempt = 0;
     const oldSite = fakeSite({ html: '<script src="/assets/index-old.js"></script>' });
@@ -128,6 +145,20 @@ describe('checkLiveSite', () => {
     expect(lines.log[1]).toContain('/CNAME: 内容がknittingeditor.comではありません');
     expect(lines.error).toEqual(['本番サイトの確認に失敗しました']);
     expect(lines.sleeps).toEqual([1000]);
+  });
+
+  it('reports a file of the listed versions that the site no longer returns', async () => {
+    const site = fakeSite({ overrides: { '/assets/index-old.js': () => new Response('gone', { status: 404 }) } });
+    const { lines, deps } = recorder();
+    await expect(checkLiveSite({ origin: ORIGIN, attempts: 1, intervalMs: 0 }, { ...deps, fetch: site.fetch })).resolves.toBe(false);
+    expect(lines.log[0]).toBe('attempt 1/1:\n  /assets/index-old.js: HTTP 404');
+  });
+
+  it('reports a broken list of versions', async () => {
+    const site = fakeSite({ history: '{"version":1,"generations":[]}' });
+    const { lines, deps } = recorder();
+    await expect(checkLiveSite({ origin: ORIGIN, attempts: 1, intervalMs: 0 }, { ...deps, fetch: site.fetch })).resolves.toBe(false);
+    expect(lines.log[0]).toBe(`attempt 1/1:\n  /${ASSET_HISTORY_FILE}: ${ASSET_HISTORY_FILE} の形式が違います`);
   });
 
   it('retries failed requests only up to the given number of attempts', async () => {
