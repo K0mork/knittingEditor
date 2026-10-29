@@ -1604,6 +1604,9 @@ final class KnittingEditorUITests: XCTestCase {
     /// iPadは「×」ボタン（label「Cancel」「キャンセル」）を押せるが、iPhoneでは同じボタンへ到達できず
     /// `isHittable`もfalseになる。ウィンドウ状態によっても押せるかどうかが変わるため、
     /// 押してから閉じたことを確かめ、閉じていなければ画面座標の下スワイプへ落とす。
+    /// iPhoneでも「×」が一瞬だけ現れ、押せると判定した直後に消えることがある（#44）。
+    /// `tap()`は対象が消えているとその場でテストを失敗にするので、枠を`snapshot()`で取り、
+    /// その中心を座標で押す。枠が取れなければ押さずに下スワイプへ進む。
     /// 戻り値は失敗時の診断用に、どの手段まで試したかを表す。
     @discardableResult
     private func dismissSystemSheet(in app: XCUIApplication) -> String {
@@ -1611,8 +1614,11 @@ final class KnittingEditorUITests: XCTestCase {
         let closeButton = SystemSheet.closeButton(in: app)
         let buttonExists = closeButton.waitForExistence(timeout: 5)
         let buttonHittable = buttonExists && closeButton.isHittable
-        if buttonHittable {
-            closeButton.tap()
+        let buttonFrame = buttonHittable ? (try? closeButton.snapshot())?.frame : nil
+        if let buttonFrame, !buttonFrame.isEmpty {
+            app.coordinate(withNormalizedOffset: .zero)
+                .withOffset(CGVector(dx: buttonFrame.midX, dy: buttonFrame.midY))
+                .tap()
             if waitForDisappearance(of: sheet, timeout: 5) {
                 return "閉じ方=×ボタン"
             }
@@ -1630,7 +1636,8 @@ final class KnittingEditorUITests: XCTestCase {
         let needsSecondSwipe = !waitForDisappearance(of: sheet, timeout: 10)
         if needsSecondSwipe { swipeDown() }
         let retryNote = needsSecondSwipe ? "、再スワイプ" : ""
-        return "閉じ方=下スワイプ\(retryNote)(×ボタン exists=\(buttonExists) hittable=\(buttonHittable)) window=\(app.windows.firstMatch.frame)"
+        let frameNote = buttonFrame.map { "\($0)" } ?? "なし"
+        return "閉じ方=下スワイプ\(retryNote)(×ボタン exists=\(buttonExists) hittable=\(buttonHittable) frame=\(frameNote)) window=\(app.windows.firstMatch.frame)"
     }
 
     /// 要素の位置と大きさが変わらないことを確かめる。画面全体が拡大されると、拡大の
