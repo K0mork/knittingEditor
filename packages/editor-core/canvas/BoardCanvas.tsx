@@ -78,11 +78,31 @@ export function clampViewport(view: Viewport, board: Pick<Board, 'rows' | 'cols'
 }
 type CanvasLayout = { width: number; height: number; windowWidth: number; windowHeight: number };
 
-/** ウィンドウが変わった場合だけ、キャンバス右下から編み始めまでの距離を保つ。 */
-export function resizeViewport(view: Viewport, previous: CanvasLayout, next: CanvasLayout): Viewport {
+/**
+ * ウィンドウが変わった場合だけ、キャンバス右下から編み始めまでの距離を保つ。
+ * 縮小して右や下に空きがある盤面は、狭くなった画面では同じ距離の空きが大きな割合を占め、
+ * 盤面の左や上が画面の外へ押し出される。その場合は狭くなった分までの空きを使って隠れた側を見せる。
+ */
+export function resizeViewport(view: Viewport, previous: CanvasLayout, next: CanvasLayout, board: Pick<Board, 'rows' | 'cols'>, band = LABEL_SIZE): Viewport {
   if (previous.windowWidth === next.windowWidth && previous.windowHeight === next.windowHeight) return view;
   if (previous.width === next.width && previous.height === next.height) return view;
-  return { ...view, x: view.x + next.width - previous.width, y: view.y + next.height - previous.height };
+  const x = view.x + next.width - previous.width;
+  const y = view.y + next.height - previous.height;
+  return {
+    ...view,
+    x: x + revealHiddenStart(x, board.cols * view.cell, previous.width, next.width, band),
+    y: y + revealHiddenStart(y, board.rows * view.cell, previous.height, next.height, band),
+  };
+}
+
+/**
+ * 狭くなった向きで、盤面の始端が帯の外側の余白（初期配置と同じ8px）より外に出た分を、
+ * 終端側の空きの範囲で戻す量。広がった向きや大きさが同じ向きは、利用者の表示位置を変えない。
+ */
+function revealHiddenStart(start: number, length: number, previousSize: number, size: number, band: number): number {
+  const hidden = band + 8 - start;
+  const gap = size - 8 - (start + length);
+  return size < previousSize && hidden > 0 && gap > 0 ? Math.min(hidden, gap, previousSize - size) : 0;
 }
 
 /** 初回は倍率を変えず、編み始めの右下まで見える位置に寄せる。 */
@@ -298,7 +318,7 @@ export function BoardCanvas(props: Props) {
             viewportRef.current = initialViewport(viewportRef.current.cell, board, { width, height }, band);
             initialViewportRecoveryRef.current = undefined;
           } else {
-            viewportRef.current = resizeViewport(viewportRef.current, previous, next);
+            viewportRef.current = resizeViewport(viewportRef.current, previous, next, board, band);
           }
         }
         canvasSizeRef.current = next;

@@ -1,4 +1,5 @@
 import { expect, test } from './fixtures';
+import { resizeBoardFromInitialView } from './board-helpers';
 
 test.use({ viewport: { width: 390, height: 844 } });
 
@@ -259,6 +260,63 @@ test('keeps the knitting start anchored to the canvas bottom-right when opening 
   await page.getByRole('button', { name: 'コピーして貼付' }).click();
   await expect(page.getByRole('toolbar', { name: '貼付の操作' })).toBeVisible();
   await expect.poll(position).toEqual(original);
+});
+
+test('shows the hidden start of a zoomed-out board when the window narrows', async ({ page }) => {
+  // iPhone Duoを開いて縮小し、右に空きを残してから閉じた場合（#367）。
+  await page.addInitScript(() => {
+    const fill = CanvasRenderingContext2D.prototype.fillText;
+    const clear = CanvasRenderingContext2D.prototype.clearRect;
+    const labels: { text: string; x: number; y: number }[] = [];
+    Object.assign(window, { resizeLabels: labels });
+    CanvasRenderingContext2D.prototype.clearRect = function (x, y, width, height) {
+      if (this.canvas.classList.contains('board-canvas')) labels.length = 0;
+      clear.call(this, x, y, width, height);
+    };
+    CanvasRenderingContext2D.prototype.fillText = function (text, x, y, maxWidth) {
+      if (this.canvas.classList.contains('board-canvas')) labels.push({ text, x, y });
+      if (maxWidth === undefined) fill.call(this, text, x, y);
+      else fill.call(this, text, x, y, maxWidth);
+    };
+  });
+  await page.setViewportSize({ width: 669, height: 869 });
+  await page.goto('/');
+  const canvas = page.getByLabel('編み図編集盤面');
+  await expect(canvas).toBeVisible();
+  await resizeBoardFromInitialView(page, 150, 32);
+  // 目の番号の位置と間隔から、盤面の左端・右端と帯の幅を求める。
+  const columns = () => canvas.evaluate((element) => {
+    const labels = (window as unknown as { resizeLabels: { text: string; x: number; y: number }[] }).resizeLabels;
+    const counts = new Map<number, number>();
+    for (const label of labels) counts.set(label.y, (counts.get(label.y) ?? 0) + 1);
+    const center = [...counts].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 14;
+    const row = labels.filter((label) => label.y === center).sort((a, b) => a.x - b.x);
+    if (row.length < 2) return null;
+    const cell = (row[1].x - row[0].x) / (Number(row[0].text) - Number(row[1].text));
+    const right = row[0].x + (Number(row[0].text) - 1) * cell + cell / 2;
+    return { band: center * 2, cell, left: right - 32 * cell, gap: element.clientWidth - right };
+  });
+  await expect.poll(async () => (await columns())?.cell).toBe(30);
+  // 盤面の中央で縮小すると、右に空きが残る。
+  await canvas.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    element.dispatchEvent(new WheelEvent('wheel', {
+      bubbles: true, cancelable: true, ctrlKey: true, deltaY: 500,
+      clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2,
+    }));
+  });
+  await expect.poll(async () => (await columns())?.cell).toBeLessThan(12);
+  const zoomed = (await columns())!;
+  expect(zoomed.gap).toBeGreaterThan(100);
+  await page.setViewportSize({ width: 466, height: 678 });
+  // 空きの長さをそのまま保つと、全体が収まる盤面の左側が画面の外へ出ていた。
+  await expect.poll(async () => {
+    const narrow = await columns();
+    return narrow && narrow.left >= narrow.band;
+  }).toBe(true);
+  const narrow = (await columns())!;
+  expect(narrow.cell).toBeCloseTo(zoomed.cell, 5);
+  expect(narrow.gap).toBeGreaterThanOrEqual(8);
 });
 
 test('background preset labels stay on one line and fit the panel', async ({ page }, testInfo) => {
