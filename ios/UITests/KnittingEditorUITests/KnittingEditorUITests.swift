@@ -1205,7 +1205,8 @@ final class KnittingEditorUITests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
         createDocument(named: name, in: app)
-        app.buttons["出力"].tap()
+        // 名前のダイアログが閉じる途中だと「出力」のタップが効かないことがある（#44）。
+        openSavePanel(with: app.buttons["出力"], showing: app.buttons["PNGを保存"], in: app)
         for format in ["PNGを保存", "PDFを保存", "この編み図を書き出す"] {
             let export = app.buttons[format]
             XCTAssertTrue(export.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
