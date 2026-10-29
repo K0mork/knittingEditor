@@ -530,28 +530,55 @@ describe('host board zoom', () => {
 
 
 describe('resizeViewport', () => {
-  const view = { x: -240, y: -380, cell: 30 };
+  const board = { rows: 20, cols: 20 };
+  // 編み始め（右下）を初期配置と同じく、キャンバスの右下から8pxに置いた位置。
+  const view = { x: -218, y: -131, cell: 30 };
   const narrow = { width: 390, height: 477, windowWidth: 390, windowHeight: 844 };
   const wide = { width: 850, height: 600, windowWidth: 951, windowHeight: 669 };
   it('anchors the bottom-right through growth and shrinkage without changing zoom', () => {
-    const next = resizeViewport(view, narrow, wide);
-    expect(next).toEqual({ x: 220, y: -257, cell: 30 });
+    const next = resizeViewport(view, narrow, wide, board);
+    expect(next).toEqual({ x: 242, y: -8, cell: 30 });
     expect(wide.width - (next.x + 20 * next.cell)).toBe(narrow.width - (view.x + 20 * view.cell));
     expect(wide.height - (next.y + 20 * next.cell)).toBe(narrow.height - (view.y + 20 * view.cell));
-    expect(resizeViewport(next, wide, narrow)).toEqual(view);
+    expect(resizeViewport(next, wide, narrow, board)).toEqual(view);
   });
   it('does not move on redraws, board edits or dimension changes at the same canvas size', () => {
-    expect(resizeViewport(view, narrow, narrow)).toBe(view);
+    expect(resizeViewport(view, narrow, narrow, board)).toBe(view);
   });
   it('keeps the top-left when selection/paste bars or panels change only the canvas size', () => {
     const withBar = { ...narrow, height: narrow.height - 64 };
-    expect(resizeViewport(view, narrow, withBar)).toBe(view);
-    expect(resizeViewport(view, withBar, narrow)).toBe(view);
-    expect(resizeViewport(view, narrow, { ...narrow, width: 300 })).toBe(view);
+    expect(resizeViewport(view, narrow, withBar, board)).toBe(view);
+    expect(resizeViewport(view, withBar, narrow, board)).toBe(view);
+    expect(resizeViewport(view, narrow, { ...narrow, width: 300 }, board)).toBe(view);
   });
   it('still applies the existing clamp after a resize reaches the movement limit', () => {
-    const next = resizeViewport({ x: 100, y: 100, cell: 30 }, narrow, wide);
-    expect(clampViewport(next, { rows: 20, cols: 20 }, wide)).toEqual({ x: 424, y: 223, cell: 30 });
+    const next = resizeViewport({ x: 100, y: 100, cell: 30 }, narrow, wide, board);
+    expect(clampViewport(next, board, wide)).toEqual({ x: 424, y: 223, cell: 30 });
+  });
+  it('uses the gap after a zoomed-out board to show its start when iPhone Duo closes', () => {
+    // 内側の画面で縮小し、右と下に空きを残した32目の盤面。閉じても同じ長さの空きを保つと、
+    // 外側の画面では左の約15目が画面の外へ出て、右に4割ほどの空きが残っていた（#367）。
+    const inner = { width: 669, height: 649, windowWidth: 669, windowHeight: 869 };
+    const outer = { width: 382, height: 458, windowWidth: 466, windowHeight: 678 };
+    const zoomed = { rows: 150, cols: 32 };
+    const next = resizeViewport({ x: 103, y: -1229, cell: 11 }, inner, outer, zoomed, LABEL_SIZE);
+    expect(next).toEqual({ x: 22, y: -1229, cell: 11 });
+    // 横は空きを詰めて編み始めを右端から8pxに寄せ、左の隠れていた目を見せる。
+    expect(outer.width - (next.x + zoomed.cols * next.cell)).toBe(8);
+    // 縦は狭くなった191px分だけ空きを詰め、上へ押し出さない。
+    expect(outer.height - (next.y + zoomed.rows * next.cell)).toBe(inner.height - (-1229 + zoomed.rows * 11) - 191);
+  });
+  it('does not reveal on an axis that grows or keeps its size', () => {
+    // キーボードが閉じて縦だけ広がる場合などは、右に空きがあっても利用者が動かした横の位置を保つ。
+    const panned = { x: -1450, y: -4000, cell: 30 };
+    const shorter = { width: 402, height: 240, windowWidth: 402, windowHeight: 574 };
+    const taller = { width: 402, height: 540, windowWidth: 402, windowHeight: 874 };
+    expect(resizeViewport(panned, shorter, taller, { rows: 150, cols: 60 })).toEqual({ x: -1450, y: -3700, cell: 30 });
+  });
+  it('keeps the gap when no part of the board is hidden by the resize', () => {
+    // 狭い画面でも全体が見える小さな盤面は、空きを詰めずに右下からの距離を保つ。
+    const small = { rows: 5, cols: 5 };
+    expect(resizeViewport({ x: 600, y: 300, cell: 30 }, wide, narrow, small)).toEqual({ x: 140, y: 177, cell: 30 });
   });
 });
 
