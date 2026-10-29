@@ -1,5 +1,6 @@
 import { readFile, readdir, stat } from 'node:fs/promises';
 import { join, relative } from 'node:path';
+import { ASSET_HISTORY_FILE, assetHistoryFiles, isRetainedAsset, parseAssetHistory } from './asset-history.mjs';
 import { htmlFiles, verifyContentSecurityPolicy } from './content-security-policy.mjs';
 
 const required = ['index.html', 'robots.txt', 'sitemap.xml', 'llms.txt', 'favicon.ico', 'icon-192.png', 'apple-touch-icon.png', 'og-image.png', 'guide/index.html', 'support/index.html', 'privacy/index.html', 'privacy/app/index.html', 'third-party-notices/index.html'];
@@ -39,6 +40,26 @@ for (const file of await htmlFiles('dist')) {
 }
 if (!assets.some((file) => file.startsWith('pdf.worker-') && file.endsWith('.js'))) throw new Error('PDF Workerが出力されていません');
 
+// `scripts/retain-previous-assets.mjs`が前の版のファイルを加えたあとは、一覧と`assets/`が食い違わないこと。
+// 加える前（PRのビルドや手元）は一覧がないので、この確認は飛ばす。
+let previousAssets = new Set();
+const historyText = await readFile(join('dist', ASSET_HISTORY_FILE), 'utf8').catch((error) => {
+  if (error.code === 'ENOENT') return undefined;
+  throw error;
+});
+if (historyText !== undefined) {
+  const history = parseAssetHistory(historyText);
+  const listed = assetHistoryFiles(history);
+  for (const file of listed) {
+    if (!assets.includes(file)) throw new Error(`${ASSET_HISTORY_FILE} の ${file} がassets/にありません`);
+  }
+  for (const file of assets.filter(isRetainedAsset)) {
+    if (!listed.has(file)) throw new Error(`assets/${file} が${ASSET_HISTORY_FILE}にありません`);
+  }
+  const current = new Set(history.generations[0].files);
+  previousAssets = new Set([...listed].filter((file) => !current.has(file)));
+}
+
 async function totalSize(directory) {
   let total = 0;
   for (const entry of await readdir(directory, { withFileTypes: true })) {
@@ -48,6 +69,10 @@ async function totalSize(directory) {
   return total;
 }
 
-const bytes = await totalSize('dist');
+// 今回の版の配信物は5MBまで。前の版のファイルは別に数え、最大10世代分で10MBまでとする。
+let previousBytes = 0;
+for (const file of previousAssets) previousBytes += (await stat(join('dist', 'assets', file))).size;
+const bytes = (await totalSize('dist')) - previousBytes;
 if (bytes > 5 * 1024 * 1024) throw new Error(`配信物が5MBを超えています: ${bytes}`);
-console.log(`dist verified: ${(bytes / 1024).toFixed(1)} KiB`);
+if (previousBytes > 10 * 1024 * 1024) throw new Error(`前の版のファイルが10MBを超えています: ${previousBytes}`);
+console.log(`dist verified: ${(bytes / 1024).toFixed(1)} KiB${previousAssets.size > 0 ? `, previous versions: ${previousAssets.size} file(s), ${(previousBytes / 1024).toFixed(1)} KiB` : ''}`);

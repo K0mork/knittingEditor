@@ -136,6 +136,12 @@ jobs:
           path: test-results/
           retention-days: 7
           if-no-files-found: warn
+      # 配信の前から開いているページが古いJSやWorkerを読めるよう、前の版の`/assets/`を本番から取って
+      # distに加える（#363）。E2Eはdistを作り直すので、その後に行う。PRでも実行し、取れることを確かめる。
+      - name: Retain previous assets from https://knittingeditor.com/
+        run: node scripts/retain-previous-assets.mjs --commit "$GITHUB_SHA"
+      - name: Check dist with the previous assets
+        run: npm run check:dist
       # 配信の準備は`main`のrunだけで行う（`deploy`と同じ条件）。
       - name: Configure Pages
         if: github.ref == 'refs/heads/main'

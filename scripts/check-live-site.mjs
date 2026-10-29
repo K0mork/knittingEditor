@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
+import { ASSET_HISTORY_FILE, assetHistoryFiles, parseAssetHistory } from './asset-history.mjs';
 
 // 1回の取得（応答の本文を読み終えるまで）の上限。止まった取得はこの時間で失敗にして次の試行へ回す。
 export const REQUEST_TIMEOUT_MS = 30_000;
@@ -25,6 +26,7 @@ export const LIVE_SITE_FILES = [
   { path: '/robots.txt', type: 'text/plain' },
   { path: '/sitemap.xml', type: 'application/xml' },
   { path: '/llms.txt', type: 'text/plain', distFile: 'llms.txt' },
+  { path: `/${ASSET_HISTORY_FILE}`, type: 'application/json', distFile: ASSET_HISTORY_FILE },
   { path: '/CNAME', text: 'knittingeditor.com' },
 ];
 
@@ -67,6 +69,7 @@ async function checkOnce({ origin, dist }, request) {
     redirect: 'manual',
   });
   const problems = [];
+  let history;
   for (const file of LIVE_SITE_FILES) {
     const { response, body } = await get(file.path);
     if (response.status !== 200) {
@@ -88,6 +91,20 @@ async function checkOnce({ origin, dist }, request) {
         const { response: assetResponse } = await get(asset);
         if (assetResponse.status !== 200) problems.push(`${asset}: HTTP ${assetResponse.status}`);
       }
+    }
+    if (file.path === `/${ASSET_HISTORY_FILE}`) {
+      try {
+        history = parseAssetHistory(body.toString('utf8'));
+      } catch (cause) {
+        problems.push(`${file.path}: ${cause.message}`);
+      }
+    }
+  }
+  // 今回の版と、残している前の版の`/assets/`のファイルがすべて取れること（#363）。
+  if (history) {
+    for (const name of assetHistoryFiles(history)) {
+      const { response: assetResponse } = await get(`/assets/${name}`);
+      if (assetResponse.status !== 200) problems.push(`/assets/${name}: HTTP ${assetResponse.status}`);
     }
   }
   // HTTPでのアクセスはHTTPSへ転送されること。
