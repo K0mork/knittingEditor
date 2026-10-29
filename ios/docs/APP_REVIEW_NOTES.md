@@ -2,6 +2,8 @@
 
 App Store Connectの審査メモには、英語と日本語の両方を転記する。アプリの画面は日本語だけなので、英語の手順にはボタンの日本語名を添え、日本語を読めない審査担当者でも手順をたどれるようにする（#292）。ボタン名を変えたときは、両方の手順を直す。
 
+画面のボタンに出ない操作（ジェスチャー、キーボードショートカット、Apple Pencil、システムが出す画面など）は、審査担当者が気づきにくい。App Review Guidelines 2.5.19は説明のない機能を禁じているので、こうした操作を足したり変えたりしたときは、アプリ内の「使い方」と、ここの「Other input methods」「画面のボタン以外の操作」の両方を直す（#352）。更新版を提出するときの手順は[提出手順の10](RELEASE_RUNBOOK.md#10-更新版を提出する)にある。
+
 ## English
 
 ### About Guideline 4.2
@@ -30,6 +32,16 @@ The app's interface is in Japanese. Button names are shown as "English (日本�
 5. In the same panel, tap "Restore from backup (バックアップから復元)" and choose the `.knit` file from the on-device location used in step 4, or open that file from the Files app. Confirm the restored chart.
 6. Tap "Guide (使い方)" at the top right and read the "Privacy (プライバシー)" section. The app privacy policy (https://knittingeditor.com/privacy/app/) in the Privacy section and the support page link in the "Support (サポート)" section open in Safari only when tapped and can be checked while online. The email link opens Mail only when the user taps it.
 
+### Other input methods
+
+The following inputs are not shown as on-screen buttons. They are optional, run the same actions as the buttons, and are described in "Guide (使い方)". They can be tried when the accessory is available.
+
+- **Apple Pencil double-tap (iPad, with an Apple Pencil that supports double-tap):** switches between "Draw (描く)" and "Erase (消す)". It follows the double-tap setting in iPad Settings > Apple Pencil, and does nothing when that setting is "Off" or an action the app does not have. It has no menu item.
+- **Menu bar and keyboard shortcuts (iPad with a hardware keyboard):** ⌘N new chart, ⌘O restore from backup, ⌘S back up this chart, ⌥⌘S back up all data, ⇧⌘E export PNG, ⌘P export PDF, ⌘Z undo, ⇧⌘Z redo, ⌘+ / ⌘− zoom in / out, and ⇧⌘H open the guide. The same items appear in the File, Edit, View, and Help menus of the menu bar.
+- **Trackpad pinch (iPad with a trackpad):** zooms the chart in and out.
+
+After the user has saved or shared PNG or PDF files several times, the app may ask the system to show the standard App Store rating prompt (StoreKit). The prompt is drawn by the system, and the system decides whether to show it. The app does not ask within three days of the first launch, so the prompt is not expected during review. Rating is optional, and no chart content is sent.
+
 ## 日本語
 
 ### Review guideline 4.2 に関する説明
@@ -55,3 +67,13 @@ The app's interface is in Japanese. Button names are shown as "English (日本�
 4. 「出力」（iPhoneでは画面の下、iPadでは右の列）を開き、「PNGを保存」「PDFを保存」「この編み図を書き出す」（`.knit`）でそれぞれ出力する。各ファイルの確認画面で「ファイルに保存」を選び、保存先を「このiPhone内」または「このiPad内」にして保存を完了する。端末内へ保存することで、機内モードのまま次の復元を確認できる。
 5. 同じ画面の「バックアップから復元」で手順4の端末内の保存先から`.knit`を選ぶか、Filesからそのファイルを開き、復元された編み図を確認する。
 6. 右上の「使い方」を開き、「プライバシー」の本文を確認する。アプリのプライバシーポリシー（https://knittingeditor.com/privacy/app/）へのリンクは、タップした場合だけSafariで開く。「サポート」のサポートページへのリンクはネットワーク接続時に確認する。メールのリンクは利用者が選んだ場合だけメールアプリを開く。
+
+### 画面のボタン以外の操作
+
+次の操作は画面のボタンには出ません。どれも任意の操作で、画面のボタンと同じ処理を行い、「使い方」に説明があります。対応する機器があれば試せます。
+
+- **Apple Pencilのダブルタップ（iPad、ダブルタップに対応するApple Pencil）:** 「描く」と「消す」を切り替える。iPadの「設定」>「Apple Pencil」のダブルタップの設定に従い、「オフ」やこのアプリに無い動作のときは何もしない。メニューの項目はない。
+- **メニューバーとキーボードショートカット（ハードウェアキーボードを接続したiPad）:** ⌘N 新しい編み図、⌘O バックアップから復元、⌘S この編み図をバックアップ、⌥⌘S 全データをバックアップ、⇧⌘E PNGで書き出す、⌘P PDFで書き出す、⌘Z 元に戻す、⇧⌘Z やり直す、⌘＋／⌘− 拡大／縮小、⇧⌘H 使い方を開く。同じ項目をメニューバーの「ファイル」「編集」「表示」「ヘルプ」にも置いている。
+- **トラックパッドのピンチ（トラックパッドを接続したiPad）:** 盤面を拡大・縮小する。
+
+PNGやPDFを何度か保存・共有したあとに、App Storeの評価を依頼するシステムの標準の画面（StoreKit）を出すようシステムに求めることがあります。画面はシステムが描き、表示するかどうかもシステムが決めます。初めて起動してから3日間は求めないため、審査中に表示されることは想定していません。評価は任意で、編み図の内容は送りません。

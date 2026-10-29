@@ -105,6 +105,17 @@ for required_text in \
   }
 done
 
+# 画面のボタンに出ない操作は、審査担当者が気づきにくい（App Review Guidelines 2.5.19、#352）。
+# 英語・日本語の両方に、その説明の節があることを確かめる。
+for required_heading in \
+  '### Other input methods' \
+  '### 画面のボタン以外の操作'; do
+  grep -qxF -- "$required_heading" "$REVIEW_NOTES" || {
+    echo "review notes are missing the section: $required_heading" >&2
+    exit 1
+  }
+done
+
 for required_text in \
   '<h1>アプリのプライバシーポリシー</h1>' \
   '情報を収集しません' \

@@ -39,6 +39,12 @@ test('rejects a missing canonical page even when the Markdown pointer exists', (
   expect(check).toThrow();
 });
 
+test.each(['### Other input methods', '### 画面のボタン以外の操作'])('rejects review notes missing the section %s', (heading) => {
+  const notes = join(directory, 'ios/docs/APP_REVIEW_NOTES.md');
+  writeFileSync(notes, readFileSync(notes, 'utf8').replaceAll(heading, ''));
+  expect(check).toThrow();
+});
+
 test('rejects metadata pointing to the Web policy instead of the app policy', () => {
   const metadata = join(directory, 'ios/docs/APP_STORE_METADATA.md');
   writeFileSync(metadata, readFileSync(metadata, 'utf8').replaceAll('https://knittingeditor.com/privacy/app/', 'https://knittingeditor.com/privacy/'));
