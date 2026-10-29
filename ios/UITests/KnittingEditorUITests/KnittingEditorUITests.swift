@@ -1420,6 +1420,8 @@ final class KnittingEditorUITests: XCTestCase {
     // 最大文字の縦向き操作は1起動にまとめる。回転の高コストを避けるため横向きは別起動を維持する。
 
     func testAccessibilityExtraExtraExtraLargeKeepsPrimaryControlsUsable() {
+        // 普段でも約65秒かかる。CIでは起動時の自動化セッションの準備がときどき約1分止まり、既定の3分を超えた（#355）。
+        executionTimeAllowance = 240
         let app = launchWithAccessibilityExtraExtraExtraLarge()
 
         assertPrimaryControlsAreUsable(in: app)
