@@ -1,6 +1,6 @@
 # v1.0 加入・提出・公開の手順
 
-個人でApple Developer Programへ加入し、v1.0をApp Storeへ提出・公開するまで、次の順に進める。全項目の管理は[提出チェックリスト](APP_STORE_CHECKLIST.md)、入力値の正本は[メタデータ](APP_STORE_METADATA.md)、実機の手順と証跡は[実機リリースゲート](REAL_DEVICE_RELEASE_CHECKLIST.md)を使う。
+個人でApple Developer Programへ加入し、v1.0をApp Storeへ提出・公開するまで、次の順に進める。全項目の管理は[提出チェックリスト](APP_STORE_CHECKLIST.md)、入力値の正本は[メタデータ](APP_STORE_METADATA.md)、実機の手順と証跡は[実機リリースゲート](REAL_DEVICE_RELEASE_CHECKLIST.md)を使う。v1.1以降の更新版は[手順10](#10-更新版を提出する)を加えて進める。
 
 個人情報・Team ID・App Store ConnectのApp ID・登録画面の無加工画像を、公開リポジトリやGitHubへ載せない。非公開の入力値はメインチェックアウトのルートの `private/APP_STORE_CONNECT.md` を参照する。worktreeに別の `private/` は作らない。
 
@@ -124,3 +124,15 @@ MacとApple Vision Proは[#86の決定コメント](https://github.com/K0mork/kn
 
 - **完了の目安:** 承認とストア公開を確認し、公開版の主要フローとチェックリストの証跡・記録がそろった。未実施項目は明示されている。
 - **関係するIssue／項目:** [#25](https://github.com/K0mork/knittingEditor/issues/25)・[#26](https://github.com/K0mork/knittingEditor/issues/26)・[#27](https://github.com/K0mork/knittingEditor/issues/27)、提出チェックリスト末尾の承認確認、実機ゲートM6・記録ルール。
+
+## 10. 更新版を提出する
+
+v1.1以降の更新版も、手順5〜9に従ってビルド・確認・入力・提出・公開する。バージョン番号は[バージョンとビルド番号](APP_STORE_METADATA.md#バージョンとビルド番号)に従って上げる。App Review Guidelinesは、新しい機能を審査メモに具体的に書くよう求めており（2.3.1(a)。一般的な説明はリジェクトの対象になる）、説明のない機能を禁じている（2.5.19）。このため、手順7で審査メモを転記する前に、次のとおり[審査メモ](APP_REVIEW_NOTES.md)を直す。
+
+1. 前に公開した版のコミットから提出するコミットまでの、マージ済みPRと `docs/dev-log/` の記録を読み、利用者が使える機能・操作で増えたものと変わったものを書き出す。不具合の修正だけで、操作が変わらないものは除いてよい。
+2. 審査メモの英語・日本語の両方に、その版で増えた機能・変わった操作と、審査担当者が確かめる手順を具体的に書く。「不具合の修正と改善」のような一般的な説明だけにしない。アプリ内課金を加える版では、購入・復元を確かめる手順も書く（[#38](https://github.com/K0mork/knittingEditor/issues/38)）。
+3. 画面のボタンに出ない操作（ジェスチャー、キーボードショートカット、Apple Pencil、システムが出す画面など）を足したり変えたりしたときは、アプリ内の「使い方」と、審査メモの「Other input methods」「画面のボタン以外の操作」の両方に書く。
+4. 無効にしたまま同梱する機能や、審査のあとで機能を出し入れするリモートの切り替えを入れていないことを確かめる（2.5.19）。
+
+- **完了の目安:** 審査メモの英語・日本語の両方に、前の版から増えた機能・変わった操作と確認手順が書かれ、`ios/scripts/check-app-store-docs.sh` が通る。
+- **関係するIssue／項目:** [#352](https://github.com/K0mork/knittingEditor/issues/352)、[#38](https://github.com/K0mork/knittingEditor/issues/38)、提出チェックリストの[検証・配布](APP_STORE_CHECKLIST.md#検証配布)。
