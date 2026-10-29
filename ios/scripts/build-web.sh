@@ -44,6 +44,8 @@ if [[ -f "$STAMP_PATH" && -f "$OUTPUT_ROOT/index.html" && "$(<"$STAMP_PATH")" ==
   exit 0
 fi
 
+# CIのログで、ビルドフェーズが`.node-version`の版のNodeを使ったことを確かめられるようにする。
+echo "Building local Web assets with Node $(node --version)"
 (cd "$WEB_ROOT" && "$REPO_ROOT/node_modules/.bin/tsc" -p tsconfig.app.json --noEmit && "$REPO_ROOT/node_modules/.bin/vite" build --config vite.config.ts)
 
 mkdir -p "$OUTPUT_ROOT"

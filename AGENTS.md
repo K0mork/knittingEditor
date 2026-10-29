@@ -6,7 +6,7 @@ This repository is a Vite/React knitting-chart editor deployed as a static GitHu
 
 ## Build, Test, and Development Commands
 
-Use Node.js 24 and the single lockfile at the repository root. Install pinned dependencies and start the development server:
+Use Node.js 26 (the version in `.node-version`, which CI also reads) and the single lockfile at the repository root. Install pinned dependencies and start the development server:
 
 ```sh
 npm ci
