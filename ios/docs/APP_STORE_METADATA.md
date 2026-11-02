@@ -132,7 +132,7 @@ App Store Connectの年齢制限は、質問票への回答から決まる（202
 - サポートURL: `https://knittingeditor.com/support/`。下記「サポート窓口」
 - プライバシーポリシーURL: `https://knittingeditor.com/privacy/app/`（App Store Connect登録前に公開状態と表示を確認）。正本はリポジトリルートの`public/privacy/app/index.html`。登録は#27で行う。
 - 審査メモ: [`APP_REVIEW_NOTES.md`](APP_REVIEW_NOTES.md)の4.2説明と機内モード手順を、英語と日本語の両方で転記する。
-- スクリーンショット: 提出に使う最終版（iPhone 6.9インチ・iPad 13インチ、説明文入り各5枚）は[`SCREENSHOTS.md`](SCREENSHOTS.md#app-store-connect提出用最終版)のとおり用意済み（#290）。2027年4月以降の提出に要るiPhone Duoの外側・内側の各5枚も用意済み（#353）。実機での撮り直しは任意。提出ビルドでは、最終版と同じ画面になることを確かめる（[`RELEASE_RUNBOOK.md`](RELEASE_RUNBOOK.md)の手順6）。
+- スクリーンショット: 提出に使う最終版（iPhone 6.9インチ・iPad 13インチ、説明文入り各5枚）は[`SCREENSHOTS.md`](SCREENSHOTS.md#app-store-connect提出用最終版)のとおり用意済み（#290）。2027年4月以降の提出に要るiPhone Duoの外側・内側の各5枚も用意済み（#353）。実機での撮り直しは任意。提出ビルドでは、最終版と同じ画面になることを確かめる（[`RELEASE_RUNBOOK.md`](RELEASE_RUNBOOK.md)の手順8）。
 
 ## 配信地域
 

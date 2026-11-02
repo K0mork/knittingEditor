@@ -182,6 +182,8 @@ TEST_RUNNER_KNITTING_EDITOR_MANUAL_WINDOW=1 xcodebuild test \
 
 ## M6: TestFlight・App Store
 
+提出ビルドの実機確認（TestFlightでのクラッシュログ・メモリ警告・出力時間、最終画面）は、審査への提出と並行して行い、公開の前に終える。v1.0は手動公開で提出する（[`RELEASE_RUNBOOK.md`](RELEASE_RUNBOOK.md)の手順7・8）。
+
 - [ ] 署名済みArchiveを作成し、App Store ConnectへTestFlight内部配布する。
 - [x] iPhone／iPadで機内モードの主要フローを実施する。（iPadは2026-09-22（M0）。iPhone 17は2026-10-09に、機内モードでアプリを起動し直し、新しい編み図を作って記号を置き、PNG・PDF・`.knit`を「このiPhone内」へ保存できた）
 - [ ] TestFlightのクラッシュログ、メモリ警告、PNG/PDF出力時間を確認する。
