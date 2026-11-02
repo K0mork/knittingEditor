@@ -46,14 +46,15 @@ KNITTING_EDITOR_DEVELOPMENT_TEAM=XXXXXXXXXX KNITTING_EDITOR_REQUIRE_WIRED=1 ios/
 
 機内モードにするとWi-Fiペアリングの端末はMacから見えなくなる。**この節はケーブル接続で実施する**。有線であれば機内モード中もビルド・テスト・ログ取得を続けられるので、`KNITTING_EDITOR_REQUIRE_WIRED=1`で事前に確認してから始める。
 
-**前提: 無料のPersonal Teamでは自動テストを機内モードで実行できない。** 2026-09-22にiPad Air 第5世代（iPadOS 27.0、有線接続）で確認した内容は次のとおり。
+**前提: 実機の機内モードでは自動テストを実行できない。** 2026-09-22に無料Personal Teamで、iPad Air 第5世代（iPadOS 27.0、有線接続）で確認した内容は次のとおり。有料のTeamでも同じだった（2026-11-02）。
 
 - **ホーム画面からの通常起動は機内モードでもできる。** 機内モード中にアプリを終了し、アイコンから起動できることを実機で確認した。利用者の使い方は機内モードで成立する。
 - 一方、開発ツール経由の導入と起動は機内モードで失敗する。`xcodebuild test`は再インストールを伴うため`The application could not be launched because the Developer App Certificate is not trusted`となり、`devicectl device process launch`も`profile has not been explicitly trusted by the user`で拒否された。したがって**機内モードでの自動テストは実行できない**。
 - 開発者証明書の信頼が外れた状態でオフライン起動を試みると復旧できない。ネットワークを復帰させ、設定から信頼し直すか再インストールするまで起動できなかった。機内モードを解除してもWi-Fiが自動で戻らないことがある。
-- この節の自動化は、有料のApple Developer Programに加入するかTestFlight配布ビルドを使えるようになってから行う。
+- **有料のTeamでも同じだった。** 2026-11-02にiPhone 17とiPad Air 第5世代（どちらも27.2、有線）で試した。オンラインで同じテストを流して起動できたことを確かめてから機内モードにしても、`xcodebuild test`が入れ直したアプリの起動は`profile has not been explicitly trusted by the user`で拒否され、端末に「デベロッパの信用を確認するにはインターネット接続が必要です」と出た（[記録](RELEASE_VERIFICATION_RECORDS.md#2026-11-02-有料teamでの署名と実機導入iphone-17--ios-272ipad-air-第5世代--ipados-272有線)）。入れ直した開発ビルドは起動の前にiOSがオンラインで開発元を確かめるので、開発ツールで入れるかぎり機内モードでは起動できない。
+- このため、提出ビルドでの機内モードの確認は、TestFlightで入れたビルドを手で操作して行う（M6、#25）。
 
-機内モードで実行するテストは用意済みで、既定ではスキップされる。加入後は端末を機内モードにし、有線接続で次を実行する。`navigator.onLine`がfalseであることを先に検査するため、機内モードでない状態で成功したことにはならない。
+機内モードで実行するテストは用意してあり、既定ではスキップされる。上のとおり実機の機内モードでは起動できないので、今は使えない。開発ツールのままオフラインで起動できる手段が見つかったときのために、手順を残す。`navigator.onLine`がfalseであることを先に検査するため、機内モードでない状態で成功したことにはならない。
 
 ```sh
 TEST_RUNNER_KNITTING_EDITOR_AIRPLANE_MODE=1 xcodebuild test \
@@ -63,7 +64,7 @@ TEST_RUNNER_KNITTING_EDITOR_AIRPLANE_MODE=1 xcodebuild test \
   -only-testing:knittingEditorTests/LocalWebSchemeHandlerTests/testAirplaneModeServesEditorWithoutNetwork
 ```
 
-なお、オフライン要件そのものは別経路で裏付けている。生成バンドルの静的検査（外部URL・CDN・分析の不在、CIで毎回実行）、実機WebKitでの`fetch`／`XHR`／`WebSocket`／`EventSource`未使用の実測、Swift側に通信コードが無いこと。利用者による機内モードの主要フロー（2026-09-22）と通信監視（2026-10-02）は[リリース確認の記録](RELEASE_VERIFICATION_RECORDS.md)のとおり確認済みである。開発ツール経由の機内モード自動テストと、TestFlight提出ビルドでの再確認は残っている。
+なお、オフライン要件そのものは別経路で裏付けている。生成バンドルの静的検査（外部URL・CDN・分析の不在、CIで毎回実行）、実機WebKitでの`fetch`／`XHR`／`WebSocket`／`EventSource`未使用の実測、Swift側に通信コードが無いこと。利用者による機内モードの主要フロー（2026-09-22）と通信監視（2026-10-02）は[リリース確認の記録](RELEASE_VERIFICATION_RECORDS.md)のとおり確認済みである。TestFlight提出ビルドでの再確認は残っている。
 
 - [x] 機内モードを有効にしてアプリを新規起動できる。（2026-09-22、iPad Air 第5世代。機内モード中にアプリを終了し、ホーム画面のアイコンから起動できることを確認）
 - [x] 新規編み図を作成し、全記号、Canvas描画、Blob生成、PNG保存、PDF保存を完了できる。（2026-09-22、iPad Air 第5世代。当時のカタログv3の26記号を、利用者が機内モード中に記号メニューで全種の表示を目視確認。その後に足した3記号を含むv4の29記号は、提出ビルドの機内モード確認（M6）で通す）

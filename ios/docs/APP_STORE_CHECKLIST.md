@@ -4,7 +4,7 @@
 
 ## 実装・資産
 
-- [ ] Apple Developer Team、Bundle ID、署名証明書、Provisioning Profileを確定する。Teamは個人でApple Developer Programに加入する方針（2026-10-02に決定）。署名はAutomaticを続ける。加入の進み具合は[#17](https://github.com/K0mork/knittingEditor/issues/17)で追い、手順は[RELEASE_RUNBOOK.md](RELEASE_RUNBOOK.md)の手順2・3に従う。
+- [x] Apple Developer Team、Bundle ID、署名証明書、Provisioning Profileを確定する。Teamは個人でApple Developer Programに加入する方針（2026-10-02に決定）。署名はAutomaticを続ける。手順は[RELEASE_RUNBOOK.md](RELEASE_RUNBOOK.md)の手順2・3。（2026-11-02、加入が有効になり、有料のTeamのAutomatic署名で`com.k0mork.knittingEditor`のApple Development証明書とProvisioning Profileが解決し、iPhone・iPadへ入れて起動できた（#17、[記録](RELEASE_VERIFICATION_RECORDS.md#2026-11-02-有料teamでの署名と実機導入iphone-17--ios-272ipad-air-第5世代--ipados-272有線)）。提出用の配布証明書は、手順5でArchiveをアップロードするときにXcodeが作る）
 - [x] AppIconのAny・Dark・Tintedを1024×1024で登録する（小サイズはXcodeが生成）。素材・再生成手順は`../design/app-icon/README.md`。
 - [x] iPhone・iPadのホーム画面でライト・ダーク・色合いを切り替えて確認した（iOS 18.2）。小サイズは設定のアプリ一覧（iPhone、iOS 27.0）とSpotlight（iPhone・iPad、iOS 18.2）で確認した（#78、PR #94の比較画像）。
 - [x] 起動画面を確認する。（2026-10-21、Xcode 27.1のReleaseビルドをiOS 27.0 Simulatorのライト・ダークで録画し、白や黒の全面表示が出ないことを確認。[記録](RELEASE_VERIFICATION_RECORDS.md#2026-10-21-起動画面の確認simulator)。提出ビルドでの最終確認は実機リリースゲートのM6で行う）
