@@ -102,6 +102,13 @@ export async function renderPng(board: Board, cellSize: number, background: stri
   }
 }
 
+/**
+ * 描き終えた左上の画素を白い紙とみなす下限。Safari・Firefox・Braveの指紋採取対策は読み戻しに小さな揺らぎを
+ * 加えるため、完全な白でなくても通す。確保に失敗した描画面は透明（0,0,0,0）なので、これで足りる。
+ */
+const PNG_PAPER_MIN_RGB = 240;
+const PNG_PAPER_MIN_ALPHA = 250;
+
 /** `canvas`へPNGの内容を描き、エンコードを終えたBlobを返す。 */
 async function paintPng(canvas: HTMLCanvasElement, size: { width: number; height: number }, board: Board, cellSize: number, background: string, options: ExportAnnotations, legend: ReturnType<typeof exportLegend>): Promise<Blob> {
   canvas.width = size.width;
@@ -180,7 +187,7 @@ async function paintPng(canvas: HTMLCanvasElement, size: { width: number; height
   }
   // 左上の角は番号の帯の白い紙で、題名もここには掛からない。確保に失敗した描画面は描いても透明のまま読める。
   const corner = context.getImageData(0, 0, 1, 1).data;
-  if (corner[0] !== 255 || corner[1] !== 255 || corner[2] !== 255 || corner[3] !== 255) throw new PngCanvasError();
+  if (corner[0] < PNG_PAPER_MIN_RGB || corner[1] < PNG_PAPER_MIN_RGB || corner[2] < PNG_PAPER_MIN_RGB || corner[3] < PNG_PAPER_MIN_ALPHA) throw new PngCanvasError();
   const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((result) => result ? resolve(result) : reject(new Error('PNG生成に失敗しました')), 'image/png'));
   const encoded = await pngDimensions(blob);
   if (encoded?.width !== size.width || encoded.height !== size.height || blob.size < minimumPngBytes(size.width, size.height)) throw new PngCanvasError();

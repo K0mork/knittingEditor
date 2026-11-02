@@ -273,12 +273,30 @@ describe('renderPng canvas release', () => {
     expect([canvas.width, canvas.height]).toEqual([0, 0]);
   });
 
-  // iOSのWebKitは描画面を確保できなくても例外を出さず、透明のまま描画を捨て、小さな画像を返す（iPhone 13 miniで163 bytes）。
-  it.each([
-    ['a canvas that reads back transparent', () => fakeCanvas({ context: new Proxy({ getImageData: () => ({ data: new Uint8ClampedArray(4) }) } as Record<string | symbol, unknown>, {
+  /** 左上を`pixel`として読み戻す描画面。 */
+  function cornerCanvas(pixel: readonly number[]) {
+    return fakeCanvas({ context: new Proxy({ getImageData: () => ({ data: new Uint8ClampedArray(pixel) }) } as Record<string | symbol, unknown>, {
       get: (target, key) => key in target ? target[key] : (target[key] = vi.fn()),
       set: (target, key, value) => { target[key] = value; return true; },
-    }) })],
+    }) });
+  }
+
+  // 指紋採取対策のあるブラウザは、読み戻しに小さな揺らぎを加える。
+  it.each([
+    [[254, 255, 253, 254]],
+    [[240, 240, 240, 250]],
+  ])('accepts a white corner read back with noise %o', async (pixel) => {
+    const canvas = cornerCanvas(pixel);
+    const { width, height } = validatePngSize(new Board(2, 2), 24);
+    expect(await pngDimensions(await renderPng(new Board(2, 2), 24))).toEqual({ width, height });
+    expect([canvas.width, canvas.height]).toEqual([0, 0]);
+  });
+
+  // iOSのWebKitは描画面を確保できなくても例外を出さず、透明のまま描画を捨て、小さな画像を返す（iPhone 13 miniで163 bytes）。
+  it.each([
+    ['a canvas that reads back transparent', () => cornerCanvas([0, 0, 0, 0])],
+    ['a corner darker than the paper', () => cornerCanvas([239, 255, 255, 255])],
+    ['a corner less opaque than the paper', () => cornerCanvas([255, 255, 255, 249])],
     ['an encoded image smaller than the canvas', () => fakeCanvas({ toBlob: (callback) => callback(pngHeader(1, 1)) })],
     ['an encoded image cut short', () => fakeCanvas({ toBlob: (callback) => callback(new Blob([pngHeader(96, 96).slice(0, 40)], { type: 'image/png' })) })],
     ['an encoded image that is not a PNG', () => fakeCanvas({ toBlob: (callback) => callback(new Blob(['x'.repeat(163)], { type: 'image/png' })) })],
