@@ -2,7 +2,7 @@
 //   node scripts/clean-worktrees.mjs           消す候補と残す理由を表示するだけ
 //   node scripts/clean-worktrees.mjs --apply   候補を実際に消す
 // 未コミットの変更があるもの、PRに含まれない未pushのコミットがあるもの、オープンなPRのもの、
-// どれかのプロセスが作業場所にしているもの（実行中のセッション）は消さない。
+// どれかのプロセスが作業場所にしているもの（実行中のセッション）と、それらを中に入れ子で持つworktreeは消さない。
 // リポジトリ直下のチェックアウトは切り替えず、`main`以外にあれば知らせるだけにする。
 import { execFileSync } from 'node:child_process';
 import { realpathSync } from 'node:fs';
@@ -60,6 +60,24 @@ export function isPathInUse(path, cwds) {
   return cwds.some((cwd) => cwd === path || cwd.startsWith(path + sep));
 }
 
+/**
+ * worktreeごとに`decide`で判定し、残すworktreeを中に入れ子で持つworktreeも残す。
+ * `.claude/`は`.gitignore`の対象なので、`git worktree remove`は入れ子のworktreeを無視されたファイルとして
+ * `--force`なしでも一緒に消し、その未コミットの変更と`.git/worktrees/`の管理情報が失われる。
+ *   worktrees  [{ path, ... }]（pathは実パス）
+ *   factsOf    worktreeを受け取り、`decide`に渡す事実を返す
+ * 戻り値: [{ worktree, decision }]（入力と同じ順）
+ */
+export function planWorktrees(worktrees, factsOf) {
+  const plans = worktrees.map((worktree) => ({ worktree, decision: decide(factsOf(worktree)) }));
+  const keptPaths = plans.filter(({ decision }) => !decision.remove).map(({ worktree }) => worktree.path);
+  return plans.map(({ worktree, decision }) => {
+    if (!decision.remove) return { worktree, decision };
+    const nested = keptPaths.find((kept) => kept !== worktree.path && isPathInUse(worktree.path, [kept]));
+    return nested ? { worktree, decision: { remove: false, reason: `contains the kept nested worktree ${nested}` } } : { worktree, decision };
+  });
+}
+
 function run(args, options = {}) {
   return execFileSync(args[0], args.slice(1), { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], ...options }).trim();
 }
@@ -111,18 +129,19 @@ function main() {
   const kept = new Set(mainCheckout.branch ? [mainCheckout.branch, 'main'] : ['main']);
   const actions = [];
 
-  for (const worktree of worktrees) {
-    const tip = worktree.head;
-    const facts = {
-      inMain: isAncestor(tip, 'origin/main'),
-      pr: worktree.branch ? pullRequestFor(worktree.branch, tip) : null,
-      dirty: run(['git', '-C', worktree.path, 'status', '--porcelain']) !== '',
+  const plans = planWorktrees(
+    worktrees.map((worktree) => ({ ...worktree, path: realPath(worktree.path), listedPath: worktree.path })),
+    (worktree) => ({
+      inMain: isAncestor(worktree.head, 'origin/main'),
+      pr: worktree.branch ? pullRequestFor(worktree.branch, worktree.head) : null,
+      dirty: run(['git', '-C', worktree.listedPath, 'status', '--porcelain']) !== '',
       processCwdsKnown: complete,
-      inUse: isPathInUse(realPath(worktree.path), cwds),
-    };
-    const decision = decide(facts);
-    console.log(`${decision.remove ? 'remove' : 'keep  '} worktree ${worktree.path} [${worktree.branch ?? 'detached'}]: ${decision.reason}`);
-    if (decision.remove) actions.push(['git', 'worktree', 'remove', worktree.path]);
+      inUse: isPathInUse(worktree.path, cwds),
+    }),
+  );
+  for (const { worktree, decision } of plans) {
+    console.log(`${decision.remove ? 'remove' : 'keep  '} worktree ${worktree.listedPath} [${worktree.branch ?? 'detached'}]: ${decision.reason}`);
+    if (decision.remove) actions.push(['git', 'worktree', 'remove', worktree.listedPath]);
     else if (worktree.branch) kept.add(worktree.branch);
   }
 

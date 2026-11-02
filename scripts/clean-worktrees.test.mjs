@@ -3,7 +3,7 @@ import { mkdtempSync, writeFileSync, rmSync, realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { decide, isPathInUse, parseLsofCwds, parseWorktrees, processCwds } from './clean-worktrees.mjs';
+import { decide, isPathInUse, parseLsofCwds, parseWorktrees, planWorktrees, processCwds } from './clean-worktrees.mjs';
 
 describe('parseWorktrees', () => {
   it('reads branches and detached worktrees from porcelain output', () => {
@@ -36,6 +36,34 @@ describe('decide', () => {
     expect(decide({ inMain: false, pr: null }).remove).toBe(false);
     expect(decide({ inMain: true, pr: merged, dirty: true })).toEqual({ remove: false, reason: 'uncommitted changes' });
     expect(decide({ inMain: true, pr: merged, inUse: true })).toEqual({ remove: false, reason: 'in use by a running process' });
+  });
+});
+
+describe('planWorktrees', () => {
+  const parent = { path: '/repo/.claude/worktrees/parent', head: 'aaa', branch: null };
+  const child = { path: '/repo/.claude/worktrees/parent/.claude/worktrees/child', head: 'bbb', branch: null };
+  const sibling = { path: '/repo/.claude/worktrees/parent-2', head: 'ccc', branch: null };
+  const removable = { inMain: true, pr: null };
+
+  it('keeps a removable worktree that contains a kept nested worktree', () => {
+    const plans = planWorktrees([parent, child], (worktree) => (worktree === child ? { ...removable, dirty: true } : removable));
+    expect(plans).toEqual([
+      { worktree: parent, decision: { remove: false, reason: `contains the kept nested worktree ${child.path}` } },
+      { worktree: child, decision: { remove: false, reason: 'uncommitted changes' } },
+    ]);
+  });
+
+  it('keeps every ancestor of a kept worktree, whatever the listing order', () => {
+    const grandchild = { path: `${child.path}/.claude/worktrees/grandchild`, head: 'ddd', branch: null };
+    const plans = planWorktrees([grandchild, child, parent], (worktree) => (worktree === grandchild ? { ...removable, inUse: true } : removable));
+    expect(plans.map(({ decision }) => decision.remove)).toEqual([false, false, false]);
+    expect(plans[2].decision.reason).toBe(`contains the kept nested worktree ${grandchild.path}`);
+  });
+
+  it('still removes parents whose nested worktrees are removed too, and ignores sibling paths that share a prefix', () => {
+    expect(planWorktrees([parent, child], () => removable).map(({ decision }) => decision.remove)).toEqual([true, true]);
+    const plans = planWorktrees([parent, sibling], (worktree) => (worktree === sibling ? { ...removable, dirty: true } : removable));
+    expect(plans.map(({ decision }) => decision.remove)).toEqual([true, false]);
   });
 });
 
