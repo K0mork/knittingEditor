@@ -21,7 +21,7 @@ fi
 # 走査中に消えたファイルで`shasum`が失敗してビルドフェーズごと落ちる。
 # テストとMarkdownはbundleに入らないので、変更されても作り直さない。
 # 共通の`tsconfig.base.json`・`vite.shared.ts`・`scripts/third-party-notices.mjs`はビルド設定そのものなので必ず含める。
-input_hash="$(
+input_hash="${CONFIGURATION:-Release}-$(
   cd "$REPO_ROOT"
   LC_ALL=C find ./ios/Web ./ios/scripts/build-web.sh ./packages ./package.json ./package-lock.json ./tsconfig.base.json ./vite.shared.ts ./scripts/third-party-notices.mjs -type f \
     ! -path './ios/Web/dist/*' \
@@ -46,6 +46,9 @@ fi
 
 # CIのログで、ビルドフェーズが`.node-version`の版のNodeを使ったことを確かめられるようにする。
 echo "Building local Web assets with Node $(node --version)"
+# 計測用ジェネレーターはReleaseのtree-shakingで除外する。
+export VITE_BRIDGE_IO_DEBUG=0
+if [[ "${CONFIGURATION:-Release}" == Debug ]]; then export VITE_BRIDGE_IO_DEBUG=1; fi
 (cd "$WEB_ROOT" && "$REPO_ROOT/node_modules/.bin/tsc" -p tsconfig.app.json --noEmit && "$REPO_ROOT/node_modules/.bin/vite" build --config vite.config.ts)
 
 mkdir -p "$OUTPUT_ROOT"

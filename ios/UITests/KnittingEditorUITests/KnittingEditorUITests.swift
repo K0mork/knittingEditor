@@ -639,6 +639,102 @@ final class KnittingEditorUITests: XCTestCase {
         XCTContext.runActivity(named: summary) { _ in }
     }
 
+    /// 実機専用。環境変数がなければfull CIでもskipする（PR smokeには追加しない）。
+    func testBridgeIOOnRealDevice() throws {
+        let environment = ProcessInfo.processInfo.environment
+        try XCTSkipUnless(environment["KNITTING_EDITOR_BRIDGE_IO"] == "1", "実機のブリッジ計測専用")
+        let size = environment["KNITTING_EDITOR_BRIDGE_IO_SIZE"] ?? "small"
+        XCTAssertTrue(["small", "medium", "large"].contains(size))
+        executionTimeAllowance = 1800
+        // 予期した失敗の記録（ignoringWaiterInterruption）でテストが途中で打ち切られても成功に数えられるため、
+        // 復元まで測り終えたかを最後に確かめる。
+        var measuredRestore = false
+        addTeardownBlock { XCTAssertTrue(measuredRestore, "ブリッジ計測が復元まで進まずに終わった") }
+        let app = XCUIApplication()
+        app.launchEnvironment["KNITTING_EDITOR_BRIDGE_IO_SIZE"] = size
+        let launchStart = Date()
+        app.launch()
+        let title = app.webViews.firstMatch.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "ブリッジ計測")).firstMatch
+        XCTAssertTrue(title.waitForExistence(timeout: 180), "空のテスト用コンテナが必要です")
+        print("BRIDGEIO size=\(size) seed=\(Date().timeIntervalSince(launchStart))s")
+        add(screenshotAttachment(named: "ブリッジ計測-生成後"))
+
+        let output = app.buttons["出力"]
+        let allData = app.buttons["全データを書き出す"]
+        openSavePanel(with: output, showing: allData, in: app)
+        let exportStart = Date()
+        allData.tap()
+        let fileSave = app.buttons["ファイルに保存"]
+        XCTAssertTrue(fileSave.waitForExistence(timeout: 300))
+        guard tapExportAlertButton(fileSave, in: app, step: "ブリッジ計測-保存") else { return }
+        let picker = SystemSheet.element(in: app)
+        XCTAssertTrue(picker.waitForExistence(timeout: 30))
+        // 保存先はシステムの前回の場所で開く。iPadではiCloud Driveで開き、端末内から探す復元で
+        // 見つからなかったため、サイドバーに端末内の場所があれば選ぶ。iPhoneでは見出しにしか出ないので押さない。
+        let onDevice = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label IN %@", ["このiPad内", "On My iPad"])).firstMatch
+        if waitForHittable(onDevice, timeout: 5) {
+            onDevice.tap()
+        }
+        var filename = "knitting-editor-backup"
+        let field = app.textFields["DOCPicker.filenameTextField"]
+        if field.waitForExistence(timeout: 10) {
+            filename = "bridge-io-" + String(UUID().uuidString.prefix(8))
+            replaceText(filename, in: field, app: app)
+        }
+        add(screenshotAttachment(named: "ブリッジ計測-バックアップ保存先"))
+        app.buttons.matching(NSPredicate(format: "label IN %@", ["保存", "Save"])).firstMatch.tap()
+        // 保存画面が閉じるのを待つ。閉じないときは同名ファイルの置き換え確認が出ていないかを見る。
+        let exportFinished = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == false"),
+            object: picker
+        )
+        let exportWaitResult = XCTWaiter.wait(
+            for: [exportFinished],
+            timeout: 300
+        )
+        // 実機では利用者が退避したバックアップを置き換えかねないため、置き換えの確認が出たら押さずに止める。
+        if exportWaitResult != .completed {
+            let replace = app.buttons.matching(NSPredicate(format: "label IN %@", ["置き換え", "Replace"])).firstMatch
+            XCTAssertFalse(
+                replace.waitForExistence(timeout: 5),
+                "同名のファイルがあります。保存先から\(filename).knitを移してから実行してください"
+            )
+            assertDisappears(picker, from: app)
+        }
+        print("BRIDGEIO backupExport=\(Date().timeIntervalSince(exportStart))s")
+        if app.buttons["閉じる"].exists { app.buttons["閉じる"].tap() }
+
+        for name in ["PNGを保存", "PDFを保存"] {
+            openSavePanel(with: output, showing: app.buttons[name], in: app)
+            let start = Date()
+            app.buttons[name].tap()
+            XCTAssertTrue(fileSave.waitForExistence(timeout: 300))
+            guard tapExportAlertButton(fileSave, in: app, step: name) else { return }
+            XCTAssertTrue(picker.waitForExistence(timeout: 30))
+            print("BRIDGEIO \(name)=\(Date().timeIntervalSince(start))s")
+            add(screenshotAttachment(named: "ブリッジ計測-" + name))
+            dismissSystemSheet(in: app)
+            assertDisappears(picker, from: app)
+            if app.buttons["閉じる"].exists { app.buttons["閉じる"].tap() }
+        }
+
+        let restore = app.buttons["バックアップから復元"]
+        openSavePanel(with: output, showing: restore, in: app)
+        restore.tap()
+        XCTAssertTrue(picker.waitForExistence(timeout: 30))
+        guard let backup = backupFileInOnDeviceLocation(named: filename, in: app) else { return }
+        let restoreStart = Date()
+        backup.tap()
+        let restored = app.webViews.firstMatch.staticTexts.matching(NSPredicate(
+            format: "label BEGINSWITH %@ AND label CONTAINS %@", "ブリッジ計測", "（復元）")).firstMatch
+        XCTAssertTrue(restored.waitForExistence(timeout: 600))
+        XCTAssertTrue(output.isEnabled)
+        print("BRIDGEIO backupRestore=\(Date().timeIntervalSince(restoreStart))s")
+        measuredRestore = true
+        add(screenshotAttachment(named: "ブリッジ計測-復元完了"))
+    }
+
     /// 「盤面」パネルの段数・列数で盤面の大きさを変え、変更後の盤面を返す。
     private func resizeBoard(rows: Int, cols: Int, in app: XCUIApplication) -> XCUIElement {
         app.buttons["盤面"].tap()

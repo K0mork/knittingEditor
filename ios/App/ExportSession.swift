@@ -20,6 +20,8 @@ final class ExportSession {
         let temporaryURL = Self.exportFileURL(in: directory, filename: filename, mimeType: mimeType)
         do {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let interval = BridgeSignposts.begin(BridgeSignposts.exportWrite)
+            defer { BridgeSignposts.end(BridgeSignposts.exportWrite, interval, bytes: data.count, mimeType: mimeType) }
             try data.write(to: temporaryURL, options: [.atomic])
         } catch {
             try? FileManager.default.removeItem(at: directory)

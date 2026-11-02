@@ -157,3 +157,142 @@ Apple Developer Programへの個人での加入が有効になったあと、`ma
 - 入れる前に、両端末のアプリのデータ（`Library`）を`devicectl device copy from`でMacへ写した。Debugビルドを上書きで入れ、`devicectl device process launch`で起動すると、開発元を信頼する操作なしで編集画面が出た。アプリを終了して起動し直しても、前に開いていた編み図と記号がそのまま表示された。端末内IndexedDBの`documents`の件数は、入れる前・入れた後・起動し直した後・下の自動テストの後で変わらなかった（iPhoneは35件、iPadは1件）。
 - 機内モードの自動テスト`testAirplaneModeServesEditorWithoutNetwork`は、有料のTeamでも実機で流せなかった。両端末を機内モードにしてWi-Fiも切り、有線でiPhoneに`xcodebuild test`を実行すると（iPadは同じ理由で起動できないため流していない）、アプリを入れ直したあとの起動で`Unable to launch com.k0mork.knittingEditor because it has an invalid code signature, inadequate entitlements or its profile has not been explicitly trusted by the user`となり、iPhoneに「デベロッパの信用を確認するにはインターネット接続が必要です」と出た。直前にオンラインで同じテストを流して（環境変数なしのためスキップ）起動できたことを確かめてから機内モードに戻しても、入れ直したあとの起動は同じく拒否された。入れ直した開発ビルドは、起動の前にiOSがオンラインで開発元を確かめるためである。
 - 残り：機内モードでの確認は、TestFlightで配る提出ビルドで行う（M6、#25）。
+
+## 2026-11-02 Swift側の変換とファイル入出力の測定（#26、iPhone 17 / iOS 27.2、有線）
+
+[Swift側の変換とファイル入出力（#26）](REAL_DEVICE_RELEASE_CHECKLIST.md#swift側の変換とファイル入出力26)の`ios/scripts/measure-bridge-io.sh`で、small・medium・largeを1回ずつ測った。`test/measure-native-bridge-io`ブランチの`3f498d8`を、有料のApple Developerのチームで署名したDebugビルドで入れた（Xcode 27.2（27B52））。測定は19:30〜20:00ごろ（日本時間）に行った。iPadは未実施で、次の機会に測る。
+
+| サイズ | 編み図数（どれも1000×1000） | バックアップ（bytes） |
+|---|---:|---:|
+| small | 1 | 3959897 |
+| medium | 4 | 15837839 |
+| large | 8 | 31674921 |
+
+largeは、Web側の圧縮後の上限（32 MiB）のすぐ下で、通常の復元で受け付ける最大の大きさにあたる。
+
+UIテストで測った所要時間（秒）は次のとおり。テスト用データの生成（約4秒）は利用者の操作ではないので含めない。
+
+| 測定 | small | medium | large |
+|---|---:|---:|---:|
+| バックアップの書き出し（保存先の選択が閉じるまで） | 14.5 | 14.3 | 15.6 |
+| PNG保存（保存先を選ぶ画面まで） | 7.8 | 7.6 | 8.9 |
+| PDF保存（同上） | 8.7 | 8.7 | 8.7 |
+| 復元（復元した編み図の名前が出るまで） | 2.0 | 4.0 | 6.1 |
+
+Swift側の各区間の所要時間（ms）は、DEBUGビルドが書く区間ファイルから取った。書き出しは1回の測定で3回（`.knit`、PNG（約19.25 MB）、PDF（約14.59 MB））あり、合計と最大を書く。
+
+| 区間 | 内容 | small | medium | large |
+|---|---|---:|---:|---:|
+| `BridgeBackupRead` | 選んだバックアップのmapped read | 0.6 | 0.5 | 0.5 |
+| `BridgeBackupEncode` | Webへ渡すBase64とJSON | 31.7 | 75.0 | 129.5 |
+| `BridgeBackupJavaScript` | `evaluateJavaScript`の完了まで | 33.5 | 71.2 | 148.2 |
+| `BridgeExportDecode` | Base64の復号とサイズの確認（3回の合計、括弧内は最大） | 28.8（14.6） | 36.3（14.3） | 41.5（19.1） |
+| `BridgeExportWrite` | 一時ファイルのatomic write（同上） | 14.7（6.7） | 16.7（6.6） | 23.4（11.7） |
+
+`BridgeBackupJavaScript`で渡したスクリプトは、small 5474733 bytes、medium 21894135 bytes、large 43786156 bytes。
+
+ピークメモリ（物理フットプリント、MiB）は次のとおり。WebKitのプロセスは`responsible-process`がlaunchdなので、アプリの直後に起動したものを、PIDが隣り合うことからこのアプリのものとした。
+
+| プロセス | small | medium | large |
+|---|---:|---:|---:|
+| アプリ本体 | 74.0 | 134.4 | 238.0 |
+| WebKitコンテンツ | 615.3 | 812.4 | 720.8 |
+| WebKit GPU | 201.9 | 201.8 | 201.3 |
+
+- Hangs：アプリ本体のpotential hang（100 ms以上）は、smallで1件（161 ms）、mediumで0件、largeで4件（119〜162 ms）だった。UIテストの実行プロセス自身のものは数えていない。
+- 端末のクラッシュ記録に、測定中のアプリとWebKitのものは無かった。この日のJetsamEvent（メモリ不足による強制終了の記録）は、どれも測定より前（最後は18:31）のものだった。
+
+通常の復元で受け付ける最大のバックアップでも、Swift側の変換とファイル入出力の各区間がメインスレッドを止めた時間は最大約0.15秒（largeの`BridgeBackupJavaScript`、148.2 ms）で、iPhone 17では0.15秒を超える区間は無かった。メモリのピークでも警告や強制終了は起きなかった。処理をMainActorの外へ移すか、復号の前に大きさを確かめるかの判断は、3台の結果をまとめた最後の節に書いた。
+
+各サイズ1回だけの測定である。iPadの結果は次の節にある。TestFlightのビルドでの測定は未実施で、#26のこの部分は#25を待って残る。
+
+## 2026-11-02 Swift側の変換とファイル入出力の測定（#26、iPad Air 第5世代 / iPadOS 27.2、有線）
+
+iPhone 17と同じ手順で、small・medium・largeを1回ずつ測った。smallは`test/measure-native-bridge-io`ブランチの`2c1c148`、mediumとlargeはmainを取り込んだ`eecaa9d`を、有料のApple Developerのチームで署名したDebugビルドで入れた（Xcode 27.2（27B52））。
+
+| サイズ | バックアップ（bytes） |
+|---|---:|
+| small | 3959898 |
+| medium | 15837837 |
+| large | 31674922 |
+
+UIテストで測った所要時間（秒）は次のとおり。
+
+| 測定 | small | medium | large |
+|---|---:|---:|---:|
+| バックアップの書き出し（保存先の選択が閉じるまで） | 22.0 | 21.7 | 23.1 |
+| PNG保存（保存先を選ぶ画面まで） | 10.0 | 10.0 | 10.2 |
+| PDF保存（同上） | 11.1 | 11.2 | 11.2 |
+| 復元（復元した編み図の名前が出るまで） | 3.6 | 4.5 | 7.6 |
+
+Swift側の各区間の所要時間（ms）は次のとおり。
+
+| 区間 | small | medium | large |
+|---|---:|---:|---:|
+| `BridgeBackupRead` | 0.5 | 0.7 | 0.6 |
+| `BridgeBackupEncode` | 22.3 | 98.2 | 177.4 |
+| `BridgeBackupJavaScript` | 30.8 | 99.7 | 199.6 |
+| `BridgeExportDecode`（3回の合計、括弧内は最大） | 31.3（14.4） | 36.9（12.6） | 52.6（28.5） |
+| `BridgeExportWrite`（同上） | 28.6（16.2） | 43.7（18.8） | 41.6（20.1） |
+
+`BridgeBackupJavaScript`で渡したスクリプトは、small 5474025 bytes、medium 21893768 bytes、large 43788885 bytes。
+
+ピークメモリ（物理フットプリント、MiB）は次のとおり。WebKitのプロセスは、iPhone 17と同じくPIDが隣り合うことからこのアプリのものとした。
+
+| プロセス | small | medium | large |
+|---|---:|---:|---:|
+| アプリ本体 | 73.1 | 133.3 | 237.3 |
+| WebKitコンテンツ | 665.2 | 688.7 | 932.3 |
+| WebKit GPU | 201.9 | 227.9 | 200.9 |
+
+- Hangs：アプリ本体のpotential hang（100 ms以上）は、smallで0件、mediumで4件（111〜245 ms）、largeで3件（178〜220 ms）だった。
+- 端末のクラッシュ記録に、アプリとWebKitのものは無かった。保存先がiCloud Driveになって復元で失敗した最初の計測の途中（20:02）に、JetsamEventが1件記録された。終了させられたのは待機中のほかのプロセスで、このアプリとそのWebKitのコンテンツプロセスは動いたままだった。やり直した計測の間には、JetsamEventは無かった。
+
+largeでは、Swift側の変換とJavaScriptの完了までがそれぞれ約0.2秒で、iPhone 17（約0.13〜0.15秒）より長かった。アプリのHangsも最長245 msで、iPhone 17の最長162 msより長い。WebKitのコンテンツプロセスは最大932.3 MiBまで増えたが、警告や強制終了は起きなかった。
+
+各サイズ1回だけの測定である。
+
+## 2026-11-02 Swift側の変換とファイル入出力の測定（#26、iPhone 13 mini / iOS 27.2、有線）
+
+古めの端末での止まる長さを見るため、iPhone 17・iPad Air 第5世代と同じ手順で、small・medium・largeを1回ずつ測った。`test/measure-native-bridge-io`ブランチの`87179f2`を、有料のApple Developerのチームで署名したDebugビルドで入れた（Xcode 27.2（27B52））。
+
+UIテストで測った所要時間（秒）は次のとおり。
+
+| 測定 | small | medium | large |
+|---|---:|---:|---:|
+| バックアップの書き出し（保存先の選択が閉じるまで） | 21.8 | 21.2 | 23.0 |
+| PNG保存（保存先を選ぶ画面まで） | 8.9 | 9.0 | 9.0 |
+| PDF保存（同上） | 11.1 | 11.0 | 10.9 |
+| 復元（復元した編み図の名前が出るまで） | 2.1 | 5.3 | 8.4 |
+
+Swift側の各区間の所要時間（ms）は次のとおり。
+
+| 区間 | small | medium | large |
+|---|---:|---:|---:|
+| `BridgeBackupRead` | 1.1 | 0.5 | 0.6 |
+| `BridgeBackupEncode` | 42.3 | 115.4 | 203.0 |
+| `BridgeBackupJavaScript` | 39.3 | 131.8 | 239.6 |
+| `BridgeExportDecode`（3回の合計、括弧内は最大） | 21.0（13.3） | 41.0（24.8） | 62.3（43.3） |
+| `BridgeExportWrite`（同上） | 12.5（8.1） | 21.2（10.2） | 26.4（17.0） |
+
+ピークメモリ（物理フットプリント、MiB）は次のとおり。
+
+| プロセス | small | medium | large |
+|---|---:|---:|---:|
+| アプリ本体 | 34.7 | 50.5 | 71.2 |
+| WebKitコンテンツ | 467.8 | 541.6 | 875.0 |
+| WebKit GPU | 99.5 | 99.6 | 300.0 |
+
+- Hangs：アプリ本体のpotential hang（100 ms以上）は、smallで4件（115〜223 ms）、mediumで5件（108〜203 ms）、largeで8件（106〜457 ms）だった。largeの457 msは計測用データを作った直後の起動中のもので、ブリッジの区間とは時刻が重ならない。復元の時刻には239 msのものが1件あり、`BridgeBackupJavaScript`（239.6 ms）とほぼ同じ長さだった。
+- PNGの書き出しで`BridgeExportDecode`に届いたデータは、どのサイズでも163 bytesだった。iPhone 17とiPadでは約19.25 MB（7052×7028 px）で、iPhone 13 miniでは画像が正しく作られていないおそれがある。保存先を選ぶ画面までは進んだ。原因は別に調べる。
+- 端末のクラッシュ記録に、アプリとWebKitのものは無かった。
+
+largeでは、Swift側の変換が203 ms、JavaScriptの完了までが240 msで、3台の中でいちばん長かった。変換はメインスレッドで行う。JavaScriptの区間は完了の通知までを測っており、その間ずっとメインスレッドが止まるとは限らない。Hangsで見えた復元の時刻の止まりは239 msの1件で、Appleがハングとする250 msのすぐ手前だった。
+
+各サイズ1回だけの測定である。
+
+### 3台の結果からの判断（2026-11-02）
+
+3台のうち最も古いiPhone 13 miniでも、通常の復元で受け付ける最大のバックアップ（約30.2 MiB）で、Swift側の各区間は最大約0.24秒（`BridgeBackupJavaScript`、239.6 ms）、復元の時刻のアプリのHangsは239 msの1件で、Appleがハングとする250 msを超えなかった。編み図1枚（約3.8 MiB）では、どの端末も0.05秒未満だった。
+
+このため、処理をMainActorの外へ移す改修と、復号の前に大きさを確かめる改修は行わないと決めた。復号の前の確認は、Web側の圧縮後32 MiBの上限があり、ネイティブ側の128 MiBを超えるデータが通常の経路で届かないため、効果も小さい。ただしiPhone 13 miniでは基準との差が小さいので、Web側の上限を上げるときや、復元のデータの形を変えるときは、変換をメインスレッドの外へ移すことを先に検討し、この手順で測り直す。

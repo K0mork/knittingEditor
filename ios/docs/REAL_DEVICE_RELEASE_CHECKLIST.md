@@ -117,6 +117,70 @@ KNITTING_EDITOR_DEVELOPMENT_TEAM=XXXXXXXXXX ios/scripts/measure-large-board.sh <
 
 1000×1000は盤面の最大の大きさで、PNGは既定のセルの大きさを縮めて上限（一辺16,384px、6,400万画素）に収めるため、この測定では上限超過のエラーにならない。上限の判定は`packages/editor-core/export/exporters.test.ts`で確かめてある。上限を超えたときのエラー表示の実機確認は#24で扱う。iPhone 17（iOS 27.0）では2026-10-09に、iPad Air 第5世代（iPadOS 27.0.1）では2026-10-15に確かめた（[2026-10-09](RELEASE_VERIFICATION_RECORDS.md#2026-10-09-実機確認記録iphone-17--ios-270有線)と[2026-10-15](RELEASE_VERIFICATION_RECORDS.md#2026-10-15-実機確認記録ipad-air-第5世代--ipados-2701有線)の記録）。表示はUIテスト`testOversizedPngExplainsLimitAndDisablesSave`で確かめる。
 
+### Swift側の変換とファイル入出力（#26）
+
+保存・復元の往復を測るためM2に置く。実機専用・DEBUG専用の手順で、通常CIでは
+`testBridgeIOOnRealDevice`は環境変数がなくskipする。PR smokeには含めない。
+
+- テスト専用の空コンテナを使う。既存文書があるとseedを拒否するので、計測のたびにアプリを削除する（端末内の編み図は消える）。
+- 有線接続し、開発元を信頼してUIオートメーションを有効にし、画面ロックを解除しておく。
+- 保存画面は前回の保存場所で開く。iPadではテストがサイドバーの「このiPad内」を選ぶ。iPhoneでは見出しにしか出ないので、前回の保存場所を「このiPhone内」にしておく。
+- ファイル名欄が出ないときは既定名で保存する。保存先に同名のファイルがあると、テストは「置き換え」を押さずに止まる。
+- iPad Air 第5世代では、前の計測の直後に記録が「Device got disconnected」ですぐ止まることがあった。スクリプトは3回まで始め直す。それでも止まるときは、ロックを解除してケーブルを挿し直す。
+- Xcodeの`xctrace list instruments`でActivity Monitor、os_signpost、Hangsを確認する。
+  この実装環境では一覧が空だったため、追加instrument名と併用は実機側で要確認。
+- 出力にはローカルのデバイス診断情報が含まれ得るため公開しない。レポートにはモデル名だけを書く。
+
+```sh
+KNITTING_EDITOR_DEVELOPMENT_TEAM=XXXXXXXXXX ios/scripts/measure-bridge-io.sh <UDID> small
+# medium、largeでも新しい空のテスト用コンテナで同じ手順を繰り返す。
+```
+
+固定seedの1000×1000盤面を生成する。gzipは日時によって数byte変わる。
+**Webの圧縮上限32 MiBにより、ネイティブ128 MiB近傍（100〜120 MB）の通常復元は不可能。**
+製品上限は変更せずlargeを約30.2 MiBに制限した。128 MiB近傍の測定は未実施・別途検討が必要。
+通常のバックアップ復元で有効な最大サイズはWeb側の圧縮後32 MiB（`packages/editor-core/storage/backupCodec.ts:21` の `BACKUP_LIMITS.maxCompressedBytes`）。largeはその直下の約30.2 MiBとする。ネイティブの128 MiBはブリッジ自体の上限であり、通常の復元経路では到達しない。
+
+| サイズ | 編み図数 | gzip bytes（目安） | Base64 bytes（目安） |
+|---|---:|---:|---:|
+| small | 1 | 3959865 | 5279820 |
+| medium | 4 | 15837799 | 21117068 |
+| large | 8 | 31674947 | 42233264 |
+
+結果は次のとおり。秒はUIテストの所要時間、ピークは物理フットプリント（MiB）、HangsはアプリのHangs（100 ms以上）。
+各区間の所要時間と測定の条件は[リリース確認の記録](RELEASE_VERIFICATION_RECORDS.md#2026-11-02-swift側の変換とファイル入出力の測定26iphone-17--ios-272有線)にある。
+
+| 端末 | サイズ | 書出秒 | PNG/PDF秒 | 復元秒 | app/WebContent/GPUピーク | Hangs |
+|---|---|---|---|---|---|---|
+| iPhone 17 / iOS 27.2（2026-11-02、1回） | small | 14.5 | 7.8 / 8.7 | 2.0 | 74.0 / 615.3 / 201.9 | 1件（161 ms） |
+| iPhone 17 / iOS 27.2（2026-11-02、1回） | medium | 14.3 | 7.6 / 8.7 | 4.0 | 134.4 / 812.4 / 201.8 | 0件 |
+| iPhone 17 / iOS 27.2（2026-11-02、1回） | large | 15.6 | 8.9 / 8.7 | 6.1 | 238.0 / 720.8 / 201.3 | 4件（119〜162 ms） |
+| iPad Air 第5世代 / iPadOS 27.2（2026-11-02、1回） | small | 22.0 | 10.0 / 11.1 | 3.6 | 73.1 / 665.2 / 201.9 | 0件 |
+| iPad Air 第5世代 / iPadOS 27.2（2026-11-02、1回） | medium | 21.7 | 10.0 / 11.2 | 4.5 | 133.3 / 688.7 / 227.9 | 4件（111〜245 ms） |
+| iPad Air 第5世代 / iPadOS 27.2（2026-11-02、1回） | large | 23.1 | 10.2 / 11.2 | 7.6 | 237.3 / 932.3 / 200.9 | 3件（178〜220 ms） |
+| iPhone 13 mini / iOS 27.2（2026-11-02、1回） | small | 21.8 | 8.9 / 11.1 | 2.1 | 34.7 / 467.8 / 99.5 | 4件（115〜223 ms） |
+| iPhone 13 mini / iOS 27.2（2026-11-02、1回） | medium | 21.2 | 9.0 / 11.0 | 5.3 | 50.5 / 541.6 / 99.6 | 5件（108〜203 ms） |
+| iPhone 13 mini / iOS 27.2（2026-11-02、1回） | large | 23.0 | 9.0 / 10.9 | 8.4 | 71.2 / 875.0 / 300.0 | 8件（106〜457 ms） |
+
+iPhone 13 miniでは、PNGの書き出しでSwiftに届いたデータが163 bytesしかなかった（iPhone 17とiPadでは約19.25 MB）。7052×7028 pxの画像が正しく作られていないおそれがあり、別に調べる。
+
+`NativeBridge`カテゴリの固定区間:
+`BridgeExportDecode`（exportFile全体の検証とBase64復号）、
+`BridgeExportWrite`（atomic write）、`BridgeBackupRead`（security scopeとmapped read、外部URLではcoordinationを含む）、
+`BridgeBackupEncode`（Base64とJSON）、`BridgeBackupJavaScript`（evaluateJavaScript完了まで）。
+終了metadataは`bytes`とMIMEのみ。JavaScript区間のbytesはUTF-8スクリプトサイズ、その他は復号ファイルサイズ。
+読み込み失敗時のbytesは0の場合がある。ファイル名・内容は記録しない。
+JavaScriptの完了は非同期のWeb復元完了を意味しないため、復元完了はUIテストの秒数でも確認する。
+保存先の選択は人の操作待ちを含むため、受信からpicker提示までのsignpostは設けない。
+所要時間はDEBUGビルドのアプリが書く区間ファイル（`Library/Caches/bridge-io-intervals.tsv`、
+`KNITTING_EDITOR_BRIDGE_IO_SIZE`がある起動だけ）から取る。UIテスト中はXCUITestのsignpostで
+アプリのsignpostバッファがあふれ、xctraceの記録から前半の区間（バックアップ書き出しやPNG）が落ちるためである。
+スクリプトは`devicectl device copy from`でこのファイルを取り出し、区間ごとのcount/total/maxと各回のbytesを表示する。
+取り出せなければ失敗にする。signpostはReleaseにも残し、記録したtraceはInstrumentsで見る。
+Hangsは`potential-hangs`／`hang-risks`表のうちアプリとWebKitの行を表示する。WebKitは`responsible-process`がlaunchdのため、
+他アプリのプロセスも候補として表示し、所属をPID近接だけで断定しない。
+クラッシュ/Jetsamログの自動取得は既存手順同様に行わない。実施後は端末の解析データも別途確認する。
+
 ## M3: Files・共有・外部バックアップ
 
 - [x] アプリからPNG、PDF、`.knit`をFilesへ保存する。（2026-09-22、iPad Air 第5世代。機内モードで3種すべてを「このiPad内」へ保存）

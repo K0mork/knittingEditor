@@ -18,7 +18,14 @@ final class WebViewModel {
     @ObservationIgnored private var isFlushingDeliveries = false
     /// テストではWebViewへ送るスクリプトを記録する。
     @ObservationIgnored var evaluateScript: (WKWebView, String) -> Void = { webView, script in
-        webView.evaluateJavaScript(script, completionHandler: nil)
+        // dispatchEventの完了まで。非同期のWeb復元完了はUIテストで別に測る。
+        let interval = script.hasPrefix("window.dispatchEvent(new CustomEvent('knittingEditorNativeBackupSelected'")
+            ? BridgeSignposts.begin(BridgeSignposts.backupJavaScript) : nil
+        webView.evaluateJavaScript(script) { _, _ in
+            if let interval {
+                BridgeSignposts.end(BridgeSignposts.backupJavaScript, interval, bytes: script.utf8.count)
+            }
+        }
     }
     /// バックアップとエラーのイベントを購読するReactが動作中かどうか。
     private(set) var webContentReady = false
@@ -176,6 +183,9 @@ final class WebViewModel {
     /// 原本のURLが届く（`LSSupportsOpeningDocumentsInPlace`、#149）。読む間だけアクセス権を得て、
     /// 他のアプリやiCloudの書き込みと重ならないよう`NSFileCoordinator`で調整して読む。原本には書き戻さない。
     nonisolated static func readIncomingBackup(at url: URL) throws -> Data {
+        let interval = BridgeSignposts.begin(BridgeSignposts.backupRead)
+        var bytes = 0
+        defer { BridgeSignposts.end(BridgeSignposts.backupRead, interval, bytes: bytes) }
         let accessing = url.startAccessingSecurityScopedResource()
         defer { if accessing { url.stopAccessingSecurityScopedResource() } }
         var coordinationError: NSError?
@@ -183,6 +193,7 @@ final class WebViewModel {
         NSFileCoordinator().coordinate(readingItemAt: url, options: [.withoutChanges], error: &coordinationError) { readingURL in
             result = Result {
                 let data = try Data(contentsOf: readingURL, options: [.mappedIfSafe])
+                bytes = data.count
                 guard data.count <= NativeBridgeLimits.maxFileBytes else { throw IncomingBackupError.tooLarge }
                 return data
             }
@@ -256,15 +267,18 @@ final class WebViewModel {
     }
 
     private func dispatchBackup(to webView: WKWebView, data: Data, filename: String) {
+        let interval = BridgeSignposts.begin(BridgeSignposts.backupEncode)
         let detail: [String: String] = [
             "filename": filename,
             "dataBase64": data.base64EncodedString(),
         ]
         guard let jsonData = try? JSONSerialization.data(withJSONObject: detail),
               let json = String(data: jsonData, encoding: .utf8) else {
+            BridgeSignposts.end(BridgeSignposts.backupEncode, interval, bytes: data.count)
             presentError("バックアップを渡せませんでした")
             return
         }
+        BridgeSignposts.end(BridgeSignposts.backupEncode, interval, bytes: data.count)
         evaluateScript(
             webView,
             "window.dispatchEvent(new CustomEvent('knittingEditorNativeBackupSelected',{detail:\(json)}));"
