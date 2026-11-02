@@ -21,4 +21,10 @@
 
   - 既存のCIログと`xcresulttool get test-results activities`・`export attachments`・`export diagnostics`を調査。`get log --type console`はログなし。`log show --archive`はsandboxで拒否されたため、抽出済みの`system.logarchive`を`OSLogStore(url:)`で読み、06:49–06:50 UTCの配送先を確認した。
   - 別プロセスがSimulatorを管理しているため、指示に従いローカルのSimulator UIテスト・実機テストは実行していない。PR CIとブランチでのFull iOS validation（iPhone・iPad）へ残す。CI基準のXcode / OSでのコンパイルと、初回成功・再試行なしの継続観察も未確認。Webの全検査はUIテストだけの変更のため未実行。
+  - このブランチの`484eb44`でFull iOS validationを手動実行した（run 41424922055）。`ios_full`（iPhone 17・iPad (A16)）、`app_update`（両方）、`release_archive`がすべて成功した。PRのCI（run 41424965889）も`ios`を含めて成功した。
+    - 対処した3件は、どれも1回目で成功した。`testGuideExternalLinkShowsNoPreview`はiPhone 17で73.1秒、iPad (A16)で48.4秒。`testBackupExportSheetDismissesBackToEditor`はiPhone 17で46.1秒、iPad (A16)で27.9秒、PRの`ios`で38.3秒。`testFileAndHelpShortcutsOpenEditorActions`はiPad (A16)で119.3秒（iPhoneではハードウェアキーボードのテストとしてスキップ）。
+    - ほかの2件が1回目に失敗し、再試行で成功した。今回の変更とは別の箇所で、盤面の記号の数が表示に出るのを待つところで時間切れになった。
+      - `app_update (iPhone 17)`の`testSeedDocumentForAppUpdateProbe`（`:839`、124.1秒）
+      - `ios_full (iPad (A16))`の`testDocumentSwitchSavesWithoutAutosave`（`saveProbeCanvas`の`:457`、196.7秒）
+    - このため、#44の「続けて10回、1回目で成功」はまだ数えられない。
 - デプロイ影響: なし（none）。Pages・TestFlight・App Storeのアプリと配布設定は変わらず、配信後確認は不要。コミット・push・PR作成は指示に従い行わない。#44は継続観察が必要なため完了扱いにしない。
