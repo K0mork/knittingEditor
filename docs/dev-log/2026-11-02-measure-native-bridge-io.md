@@ -1,11 +1,11 @@
-# 2026-11-02 — Swift側のブリッジの変換とファイル入出力を実機で測れるようにし、iPhoneで測る
+# 2026-11-02 — Swift側のブリッジの変換とファイル入出力を実機で測れるようにし、iPhone・iPadで測る
 
 - 影響: #26 の、Swift側の大容量の変換とファイル入出力の実機計測。利用者から見たアプリの動作は変えていない。
   - `ios/App/BridgeSignposts.swift` を足し、書き出しの受け取り（Base64の復号とサイズの確認）、一時ファイルへの書き込み、バックアップの読み込み、Webへ渡すBase64・JSONへの変換、`evaluateJavaScript` の完了までを `OSSignposter` の区間で囲んだ。Releaseにも残す。記録するのはバイト数とMIMEだけで、ファイル名や内容は記録しない。
   - UIテスト中はXCUITestのsignpostでアプリのsignpostバッファがあふれ、xctraceの記録から前半の区間が落ちた。そのため、DEBUGビルドで `KNITTING_EDITOR_BRIDGE_IO_SIZE` がある起動に限り、区間ごとの所要時間をアプリの `Library/Caches/bridge-io-intervals.tsv` に書く（`BridgeIntervalLog`）。
   - 同じ環境変数で、編み図のないテスト用の状態に限り、固定のseedで1000×1000の編み図を1・4・8枚作る（`packages/editor-core/storage/bridgeMeasurementData.ts`、`ios/Web/src/debugBridgeIO.ts`）。既存の編み図があれば作らない。`ios/scripts/build-web.sh` はDebugのときだけこの処理をWebのbundleに入れ、入力のハッシュにビルド構成を含める。
   - 通常の復元で受け付ける最大の大きさは、Web側の圧縮後32 MiB（`packages/editor-core/storage/backupCodec.ts:21` の `BACKUP_LIMITS.maxCompressedBytes`）。8枚（約30.2 MiB）をその直下の「large」とした。ネイティブ側の128 MiBはブリッジ自体の上限で、通常の復元では届かない。
-  - 実機用のUIテスト `testBridgeIOOnRealDevice` と、計測スクリプト `ios/scripts/measure-bridge-io.sh` を足した。スクリプトはInstruments（Activity Monitor・os_signpost・Hangs）で記録しながらテストを流し、区間ファイルを `devicectl device copy from` で取り出して集計する。テストは環境変数がなければskipし、PRのsmokeには入れていない。保存先に同名のファイルがあれば「置き換え」を押さずに止まり、復元まで測り終えなければ失敗にする。
+  - 実機用のUIテスト `testBridgeIOOnRealDevice` と、計測スクリプト `ios/scripts/measure-bridge-io.sh` を足した。スクリプトはInstruments（Activity Monitor・os_signpost・Hangs）で記録しながらテストを流し、区間ファイルを `devicectl device copy from` で取り出して集計する。テストは環境変数がなければskipし、PRのsmokeには入れていない。保存先に同名のファイルがあれば「置き換え」を押さずに止まり、復元まで測り終えなければ失敗にする。iPadでは保存画面が前回の場所（iCloud Drive）で開き、端末内から探す復元で失敗したため、保存のときにサイドバーの「このiPad内」を選ぶ。iPadでは前の計測の直後にInstrumentsの記録がすぐ止まることがあったため、スクリプトは記録を3回まで始め直す。
 - 主なファイル: `ios/App/BridgeSignposts.swift`、`ios/App/NativeBridgeMessage.swift`、`ios/App/ExportSession.swift`、`ios/App/PickedBackupFile.swift`、`ios/App/WebViewModel.swift`、`ios/App/DebugEditorConfiguration.swift`、`ios/Web/src/App.tsx`、`ios/Web/src/debugBridgeIO.ts`、`packages/editor-core/storage/bridgeMeasurementData.ts`、`ios/scripts/measure-bridge-io.sh`、`ios/scripts/summarize-bridge-intervals.py`、`ios/scripts/summarize-process-memory.py`、`ios/UITests/KnittingEditorUITests/KnittingEditorUITests.swift`、`ios/docs/REAL_DEVICE_RELEASE_CHECKLIST.md`、`ios/docs/RELEASE_VERIFICATION_RECORDS.md`、`docs/WEB_SYNC.md`
 - テスト: 生成データの再現性と大きさ（`bridgeMeasurementData.test.ts`）、既存の編み図があるときに作らないこと（`ios/Web/src/debugBridgeIO.test.ts`）、DEBUG設定と区間ファイルの行の形式（`DebugEditorConfigurationTests`、`BridgeSignpostsTests`）、区間ファイルとHangs表の集計（`scripts/summarize-bridge-intervals.test.mjs`）。実機用のUIテスト `testBridgeIOOnRealDevice`。
 - 検証:
@@ -14,6 +14,8 @@
   - Xcode 27.2（27B52）、KE verify iPhone（iPhone 17、iOS 27.2）のSimulatorで、UIテストを除く単体テストが成功した（主スイート138件、うち1件はskip）。`testBridgeIOOnRealDevice`（small）も最後まで成功した。
   - `sh -n ios/scripts/measure-bridge-io.sh`、`node scripts/check-pr-smoke-ui-tests.mjs`、`sh ios/scripts/check-app-store-docs.sh`、`git diff --check` が成功した。
   - 実機（iPhone 17、iOS 27.2、有線、有料のApple Developerのチームで署名したDebugビルド）で、`measure-bridge-io.sh` をsmall・medium・largeの順に1回ずつ流し、3回とも成功した。Swift側の各区間は最大約0.15秒（largeの `BridgeBackupJavaScript`、148.2 ms）。ピークメモリはアプリ本体238.0 MiB、WebKitのコンテンツプロセス812.4 MiBまで。アプリのHangsは0〜4件（最長162 ms）。測定中のアプリとWebKitのクラッシュ記録とJetsamEventは無かった。詳細は `ios/docs/RELEASE_VERIFICATION_RECORDS.md`。
+  - 実機（iPad Air 第5世代、iPadOS 27.2、有線、同じ署名のDebugビルド）でも3サイズを1回ずつ流し、3回とも成功した。Swift側の各区間は最大約0.2秒（largeの `BridgeBackupJavaScript`、199.6 ms）。ピークメモリはアプリ本体237.3 MiB、WebKitのコンテンツプロセス932.3 MiBまで。アプリのHangsは0〜4件（最長245 ms）。アプリとWebKitのクラッシュ記録は無く、最初の失敗した計測の途中のJetsamEventでも、このアプリとWebKitのコンテンツプロセスは終了させられていない。
+  - レビューの指摘で、区間ファイルのミリ秒を `en_US_POSIX` で書くようにし、誤って延ばしていた既存のテスト `testBlockSaveAndFullBackupRestoreFollowGuide` の待ち時間を元に戻した。
   - 処理をMainActorの外へ移すか、復号の前に大きさを確かめるかは決めていない。
-  - iPadの計測は未実施。TestFlightのビルドでのクラッシュ・メモリ・出力時間の確認は #25 を待つ。
-- デプロイ影響: Pagesの動作の変更はない（共通コードは計測用のデータ生成を足しただけで、Webのアプリからは使わない）。アプリのReleaseビルドにはsignpostだけが入り、計測用の区間ファイルとデータ生成は入らない。#26 は、iPadとTestFlightの確認が残るので閉じない。
+  - TestFlightのビルドでのクラッシュ・メモリ・出力時間の確認は #25 を待つ。
+- デプロイ影響: Pagesの動作の変更はない（共通コードは計測用のデータ生成を足しただけで、Webのアプリからは使わない）。アプリのReleaseビルドにはsignpostだけが入り、計測用の区間ファイルとデータ生成は入らない。#26 は、TestFlightのビルドでの確認が残るので閉じない。

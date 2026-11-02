@@ -40,17 +40,28 @@ xcodebuild build-for-testing -project "$PROJECT" -scheme knittingEditor \
   -allowProvisioningUpdates DEVELOPMENT_TEAM="$TEAM" > "$OUT/build.log" 2>&1 \
   || { echo "ERROR: build failed. See $OUT/build.log" >&2; exit 1; }
 
-# この環境のxctrace help recordには--instrumentがあるがlist instrumentsは空。
-# 実機接続済みのMacでos_signpost / Hangsの名称と併用を必ず確認する。
-xcrun xctrace record --template 'Activity Monitor' --instrument 'os_signpost' --instrument 'Hangs' --device "$DEVICE" --all-processes \
-  --time-limit 35m --output "$TRACE" > "$OUT/xctrace.log" 2>&1 &
-trace_pid=$!
-# 記録が始まる前にアプリが起動すると、起動直後の値を取りこぼす。
-sleep 15
-if ! kill -0 "$trace_pid" 2>/dev/null; then
-  echo "ERROR: trace did not start; confirm instrument availability. See $OUT/xctrace.log" >&2
-  exit 1
-fi
+# iPad Air 第5世代では、前の計測の直後やロック解除の直後に、記録が「Device got disconnected」で
+# すぐ止まることがあった。devicectlで端末への接続を作り直し、20秒おいて3回まで始め直す。
+attempt=1
+while :; do
+  rm -rf "$TRACE"
+  xcrun devicectl device info details --device "$DEVICE" > /dev/null 2>&1 || true
+  xcrun xctrace record --template 'Activity Monitor' --instrument 'os_signpost' --instrument 'Hangs' --device "$DEVICE" --all-processes \
+    --time-limit 35m --output "$TRACE" > "$OUT/xctrace.log" 2>&1 &
+  trace_pid=$!
+  # 記録が始まる前にアプリが起動すると、起動直後の値を取りこぼす。
+  sleep 15
+  if kill -0 "$trace_pid" 2>/dev/null; then
+    break
+  fi
+  if [ "$attempt" -ge 3 ]; then
+    echo "ERROR: trace did not start. Unlock the device and reconnect it. See $OUT/xctrace.log" >&2
+    exit 1
+  fi
+  echo "WARNING: trace stopped right after starting; retrying ($attempt/3)." >&2
+  attempt=$((attempt + 1))
+  sleep 20
+done
 
 status=0
 TEST_RUNNER_KNITTING_EDITOR_BRIDGE_IO=1 TEST_RUNNER_KNITTING_EDITOR_BRIDGE_IO_SIZE="$SIZE" xcodebuild test-without-building -project "$PROJECT" \

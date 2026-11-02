@@ -122,9 +122,11 @@ KNITTING_EDITOR_DEVELOPMENT_TEAM=XXXXXXXXXX ios/scripts/measure-large-board.sh <
 保存・復元の往復を測るためM2に置く。実機専用・DEBUG専用の手順で、通常CIでは
 `testBridgeIOOnRealDevice`は環境変数がなくskipする。PR smokeには含めない。
 
-- テスト専用の空コンテナを使う。既存文書があるとseedを拒否する。利用者のアプリを消して準備しない。
+- テスト専用の空コンテナを使う。既存文書があるとseedを拒否するので、計測のたびにアプリを削除する（端末内の編み図は消える）。
 - 有線接続し、開発元を信頼してUIオートメーションを有効にし、画面ロックを解除しておく。
-- Filesの保存場所は「このiPhone内」／「このiPad内」とし、ファイル名欄が利用できる状態にする。
+- 保存画面は前回の保存場所で開く。iPadではテストがサイドバーの「このiPad内」を選ぶ。iPhoneでは見出しにしか出ないので、前回の保存場所を「このiPhone内」にしておく。
+- ファイル名欄が出ないときは既定名で保存する。保存先に同名のファイルがあると、テストは「置き換え」を押さずに止まる。
+- iPad Air 第5世代では、前の計測の直後に記録が「Device got disconnected」ですぐ止まることがあった。スクリプトは3回まで始め直す。それでも止まるときは、ロックを解除してケーブルを挿し直す。
 - Xcodeの`xctrace list instruments`でActivity Monitor、os_signpost、Hangsを確認する。
   この実装環境では一覧が空だったため、追加instrument名と併用は実機側で要確認。
 - 出力にはローカルのデバイス診断情報が含まれ得るため公開しない。レポートにはモデル名だけを書く。
@@ -153,7 +155,9 @@ KNITTING_EDITOR_DEVELOPMENT_TEAM=XXXXXXXXXX ios/scripts/measure-bridge-io.sh <UD
 | iPhone 17 / iOS 27.2（2026-11-02、1回） | small | 14.5 | 7.8 / 8.7 | 2.0 | 74.0 / 615.3 / 201.9 | 1件（161 ms） |
 | iPhone 17 / iOS 27.2（2026-11-02、1回） | medium | 14.3 | 7.6 / 8.7 | 4.0 | 134.4 / 812.4 / 201.8 | 0件 |
 | iPhone 17 / iOS 27.2（2026-11-02、1回） | large | 15.6 | 8.9 / 8.7 | 6.1 | 238.0 / 720.8 / 201.3 | 4件（119〜162 ms） |
-| iPad | small・medium・large | 未実施 | 未実施 | 未実施 | 未実施 | 未実施 |
+| iPad Air 第5世代 / iPadOS 27.2（2026-11-02、1回） | small | 22.0 | 10.0 / 11.1 | 3.6 | 73.1 / 665.2 / 201.9 | 0件 |
+| iPad Air 第5世代 / iPadOS 27.2（2026-11-02、1回） | medium | 21.7 | 10.0 / 11.2 | 4.5 | 133.3 / 688.7 / 227.9 | 4件（111〜245 ms） |
+| iPad Air 第5世代 / iPadOS 27.2（2026-11-02、1回） | large | 23.1 | 10.2 / 11.2 | 7.6 | 237.3 / 932.3 / 200.9 | 3件（178〜220 ms） |
 
 `NativeBridge`カテゴリの固定区間:
 `BridgeExportDecode`（exportFile全体の検証とBase64復号）、
