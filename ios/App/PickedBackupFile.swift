@@ -3,7 +3,14 @@ import Foundation
 /// Document Pickerが渡す複製の読み込みと後処理。
 enum PickedBackupFile {
     static func read(at url: URL) throws -> Data {
-        try Data(contentsOf: url, options: [.mappedIfSafe])
+        let interval = BridgeSignposts.begin(BridgeSignposts.backupRead)
+        var bytes = 0
+        defer {
+            BridgeSignposts.end(BridgeSignposts.backupRead, interval, bytes: bytes)
+        }
+        let data = try Data(contentsOf: url, options: [.mappedIfSafe])
+        bytes = data.count
+        return data
     }
 
     /// `asCopy: true`のDocument Pickerはアプリの一時領域へ複製を作る。

@@ -1,6 +1,6 @@
 declare global {
   interface Window {
-    knittingEditorDebugConfiguration?: { readonly autosaveDelayMs?: unknown };
+    knittingEditorDebugConfiguration?: { readonly bridgeIOSize?: unknown; readonly autosaveDelayMs?: unknown };
   }
 }
 

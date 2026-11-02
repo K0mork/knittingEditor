@@ -27,9 +27,11 @@
 		72A7C34CF22FD0138A1E8FE7 /* KnittingEditorUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 049604E8F16625AD6FE9AA3F /* KnittingEditorUITests.swift */; };
 		79639A7ABA8D77F463DE6AEF /* knitting-editor-v2-interop.knit.b64 in Resources */ = {isa = PBXBuildFile; fileRef = 81817C83F1B327D22010A448 /* knitting-editor-v2-interop.knit.b64 */; };
 		80BB0B545C49794374C7C699 /* KnittingEditorApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79CFD1A36C16A062BF1E7D49 /* KnittingEditorApp.swift */; };
+		81474671ADFDCE58F9B33CD3 /* BridgeSignpostsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD0ED1F46CDB61F92049A747 /* BridgeSignpostsTests.swift */; };
 		8C24E1AFA5B2260A8D1479AE /* ExportSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5155DE6CD05137C69E63FE74 /* ExportSession.swift */; };
 		904BFF04951D603EA988ED53 /* EditorCommandsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D93AD700CD9A6DD09B7954FA /* EditorCommandsTests.swift */; };
 		9BCB379FF177248F24C7D0B1 /* SystemSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCA87F990F25B6FB20DE7FDF /* SystemSheet.swift */; };
+		A381BF84BC23FADBFD2870D7 /* BridgeSignposts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E44B984D59F2815EC0B012B /* BridgeSignposts.swift */; };
 		A86536A01BCEF6CFFA6086E9 /* ReviewRequestTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DEBB9093EE26F31F21EBE11 /* ReviewRequestTests.swift */; };
 		C0A5BFED6459B0D28F9C8572 /* PencilDoubleTap.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA2B5296F5B59BFFAF45EBFB /* PencilDoubleTap.swift */; };
 		C179D7EED17F204AB53E5C0C /* TrackpadZoom.swift in Sources */ = {isa = PBXBuildFile; fileRef = C68B9DF653DF140ABC00F4C4 /* TrackpadZoom.swift */; };
@@ -77,6 +79,7 @@
 		2B93317921D588395EEBC3EE /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
 		2DA6B84D7E98986674AF1841 /* NativeBridgeMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeBridgeMessage.swift; sourceTree = "<group>"; };
 		2F75DCA21EE8D8202C2EF5C4 /* FoldRegionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoldRegionTests.swift; sourceTree = "<group>"; };
+		3E44B984D59F2815EC0B012B /* BridgeSignposts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeSignposts.swift; sourceTree = "<group>"; };
 		4BC3D7F26008C9C37E8A0F46 /* WebViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebViewModel.swift; sourceTree = "<group>"; };
 		4E643EAB3D8627886E3EDCB9 /* WebViewContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebViewContainer.swift; sourceTree = "<group>"; };
 		5155DE6CD05137C69E63FE74 /* ExportSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportSession.swift; sourceTree = "<group>"; };
@@ -98,6 +101,7 @@
 		C0EFAC03FE6BC45A5DA5823E /* ReviewRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewRequest.swift; sourceTree = "<group>"; };
 		C68B9DF653DF140ABC00F4C4 /* TrackpadZoom.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackpadZoom.swift; sourceTree = "<group>"; };
 		CAFE539ADB212ECD98B46BDB /* NativeBridgeMessageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeBridgeMessageTests.swift; sourceTree = "<group>"; };
+		CD0ED1F46CDB61F92049A747 /* BridgeSignpostsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeSignpostsTests.swift; sourceTree = "<group>"; };
 		D54861B94405F006167870F2 /* NativeErrorDeliveryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeErrorDeliveryTests.swift; sourceTree = "<group>"; };
 		D93AD700CD9A6DD09B7954FA /* EditorCommandsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorCommandsTests.swift; sourceTree = "<group>"; };
 		DCA87F990F25B6FB20DE7FDF /* SystemSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemSheet.swift; sourceTree = "<group>"; };
@@ -121,6 +125,7 @@
 			children = (
 				E4FB5A4B7A1BE555D1AC9899 /* AppAppearanceTests.swift */,
 				98B454AC8083B55FA185DB3A /* AppVersionInfoTests.swift */,
+				CD0ED1F46CDB61F92049A747 /* BridgeSignpostsTests.swift */,
 				B3E0AAB7701C4E04FD2C86CC /* DebugEditorConfigurationTests.swift */,
 				D93AD700CD9A6DD09B7954FA /* EditorCommandsTests.swift */,
 				2F75DCA21EE8D8202C2EF5C4 /* FoldRegionTests.swift */,
@@ -190,6 +195,7 @@
 			children = (
 				AB4206F13C4AE5996A13AB4F /* AppVersionInfo.swift */,
 				594A6F94A2E8CE6BB9AB667E /* Assets.xcassets */,
+				3E44B984D59F2815EC0B012B /* BridgeSignposts.swift */,
 				1E9A702EF5C4040F4F0BAA9A /* DebugEditorConfiguration.swift */,
 				1BE0512F4A649A8674295FF1 /* EditorCommands.swift */,
 				5155DE6CD05137C69E63FE74 /* ExportSession.swift */,
@@ -376,6 +382,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				0DE1D11CC92E583D999981AC /* AppVersionInfo.swift in Sources */,
+				A381BF84BC23FADBFD2870D7 /* BridgeSignposts.swift in Sources */,
 				1E84BBE06411D78A8D072E98 /* DebugEditorConfiguration.swift in Sources */,
 				C5FA6A020534C03488B4AF1D /* EditorCommands.swift in Sources */,
 				8C24E1AFA5B2260A8D1479AE /* ExportSession.swift in Sources */,
@@ -399,6 +406,7 @@
 			files = (
 				DA9BED17DD090F6AE8270C7A /* AppAppearanceTests.swift in Sources */,
 				18C56518B8BB0104B9D6DD6A /* AppVersionInfoTests.swift in Sources */,
+				81474671ADFDCE58F9B33CD3 /* BridgeSignpostsTests.swift in Sources */,
 				045433B5AD27209C1BAE831C /* DebugEditorConfigurationTests.swift in Sources */,
 				904BFF04951D603EA988ED53 /* EditorCommandsTests.swift in Sources */,
 				438AA36230C74148AE41620D /* FoldRegionTests.swift in Sources */,

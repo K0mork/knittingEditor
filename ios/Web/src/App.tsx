@@ -27,10 +27,17 @@ export { GUIDE_NAVIGATION_SAVE_TIMEOUT_MS } from '@knitting-editor/editor-core/u
 function initialize() {
   return withTimeout(
     (async () => {
+      if (import.meta.env.VITE_BRIDGE_IO_DEBUG === '1') {
+        const size = window.knittingEditorDebugConfiguration?.bridgeIOSize;
+        if (typeof size === 'string') {
+          await (await import('./debugBridgeIO')).seedBridgeMeasurement(size);
+        }
+      }
       const storage = await initializeStorage();
       return { ...storage, blocks: await listBlocks() };
     })(),
-    STORAGE_INITIALIZATION_TIMEOUT_MS,
+    import.meta.env.VITE_BRIDGE_IO_DEBUG === '1' && window.knittingEditorDebugConfiguration?.bridgeIOSize
+      ? 180_000 : STORAGE_INITIALIZATION_TIMEOUT_MS,
     '端末内データの準備が10秒以内に完了しませんでした。再読み込みを試してください。',
   );
 }

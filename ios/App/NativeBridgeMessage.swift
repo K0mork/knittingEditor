@@ -20,6 +20,15 @@ enum NativeBridgeMessage: Equatable {
     }
 
     static func decode(body: Any) -> Result<NativeBridgeMessage, MessageError> {
+        let interval = (body as? [String: Any])?["type"] as? String == "exportFile"
+            ? BridgeSignposts.begin(BridgeSignposts.exportDecode) : nil
+        var decodedBytes = 0
+        var measuredMIME = "unknown"
+        defer {
+            if let interval {
+                BridgeSignposts.end(BridgeSignposts.exportDecode, interval, bytes: decodedBytes, mimeType: measuredMIME)
+            }
+        }
         guard let dictionary = body as? [String: Any],
               let version = dictionary["version"] as? NSNumber else {
             return .failure(.invalidEnvelope)
@@ -54,6 +63,8 @@ enum NativeBridgeMessage: Equatable {
                   !data.isEmpty else {
                 return .failure(.invalidFile)
             }
+            decodedBytes = data.count
+            if ["image/png", "application/pdf", "application/gzip"].contains(mimeType) { measuredMIME = mimeType }
             guard data.count <= NativeBridgeLimits.maxFileBytes else {
                 return .failure(.fileTooLarge)
             }

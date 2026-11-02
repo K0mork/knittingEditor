@@ -10,11 +10,18 @@ final class DebugEditorConfigurationTests: XCTestCase {
         }
     }
 
+    func testBridgeSizeAllowlist() {
+        for size in ["small", "medium", "large"] {
+            XCTAssertTrue(DebugEditorConfiguration.userScriptSource(environment: ["KNITTING_EDITOR_BRIDGE_IO_SIZE": size])?.contains(size) == true)
+        }
+        XCTAssertNil(DebugEditorConfiguration.userScriptSource(environment: ["KNITTING_EDITOR_BRIDGE_IO_SIZE": "invalid"]))
+    }
+
     func testValidDelayIsInjectedAsNumber() {
         for value in ["0", "400", "3600000", "2147483647"] {
             XCTAssertEqual(
                 DebugEditorConfiguration.userScriptSource(environment: ["KNITTING_EDITOR_AUTOSAVE_DELAY_MS": value]),
-                "window.knittingEditorDebugConfiguration=Object.freeze({autosaveDelayMs:\(value)});"
+                "window.knittingEditorDebugConfiguration=Object.freeze({\"autosaveDelayMs\":\(value)});"
             )
         }
     }

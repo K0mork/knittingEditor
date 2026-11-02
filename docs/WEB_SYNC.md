@@ -6,7 +6,7 @@ Web版とiOS版は同じリポジトリで管理する。以前の固定コミ�
 
 `ios/scripts/build-web.sh`は、ルートの`package-lock.json`で依存関係を導入し、`ios/Web`をルートworkspaceのVite・TypeScriptでビルドする。生成物は`ios/AppResources/Web/`に置くが、生成物自体はGit管理しない。Xcodeのpre-build scriptも同じスクリプトを呼び出す。
 
-ビルドをスキップするかどうかの入力ハッシュは、`ios/Web`、`packages`、ルートの`package.json`・`package-lock.json`・`tsconfig.base.json`・`vite.shared.ts`・`scripts/third-party-notices.mjs`、このスクリプト自身だけを対象にする。リポジトリ全体を走査すると`.git`やテスト成果物の更新でスタンプが毎回変わり、さらに走査中に消えたファイルで`shasum`が失敗してビルドフェーズごと落ちる。テスト（`*.test.ts`・`*.test.tsx`）とMarkdownはbundleに入らないので、ハッシュ対象から外す。共通のビルド設定を新しいファイルへ切り出すときは、このハッシュ対象とCIの変更判定（`.github/workflows/ci.yml`の`changes`ジョブ）の両方へ必ず追加する。
+ビルドをスキップするかどうかの入力ハッシュは、`ios/Web`、`packages`、ルートの`package.json`・`package-lock.json`・`tsconfig.base.json`・`vite.shared.ts`・`scripts/third-party-notices.mjs`、このスクリプト自身と`CONFIGURATION`を対象にする。リポジトリ全体を走査すると`.git`やテスト成果物の更新でスタンプが毎回変わり、さらに走査中に消えたファイルで`shasum`が失敗してビルドフェーズごと落ちる。テスト（`*.test.ts`・`*.test.tsx`）とMarkdownはbundleに入らないので、ハッシュ対象から外す。共通のビルド設定を新しいファイルへ切り出すときは、このハッシュ対象とCIの変更判定（`.github/workflows/ci.yml`の`changes`ジョブ）の両方へ必ず追加する。
 
 ## 共通コードと複製の境界
 
@@ -35,7 +35,7 @@ Web版とiOS版は同じリポジトリで管理する。以前の固定コミ�
 
 | ファイル | 差分の理由 |
 |---|---|
-| `App.tsx` | `useEditorController`と`EditorView`へ差分を渡す。両版とも共通の`ui/guideNavigation.ts`の`createGuideNavigation`で使い方ページへの遷移前に保存を確認する。Web版だけは修飾キー付きクリックや主ボタン以外のクリックをブラウザ本来の動作に任せる。iOS版はネイティブブリッジ、アプリ内ダイアログ（`AppDialog.tsx`、`window.prompt`/`confirm`の代替）、ストレージ初期化タイムアウト、バックグラウンド移行前の保存flushを持つ。Web版は`window.prompt`・`window.confirm`、旧データ移行つきの初期化、GA4、SEO向けの説明表示を持つ。`useShareOffer`で共有確認ダイアログを管理し、`shareDialog`を`EditorView`の`children`へ渡す。また、`documentsNote`でプライバシーポリシー（`/privacy/`）へのリンクを渡す。iOS版はアクセス解析を送らないので`documentsNote`を渡さず、何も表示しない。 |
+| `App.tsx` | `useEditorController`と`EditorView`へ差分を渡す。両版とも共通の`ui/guideNavigation.ts`の`createGuideNavigation`で使い方ページへの遷移前に保存を確認する。Web版だけは修飾キー付きクリックや主ボタン以外のクリックをブラウザ本来の動作に任せる。iOS版はネイティブブリッジ、アプリ内ダイアログ（`AppDialog.tsx`、`window.prompt`/`confirm`の代替）、ストレージ初期化タイムアウト、DEBUG限定の空コンテナへのブリッジ計測データ生成（`debugBridgeIO.ts`、生成時のみ初期化待機を180秒へ延長）、バックグラウンド移行前の保存flushを持つ。Web版は`window.prompt`・`window.confirm`、旧データ移行つきの初期化、GA4、SEO向けの説明表示を持つ。`useShareOffer`で共有確認ダイアログを管理し、`shareDialog`を`EditorView`の`children`へ渡す。また、`documentsNote`でプライバシーポリシー（`/privacy/`）へのリンクを渡す。iOS版はアクセス解析を送らないので`documentsNote`を渡さず、何も表示しない。 |
 | `analytics.ts` | Web版だけが持ち、Webのビルド時に埋め込む短いコミット識別子を全製品イベントへ付け、GA4を初期化して`EditorAnalytics`を実装する。iOS版にはファイル自体が無く、分析を渡さないのでイベントも外部スクリプトも発生させない。 |
 | `workerPrefetch.ts` | Web版だけが持ち、`fetch`でWorkerの中身を先読みし、起動できないときにWorkerのファイルが404かを確かめる（`main.tsx`が共通の`workerStarter`へ渡す）。iOS版にはファイル自体が無く、同梱Web資産に通信APIを含めない（`ios/scripts/check-app-bundle.sh`が検査する）。 |
 | `main.tsx` | iOS版は`initializeAnalytics()`を呼ばない。Workerの先読みも呼ばず、同梱URLから起動する。Web本番版だけページ読み込み後にPDF・バックアップWorkerを先読みし、保持した内容のBlobからタスクごとに起動する。開発サーバーはURLから起動する。 |
