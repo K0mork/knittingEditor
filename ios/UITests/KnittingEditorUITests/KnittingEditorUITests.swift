@@ -533,8 +533,12 @@ final class KnittingEditorUITests: XCTestCase {
         assertWithinWindow(app.buttons["編み図"], in: app)
 
         for panel in ["盤面", "ブロック", "出力"] {
-            app.buttons[panel].tap()
             let close = app.buttons["閉じる"]
+            if panel == "出力" {
+                openSavePanel(with: app.buttons[panel], showing: close, in: app)
+            } else {
+                app.buttons[panel].tap()
+            }
             XCTAssertTrue(close.waitForExistence(timeout: 10), "\(panel)パネルを開けない window=\(window): \(app.debugDescription)")
             XCTAssertTrue(close.isHittable, "\(panel)パネルを閉じられない window=\(window): \(app.debugDescription)")
             close.tap()
@@ -693,9 +697,8 @@ final class KnittingEditorUITests: XCTestCase {
     private func measureExport(button name: String, in app: XCUIApplication) -> TimeInterval {
         let save = app.buttons["出力"]
         XCTAssertTrue(save.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
-        save.tap()
         let export = app.buttons[name]
-        XCTAssertTrue(export.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+        openSavePanel(with: save, showing: export, in: app)
         let start = Date()
         export.tap()
         XCTAssertTrue(
@@ -720,7 +723,7 @@ final class KnittingEditorUITests: XCTestCase {
         createDocument(named: "PNG上限確認", in: app)
         _ = resizeBoard(rows: 1000, cols: 1000, in: app)
 
-        app.buttons["出力"].tap()
+        openSavePanel(with: app.buttons["出力"], showing: app.buttons["PNGを保存"], in: app)
         let slider = app.sliders.matching(NSPredicate(format: "label BEGINSWITH %@", "1セルの画素数")).firstMatch
         assertHittableAfterScrolling(slider, in: app)
         let png = app.buttons["PNGを保存"]
@@ -1060,10 +1063,8 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
         let save = app.buttons["出力"]
         XCTAssertTrue(save.waitForExistence(timeout: Self.editorAppearanceTimeout))
-        save.tap()
-
         let currentDocument = app.buttons["この編み図を書き出す"]
-        XCTAssertTrue(currentDocument.waitForExistence(timeout: Self.editorAppearanceTimeout))
+        openSavePanel(with: save, showing: currentDocument, in: app)
         currentDocument.tap()
 
         let fileSave = app.buttons["ファイルに保存"]
@@ -1363,12 +1364,12 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertTrue(output.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
         rotateToLandscape(app)
         defer { XCUIDevice.shared.orientation = .portrait }
-        output.tap()
+        let png = app.buttons["PNGを保存"]
+        openSavePanel(with: output, showing: png, in: app)
         let close = app.buttons["閉じる"]
         XCTAssertTrue(close.waitForExistence(timeout: 10), app.debugDescription)
         let window = app.windows.firstMatch.frame
         // 下からのシートでも「閉じる」は右上に出るため、全幅になる本文のボタンの左端で右列かを確かめる。
-        let png = app.buttons["PNGを保存"]
         XCTAssertTrue(png.waitForExistence(timeout: 10), app.debugDescription)
         XCTAssertGreaterThan(png.frame.minX, window.midX, app.debugDescription)
         XCTAssertLessThan(close.frame.minY, window.midY, app.debugDescription)
@@ -1417,7 +1418,7 @@ final class KnittingEditorUITests: XCTestCase {
             .firstMatch
             .waitForExistence(timeout: 10), webView.debugDescription)
 
-        app.buttons["出力"].tap()
+        openSavePanel(with: app.buttons["出力"], showing: app.buttons["閉じる"], in: app)
         XCTAssertTrue(app.staticTexts["出力"].waitForExistence(timeout: 10), app.debugDescription)
         XCTAssertTrue(app.buttons["閉じる"].isHittable, app.debugDescription)
         app.buttons["閉じる"].tap()
@@ -1441,7 +1442,7 @@ final class KnittingEditorUITests: XCTestCase {
         app.buttons["閉じる"].tap()
         let save = app.buttons["出力"]
         XCTAssertTrue(save.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
-        save.tap()
+        openSavePanel(with: save, showing: app.buttons["PNGを保存"], in: app)
         assertHittableAfterScrolling(app.buttons["PNGを保存"], in: app)
         assertHittableAfterScrolling(app.buttons["PDFを保存"], in: app)
         assertHittableAfterScrolling(app.buttons["この編み図を書き出す"], in: app)
@@ -1936,7 +1937,7 @@ final class KnittingEditorUITests: XCTestCase {
         let webViewFrame = webView.frame
         guard !frame.isEmpty, webViewFrame.contains(frame),
               frame.maxY <= webViewFrame.maxY - 34 else { return false }
-        return element.isHittable
+        return isHittableWithoutFailing(element)
     }
 
     /// 「最近使った項目」に依存せず、端末内に保存したバックアップを選べる状態まで待つ。
@@ -2025,18 +2026,16 @@ final class KnittingEditorUITests: XCTestCase {
 
     /// isHittableを読み、XCTestが押す位置を決められなかった場合は押せないとして扱う。
     ///
-    /// 復元のファイル選択画面で、枠が空でなく画面と重なる「On My iPad」でも
-    /// 「Failed to determine hittability … Activation point invalid」がテストの失敗として記録された（#317）。
+    /// 復元の「On My iPad」（#317）や、スクロール中の「サポートページ」（#44）で、
+    /// 枠が画面内でも「Failed to determine hittability … Activation point invalid」が記録された。
     /// この失敗だけを想定内とし、ほかの失敗はそのまま記録する。
     private func isHittableWithoutFailing(_ element: XCUIElement) -> Bool {
-        let options = XCTExpectedFailure.Options()
-        options.isStrict = false
-        options.issueMatcher = { $0.compactDescription.contains("Failed to determine hittability") }
-        var hittable = false
-        XCTExpectFailure("押す位置を決められない要素は押せないとして扱う", options: options) {
-            hittable = element.isHittable
-        }
-        return hittable
+        ignoringQueryIssue("押す位置を決められない要素は押せないとして扱う", matching: {
+            $0.compactDescription.contains("Failed to determine hittability")
+                && $0.compactDescription.contains("Activation point invalid and no suggested hit points based on element frame")
+        }) {
+            element.isHittable
+        } ?? false
     }
 
     /// 待機の述語の中で、別プロセスで表示される選択画面の要素を問い合わせる。
@@ -2045,14 +2044,30 @@ final class KnittingEditorUITests: XCTestCase {
     /// 「Failed to resolve remote element … Interrupted by waiter」をテストの失敗として記録する（#44）。
     /// この失敗だけを想定内とし、見つからなかったものとして扱う。ほかの失敗はそのまま記録する。
     private func ignoringWaiterInterruption<T>(_ query: () -> T?) -> T? {
+        ignoringQueryIssue("待機の時間切れで打ち切られた問い合わせは見つからなかったとして扱う", matching: {
+            $0.compactDescription.contains("Interrupted by waiter")
+        }, query)
+    }
+
+    /// 指定した問い合わせの失敗だけを想定内とし、発生した場合は戻り値を使わない。
+    private func ignoringQueryIssue<T>(
+        _ reason: String,
+        matching matcher: @escaping (XCTIssue) -> Bool,
+        _ query: () -> T?
+    ) -> T? {
         let options = XCTExpectedFailure.Options()
         options.isStrict = false
-        options.issueMatcher = { $0.compactDescription.contains("Interrupted by waiter") }
+        var matchedIssue = false
+        options.issueMatcher = { issue in
+            guard matcher(issue) else { return false }
+            matchedIssue = true
+            return true
+        }
         var result: T?
-        XCTExpectFailure("待機の時間切れで打ち切られた問い合わせは見つからなかったとして扱う", options: options) {
+        XCTExpectFailure(reason, options: options) {
             result = query()
         }
-        return result
+        return matchedIssue ? nil : result
     }
 
     /// 書き出しの確認アラートのボタン（「共有」「ファイルに保存」）を押し、アラートが閉じたかを返す。
