@@ -59,7 +59,7 @@ enum BridgeIntervalLog {
         let milliseconds = Double(components.seconds) * 1_000 + Double(components.attoseconds) / 1e15
         let fields = [
             name,
-            String(format: "%.3f", milliseconds),
+            String(format: "%.3f", locale: Locale(identifier: "en_US_POSIX"), milliseconds),
             String(bytes),
             mimeType,
             Date.ISO8601FormatStyle(includingFractionalSeconds: true).format(end),

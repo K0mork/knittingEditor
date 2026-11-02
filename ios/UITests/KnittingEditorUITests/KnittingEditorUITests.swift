@@ -1085,7 +1085,7 @@ final class KnittingEditorUITests: XCTestCase {
         )
         let exportWaitResult = XCTWaiter.wait(
             for: [exportFinished],
-            timeout: 300
+            timeout: mayAskToReplace ? 15 : Self.editorAppearanceTimeout
         )
         if exportWaitResult != .completed {
             // 保存画面が残るのは、前回の同名ファイルの置き換え確認が出ているときだけ。
