@@ -99,6 +99,10 @@ final class KeyboardCommandUITests: XCTestCase {
             XCTAssertTrue(alert.staticTexts[filename].exists, "\(filename)ではない: \(alert.debugDescription)")
             alert.buttons["キャンセル"].tap()
             XCTAssertTrue(waitForDisappearance(of: alert, timeout: 10), app.debugDescription)
+            // run 41401344226ではアラート消失後のキー8回がSpringBoardの
+            // SBMainSwitcherWindowへ届き、アプリには届かなかった（#44）。
+            // 消失だけで入力先が戻ったとみなさず、盤面を変えない見出しを叩いてから次のキーを送る。
+            app.webViews.firstMatch.staticTexts["棒針編み図エディタ"].firstMatch.tap()
         }
 
         // ⇧⌘H: 使い方ページへ移る。
@@ -155,6 +159,15 @@ final class KeyboardCommandUITests: XCTestCase {
             if XCTWaiter.wait(for: [reached], timeout: Self.shortcutAttemptTimeout) == .completed { return true }
         }
         add(screenshot(named: "ショートカット失敗-\(key)-\(modifiers.rawValue)"))
+        // 画面写真だけでは、編集画面が残ったのか、アラートや入力欄が残ったのかを追えない。
+        // 時刻とPIDを含む要素の木も添え、システムログでキーの配送先を照合できるようにする。
+        let state = XCTAttachment(string:
+            "時刻=\(Date()) key=\(key) modifiers=\(modifiers.rawValue) 試行=\(attempts) " +
+                "state=\(app.state.rawValue)\n\(app.debugDescription)"
+        )
+        state.name = "ショートカット失敗時の状態-\(key)-\(modifiers.rawValue)"
+        state.lifetime = .keepAlways
+        add(state)
         return false
     }
 
