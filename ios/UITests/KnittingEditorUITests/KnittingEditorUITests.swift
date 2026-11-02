@@ -665,8 +665,13 @@ final class KnittingEditorUITests: XCTestCase {
         guard tapExportAlertButton(fileSave, in: app, step: "ブリッジ計測-保存") else { return }
         let picker = SystemSheet.element(in: app)
         XCTAssertTrue(picker.waitForExistence(timeout: 30))
-        // 保存先はシステムの前回の場所に依存するため、計測前に端末内へ設定しておく。
-        // 保存場所のラベルは画面構成によって公開されないため、ここでは判定しない。
+        // 保存先はシステムの前回の場所で開く。iPadではiCloud Driveで開き、端末内から探す復元で
+        // 見つからなかったため、サイドバーに端末内の場所があれば選ぶ。iPhoneでは見出しにしか出ないので押さない。
+        let onDevice = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label IN %@", ["このiPad内", "On My iPad"])).firstMatch
+        if waitForHittable(onDevice, timeout: 5) {
+            onDevice.tap()
+        }
         var filename = "knitting-editor-backup"
         let field = app.textFields["DOCPicker.filenameTextField"]
         if field.waitForExistence(timeout: 10) {
