@@ -1,4 +1,4 @@
-# 2026-11-02 — Swift側のブリッジの変換とファイル入出力を実機で測れるようにし、iPhone・iPadで測る
+# 2026-11-02 — Swift側のブリッジの変換とファイル入出力を実機で測れるようにし、iPhone 17・iPad Air 第5世代・iPhone 13 miniで測る
 
 - 影響: #26 の、Swift側の大容量の変換とファイル入出力の実機計測。利用者から見たアプリの動作は変えていない。
   - `ios/App/BridgeSignposts.swift` を足し、書き出しの受け取り（Base64の復号とサイズの確認）、一時ファイルへの書き込み、バックアップの読み込み、Webへ渡すBase64・JSONへの変換、`evaluateJavaScript` の完了までを `OSSignposter` の区間で囲んだ。Releaseにも残す。記録するのはバイト数とMIMEだけで、ファイル名や内容は記録しない。
@@ -15,6 +15,7 @@
   - `sh -n ios/scripts/measure-bridge-io.sh`、`node scripts/check-pr-smoke-ui-tests.mjs`、`sh ios/scripts/check-app-store-docs.sh`、`git diff --check` が成功した。
   - 実機（iPhone 17、iOS 27.2、有線、有料のApple Developerのチームで署名したDebugビルド）で、`measure-bridge-io.sh` をsmall・medium・largeの順に1回ずつ流し、3回とも成功した。Swift側の各区間は最大約0.15秒（largeの `BridgeBackupJavaScript`、148.2 ms）。ピークメモリはアプリ本体238.0 MiB、WebKitのコンテンツプロセス812.4 MiBまで。アプリのHangsは0〜4件（最長162 ms）。測定中のアプリとWebKitのクラッシュ記録とJetsamEventは無かった。詳細は `ios/docs/RELEASE_VERIFICATION_RECORDS.md`。
   - 実機（iPad Air 第5世代、iPadOS 27.2、有線、同じ署名のDebugビルド）でも3サイズを1回ずつ流し、3回とも成功した。Swift側の各区間は最大約0.2秒（largeの `BridgeBackupJavaScript`、199.6 ms）。ピークメモリはアプリ本体237.3 MiB、WebKitのコンテンツプロセス932.3 MiBまで。アプリのHangsは0〜4件（最長245 ms）。アプリとWebKitのクラッシュ記録は無く、最初の失敗した計測の途中のJetsamEventでも、このアプリとWebKitのコンテンツプロセスは終了させられていない。
+  - 実機（iPhone 13 mini、iOS 27.2、有線、同じ署名のDebugビルド）でも3サイズを1回ずつ流し、3回とも成功した。Swift側の各区間は最大約0.24秒（largeの `BridgeBackupJavaScript`、239.6 ms。変換は203.0 ms）。復元の時刻のアプリのHangsは239 msの1件。ピークメモリはアプリ本体71.2 MiB、WebKitのコンテンツプロセス875.0 MiBまで。アプリとWebKitのクラッシュ記録は無い。PNGの書き出しでSwiftに届いたデータがどのサイズでも163 bytesしかなく（ほかの2台は約19.25 MB）、画像が正しく作られていないおそれがあるため、別に調べる。
   - レビューの指摘で、区間ファイルのミリ秒を `en_US_POSIX` で書くようにし、誤って延ばしていた既存のテスト `testBlockSaveAndFullBackupRestoreFollowGuide` の待ち時間を元に戻した。
   - 処理をMainActorの外へ移すか、復号の前に大きさを確かめるかは決めていない。
   - TestFlightのビルドでのクラッシュ・メモリ・出力時間の確認は #25 を待つ。

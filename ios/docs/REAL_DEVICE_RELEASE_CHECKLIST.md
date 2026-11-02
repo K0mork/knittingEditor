@@ -158,6 +158,11 @@ KNITTING_EDITOR_DEVELOPMENT_TEAM=XXXXXXXXXX ios/scripts/measure-bridge-io.sh <UD
 | iPad Air 第5世代 / iPadOS 27.2（2026-11-02、1回） | small | 22.0 | 10.0 / 11.1 | 3.6 | 73.1 / 665.2 / 201.9 | 0件 |
 | iPad Air 第5世代 / iPadOS 27.2（2026-11-02、1回） | medium | 21.7 | 10.0 / 11.2 | 4.5 | 133.3 / 688.7 / 227.9 | 4件（111〜245 ms） |
 | iPad Air 第5世代 / iPadOS 27.2（2026-11-02、1回） | large | 23.1 | 10.2 / 11.2 | 7.6 | 237.3 / 932.3 / 200.9 | 3件（178〜220 ms） |
+| iPhone 13 mini / iOS 27.2（2026-11-02、1回） | small | 21.8 | 8.9 / 11.1 | 2.1 | 34.7 / 467.8 / 99.5 | 4件（115〜223 ms） |
+| iPhone 13 mini / iOS 27.2（2026-11-02、1回） | medium | 21.2 | 9.0 / 11.0 | 5.3 | 50.5 / 541.6 / 99.6 | 5件（108〜203 ms） |
+| iPhone 13 mini / iOS 27.2（2026-11-02、1回） | large | 23.0 | 9.0 / 10.9 | 8.4 | 71.2 / 875.0 / 300.0 | 8件（106〜457 ms） |
+
+iPhone 13 miniでは、PNGの書き出しでSwiftに届いたデータが163 bytesしかなかった（iPhone 17とiPadでは約19.25 MB）。7052×7028 pxの画像が正しく作られていないおそれがあり、別に調べる。
 
 `NativeBridge`カテゴリの固定区間:
 `BridgeExportDecode`（exportFile全体の検証とBase64復号）、
