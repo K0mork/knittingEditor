@@ -18,5 +18,6 @@
   - 切り替えを外し、CI と同じ時間の設定で1回流した。保存画面のファイル名の入力欄が出て、「保存」から約4秒で閉じた。その後の復元で、上に書いた `Interrupted by waiter` の失敗が起き（`:1955`）、テストは失敗した（140.1秒）。
   - `ignoringWaiterInterruption` を足し、同じ設定で3回続けて流そうとした。1回目は、盤面が10秒で安定しない失敗（`:379`、#44 に記録済みのもの）が2回記録された。復元の場面では、打ち切られた問い合わせが想定内の失敗として受け止められ（`XCTExpectFailure: matcher accepted … Interrupted by waiter`）、テストの失敗にはならなかった。そのあと4分の上限を超えた。テストランナーが再起動したため、2回目と3回目は流れなかった。このときの load average は約100だった。
   - 手元では、負荷のために CI と同じ時間の設定で最後まで通せなかった。最終的な判定は、PR の CI と、このブランチで手動実行する Full iOS validation（iPhone 17・iPad (A16)）で行う。
+  - このブランチの `4247e00` で Full iOS validation を手動実行した（run 41392232479）。`ios_full`（iPhone 17・iPad (A16)）、`app_update`（両方）、`release_archive` がすべて成功した。`testBlockSaveAndFullBackupRestoreFollowGuide` は iPhone 17 で194.8秒、iPad (A16) で196.4秒で、どちらも1回目で成功した。どちらのログにも失敗したテストと `Interrupted by waiter` はなかった。
   - Web のコードは変えていないため、`npm run typecheck`・`npm test`・`npm run build`・`npm run check:dist`・`npm run test:e2e` は手元では流していない（PR の CI の対象外）。
 - デプロイ影響: なし（UIテストだけの変更）。
