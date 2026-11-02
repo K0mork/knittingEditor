@@ -1,5 +1,6 @@
 import { NO_ANALYTICS } from '../analytics';
 import * as exporters from '../export/exporters';
+import { PngCanvasError } from '../export/pngErrors';
 import { WorkerVersionError } from '../util/workerStarter';
 import 'fake-indexeddb/auto';
 import { act } from 'react';
@@ -388,6 +389,17 @@ it('reports the category for export failures', async () => {
   await act(async () => { await editor.runPngExport(24); });
   expect(track).toHaveBeenCalledWith('operation_failed', {
     operation_name: 'png_export', failure_reason: 'site_updated',
+  });
+});
+
+it('does not hand a PNG to the save screen when the canvas could not be allocated', async () => {
+  vi.spyOn(exporters, 'renderPng').mockRejectedValue(new PngCanvasError());
+  await act(async () => { await editor.runPngExport(7); });
+  expect(saveFile).not.toHaveBeenCalled();
+  expect(editor.busy).toBeUndefined();
+  expect(editor.message).toBe('端末のメモリが足りず、PNGを作れませんでした。1セルの画素数を下げるか、PDF保存を利用してください。');
+  expect(track).toHaveBeenCalledWith('operation_failed', {
+    operation_name: 'png_export', failure_reason: 'png_canvas',
   });
 });
 

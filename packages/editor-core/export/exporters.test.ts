@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Board, parseColor } from '../model/Board';
 import { BoardHistory } from '../model/BoardHistory';
-import { defaultPngCellSize, PNG_CELL_SIZE_RANGE, PNG_PREFERRED_CELL_SIZE, pngGridStyles, pngLabelLayout, renderPdf, renderPng, validatePngSize } from './exporters';
+import { defaultPngCellSize, PNG_CELL_SIZE_RANGE, PNG_PREFERRED_CELL_SIZE, minimumPngBytes, pngDimensions, pngGridStyles, pngLabelLayout, renderPdf, renderPng, validatePngSize } from './exporters';
+import { pngHeader, whitePixel } from './pngCanvas.test-helper';
+import { PngCanvasError } from './pngErrors';
 
 describe('defaultPngCellSize', () => {
   it('uses the preferred cell size for ordinary boards', () => {
@@ -72,7 +74,7 @@ describe('renderPng with real symbols', () => {
     const context = {
       fillStyle: '', strokeStyle: '',
       fillRect: (...rect: number[]) => fills.push({ color: context.fillStyle, rect }),
-      fillText: vi.fn(), save: vi.fn(), restore: vi.fn(), scale: vi.fn(),
+      fillText: vi.fn(), save: vi.fn(), restore: vi.fn(), scale: vi.fn(), getImageData: whitePixel,
       translate: (x: number, y: number) => { origin = [x, y]; },
       beginPath: () => { path = []; },
       moveTo: (...point: number[]) => path.push(point),
@@ -82,7 +84,7 @@ describe('renderPng with real symbols', () => {
     };
     const canvas = {
       width: 0, height: 0, getContext: () => context,
-      toBlob: (callback: BlobCallback) => callback(new Blob(['png'], { type: 'image/png' })),
+      toBlob: (callback: BlobCallback) => callback(pngHeader(canvas.width, canvas.height)),
     };
     vi.stubGlobal('document', { createElement: () => canvas });
     try {
@@ -230,7 +232,7 @@ describe('renderPng canvas release', () => {
   /** 描画命令を何もしない関数で受けるCanvasの代わり。 */
   function fakeCanvas(overrides: { context?: object | null; toBlob?: (callback: BlobCallback) => void } = {}) {
     const context = overrides.context === undefined
-      ? new Proxy({} as Record<string | symbol, unknown>, {
+      ? new Proxy({ getImageData: whitePixel } as Record<string | symbol, unknown>, {
         get: (target, key) => key in target ? target[key] : (target[key] = vi.fn()),
         set: (target, key, value) => { target[key] = value; return true; },
       })
@@ -238,7 +240,7 @@ describe('renderPng canvas release', () => {
     const canvas = {
       width: 0, height: 0,
       getContext: () => context,
-      toBlob: overrides.toBlob ?? ((callback: BlobCallback) => callback(new Blob(['png'], { type: 'image/png' }))),
+      toBlob: overrides.toBlob ?? ((callback: BlobCallback) => callback(pngHeader(canvas.width, canvas.height))),
     };
     vi.stubGlobal('document', { createElement: () => canvas });
     return canvas;
@@ -254,7 +256,7 @@ describe('renderPng canvas release', () => {
     await Promise.resolve();
     // エンコード中は描画面を縮めない。
     expect([canvas.width, canvas.height]).toEqual([size.width, size.height]);
-    const blob = new Blob(['png'], { type: 'image/png' });
+    const blob = pngHeader(size.width, size.height);
     complete(blob);
     expect(await pending).toBe(blob);
     expect([canvas.width, canvas.height]).toEqual([0, 0]);
@@ -270,6 +272,45 @@ describe('renderPng canvas release', () => {
     await expect(renderPng(new Board(2, 2), 24)).rejects.toThrow(message);
     expect([canvas.width, canvas.height]).toEqual([0, 0]);
   });
+
+  // iOSのWebKitは描画面を確保できなくても例外を出さず、透明のまま描画を捨て、小さな画像を返す（iPhone 13 miniで163 bytes）。
+  it.each([
+    ['a canvas that reads back transparent', () => fakeCanvas({ context: new Proxy({ getImageData: () => ({ data: new Uint8ClampedArray(4) }) } as Record<string | symbol, unknown>, {
+      get: (target, key) => key in target ? target[key] : (target[key] = vi.fn()),
+      set: (target, key, value) => { target[key] = value; return true; },
+    }) })],
+    ['an encoded image smaller than the canvas', () => fakeCanvas({ toBlob: (callback) => callback(pngHeader(1, 1)) })],
+    ['an encoded image cut short', () => fakeCanvas({ toBlob: (callback) => callback(new Blob([pngHeader(96, 96).slice(0, 40)], { type: 'image/png' })) })],
+    ['an encoded image that is not a PNG', () => fakeCanvas({ toBlob: (callback) => callback(new Blob(['x'.repeat(163)], { type: 'image/png' })) })],
+  ] as const)('reports a failed canvas allocation for %s and shrinks the canvas', async (_name, create) => {
+    const canvas = create();
+    const result = renderPng(new Board(2, 2), 24);
+    await expect(result).rejects.toBeInstanceOf(PngCanvasError);
+    await expect(result).rejects.toThrow('1セルの画素数を下げるか、PDF保存を利用してください');
+    expect([canvas.width, canvas.height]).toEqual([0, 0]);
+  });
+});
+
+describe('minimumPngBytes', () => {
+  it('is far below what the iPhone 17 produced and above the broken 163-byte output', () => {
+    // 1000×1000・1セル7px。iPhone 17とiPadでは19,249,226 bytes、iPhone 13 miniでは163 bytesだった。
+    expect(minimumPngBytes(7052, 7028)).toBeGreaterThan(163);
+    expect(minimumPngBytes(7052, 7028)).toBeLessThan(19_249_226 / 100);
+    expect(minimumPngBytes(1, 1)).toBe(58);
+  });
+});
+
+describe('pngDimensions', () => {
+  it('reads the IHDR width and height', async () => {
+    expect(await pngDimensions(pngHeader(7052, 7028))).toEqual({ width: 7052, height: 7028 });
+  });
+
+  it.each([
+    ['too short', new Blob([new Uint8Array(23)])],
+    ['not a PNG signature', new Blob([new Uint8Array(24)])],
+  ])('returns undefined when %s', async (_name, blob) => {
+    expect(await pngDimensions(blob)).toBeUndefined();
+  });
 });
 
 it.each(['#ffffff', '#1e1e1e'])('PNGの点線を両端の縁の間に描き、一覧にも線を加える（%s）', async (background) => {
@@ -279,7 +320,7 @@ it.each(['#ffffff', '#1e1e1e'])('PNGの点線を両端の縁の間に描き、�
   let dash: number[] = [];
   const context = {
     fillStyle: '', strokeStyle: '', lineWidth: 0,
-    fillRect: vi.fn(), fillText: vi.fn(), save: vi.fn(), restore: vi.fn(),
+    fillRect: vi.fn(), fillText: vi.fn(), save: vi.fn(), restore: vi.fn(), getImageData: whitePixel,
     beginPath: () => { points = []; },
     moveTo: (...point: number[]) => points.push(point),
     lineTo: (...point: number[]) => points.push(point),
@@ -287,7 +328,7 @@ it.each(['#ffffff', '#1e1e1e'])('PNGの点線を両端の縁の間に描き、�
     closePath: vi.fn(), fill: () => fills.push([...points]),
     stroke: () => paths.push({ color: context.strokeStyle, points: [...points], dash: [...dash], width: context.lineWidth }),
   };
-  const canvas = { width: 0, height: 0, getContext: () => context, toBlob: (callback: BlobCallback) => callback(new Blob(['png'])) };
+  const canvas = { width: 0, height: 0, getContext: () => context, toBlob: (callback: BlobCallback) => callback(pngHeader(canvas.width, canvas.height)) };
   vi.stubGlobal('document', { createElement: () => canvas });
   try {
     const board = new Board(6, 3);

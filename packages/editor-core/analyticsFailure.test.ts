@@ -1,5 +1,6 @@
 import { expect, it } from 'vitest';
 import { failureReason } from './analyticsFailure';
+import { PngCanvasError } from './export/pngErrors';
 import { BackupLimitError, InvalidBackupError } from './storage/backupErrors';
 import { WorkerProcessingError, WorkerStartError, WorkerVersionError } from './util/workerStarter';
 
@@ -12,6 +13,7 @@ it.each([
   [new DOMException('private', 'AbortError'), 'storage'],
   [new InvalidBackupError('private'), 'invalid_backup'],
   [new BackupLimitError('private'), 'backup_limit'],
+  [new PngCanvasError(), 'png_canvas'],
   [new Error('QuotaExceededError'), 'unknown'],
   [{ code: 'invalid_backup' }, 'unknown'],
   [undefined, 'unknown'],

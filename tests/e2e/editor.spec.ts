@@ -393,6 +393,25 @@ test('draws the ten-stitch major lines in the PNG at the numbered tens', async (
   expect(darkPixels.cols).toEqual([...line(3), ...line(13)]);
 });
 
+test('explains a PNG that the browser could not allocate instead of saving it', async ({ page }) => {
+  await downloadInsteadOfShare(page);
+  await page.reload();
+  await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
+  // iOSのWebKitは描画面を確保できないと、例外を出さずに小さな画像を返す（iPhone 13 miniで163 bytes）。
+  await page.evaluate(() => {
+    HTMLCanvasElement.prototype.toBlob = function toBlob(callback: BlobCallback) {
+      callback(new Blob([new Uint8Array(163)], { type: 'image/png' }));
+    };
+  });
+  let downloads = 0;
+  page.on('download', () => { downloads += 1; });
+  await page.getByRole('button', { name: '出力' }).click();
+  await page.getByRole('button', { name: 'PNGを保存' }).click();
+  await expect(page.getByText('端末のメモリが足りず、PNGを作れませんでした。1セルの画素数を下げるか、PDF保存を利用してください。')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'PNGを保存' })).toBeEnabled();
+  expect(downloads).toBe(0);
+});
+
 test('hands PNG and PDF to the share sheet on iPhone Safari without leaving the editor', async ({ page }, testInfo) => {
   // iOSのSafariは<a download>のPDFで編集中のタブを置き換えるため、共有シートで渡す。
   const { sharedFiles } = await stubShareSheet(page, testInfo);

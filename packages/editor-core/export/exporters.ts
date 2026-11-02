@@ -9,6 +9,7 @@ import { strokeGrid, type GridLineStyle } from '../canvas/strokeGrid';
 import type { PdfLayoutOptions } from './pdfLayout';
 import type { PdfRequest, PdfResponse } from './pdf.worker';
 import { labelStride, showsLabel } from './labels';
+import { PngCanvasError } from './pngErrors';
 
 const PNG_MAX_SIDE = 16_384;
 const PNG_MAX_PIXELS = 64_000_000;
@@ -177,7 +178,30 @@ async function paintPng(canvas: HTMLCanvasElement, size: { width: number; height
       context.fillText(stitch.name, nameX, centerY, canvas.width / 2 - legendCell * 6 - 36);
     });
   }
-  return new Promise((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('PNG生成に失敗しました')), 'image/png'));
+  // 左上の角は番号の帯の白い紙で、題名もここには掛からない。確保に失敗した描画面は描いても透明のまま読める。
+  const corner = context.getImageData(0, 0, 1, 1).data;
+  if (corner[0] !== 255 || corner[1] !== 255 || corner[2] !== 255 || corner[3] !== 255) throw new PngCanvasError();
+  const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((result) => result ? resolve(result) : reject(new Error('PNG生成に失敗しました')), 'image/png'));
+  const encoded = await pngDimensions(blob);
+  if (encoded?.width !== size.width || encoded.height !== size.height || blob.size < minimumPngBytes(size.width, size.height)) throw new PngCanvasError();
+  return blob;
+}
+
+/**
+ * その寸法のPNGが取りうる最小のバイト数。1画素1ビットの最も小さい形式を最大の圧縮率（1032:1）で縮めても、
+ * これより小さくはならない。署名とIHDR・IDAT・IENDのチャンクの枠の57 bytesを含む。
+ */
+export function minimumPngBytes(width: number, height: number): number {
+  return 57 + Math.ceil(height * (1 + Math.ceil(width / 8)) / 1032);
+}
+
+/** PNGの先頭のIHDRから寸法を読む。PNGでなければ`undefined`。 */
+export async function pngDimensions(blob: Blob): Promise<{ width: number; height: number } | undefined> {
+  if (blob.size < 24) return undefined;
+  const view = new DataView(await blob.slice(0, 24).arrayBuffer());
+  // 8 bytesの署名の後の最初のチャンクがIHDRで、長さと種類の後に幅と高さが続く。
+  if (view.getUint32(0) !== 0x89504e47 || view.getUint32(4) !== 0x0d0a1a0a || view.getUint32(12) !== 0x49484452) return undefined;
+  return { width: view.getUint32(16), height: view.getUint32(20) };
 }
 
 const PDF_WORKER_ERROR = 'PDFを生成できませんでした。もう一度お試しください。';

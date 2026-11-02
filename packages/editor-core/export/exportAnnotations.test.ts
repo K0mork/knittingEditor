@@ -6,6 +6,7 @@ import { renderPng, validatePngSize } from './exporters';
 import { buildPdf, pdfJapaneseTextWidth, pdfJapaneseText, pdfPageRange, type PdfRequest } from './pdf.worker';
 import { pdfLegendRows, pdfPageCount, pdfPageLayout } from './pdfLayout';
 import { pdfStreams } from './pdfStreams.test-helper';
+import { pngHeader, whitePixel } from './pngCanvas.test-helper';
 
 const streams = (pdf: Uint8Array): string => pdfStreams(pdf).join('');
 
@@ -42,10 +43,11 @@ describe('export title and legend', () => {
 
   it('draws PNG title and used names only when enabled, keeping off commands identical', async () => {
     const calls: unknown[][] = [];
-    const context = new Proxy({}, { get: (_target, name) => (...args: unknown[]) => calls.push([name, ...args]), set: () => true });
-    vi.spyOn(document, 'createElement').mockImplementation(() => ({
-      getContext: () => context, toBlob: (callback: BlobCallback) => callback(new Blob(['png'])),
-    }) as unknown as HTMLCanvasElement);
+    const context = new Proxy({}, { get: (_target, name) => name === 'getImageData' ? whitePixel : (...args: unknown[]) => calls.push([name, ...args]), set: () => true });
+    vi.spyOn(document, 'createElement').mockImplementation(() => {
+      const canvas = { width: 0, height: 0, getContext: () => context, toBlob: (callback: BlobCallback) => callback(pngHeader(canvas.width, canvas.height)) };
+      return canvas as unknown as HTMLCanvasElement;
+    });
     const board = sample();
     await renderPng(board, 24);
     const original = calls.slice();
