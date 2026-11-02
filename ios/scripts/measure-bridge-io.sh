@@ -7,6 +7,9 @@
 # Activity Monitorで端末の全プロセスを記録し、アプリとWebKitのプロセスの
 # 最大メモリ（物理フットプリント）を表示する。盤面データはアプリ本体ではなく
 # WebKitのコンテンツプロセスにあるため、アプリ本体の値だけでは測れない。
+# ブリッジ区間の所要時間は、DEBUGビルドのアプリが書く区間ファイルを端末から取り出して集計する。
+# UIテスト中はXCUITestのsignpostでアプリのsignpostバッファがあふれ、xctraceの記録から
+# 前半の区間が落ちるため。os_signpostとHangsは記録に残し、Instrumentsで見られるようにする。
 # 端末では「設定 > デベロッパ > UIオートメーションを有効にする」を先にオンにしておく。
 set -eu
 
@@ -28,7 +31,8 @@ PROJECT="$SCRIPT_DIR/../knittingEditor.xcodeproj"
 OUT=${3:-$(mktemp -d "${TMPDIR:-/tmp}/knitting-bridge-io.XXXXXX")}
 mkdir -p "$OUT"
 TRACE="$OUT/bridge-io.trace"
-rm -rf "$TRACE" "$OUT/bridge-io.xcresult"
+INTERVALS="$OUT/bridge-io-intervals.tsv"
+rm -rf "$TRACE" "$OUT/bridge-io.xcresult" "$INTERVALS"
 
 # 署名のプロファイルに対象の端末を含めるため、端末を宛先にしてビルドする。
 xcodebuild build-for-testing -project "$PROJECT" -scheme knittingEditor \
@@ -75,34 +79,40 @@ if [ "$status" -ne 0 ]; then
   echo "ERROR: the test failed. See $OUT/test.log" >&2
 fi
 
+# アプリはKNITTING_EDITOR_BRIDGE_IO_SIZEがあるDEBUG起動でだけ、区間ごとに1行を書く（BridgeIntervalLog）。
+# テストが失敗しても途中までの区間を取り出す。
+if xcrun devicectl device copy from --device "$DEVICE" --domain-type appDataContainer \
+  --domain-identifier com.k0mork.knittingEditor --source Library/Caches/bridge-io-intervals.tsv \
+  --destination "$INTERVALS" > "$OUT/devicectl-copy.log" 2>&1 && [ -s "$INTERVALS" ]; then
+  /usr/bin/python3 "$SCRIPT_DIR/summarize-bridge-intervals.py" "$INTERVALS" || status=1
+else
+  echo "ERROR: could not fetch the interval file from the device. See $OUT/devicectl-copy.log" >&2
+  status=1
+fi
+
+# 以下の集計は参考情報。失敗しても終了コードは変えない。
 xcrun xctrace export --input "$TRACE" \
   --xpath '/trace-toc/run[@number="1"]/data/table[@schema="activity-monitor-process-live"]' \
-  > "$OUT/process-live.xml" 2>/dev/null
-
-# WebKitは他アプリ由来も含め全候補を表示する。所属はInstrumentsで確認する。
-/usr/bin/python3 "$SCRIPT_DIR/summarize-process-memory.py" "$OUT/process-live.xml"
-# スキーマ名はXcodeで変わるため、TOCを保存し存在する区間表だけを書き出す。
-xcrun xctrace export --input "$TRACE" --toc > "$OUT/toc.xml"
-/usr/bin/python3 - "$OUT/toc.xml" <<'PYTOC' > "$OUT/interval-schemas.txt"
-import sys
-import xml.etree.ElementTree as ET
-root = ET.parse(sys.argv[1]).getroot()
-for schema in sorted({e.get('schema', '') for e in root.iter('table')}):
-    if any(token in schema for token in ('signpost', 'hang')):
-        print(schema)
-PYTOC
-if ! grep -q 'signpost' "$OUT/interval-schemas.txt"; then
-  echo 'ERROR: no signpost table; inspect the trace with Instruments.' >&2
-  exit 1
+  > "$OUT/process-live.xml" 2>/dev/null \
+  && /usr/bin/python3 "$SCRIPT_DIR/summarize-process-memory.py" "$OUT/process-live.xml" \
+  || echo 'WARNING: could not summarize process memory; inspect the trace with Instruments.' >&2
+# WebKitは他アプリ由来も含め全候補を表示する。WebKitのresponsible-processはlaunchdなので、
+# 所属はPIDの近さとInstrumentsで確認する。
+# スキーマ名はXcodeで変わるため、TOCを保存し、存在するHangsの表だけを書き出す。
+# os_signpostの表は開始・終了のイベント表で所要時間を持たないため、集計せずInstrumentsで見る。
+hang_found=0
+if xcrun xctrace export --input "$TRACE" --toc > "$OUT/toc.xml" 2>/dev/null; then
+  for schema in potential-hangs hang-risks; do
+    grep -q "schema=\"$schema\"" "$OUT/toc.xml" || continue
+    hang_found=1
+    xcrun xctrace export --input "$TRACE" \
+      --xpath "/trace-toc/run[@number=\"1\"]/data/table[@schema=\"$schema\"]" > "$OUT/$schema.xml" 2>/dev/null \
+      && /usr/bin/python3 "$SCRIPT_DIR/summarize-bridge-intervals.py" --hangs "$OUT/$schema.xml" \
+      || echo "WARNING: could not summarize $schema; inspect the trace with Instruments." >&2
+  done
 fi
-while IFS= read -r schema; do
-  xcrun xctrace export --input "$TRACE" \
-    --xpath "/trace-toc/run[@number=\"1\"]/data/table[@schema=\"$schema\"]" > "$OUT/$schema.xml"
-  /usr/bin/python3 "$SCRIPT_DIR/summarize-bridge-intervals.py" "$OUT/$schema.xml"
-done < "$OUT/interval-schemas.txt"
-if [ ! -s "$OUT/interval-schemas.txt" ]; then
-  echo 'ERROR: no signpost/hang tables; inspect the trace with Instruments.' >&2
-  exit 1
+if [ "$hang_found" -eq 0 ]; then
+  echo 'WARNING: no potential-hangs/hang-risks table; inspect the trace with Instruments.' >&2
 fi
 # 既存のlarge-board手順と同様、クラッシュ/Jetsamログの取得は自動化していない。
 echo "Trace and logs (local only): $OUT"

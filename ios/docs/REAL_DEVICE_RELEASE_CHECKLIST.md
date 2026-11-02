@@ -152,8 +152,13 @@ KNITTING_EDITOR_DEVELOPMENT_TEAM=XXXXXXXXXX ios/scripts/measure-bridge-io.sh <UD
 読み込み失敗時のbytesは0の場合がある。ファイル名・内容は記録しない。
 JavaScriptの完了は非同期のWeb復元完了を意味しないため、復元完了はUIテストの秒数でも確認する。
 保存先の選択は人の操作待ちを含むため、受信からpicker提示までのsignpostは設けない。
-各区間のcount/total/maxとbytesはスクリプトで集計する。未対応schemaは「未集計」と表示するので、
-TOCと生XMLをInstrumentsで調べる。WebKitは他アプリのプロセスも候補として表示し、所属をPID近接だけで断定しない。
+所要時間はDEBUGビルドのアプリが書く区間ファイル（`Library/Caches/bridge-io-intervals.tsv`、
+`KNITTING_EDITOR_BRIDGE_IO_SIZE`がある起動だけ）から取る。UIテスト中はXCUITestのsignpostで
+アプリのsignpostバッファがあふれ、xctraceの記録から前半の区間（バックアップ書き出しやPNG）が落ちるためである。
+スクリプトは`devicectl device copy from`でこのファイルを取り出し、区間ごとのcount/total/maxと各回のbytesを表示する。
+取り出せなければ失敗にする。signpostはReleaseにも残し、記録したtraceはInstrumentsで見る。
+Hangsは`potential-hangs`／`hang-risks`表のうちアプリとWebKitの行を表示する。WebKitは`responsible-process`がlaunchdのため、
+他アプリのプロセスも候補として表示し、所属をPID近接だけで断定しない。
 クラッシュ/Jetsamログの自動取得は既存手順同様に行わない。実施後は端末の解析データも別途確認する。
 
 ## M3: Files・共有・外部バックアップ
