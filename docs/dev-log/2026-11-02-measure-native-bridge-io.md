@@ -1,17 +1,19 @@
-# 2026-11-02 — ネイティブブリッジの変換・ファイル入出力を実機で測る準備
+# 2026-11-02 — Swift側のブリッジの変換とファイル入出力を実機で測れるようにし、iPhoneで測る
 
-- 影響: 通常の保存・復元経路に永続signpostを追加。空のテスト用コンテナに限り、DEBUG設定で固定seedの1000×1000編み図を生成する。ReleaseのWeb bundleから生成処理を除外する。
-- 主なファイル: `ios/App/BridgeSignposts.swift`、`NativeBridgeMessage.swift`、`ExportSession.swift`、`PickedBackupFile.swift`、`WebViewModel.swift`、`ios/Web/src/debugBridgeIO.ts`、`packages/editor-core/storage/bridgeMeasurementData.ts`、`ios/scripts/measure-bridge-io.sh`。XcodeGenでprojectも再生成した。
-- テスト: 生成データの再現性・サイズ、既存文書へのseed拒否、区間名、DEBUG設定の許可リスト、xctrace XML集計。実機UIテスト`testBridgeIOOnRealDevice`を追加し、環境変数がないCIではskip、PR smokeは変更なし。
-- 検証: Node v26.8.1、Xcode 27.2 (27B52)。`npm ci --ignore-scripts`、`npm run typecheck`、`npm test`（79 files / 972 tests）、`npm run build`、`npm run check:dist`成功。`npm test -- packages/editor-core/storage/bridgeMeasurementData.test.ts --silent=false`（2 tests）、`npm test -- scripts/summarize-bridge-intervals.test.mjs`（1 test）成功。`ios/Web`で`../../node_modules/.bin/tsc -p tsconfig.app.json --noEmit`、`../../node_modules/.bin/vitest run`（18 files / 149 tests）成功。`VITE_BRIDGE_IO_DEBUG=0 ../../node_modules/.bin/vite build`後に生成コードの文字列がないこと、同じDEBUG=1ビルドには専用chunkがあることを確認。
-- 検証（続き）: `xcodegen generate --spec ios/project.yml`、`sh -n ios/scripts/measure-bridge-io.sh ios/scripts/measure-large-board.sh`、`bash -n ios/scripts/build-web.sh`、`node scripts/check-pr-smoke-ui-tests.mjs`、`sh ios/scripts/check-app-store-docs.sh`、`git diff --check`成功。
-- 未検証: 指定の`xcodebuild -project ios/knittingEditor.xcodeproj -scheme knittingEditor -destination 'generic/platform=iOS Simulator' build`はDerivedDataの書込権限で失敗。`-derivedDataPath /tmp/bridge-io-derived`で再試行したが、既存のObservationマクロのpluginがmalformed responseとなりビルド失敗。Swift単体試験、UI試験、実機計測、ブラウザ/E2Eはこのサンドボックスでは実施できない。PR/full CIとリードによる実機検証が必要。
-- 制約: Webの圧縮上限32 MiBのため100〜120 MBの通常復元は不可能。上限を変更せずsmall/medium/largeを1/4/8編み図（約4/16/32 MB）にした。128 MiB近傍は未達。実機測定結果はpending。xctrace helpの`--instrument`は確認できたがinstrument一覧は空で、os_signpost/Hangsの併用とXML schemaは実機側で要確認。WebKit候補の所属はInstrumentsで確認する。
-- デプロイ影響: Pagesのユーザー動作変更なし。TestFlight/App Storeへの提出なし。Releaseにもsignpostは残す。マージ前に実機の新規コンテナで3サイズの往復、PNG/PDF保存先までの表示、各区間・プロセスメモリ・Hangs・端末のクラッシュ/Jetsamを確認する。実機結果が出るまで#26は完了扱いにしない。
-
-通常のバックアップ復元で有効な最大サイズはWeb側の圧縮後32 MiB（`packages/editor-core/storage/backupCodec.ts:21` の `BACKUP_LIMITS.maxCompressedBytes`）。largeはその直下の約30.2 MiBとする。ネイティブの128 MiBはブリッジ自体の上限であり、通常の復元経路では到達しない。
-
-- レビュー修正: pickerの複製読込から不要なsecurity scope操作を除去。既存large-boardスクリプトを変更前へ戻し、新規スクリプトではsignpost表欠落・集計不能を失敗にした。`docs/WEB_SYNC.md`にDEBUG初期化とCONFIGURATIONを記録。
-- レビュー再検証: `npm run typecheck`、`npm test`（79 files / 973 tests）、ios/Webで`../../node_modules/.bin/tsc -p tsconfig.app.json --noEmit`と`../../node_modules/.bin/vitest run`（18 files / 149 tests）、`npm test -- scripts/summarize-bridge-intervals.test.mjs`（2 tests）、上記shell構文・文書・smoke検査と`git diff --check`成功。Release Web再ビルドと生成コード文字列の不在、XcodeGen再生成前後の一致を確認。指定iOSビルドは再度DerivedData権限で失敗。実機・UI・Swift単体試験とE2Eはsandbox制約のため未実施。
-- 実機の初回計測後の修正: iPhone 17（iOS 27.2）のsmallで、XCUITestのsignpostがアプリのsignpostバッファをあふれさせ、xctraceの記録から前半の区間が落ちた。xctraceのos_signpost表は開始・終了のイベント表で所要時間を持たない。DEBUGビルドで`KNITTING_EDITOR_BRIDGE_IO_SIZE`がある起動に限り、区間ごとの所要時間をアプリの`Library/Caches/bridge-io-intervals.tsv`へ書き（`BridgeIntervalLog`、Releaseには含めない）、`measure-bridge-io.sh`が`devicectl device copy from`で取り出して集計する。取り出せなければ失敗。signpostとHangsの記録は残し、Hangs表はアプリとWebKitの行を表示する（集計できなくても失敗にしない）。xctraceのsignpost集計は削除。
-- 修正の検証: `npm test -- scripts/summarize-bridge-intervals.test.mjs`（3 tests）、`sh -n ios/scripts/measure-bridge-io.sh`、`npm run typecheck`、`git diff --check`、`xcodebuild build-for-testing`（generic iOS Simulator）。行形式のSwift単体テスト`BridgeSignpostsTests`は追加のみで、Simulatorでの実行はCIとリードの実機計測に残す。
+- 影響: #26 の、Swift側の大容量の変換とファイル入出力の実機計測。利用者から見たアプリの動作は変えていない。
+  - `ios/App/BridgeSignposts.swift` を足し、書き出しの受け取り（Base64の復号とサイズの確認）、一時ファイルへの書き込み、バックアップの読み込み、Webへ渡すBase64・JSONへの変換、`evaluateJavaScript` の完了までを `OSSignposter` の区間で囲んだ。Releaseにも残す。記録するのはバイト数とMIMEだけで、ファイル名や内容は記録しない。
+  - UIテスト中はXCUITestのsignpostでアプリのsignpostバッファがあふれ、xctraceの記録から前半の区間が落ちた。そのため、DEBUGビルドで `KNITTING_EDITOR_BRIDGE_IO_SIZE` がある起動に限り、区間ごとの所要時間をアプリの `Library/Caches/bridge-io-intervals.tsv` に書く（`BridgeIntervalLog`）。
+  - 同じ環境変数で、編み図のないテスト用の状態に限り、固定のseedで1000×1000の編み図を1・4・8枚作る（`packages/editor-core/storage/bridgeMeasurementData.ts`、`ios/Web/src/debugBridgeIO.ts`）。既存の編み図があれば作らない。`ios/scripts/build-web.sh` はDebugのときだけこの処理をWebのbundleに入れ、入力のハッシュにビルド構成を含める。
+  - 通常の復元で受け付ける最大の大きさは、Web側の圧縮後32 MiB（`packages/editor-core/storage/backupCodec.ts:21` の `BACKUP_LIMITS.maxCompressedBytes`）。8枚（約30.2 MiB）をその直下の「large」とした。ネイティブ側の128 MiBはブリッジ自体の上限で、通常の復元では届かない。
+  - 実機用のUIテスト `testBridgeIOOnRealDevice` と、計測スクリプト `ios/scripts/measure-bridge-io.sh` を足した。スクリプトはInstruments（Activity Monitor・os_signpost・Hangs）で記録しながらテストを流し、区間ファイルを `devicectl device copy from` で取り出して集計する。テストは環境変数がなければskipし、PRのsmokeには入れていない。保存先に同名のファイルがあれば「置き換え」を押さずに止まり、復元まで測り終えなければ失敗にする。
+- 主なファイル: `ios/App/BridgeSignposts.swift`、`ios/App/NativeBridgeMessage.swift`、`ios/App/ExportSession.swift`、`ios/App/PickedBackupFile.swift`、`ios/App/WebViewModel.swift`、`ios/App/DebugEditorConfiguration.swift`、`ios/Web/src/App.tsx`、`ios/Web/src/debugBridgeIO.ts`、`packages/editor-core/storage/bridgeMeasurementData.ts`、`ios/scripts/measure-bridge-io.sh`、`ios/scripts/summarize-bridge-intervals.py`、`ios/scripts/summarize-process-memory.py`、`ios/UITests/KnittingEditorUITests/KnittingEditorUITests.swift`、`ios/docs/REAL_DEVICE_RELEASE_CHECKLIST.md`、`ios/docs/RELEASE_VERIFICATION_RECORDS.md`、`docs/WEB_SYNC.md`
+- テスト: 生成データの再現性と大きさ（`bridgeMeasurementData.test.ts`）、既存の編み図があるときに作らないこと（`ios/Web/src/debugBridgeIO.test.ts`）、DEBUG設定と区間ファイルの行の形式（`DebugEditorConfigurationTests`、`BridgeSignpostsTests`）、区間ファイルとHangs表の集計（`scripts/summarize-bridge-intervals.test.mjs`）。実機用のUIテスト `testBridgeIOOnRealDevice`。
+- 検証:
+  - `npm run typecheck`、`npm test`（79 files / 974 tests）、`npm run build`、`npm run check:dist`、`npm run test:e2e`（545 passed、7 skipped）が成功した。Node v26.8.1。
+  - `ios/Web` で `tsc -p tsconfig.app.json --noEmit` と `vitest run`（18 files / 149 tests）が成功した。Releaseの設定でWebをビルドし、生成処理が入らないことを確かめた。
+  - Xcode 27.2（27B52）、KE verify iPhone（iPhone 17、iOS 27.2）のSimulatorで、UIテストを除く単体テストが成功した（主スイート138件、うち1件はskip）。`testBridgeIOOnRealDevice`（small）も最後まで成功した。
+  - `sh -n ios/scripts/measure-bridge-io.sh`、`node scripts/check-pr-smoke-ui-tests.mjs`、`sh ios/scripts/check-app-store-docs.sh`、`git diff --check` が成功した。
+  - 実機（iPhone 17、iOS 27.2、有線、有料のApple Developerのチームで署名したDebugビルド）で、`measure-bridge-io.sh` をsmall・medium・largeの順に1回ずつ流し、3回とも成功した。Swift側の各区間は最大約0.15秒（largeの `BridgeBackupJavaScript`、148.2 ms）。ピークメモリはアプリ本体238.0 MiB、WebKitのコンテンツプロセス812.4 MiBまで。アプリのHangsは0〜4件（最長162 ms）。測定中のアプリとWebKitのクラッシュ記録とJetsamEventは無かった。詳細は `ios/docs/RELEASE_VERIFICATION_RECORDS.md`。
+  - 処理をMainActorの外へ移すか、復号の前に大きさを確かめるかは決めていない。
+  - iPadの計測は未実施。TestFlightのビルドでのクラッシュ・メモリ・出力時間の確認は #25 を待つ。
+- デプロイ影響: Pagesの動作の変更はない（共通コードは計測用のデータ生成を足しただけで、Webのアプリからは使わない）。アプリのReleaseビルドにはsignpostだけが入り、計測用の区間ファイルとデータ生成は入らない。#26 は、iPadとTestFlightの確認が残るので閉じない。

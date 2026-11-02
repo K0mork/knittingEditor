@@ -136,3 +136,51 @@
 ## 2026-10-21 提出用アーカイブの試作（手元のXcode 27.1）
 
 手元のXcode 27.1（`27A9275`）で`main`の`fda7bbf`から署名なしのReleaseアーカイブを試しに作った（CIの`release_archive`と同じ引数）。アーカイブは成功し、`check-release-assets.sh`も通った。アプリの`Info.plist`は`DTSDKName`が`iphoneos27.1`、`DTXcodeBuild`が`27A9275`、`CFBundleShortVersionString`が`1.0`、`CFBundleVersion`が`1`だった。提出用は加入後に署名して作り直す。
+
+## 2026-11-02 Swift側の変換とファイル入出力の測定（#26、iPhone 17 / iOS 27.2、有線）
+
+[Swift側の変換とファイル入出力（#26）](REAL_DEVICE_RELEASE_CHECKLIST.md#swift側の変換とファイル入出力26)の`ios/scripts/measure-bridge-io.sh`で、small・medium・largeを1回ずつ測った。`test/measure-native-bridge-io`ブランチの`3f498d8`を、有料のApple Developerのチームで署名したDebugビルドで入れた（Xcode 27.2（27B52））。測定は19:30〜20:00ごろ（日本時間）に行った。iPadは未実施で、次の機会に測る。
+
+| サイズ | 編み図数（どれも1000×1000） | バックアップ（bytes） |
+|---|---:|---:|
+| small | 1 | 3959897 |
+| medium | 4 | 15837839 |
+| large | 8 | 31674921 |
+
+largeは、Web側の圧縮後の上限（32 MiB）のすぐ下で、通常の復元で受け付ける最大の大きさにあたる。
+
+UIテストで測った所要時間（秒）は次のとおり。テスト用データの生成（約4秒）は利用者の操作ではないので含めない。
+
+| 測定 | small | medium | large |
+|---|---:|---:|---:|
+| バックアップの書き出し（保存先の選択が閉じるまで） | 14.5 | 14.3 | 15.6 |
+| PNG保存（保存先を選ぶ画面まで） | 7.8 | 7.6 | 8.9 |
+| PDF保存（同上） | 8.7 | 8.7 | 8.7 |
+| 復元（復元した編み図の名前が出るまで） | 2.0 | 4.0 | 6.1 |
+
+Swift側の各区間の所要時間（ms）は、DEBUGビルドが書く区間ファイルから取った。書き出しは1回の測定で3回（`.knit`、PNG（約19.25 MB）、PDF（約14.59 MB））あり、合計と最大を書く。
+
+| 区間 | 内容 | small | medium | large |
+|---|---|---:|---:|---:|
+| `BridgeBackupRead` | 選んだバックアップのmapped read | 0.6 | 0.5 | 0.5 |
+| `BridgeBackupEncode` | Webへ渡すBase64とJSON | 31.7 | 75.0 | 129.5 |
+| `BridgeBackupJavaScript` | `evaluateJavaScript`の完了まで | 33.5 | 71.2 | 148.2 |
+| `BridgeExportDecode` | Base64の復号とサイズの確認（3回の合計、括弧内は最大） | 28.8（14.6） | 36.3（14.3） | 41.5（19.1） |
+| `BridgeExportWrite` | 一時ファイルのatomic write（同上） | 14.7（6.7） | 16.7（6.6） | 23.4（11.7） |
+
+`BridgeBackupJavaScript`で渡したスクリプトは、small 5474733 bytes、medium 21894135 bytes、large 43786156 bytes。
+
+ピークメモリ（物理フットプリント、MiB）は次のとおり。WebKitのプロセスは`responsible-process`がlaunchdなので、アプリの直後に起動したものを、PIDが隣り合うことからこのアプリのものとした。
+
+| プロセス | small | medium | large |
+|---|---:|---:|---:|
+| アプリ本体 | 74.0 | 134.4 | 238.0 |
+| WebKitコンテンツ | 615.3 | 812.4 | 720.8 |
+| WebKit GPU | 201.9 | 201.8 | 201.3 |
+
+- Hangs：アプリ本体のpotential hang（100 ms以上）は、smallで1件（161 ms）、mediumで0件、largeで4件（119〜162 ms）だった。UIテストの実行プロセス自身のものは数えていない。
+- 端末のクラッシュ記録に、測定中のアプリとWebKitのものは無かった。この日のJetsamEvent（メモリ不足による強制終了の記録）は、どれも測定より前（最後は18:31）のものだった。
+
+通常の復元で受け付ける最大のバックアップでも、Swift側の変換とファイル入出力の各区間がメインスレッドを止めた時間は最大約0.15秒（largeの`BridgeBackupJavaScript`、148.2 ms）で、iPhone 17では0.15秒を超える区間は無かった。メモリのピークでも警告や強制終了は起きなかった。処理をMainActorの外へ移すか、復号の前に大きさを確かめるかはまだ決めておらず、その判断の材料としてこの結果を残す。
+
+各サイズ1回だけの測定である。iPadは未実施。TestFlightのビルドでの測定も未実施で、#26のこの部分は#25を待って残る。

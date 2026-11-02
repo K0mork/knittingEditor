@@ -138,11 +138,21 @@ KNITTING_EDITOR_DEVELOPMENT_TEAM=XXXXXXXXXX ios/scripts/measure-bridge-io.sh <UD
 製品上限は変更せずlargeを約30.2 MiBに制限した。128 MiB近傍の測定は未実施・別途検討が必要。
 通常のバックアップ復元で有効な最大サイズはWeb側の圧縮後32 MiB（`packages/editor-core/storage/backupCodec.ts:21` の `BACKUP_LIMITS.maxCompressedBytes`）。largeはその直下の約30.2 MiBとする。ネイティブの128 MiBはブリッジ自体の上限であり、通常の復元経路では到達しない。
 
-| サイズ | 編み図数 | gzip bytes（目安） | Base64 bytes（目安） | 書出秒 | PNG/PDF秒 | 復元秒 | app/WebContent/Networking/GPUピーク | Hangs |
-|---|---:|---:|---:|---|---|---|---|---|
-| small | 1 | 3959865 | 5279820 | | | | | |
-| medium | 4 | 15837799 | 21117068 | | | | | |
-| large | 8 | 31674947 | 42233264 | | | | | |
+| サイズ | 編み図数 | gzip bytes（目安） | Base64 bytes（目安） |
+|---|---:|---:|---:|
+| small | 1 | 3959865 | 5279820 |
+| medium | 4 | 15837799 | 21117068 |
+| large | 8 | 31674947 | 42233264 |
+
+結果は次のとおり。秒はUIテストの所要時間、ピークは物理フットプリント（MiB）、HangsはアプリのHangs（100 ms以上）。
+各区間の所要時間と測定の条件は[リリース確認の記録](RELEASE_VERIFICATION_RECORDS.md#2026-11-02-swift側の変換とファイル入出力の測定26iphone-17--ios-272有線)にある。
+
+| 端末 | サイズ | 書出秒 | PNG/PDF秒 | 復元秒 | app/WebContent/GPUピーク | Hangs |
+|---|---|---|---|---|---|---|
+| iPhone 17 / iOS 27.2（2026-11-02、1回） | small | 14.5 | 7.8 / 8.7 | 2.0 | 74.0 / 615.3 / 201.9 | 1件（161 ms） |
+| iPhone 17 / iOS 27.2（2026-11-02、1回） | medium | 14.3 | 7.6 / 8.7 | 4.0 | 134.4 / 812.4 / 201.8 | 0件 |
+| iPhone 17 / iOS 27.2（2026-11-02、1回） | large | 15.6 | 8.9 / 8.7 | 6.1 | 238.0 / 720.8 / 201.3 | 4件（119〜162 ms） |
+| iPad | small・medium・large | 未実施 | 未実施 | 未実施 | 未実施 | 未実施 |
 
 `NativeBridge`カテゴリの固定区間:
 `BridgeExportDecode`（exportFile全体の検証とBase64復号）、
