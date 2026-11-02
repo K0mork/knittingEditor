@@ -27,7 +27,7 @@
 
 ## 販売元と著作権表記
 
-- Apple Developer Programには個人で加入する（#17）。Appleの加入案内（[Enrollment](https://developer.apple.com/support/enrollment/)、2026-10-06に確認）のとおり、個人で加入するとApp Storeの販売元（Seller）には加入者の法的氏名が表示され、別名・ハンドル名・屋号は使えない。v1.0の無料版から表示される。
+- Apple Developer Programには個人で加入した（#17、2026-11-02に有効）。Appleの加入案内（[Enrollment](https://developer.apple.com/support/enrollment/)、2026-10-06に確認）のとおり、個人で加入するとApp Storeの販売元（Seller）には加入者の法的氏名が表示され、別名・ハンドル名・屋号は使えない。v1.0の無料版から表示される。
 - 販売元に法的氏名が表示されることを受け入れる（2026-10-06に決定）。法人を作って法人名義で加入する方法は取らない。
 - App Store Connectの「著作権」欄は「2026 K0mork」とする。リポジトリの`LICENSE`の著作権者（K0mork）とそろえ、法的氏名は書かない。
 - 法的氏名はApp Store Connectの加入情報にだけ入力し、リポジトリ・Issue・PRには書かない（AGENTS.mdの「Confidential Information」）。
