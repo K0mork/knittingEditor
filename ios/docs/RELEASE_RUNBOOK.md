@@ -1,6 +1,6 @@
 # v1.0 提出・公開の手順
 
-v1.0をApp Storeへ提出・公開するまで、次の順に進める。Apple Developer Programへの個人での加入と有料のTeamでの署名（手順1〜3）は2026-11-02に済んでおり、次は[手順4](#4-app-store-connectでアプリを登録する)から進める。全項目の管理は[提出チェックリスト](APP_STORE_CHECKLIST.md)、入力値の正本は[メタデータ](APP_STORE_METADATA.md)、実機の手順と証跡は[実機リリースゲート](REAL_DEVICE_RELEASE_CHECKLIST.md)を使う。v1.1以降の更新版は[手順10](#10-更新版を提出する)を加えて進める。
+v1.0をApp Storeへ提出・公開するまで、次の順に進める。Apple Developer Programへの個人での加入と有料のTeamでの署名（手順1〜3）は2026-11-02に、App Store Connectでのアプリの登録（手順4）は2026-11-03に済んでおり、次は[手順5](#5-提出用release-archiveを作成し検査アップロードする)から進める。全項目の管理は[提出チェックリスト](APP_STORE_CHECKLIST.md)、入力値の正本は[メタデータ](APP_STORE_METADATA.md)、実機の手順と証跡は[実機リリースゲート](REAL_DEVICE_RELEASE_CHECKLIST.md)を使う。v1.1以降の更新版は[手順10](#10-更新版を提出する)を加えて進める。
 
 個人情報・Team ID・App Store ConnectのApp ID・登録画面の無加工画像を、公開リポジトリやGitHubへ載せない。非公開の入力値はメインチェックアウトのルートの `private/APP_STORE_CONNECT.md` を参照する。worktreeに別の `private/` は作らない。
 
@@ -34,7 +34,17 @@ CIは署名なしのまま変更しない。CIのXcode更新は[#289](https://gi
 - **完了の目安:** Automaticで署名が解決し、iPhone・iPadでローカル資産から起動して再起動後もデータが残る。
 - **関係するIssue／項目:** [#17](https://github.com/K0mork/knittingEditor/issues/17)、#289、提出チェックリストの署名項目、実機ゲートM0。
 
-## 4. App Store Connectでアプリを登録する
+## 4. App Store Connectでアプリを登録する（済み）
+
+2026-11-03に、App Store Connectで次のとおり新規Appを作成し、v1.0が「提出準備中」になったことを確かめた（[#18](https://github.com/K0mork/knittingEditor/issues/18)）。App名「棒針編み図エディタ」は重複せずに使えたので、App名の文書は直していない。SKUの値はルートの `private/APP_STORE_CONNECT.md` に記録した。
+
+- プラットフォーム: iOS
+- App名: 棒針編み図エディタ
+- プライマリ言語: 日本語
+- Bundle ID: `com.k0mork.knittingEditor`（手順3でXcodeのAutomatic署名が登録したもの）
+- ユーザアクセス: アクセス制限なし
+
+アプリを登録し直すときは、次のとおりにする。
 
 App Store Connectの「マイApp」から新規Appを作り、プラットフォームはiOS、主言語は日本語、Bundle IDは手順3の登録を選ぶ。App名は[基本情報](APP_STORE_METADATA.md#基本情報)に従う。重複で使えない場合は、[App名とホーム画面の表示名](APP_STORE_METADATA.md#app名とホーム画面の表示名)のとおり文書を更新してから登録する（#18）。
 
