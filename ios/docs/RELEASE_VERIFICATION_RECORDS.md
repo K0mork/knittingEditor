@@ -136,3 +136,24 @@
 ## 2026-10-21 提出用アーカイブの試作（手元のXcode 27.1）
 
 手元のXcode 27.1（`27A9275`）で`main`の`fda7bbf`から署名なしのReleaseアーカイブを試しに作った（CIの`release_archive`と同じ引数）。アーカイブは成功し、`check-release-assets.sh`も通った。アプリの`Info.plist`は`DTSDKName`が`iphoneos27.1`、`DTXcodeBuild`が`27A9275`、`CFBundleShortVersionString`が`1.0`、`CFBundleVersion`が`1`だった。提出用は加入後に署名して作り直す。
+
+## 2026-11-02 有料Teamでの署名と実機導入（iPhone 17 / iOS 27.2、iPad Air 第5世代 / iPadOS 27.2、有線）
+
+Apple Developer Programへの個人での加入が有効になったあと、`main`の`c502259`を有料のTeamで署名して両端末へ入れた（#17）。
+
+| 項目 | 記録 |
+|---|---|
+| 実施日 | 2026-11-02 |
+| 実施者 | K0mork |
+| Git commit | `main`の`c502259` |
+| Xcode / macOS | Xcode 27.2 (27B52) / macOS 27.2 (26B123) |
+| iPhone機種・iOS | iPhone 17 (iPhone18,3) / iOS 27.2 |
+| iPad機種・iPadOS | iPad Air (5th generation) (iPad13,16) / iPadOS 27.2 |
+| Apple Developer Team / Bundle ID | 有料（個人のApple Developer Program、XcodeのAccountsでの役割はAdmin） / `com.k0mork.knittingEditor` |
+| 署名方式・証明書 | Automatic、Apple Development（`iOS Team Provisioning Profile: com.k0mork.knittingEditor`、作成から1年で失効） |
+
+- XcodeのAccountsでTeamの表示から「(Personal Team)」が外れたことを利用者が確かめた。Xcodeの設定ファイルには加入前のTeamの情報が残っていたため、表示ではなく、`xcodebuild -allowProvisioningUpdates`で作られたProvisioning Profileの失効日（作成から1年。無料Personal Teamでは7日）で有料のTeamと判断した。
+- `KNITTING_EDITOR_REQUIRE_WIRED=1 ios/scripts/check-device-readiness.sh`が両端末を`transport=wired`、デベロッパモード有効として通過した。`-allowProvisioningDeviceRegistration`を付けてビルドし、両端末がProvisioning Profileに入ったことを確かめた。
+- 入れる前に、両端末のアプリのデータ（`Library`）を`devicectl device copy from`でMacへ写した。Debugビルドを上書きで入れ、`devicectl device process launch`で起動すると、開発元を信頼する操作なしで編集画面が出た。アプリを終了して起動し直しても、前に開いていた編み図と記号がそのまま表示された。端末内IndexedDBの`documents`の件数は、入れる前・入れた後・起動し直した後・下の自動テストの後で変わらなかった（iPhoneは35件、iPadは1件）。
+- 機内モードの自動テスト`testAirplaneModeServesEditorWithoutNetwork`は、有料のTeamでも実機で流せなかった。両端末を機内モードにしてWi-Fiも切り、有線で`xcodebuild test`を実行すると、アプリを入れ直したあとの起動で`Unable to launch com.k0mork.knittingEditor because it has an invalid code signature, inadequate entitlements or its profile has not been explicitly trusted by the user`となり、iPhoneに「デベロッパの信用を確認するにはインターネット接続が必要です」と出た。直前にオンラインで同じテストを流して（環境変数なしのためスキップ）起動できたことを確かめてから機内モードに戻しても、入れ直したあとの起動は同じく拒否された。入れ直した開発ビルドは、起動の前にiOSがオンラインで開発元を確かめるためである。
+- 残り：機内モードでの確認は、TestFlightで配る提出ビルドで行う（M6、#25）。
