@@ -985,20 +985,25 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertTrue(saveInPicker.waitForExistence(timeout: 20), app.debugDescription)
         add(screenshotAttachment(named: "全データの保存先の選択"))
         saveInPicker.tap()
-        // 名前を変えられず、前回の同名ファイルが残っているときだけ、確認が出るので置き換える。
-        let replace = app.buttons.matching(NSPredicate(format: "label IN %@", ["置き換え", "Replace"])).firstMatch
-        // 別プロセスの保存画面が閉じる途中はreplace.existsの問い合わせに17〜42秒かかることがある（#317）。
-        // 実行ごとの名前にできたときは置き換えの確認が出ないので、問い合わせずに保存画面が閉じるのだけを待つ。
-        let exportFinishedOrReplaceAppeared = XCTNSPredicateExpectation(
-            predicate: NSPredicate { _, _ in !exportPicker.exists || (mayAskToReplace && replace.exists) },
+        // 別プロセスの保存画面が閉じる途中は、ボタンの問い合わせに17〜44秒かかることがある（#317）。
+        // 名前を変えられなかった回に、閉じる途中で置き換えの確認を問い合わせて待ち時間を使い切ったため（#370）、
+        // まず保存画面が閉じるのだけを待つ。普段は数秒で閉じるので、名前を変えられなかった回は15秒で打ち切る。
+        let exportFinished = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == false"),
             object: exportPicker
         )
-        // 保存済みでも20秒では1回しか判定できず失敗したため、エディターの表示と同じ時間待つ。
-        let exportWaitResult = XCTWaiter.wait(for: [exportFinishedOrReplaceAppeared], timeout: Self.editorAppearanceTimeout)
-        XCTAssertEqual(exportWaitResult, .completed, app.debugDescription)
-        if mayAskToReplace && exportPicker.exists && replace.exists {
-            waitUntilStill(replace)
-            replace.tap()
+        let exportWaitResult = XCTWaiter.wait(
+            for: [exportFinished],
+            timeout: mayAskToReplace ? 15 : Self.editorAppearanceTimeout
+        )
+        if exportWaitResult != .completed {
+            // 保存画面が残るのは、前回の同名ファイルの置き換え確認が出ているときだけ。
+            XCTAssertTrue(mayAskToReplace, app.debugDescription)
+            let replace = app.buttons.matching(NSPredicate(format: "label IN %@", ["置き換え", "Replace"])).firstMatch
+            if mayAskToReplace && replace.waitForExistence(timeout: 10) {
+                waitUntilStill(replace)
+                replace.tap()
+            }
             assertDisappears(exportPicker, from: app)
         }
 
@@ -1942,15 +1947,18 @@ final class KnittingEditorUITests: XCTestCase {
         // 同じ名前の見出しや非表示のサイドバーも一致するため、画面内で押せる候補を探す。
         // 空や画面外のframeでisHittableを読むと、falseではなくXCTestの失敗になる。
         // 画面内の枠でも失敗になったため（#317）、isHittableは失敗を記録しない形で読む。
+        // 候補の一覧の解決が待機の時間切れで打ち切られたときも、見つからなかったとして扱う（#44）。
         func waitForLocation(timeout: TimeInterval) -> XCUIElement? {
             var location: XCUIElement?
             let hittable = XCTNSPredicateExpectation(
                 predicate: NSPredicate { _, _ in
-                    let window = app.windows.firstMatch.frame
-                    location = locations.allElementsBoundByIndex.first { element in
-                        guard element.exists else { return false }
-                        let frame = element.frame
-                        return !frame.isEmpty && window.intersects(frame) && self.isHittableWithoutFailing(element)
+                    location = self.ignoringWaiterInterruption {
+                        let window = app.windows.firstMatch.frame
+                        return locations.allElementsBoundByIndex.first { element in
+                            guard element.exists else { return false }
+                            let frame = element.frame
+                            return !frame.isEmpty && window.intersects(frame) && self.isHittableWithoutFailing(element)
+                        }
                     }
                     return location != nil
                 },
@@ -2002,11 +2010,13 @@ final class KnittingEditorUITests: XCTestCase {
         let app = XCUIApplication()
         let hittable = XCTNSPredicateExpectation(
             predicate: NSPredicate { _, _ in
-                guard element.exists else { return false }
-                let frame = element.frame
-                return !frame.isEmpty
-                    && app.windows.firstMatch.frame.intersects(frame)
-                    && self.isHittableWithoutFailing(element)
+                self.ignoringWaiterInterruption {
+                    guard element.exists else { return false }
+                    let frame = element.frame
+                    return !frame.isEmpty
+                        && app.windows.firstMatch.frame.intersects(frame)
+                        && self.isHittableWithoutFailing(element)
+                } ?? false
             },
             object: element
         )
@@ -2027,6 +2037,22 @@ final class KnittingEditorUITests: XCTestCase {
             hittable = element.isHittable
         }
         return hittable
+    }
+
+    /// 待機の述語の中で、別プロセスで表示される選択画面の要素を問い合わせる。
+    ///
+    /// 待機が時間切れになると問い合わせが途中で打ち切られ、XCTestが
+    /// 「Failed to resolve remote element … Interrupted by waiter」をテストの失敗として記録する（#44）。
+    /// この失敗だけを想定内とし、見つからなかったものとして扱う。ほかの失敗はそのまま記録する。
+    private func ignoringWaiterInterruption<T>(_ query: () -> T?) -> T? {
+        let options = XCTExpectedFailure.Options()
+        options.isStrict = false
+        options.issueMatcher = { $0.compactDescription.contains("Interrupted by waiter") }
+        var result: T?
+        XCTExpectFailure("待機の時間切れで打ち切られた問い合わせは見つからなかったとして扱う", options: options) {
+            result = query()
+        }
+        return result
     }
 
     /// 書き出しの確認アラートのボタン（「共有」「ファイルに保存」）を押し、アラートが閉じたかを返す。

@@ -1,0 +1,22 @@
+# 2026-11-02 — 全データの保存と復元のUIテストで、別プロセスの画面への問い合わせに失敗しないようにする
+
+- 影響: UIテスト `testBlockSaveAndFullBackupRestoreFollowGuide` の、保存画面が閉じるのを待つ処理を直した（#370）。アプリの動作は変えていない。
+  - main `3751d57` の Full iOS validation で、iPhone 17 のこのテストが2回失敗した（マージ時の push の run 40851048508 の1回目と、10-30 の夜間の run 41138476481）。どちらも `:998` で、保存画面が閉じるのを45秒待って時間切れになり、4分の実行時間の上限も超えた。10-31・11-01 の夜間の run は同じコミットで成功している。
+  - 失敗した2回は、どちらも保存画面のファイル名の入力欄（`DOCPicker.filenameTextField`）が10秒で見つからなかった。この場合は既定のファイル名のまま保存するため、前回の同名ファイルの置き換え確認が出るかもしれないとして、待つ条件に「置き換え」ボタンの問い合わせを含めていた。
+  - 「保存」を押した直後、保存画面はまだ閉じる途中だった。そこで「置き換え」ボタンを問い合わせると、別プロセスの画面の階層が取れずに約44秒止まり（#317 と同じ現象）、45秒の待ちの中で条件を1回しか判定できなかった。終わった時点の画面では保存画面は閉じており、保存そのものは済んでいた。
+  - 成功した回はどちらもファイル名の入力欄が見つかり、保存画面が閉じるのだけを待って、数秒で閉じていた。
+  - 直したあとは、まず保存画面が閉じるのだけを待つ。ファイル名を変えられなかった回は15秒で打ち切り、閉じていなければ置き換え確認を探して押し、保存画面が閉じるのを待つ。ファイル名を変えられた回は、今までどおり45秒待つ。
+  - 手元の確認中に、同じテストの復元の場面で、#44 に記録済みの別の失敗が起きた。`backupFileInOnDeviceLocation` が保存場所の候補（「このiPhone内」など）を2秒だけ待つ述語の中で、`locations.allElementsBoundByIndex` の解決が待機の時間切れで打ち切られ、XCTest が `Failed to resolve remote element … (Underlying Error: Interrupted by waiter.)` を失敗として記録した。10-29 の Full iOS validation の iPad (A16) でも同じ失敗が起きている。
+  - 新しい補助関数 `ignoringWaiterInterruption` で、述語の中の問い合わせを `XCTExpectFailure`（厳密でない、`Interrupted by waiter` を含む失敗だけに一致）で包み、打ち切られたときは見つからなかったとして扱う。`backupFileInOnDeviceLocation` の候補探しと `waitForHittable` の述語に使った。ほかの失敗は今までどおり記録される。
+- 主なファイル: `ios/UITests/KnittingEditorUITests/KnittingEditorUITests.swift`
+- テスト: 新しいテストは足していない。既存のテストの待ち方を直した。
+- 検証:
+  - 手元の Xcode 27.2・KE verify iPhone（iPhone 17、iOS 27.2）で、`testBlockSaveAndFullBackupRestoreFollowGuide` だけを流した。CI は Xcode 26.6・iOS 26.5 で、版が違う。手元の Mac はこの間 load average が数十〜100前後と高く、どの回も CI より遅かった。
+  - CI で失敗したのは、保存画面のファイル名の入力欄が出なかった経路だった。手元ではこの入力欄が毎回出るので、一時的に入力欄を使わない切り替え（環境変数）をテストに入れて流した。この切り替えはコミットしていない。
+    - CI と同じ時間の設定（`-test-timeouts-enabled YES -default-test-execution-time-allowance 150 -maximum-test-execution-time-allowance 240`）で2回続けて流した。1回目は「保存」から約8秒で保存画面が閉じ、置き換え確認を問い合わせずに先へ進んだ。保存に着くまでに206秒かかっていたため、その後の復元の途中で4分の上限を超えた。2回目は、上限超過でテストランナーが再起動したため流れなかった。
+    - 実行時間の上限を外して（`-test-timeouts-enabled NO`）2回続けて流した。2回とも成功した（183.2秒、173.3秒）。前回の同名ファイルが残っていたため、2回とも保存画面が15秒たっても閉じず、「置き換え」を見つけて押したところで閉じた。
+  - 切り替えを外し、CI と同じ時間の設定で1回流した。保存画面のファイル名の入力欄が出て、「保存」から約4秒で閉じた。その後の復元で、上に書いた `Interrupted by waiter` の失敗が起き（`:1955`）、テストは失敗した（140.1秒）。
+  - `ignoringWaiterInterruption` を足し、同じ設定で3回続けて流そうとした。1回目は、盤面が10秒で安定しない失敗（`:379`、#44 に記録済みのもの）が2回記録された。復元の場面では、打ち切られた問い合わせが想定内の失敗として受け止められ（`XCTExpectFailure: matcher accepted … Interrupted by waiter`）、テストの失敗にはならなかった。そのあと4分の上限を超えた。テストランナーが再起動したため、2回目と3回目は流れなかった。このときの load average は約100だった。
+  - 手元では、負荷のために CI と同じ時間の設定で最後まで通せなかった。最終的な判定は、PR の CI と、このブランチで手動実行する Full iOS validation（iPhone 17・iPad (A16)）で行う。
+  - Web のコードは変えていないため、`npm run typecheck`・`npm test`・`npm run build`・`npm run check:dist`・`npm run test:e2e` は手元では流していない（PR の CI の対象外）。
+- デプロイ影響: なし（UIテストだけの変更）。
