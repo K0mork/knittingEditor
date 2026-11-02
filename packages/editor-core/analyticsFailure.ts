@@ -1,9 +1,10 @@
+import { PngCanvasError } from './export/pngErrors';
 import { BackupLimitError, InvalidBackupError } from './storage/backupErrors';
 import { WorkerProcessingError, WorkerStartError, WorkerVersionError } from './util/workerStarter';
 
 export const FAILURE_REASONS = [
   'site_updated', 'worker_start', 'worker_error', 'storage_quota',
-  'storage', 'invalid_backup', 'backup_limit', 'unknown',
+  'storage', 'invalid_backup', 'backup_limit', 'png_canvas', 'unknown',
 ] as const;
 export type FailureReason = typeof FAILURE_REASONS[number];
 
@@ -14,6 +15,7 @@ export function failureReason(error: unknown): FailureReason {
   if (error instanceof WorkerProcessingError) return 'worker_error';
   if (error instanceof BackupLimitError) return 'backup_limit';
   if (error instanceof InvalidBackupError) return 'invalid_backup';
+  if (error instanceof PngCanvasError) return 'png_canvas';
   if (typeof DOMException !== 'undefined' && error instanceof DOMException) {
     return error.name === 'QuotaExceededError' ? 'storage_quota' : 'storage';
   }
