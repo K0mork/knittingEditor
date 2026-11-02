@@ -34,6 +34,7 @@ bundle_id=$(plutil -extract CFBundleIdentifier raw -o - "$INFO_PLIST")
 short_version=$(plutil -extract CFBundleShortVersionString raw -o - "$INFO_PLIST")
 build_version=$(plutil -extract CFBundleVersion raw -o - "$INFO_PLIST")
 display_name=$(plutil -extract CFBundleDisplayName raw -o - "$INFO_PLIST")
+package_type=$(plutil -extract CFBundlePackageType raw -o - "$INFO_PLIST" 2>/dev/null || true)
 
 [ "$bundle_id" = "com.k0mork.knittingEditor" ] || {
   echo "unexpected bundle identifier: $bundle_id" >&2
@@ -41,6 +42,11 @@ display_name=$(plutil -extract CFBundleDisplayName raw -o - "$INFO_PLIST")
 }
 [ -n "$short_version" ] && [ -n "$build_version" ] && [ -n "$display_name" ] || {
   echo "bundle version or display name is missing" >&2
+  exit 1
+}
+# App Store Connectは、CFBundlePackageTypeがAPPLでないアプリのアップロードを拒否する。
+[ "$package_type" = "APPL" ] || {
+  echo "CFBundlePackageType must be APPL: ${package_type:-<missing>}" >&2
   exit 1
 }
 encryption=$(plutil -extract ITSAppUsesNonExemptEncryption raw -o - "$INFO_PLIST" 2>/dev/null || true)
