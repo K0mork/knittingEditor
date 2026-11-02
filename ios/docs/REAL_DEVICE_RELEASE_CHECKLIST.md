@@ -99,7 +99,7 @@ KNITTING_EDITOR_DEVELOPMENT_TEAM=XXXXXXXXXX ios/scripts/measure-large-board.sh <
 
 - 端末では「設定 > デベロッパ > UIオートメーションを有効にする」をオンにし、開発元を信頼しておく。測定中は画面をロックしない。
 - 記録の保存に数分かかる。テストの結果は先に表示される。
-- 無料Personal Teamでは機内モードでXCUITestを起動できない（M0）ため、測定はオンラインで行う。アプリが通信しないことはM0で確かめてある。
+- 開発ビルドは、無料Personal Teamでも有料のTeamでも機内モードでXCUITestを起動できない（M0）ため、測定はオンラインで行う。アプリが通信しないことはM0で確かめてある。
 
 | 測定 | 目標・判定 |
 |---|---|

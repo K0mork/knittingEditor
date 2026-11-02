@@ -30,7 +30,7 @@ iOS 17.0以上のSwiftUIユニバーサルアプリで、固定originのロー�
 
 リリース:
 
-- [docs/RELEASE_RUNBOOK.md](docs/RELEASE_RUNBOOK.md): Apple Developer Programへの加入から提出・公開までの手順
+- [docs/RELEASE_RUNBOOK.md](docs/RELEASE_RUNBOOK.md): v1.0の提出・公開までの手順（Apple Developer Programへの加入は済み）
 - [docs/APP_STORE_CHECKLIST.md](docs/APP_STORE_CHECKLIST.md): 提出前に確かめる項目
 - [docs/REAL_DEVICE_RELEASE_CHECKLIST.md](docs/REAL_DEVICE_RELEASE_CHECKLIST.md): 実機・TestFlightで確かめる項目と手順
 - [docs/RELEASE_VERIFICATION_RECORDS.md](docs/RELEASE_VERIFICATION_RECORDS.md): 実機などで確かめた日ごとの環境と結果

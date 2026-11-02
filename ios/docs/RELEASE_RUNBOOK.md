@@ -1,39 +1,37 @@
-# v1.0 加入・提出・公開の手順
+# v1.0 提出・公開の手順
 
-個人でApple Developer Programへ加入し、v1.0をApp Storeへ提出・公開するまで、次の順に進める。全項目の管理は[提出チェックリスト](APP_STORE_CHECKLIST.md)、入力値の正本は[メタデータ](APP_STORE_METADATA.md)、実機の手順と証跡は[実機リリースゲート](REAL_DEVICE_RELEASE_CHECKLIST.md)を使う。v1.1以降の更新版は[手順10](#10-更新版を提出する)を加えて進める。
+v1.0をApp Storeへ提出・公開するまで、次の順に進める。Apple Developer Programへの個人での加入と有料のTeamでの署名（手順1〜3）は2026-11-02に済んでおり、次は[手順4](#4-app-store-connectでアプリを登録する)から進める。全項目の管理は[提出チェックリスト](APP_STORE_CHECKLIST.md)、入力値の正本は[メタデータ](APP_STORE_METADATA.md)、実機の手順と証跡は[実機リリースゲート](REAL_DEVICE_RELEASE_CHECKLIST.md)を使う。v1.1以降の更新版は[手順10](#10-更新版を提出する)を加えて進める。
 
 個人情報・Team ID・App Store ConnectのApp ID・登録画面の無加工画像を、公開リポジトリやGitHubへ載せない。非公開の入力値はメインチェックアウトのルートの `private/APP_STORE_CONNECT.md` を参照する。worktreeに別の `private/` は作らない。
 
-## 1. 加入前の準備を確認する
+## 1. 提出前の準備を確認する（済み）
 
 [実装・資産](APP_STORE_CHECKLIST.md#実装資産)のチェック済み項目を短く確認する。アイコン、提出サイズのスクリーンショット、Privacy Manifest、同梱ヘルプ、公開ポリシーとサポートページ、メタデータ・審査メモの下書き、輸出コンプライアンス設定、ライセンス表記は準備済み。過去のCI・開発ビルドの実機確認も記録済みである。
 
-- **完了の目安:** 準備済みの資産と文書の場所が分かり、署名・提出ビルドの実機確認・App Store Connectへの登録は加入後に残ると確認できた。
+- **完了の目安:** 準備済みの資産と文書の場所が分かり、提出ビルドの実機確認とApp Store Connectへの登録が残っていると確認できた。
 - **関係するIssue／項目:** [#27](https://github.com/K0mork/knittingEditor/issues/27)、提出チェックリストの「実装・資産」のチェック済み項目と[検証・配布](APP_STORE_CHECKLIST.md#検証配布)。
 
-## 2. 個人で加入し、承認を待つ
+## 2. 個人で加入する（済み）
 
-1. [Appleの加入案内](https://developer.apple.com/help/account/membership/program-enrollment/)から、個人として申し込む。Apple Accountの2ファクタ認証を確認し、本人確認・支払いを進める。販売元の表示は[販売元と著作権表記](APP_STORE_METADATA.md#販売元と著作権表記)の決定に従う。
-2. 契約・支払い前にも[本人確認](https://developer.apple.com/jp/help/account/membership/identity-verification/)が入る。氏名・電話番号・住所に加え、場合によって身分証等が求められる。「登録手続きを続けるには、Appleまでお問い合わせください」と表示された場合は、審査中の表示だけを見て待機せず、画面の問い合わせ先から追加対応を確認する。
-   - 問い合わせは「メンバーシップとアカウント」→「プログラムの登録」へ進み、連絡方法を選ぶ。入力値、問い合わせ下書き、受付番号やAppleからの返信はメインチェックアウトの `private/ACCOUNTS.md` に記録する。加入記録は日本時間（JST）の日時を付けて古い順に並べ、実施・報告・確認の時刻を区別する。実施時刻が不明なら、推測せずその旨を書く。
-   - 購入後も有効化まで処理がある。[公式案内](https://developer.apple.com/jp/help/account/membership/program-enrollment/)の「購入後24時間以内に確認が届かなければ問い合わせる」という目安は、支払い前の本人確認の所要時間ではない。追加確認が来たらAppleの案内に従う。
-3. メンバーシップの有効化を確認し、App Store Connectへ入れるようになったら、#17の署名確認へ進む。支払いだけで#17を完了にしない。
+Apple Developer Programへ個人で加入し、2026-11-02に有効になったことを確かめた（[#17](https://github.com/K0mork/knittingEditor/issues/17)）。販売元の表示は[販売元と著作権表記](APP_STORE_METADATA.md#販売元と著作権表記)の決定に従う。本人確認・問い合わせ・契約・支払いの経緯と時刻付きの履歴は、メインチェックアウトの `private/ACCOUNTS.md` にある。
 
 - **完了の目安:** 加入が承認され、有料のDeveloper TeamをXcodeで選べる。
 - **関係するIssue／項目:** [#17の決定](https://github.com/K0mork/knittingEditor/issues/17#issuecomment-5947707637)、提出チェックリスト「Apple Developer Team、Bundle ID、署名証明書、Provisioning Profile」。
 
-加入の進み具合は[#17](https://github.com/K0mork/knittingEditor/issues/17)のコメントで追う。非公開の経緯、問い合わせ文、受付番号と時刻付きの履歴はメインチェックアウトの `private/ACCOUNTS.md` に記録する。
+## 3. XcodeでAutomatic署名を設定する（済み）
 
-## 3. XcodeでAutomatic署名を設定する
+2026-11-02に、有料のTeamのAutomatic署名で`com.k0mork.knittingEditor`の証明書とProvisioning Profileが解決し、iPhone・iPadへ入れて起動し、再起動後もデータが残ることを確かめた（[記録](RELEASE_VERIFICATION_RECORDS.md#2026-11-02-有料teamでの署名と実機導入iphone-17--ios-272ipad-air-第5世代--ipados-272有線)）。開発ビルドは機内モードで自動テストを起動できないため、M0の機内モードの確認は、TestFlightで配る提出ビルドで行う（手順8）。
+
+Macや端末を替えて設定し直すときは、次のとおりにする。
 
 1. XcodeのAccountsへ加入したApple Accountを追加する。プロジェクト未生成なら、リポジトリルートで `xcodegen generate --spec ios/project.yml` を実行して開く。
 2. `knittingEditor`ターゲットのSigning & Capabilitiesで「Automatically manage signing」を維持し、加入したTeamを選ぶ。設定の基準は[project.yml](../project.yml)（`CODE_SIGN_STYLE: Automatic`）。
 3. Bundle IDが `com.k0mork.knittingEditor` のままで、そのTeamのIdentifiersに登録され、証明書・Provisioning Profileが解決されることを確かめる。既存の登録との衝突があれば、別のBundle IDに変えず原因を確認する。
-4. [実施前の固定情報・接続確認](REAL_DEVICE_RELEASE_CHECKLIST.md#実施前の固定情報)に従い、接続確認スクリプトとiPhone・iPadへの署名済みビルドの導入を行う。[M0](REAL_DEVICE_RELEASE_CHECKLIST.md#m0-オフライン起動とweb-api-poc)の起動・再起動後の保持・機内モードの残件を確認する。Team IDや署名情報はリポジトリへ保存しない。
+4. [実施前の固定情報・接続確認](REAL_DEVICE_RELEASE_CHECKLIST.md#実施前の固定情報)に従い、接続確認スクリプトとiPhone・iPadへの署名済みビルドの導入を行う。Team IDや署名情報はリポジトリへ保存しない。
 
-CIは署名なしのまま変更しない。CIのXcode更新は[#289](https://github.com/K0mork/knittingEditor/issues/289)で別管理されており、加入・提出のために待つ必要はない。
+CIは署名なしのまま変更しない。CIのXcode更新は[#289](https://github.com/K0mork/knittingEditor/issues/289)で別管理されており、提出のために待つ必要はない。
 
-- **完了の目安:** Automaticで署名が解決し、iPhone・iPadでローカル資産から起動して再起動後もデータが残る。M0の残件と証跡を確認できた。
+- **完了の目安:** Automaticで署名が解決し、iPhone・iPadでローカル資産から起動して再起動後もデータが残る。
 - **関係するIssue／項目:** [#17](https://github.com/K0mork/knittingEditor/issues/17)、#289、提出チェックリストの署名項目、実機ゲートM0。
 
 ## 4. App Store Connectでアプリを登録する
