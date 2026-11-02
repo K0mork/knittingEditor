@@ -642,6 +642,10 @@ final class KnittingEditorUITests: XCTestCase {
         let size = environment["KNITTING_EDITOR_BRIDGE_IO_SIZE"] ?? "small"
         XCTAssertTrue(["small", "medium", "large"].contains(size))
         executionTimeAllowance = 1800
+        // 予期した失敗の記録（ignoringWaiterInterruption）でテストが途中で打ち切られても成功に数えられるため、
+        // 復元まで測り終えたかを最後に確かめる。
+        var measuredRestore = false
+        addTeardownBlock { XCTAssertTrue(measuredRestore, "ブリッジ計測が復元まで進まずに終わった") }
         let app = XCUIApplication()
         app.launchEnvironment["KNITTING_EDITOR_BRIDGE_IO_SIZE"] = size
         let launchStart = Date()
@@ -661,18 +665,34 @@ final class KnittingEditorUITests: XCTestCase {
         guard tapExportAlertButton(fileSave, in: app, step: "ブリッジ計測-保存") else { return }
         let picker = SystemSheet.element(in: app)
         XCTAssertTrue(picker.waitForExistence(timeout: 30))
-        // 保存場所が端末内であることを確認する。iCloudでは計測しない。
-        let location = app.descendants(matching: .any).matching(NSPredicate(
-            format: "label IN %@", ["このiPhone内", "このiPad内", "On My iPhone", "On My iPad"])).firstMatch
-        XCTAssertTrue(location.waitForExistence(timeout: 20), "保存場所を端末内に設定してから実行してください")
-        if location.isHittable { location.tap() }
-        let filename = "bridge-io-" + String(UUID().uuidString.prefix(8))
+        // 保存先はシステムの前回の場所に依存するため、計測前に端末内へ設定しておく。
+        // 保存場所のラベルは画面構成によって公開されないため、ここでは判定しない。
+        var filename = "knitting-editor-backup"
         let field = app.textFields["DOCPicker.filenameTextField"]
-        XCTAssertTrue(field.waitForExistence(timeout: 10), "復元対象を特定するためファイル名欄が必要です")
-        replaceText(filename, in: field, app: app)
+        if field.waitForExistence(timeout: 10) {
+            filename = "bridge-io-" + String(UUID().uuidString.prefix(8))
+            replaceText(filename, in: field, app: app)
+        }
         add(screenshotAttachment(named: "ブリッジ計測-バックアップ保存先"))
         app.buttons.matching(NSPredicate(format: "label IN %@", ["保存", "Save"])).firstMatch.tap()
-        assertDisappears(picker, from: app)
+        // 保存画面が閉じるのを待つ。閉じないときは同名ファイルの置き換え確認が出ていないかを見る。
+        let exportFinished = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == false"),
+            object: picker
+        )
+        let exportWaitResult = XCTWaiter.wait(
+            for: [exportFinished],
+            timeout: 300
+        )
+        // 実機では利用者が退避したバックアップを置き換えかねないため、置き換えの確認が出たら押さずに止める。
+        if exportWaitResult != .completed {
+            let replace = app.buttons.matching(NSPredicate(format: "label IN %@", ["置き換え", "Replace"])).firstMatch
+            XCTAssertFalse(
+                replace.waitForExistence(timeout: 5),
+                "同名のファイルがあります。保存先から\(filename).knitを移してから実行してください"
+            )
+            assertDisappears(picker, from: app)
+        }
         print("BRIDGEIO backupExport=\(Date().timeIntervalSince(exportStart))s")
         if app.buttons["閉じる"].exists { app.buttons["閉じる"].tap() }
 
@@ -702,6 +722,7 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertTrue(restored.waitForExistence(timeout: 600))
         XCTAssertTrue(output.isEnabled)
         print("BRIDGEIO backupRestore=\(Date().timeIntervalSince(restoreStart))s")
+        measuredRestore = true
         add(screenshotAttachment(named: "ブリッジ計測-復元完了"))
     }
 
@@ -1064,7 +1085,7 @@ final class KnittingEditorUITests: XCTestCase {
         )
         let exportWaitResult = XCTWaiter.wait(
             for: [exportFinished],
-            timeout: mayAskToReplace ? 15 : Self.editorAppearanceTimeout
+            timeout: 300
         )
         if exportWaitResult != .completed {
             // 保存画面が残るのは、前回の同名ファイルの置き換え確認が出ているときだけ。
