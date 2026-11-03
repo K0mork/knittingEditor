@@ -51,5 +51,5 @@
 - [x] App Store Connectの配信地域からEU加盟国と中国本土を外す（[`docs/APP_STORE_METADATA.md`](APP_STORE_METADATA.md)の「配信地域」）。（2026-11-03）
 - [ ] アップロードのたびに、前回より大きいビルド番号を付ける（[`docs/APP_STORE_METADATA.md`](APP_STORE_METADATA.md)の「バージョンとビルド番号」）。
 - [x] App名、サブタイトル、プロモーションテキスト、説明文、キーワードの文字数をApp Store Connectの画面で確かめる（[`APP_STORE_METADATA.md`](APP_STORE_METADATA.md)の「基本情報」「説明文案」）。（2026-11-03）
-- [ ] [`APP_STORE_METADATA.md`](APP_STORE_METADATA.md)の「アクセシビリティの表示」の回答を実機で確かめ直してから、App Store Connectへ入力する。（2026-11-03に回答を決めた。ダーク・コントラスト・色以外でも区別・視差効果を減らすは「対応」、VoiceOver・音声コントロール・さらに大きな文字（#389）は「対応」と答えない。App Store Connectへの入力が済んだらチェックする）
+- [x] [`APP_STORE_METADATA.md`](APP_STORE_METADATA.md)の「アクセシビリティの表示」の回答を実機で確かめ直してから、App Store Connectへ入力する。（2026-11-03に回答を決めた。ダーク・コントラスト・色以外でも区別・視差効果を減らすは「対応」、VoiceOver・音声コントロール・さらに大きな文字（#389）は「対応」と答えない。同日、iPhone・iPadともApp Store Connectへ入力し、下書きとして保存されたことを確かめた。公開できるのはアプリの版がリリースされたあとなので、公開は[`RELEASE_RUNBOOK.md`](RELEASE_RUNBOOK.md)の手順9で行う）
 - [ ] 提出後の承認を確認するまで、App Store配布完了とは報告しない。
