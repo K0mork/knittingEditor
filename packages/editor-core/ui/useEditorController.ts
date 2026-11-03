@@ -18,7 +18,7 @@ import {
   renameDocument, saveBlock, type ChartDocument,
 } from '../storage/database';
 import { errorMessage } from '../util/errors';
-import { useClipboardShortcuts, useHistoryShortcuts, useNotifier, usePanelFocus } from './hooks';
+import { useClipboardShortcuts, useEraseShortcuts, useHistoryShortcuts, useNotifier, usePanelFocus } from './hooks';
 
 export type BusyTask = 'PNGを生成中' | 'PDFを生成中' | 'バックアップを処理中';
 export type EditorPanel = 'documents' | 'grid' | 'blocks' | 'export';
@@ -212,7 +212,8 @@ export function useEditorController(options: EditorControllerOptions) {
   const closePanel = () => setPanel(undefined);
 
   const chooseMode = (nextMode: CanvasMode) => { setMode(nextMode); setSelection(undefined); };
-  const clearSelection = () => { setSelection(undefined); setMode('draw'); };
+  /** 「キャンセル」。保存・消去のあとと同じく、範囲選択のまま選択だけを外す。 */
+  const clearSelection = () => { setSelection(undefined); };
   const startSelecting = () => { setMode('select'); setPanel(undefined); };
 
   const selectStitch = (key: string) => {
@@ -270,11 +271,21 @@ export function useEditorController(options: EditorControllerOptions) {
   const handlePasteComplete = (ok: boolean) => {
     if (!ok) { notify('盤面からはみ出すため貼付できません'); return; }
     changed();
-    setMode('draw');
-    setPasteBlock(undefined);
+    // 同じ模様を続けて何か所にも貼れるよう、「やめる」を押すまで貼付を続ける。
     analytics.track('block_pasted');
     notify('ブロックを貼付しました');
   };
+
+  /** 選択範囲の記号と線を消す。1回の消去で1件の履歴にする。 */
+  const eraseSelection = useCallback(() => {
+    if (!board || !selection) return;
+    if (!board.eraseSelection(selection)) { notify('選択範囲に消すものがありません'); return; }
+    changed();
+    // 続けて別の範囲を選べるよう、範囲選択のまま選択だけを外す。
+    setSelection(undefined);
+    notify('選択範囲を消去しました');
+  }, [board, selection, changed, notify]);
+  useEraseShortcuts({ canErase: selection !== undefined, onErase: eraseSelection });
 
   const pasteCopiedBlock = useCallback(() => { if (copiedBlock) startPaste(copiedBlock); }, [copiedBlock, startPaste]);
   useClipboardShortcuts({
@@ -309,8 +320,8 @@ export function useEditorController(options: EditorControllerOptions) {
     const block = board.createBlock(selection, name);
     await saveBlock(block);
     session.updateBlock(block);
+    // 続けて別の範囲を選べるよう、範囲選択のまま選択だけを外す。
     setSelection(undefined);
-    setMode('draw');
     analytics.track('block_saved', { board_size_bucket: boardSizeBucket(block.rows, block.cols) });
     notify('ブロックを保存しました');
   });
@@ -484,7 +495,7 @@ export function useEditorController(options: EditorControllerOptions) {
     selectedColor, setSelectedColor, selectColor, colorPickerOpen, setColorPickerOpen,
     mode, modeLabel: CANVAS_MODE_LABELS[mode], chooseMode,
     selection, setSelection, clearSelection, startSelecting,
-    pasteBlock, copiedBlock, startPaste, copySelection, choosePasteBlock, handlePasteComplete,
+    pasteBlock, copiedBlock, startPaste, copySelection, eraseSelection, choosePasteBlock, handlePasteComplete,
     panel, panelRef, togglePanel, closePanel,
     fileInputRef,
     askText, askConfirm,

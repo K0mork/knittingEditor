@@ -255,9 +255,9 @@ test('keeps the knitting start anchored to the canvas bottom-right when opening 
   await page.getByRole('button', { name: '範囲', exact: true }).click();
   const box = (await canvas.boundingBox())!;
   await page.mouse.click(box.x + original.x!, box.y + original.y!);
-  await expect(page.getByRole('button', { name: 'コピーして貼付' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'コピー', exact: true })).toBeVisible();
   await expect.poll(position).toEqual(original);
-  await page.getByRole('button', { name: 'コピーして貼付' }).click();
+  await page.getByRole('button', { name: 'コピー', exact: true }).click();
   await expect(page.getByRole('toolbar', { name: '貼付の操作' })).toBeVisible();
   await expect.poll(position).toEqual(original);
 });

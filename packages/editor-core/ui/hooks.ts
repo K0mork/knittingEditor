@@ -166,6 +166,28 @@ export function useClipboardShortcuts({ canCopy, canPaste, onCopy, onPaste }: Cl
   }, [canCopy, canPaste, onCopy, onPaste]);
 }
 
+export interface EraseShortcutOptions {
+  canErase: boolean;
+  onErase: () => void;
+}
+
+/** 範囲を選んでいるとき、DeleteとBackspaceで選択範囲を消す。MacのDeleteキーはBackspaceとして届く。 */
+export function useEraseShortcuts({ canErase, onErase }: EraseShortcutOptions) {
+  useEffect(() => {
+    if (!canErase) return;
+    const handleShortcut = (event: KeyboardEvent) => {
+      if (event.key !== 'Delete' && event.key !== 'Backspace') return;
+      if (event.ctrlKey || event.metaKey || event.altKey || isEditableTarget(event.target)) return;
+      // 確認などのダイアログを開いている間は、後ろの盤面を書き換えない。
+      if (document.querySelector('[aria-modal="true"]')) return;
+      event.preventDefault();
+      onErase();
+    };
+    window.addEventListener('keydown', handleShortcut);
+    return () => window.removeEventListener('keydown', handleShortcut);
+  }, [canErase, onErase]);
+}
+
 export interface HistoryShortcutOptions {
   onUndo: () => void;
   onRedo: () => void;

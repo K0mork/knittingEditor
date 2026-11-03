@@ -1033,7 +1033,7 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertTrue(blockButton.waitForExistence(timeout: 10), app.debugDescription)
 
         // 別の編み図へ切り替え、保存したブロックを選んで貼付先をタップする。
-        // タップしたマスがブロックの左上になり、貼付が済むと通常の入力に戻る。
+        // タップしたマスがブロックの左上になり、貼付のあとも「やめる」を押すまで貼付を続ける。
         selectSaveProbeDocument(target, in: app)
         _ = positionSaveProbeCanvas(count: 0, in: app)
         blocks.tap()
@@ -1047,13 +1047,19 @@ final class KnittingEditorUITests: XCTestCase {
         let pasteCanvas = positionSaveProbeCanvas(count: 0, in: app)
         let pasteOffsetsFromCanvasTopLeft = [CGVector(dx: pasteCanvas.frame.width * 0.42, dy: 190),
                             CGVector(dx: pasteCanvas.frame.width * 0.5, dy: pasteCanvas.frame.height * 0.5)]
-        for point in pasteOffsetsFromCanvasTopLeft where pasteBand.exists {
+        // 貼付のあとも貼付中のままなので、帯ではなく記号の数で貼付できたかを見る。
+        let pastedCanvas = app.webViews.firstMatch.otherElements
+            .matching(NSPredicate(format: "label CONTAINS %@", "記号3個")).firstMatch
+        for point in pasteOffsetsFromCanvasTopLeft where !pastedCanvas.exists {
             pasteCanvas.coordinate(withNormalizedOffset: .zero).withOffset(point).tap()
-            _ = XCTWaiter.wait(for: [XCTNSPredicateExpectation(
-                predicate: NSPredicate(format: "exists == false"), object: pasteBand)], timeout: 5)
+            _ = pastedCanvas.waitForExistence(timeout: 5)
         }
         waitForStitchCount(3, on: saveProbeCanvas(count: 3, in: app), in: app)
-        XCTAssertFalse(pasteBand.exists, app.debugDescription)
+        XCTAssertTrue(pasteBand.exists, app.debugDescription)
+        let stopPaste = app.buttons["やめる"]
+        XCTAssertTrue(stopPaste.isHittable, app.debugDescription)
+        stopPaste.tap()
+        XCTAssertTrue(waitForDisappearance(of: pasteBand, timeout: 10), app.debugDescription)
         XCTAssertEqual(app.switches["描く"].value as? String, "1")
         add(screenshotAttachment(named: "ブロックを貼付した盤面"))
 
@@ -1434,7 +1440,7 @@ final class KnittingEditorUITests: XCTestCase {
         let start = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.35, dy: 0.35))
         let end = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.55, dy: 0.55))
         start.press(forDuration: 0.05, thenDragTo: end)
-        let copy = app.buttons["コピーして貼付"]
+        let copy = app.buttons["コピー"]
         XCTAssertTrue(copy.waitForExistence(timeout: 10), app.debugDescription)
         copy.tap()
         let stop = app.buttons["やめる"]
@@ -1558,16 +1564,20 @@ final class KnittingEditorUITests: XCTestCase {
         let start = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.55, dy: 0.55))
         let end = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.8))
         start.press(forDuration: 0.05, thenDragTo: end)
-        let copy = app.buttons["コピーして貼付"]
-        let clear = app.buttons["解除"]
+        let copy = app.buttons["コピー"]
+        let save = app.buttons["選択範囲をブロックに保存"]
+        let erase = app.buttons["選択範囲を消去"]
+        let clear = app.buttons["キャンセル"]
         XCTAssertTrue(copy.waitForExistence(timeout: 10), app.debugDescription)
-        XCTAssertTrue(copy.isHittable, app.debugDescription)
-        XCTAssertTrue(clear.isHittable, app.debugDescription)
+        for action in [copy, save, erase, clear] {
+            XCTAssertTrue(action.isHittable, app.debugDescription)
+        }
         for name in ["盤面", "ブロック", "出力"] {
             let button = app.buttons[name]
             XCTAssertTrue(button.isHittable, app.debugDescription)
-            XCTAssertFalse(copy.frame.intersects(button.frame), "コピー帯が\(name)を覆う")
-            XCTAssertFalse(clear.frame.intersects(button.frame), "解除が\(name)を覆う")
+            for action in [copy, save, erase, clear] {
+                XCTAssertFalse(action.frame.intersects(button.frame), "選択操作帯の\(action.label)が\(name)を覆う")
+            }
         }
         // 選択操作帯が縦の空きを使い切らず、選んだ範囲が見える高さの盤面が残る。
         XCTAssertGreaterThanOrEqual(canvas.frame.height, 120, "選択中に盤面が見えない: \(canvas.frame)")

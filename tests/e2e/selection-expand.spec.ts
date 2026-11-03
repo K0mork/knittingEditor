@@ -26,12 +26,19 @@ test('expands a released selection through a slip-stitch chain and copies the wh
   await page.mouse.move(end.x, end.y);
   await page.mouse.up();
   await expect(canvas).toHaveAttribute('aria-label', /選択範囲は4段、2目/);
-  await page.getByRole('button', { name: 'コピーして貼付' }).click();
+  await page.getByRole('button', { name: 'コピー', exact: true }).click();
   // 貼付中は盤面の上に帯が出て盤面が下がるため、測り直してから貼付先をタップする。
   await expect(page.getByRole('toolbar', { name: '貼付の操作' })).toBeVisible();
   box = await canvas.boundingBox();
   const target = point(5, 2);
   await page.mouse.click(target.x, target.y);
   await expect(page.getByText('ブロックを貼付しました')).toBeVisible();
-  await expect(canvas).toHaveAttribute('aria-label', /記号6個/);
+  await expect(canvas).toHaveAttribute('aria-label', /記号6個。貼付モード/);
+  // 貼付中のままなので、続けてタップすると同じ模様をもう1か所に貼れる。
+  await expect(page.getByRole('toolbar', { name: '貼付の操作' })).toBeVisible();
+  const next = point(10, 2);
+  await page.mouse.click(next.x, next.y);
+  await expect(canvas).toHaveAttribute('aria-label', /記号9個。貼付モード/);
+  await page.getByRole('toolbar', { name: '貼付の操作' }).getByRole('button', { name: 'やめる', exact: true }).click();
+  await expect(canvas).toHaveAttribute('aria-label', /記号9個。描画モード/);
 });

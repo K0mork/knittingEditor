@@ -7,6 +7,8 @@ test('guide explains chart reading, block reuse and backup scope', async ({ page
   await expect(main).toContainText('奇数段は右から左へ、偶数段は左から右へ');
   await expect(main).toContainText('偶数段も表から見た「表目」を入力');
   await expect(main).toContainText('「選択範囲をブロック保存」');
+  await expect(main).toContainText('範囲にかかる線も消えます');
+  await expect(main).toContainText('同じ模様を何か所にも貼付できます');
   await expect(main).toContainText('保存済みブロックは含まれません');
   await expect(main).toContainText('既存の編み図は上書きされず');
   await expect(main).toContainText('復元した先頭の編み図へ切り替わります');

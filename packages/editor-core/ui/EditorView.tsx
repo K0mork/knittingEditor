@@ -131,10 +131,11 @@ export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, 
       </div>}
 
       {selection && <div className="selection-actions" role="toolbar" aria-label="選択範囲の操作">
-        <button className="primary" onClick={editor.copySelection}>コピーして貼付</button>
-        {/* ブロックとして残せることを、選んだその場で見せる。 */}
-        <button onClick={() => void editor.saveSelectionAsBlock()}>ブロック保存</button>
-        <button onClick={editor.clearSelection}>解除</button>
+        <button className="primary" onClick={editor.copySelection}>コピー</button>
+        {/* ブロックとして残せることを、選んだその場で見せる。「保存」だけでは編み図の保存と紛れるので、読み上げでは補う。 */}
+        <button aria-label="選択範囲をブロックに保存" onClick={() => void editor.saveSelectionAsBlock()}>保存</button>
+        <button aria-label="選択範囲を消去" onClick={editor.eraseSelection}>消去</button>
+        <button onClick={editor.clearSelection}>キャンセル</button>
       </div>}
 
       {/* 保存の失敗は勧めと同じ段に出し、勧めより優先する。どちらも手を止めたときだけ出し入れする。 */}

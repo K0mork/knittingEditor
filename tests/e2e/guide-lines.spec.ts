@@ -154,7 +154,7 @@ for (const width of [320, 375, 390, 429, 430, 1200]) {
       await page.mouse.down();
       await page.mouse.move(box.x + 111, box.y + 111);
       await page.mouse.up();
-      await page.getByRole('button', { name: 'コピーして貼付', exact: true }).click();
+      await page.getByRole('button', { name: 'コピー', exact: true }).click();
       await expect(toolbar.getByRole('button', { name: '貼付', exact: true })).toBeVisible();
       expect(await toolbar.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
     }

@@ -1,7 +1,7 @@
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { expect, it, vi } from 'vitest';
-import { NOTIFICATION_DURATION_MS, useModalFocus, useNotifier, usePanelFocus } from './hooks';
+import { NOTIFICATION_DURATION_MS, useEraseShortcuts, useModalFocus, useNotifier, usePanelFocus } from './hooks';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -191,5 +191,48 @@ it('moves drawer focus to its heading, preserves user input focus, and returns t
     await act(async () => root.unmount());
     container.remove();
     vi.useRealTimers();
+  }
+});
+
+it('erases the selection with Delete or Backspace only while a selection exists and nothing else takes the key', async () => {
+  const container = document.createElement('div');
+  document.body.append(container);
+  const onErase = vi.fn();
+  function Host({ canErase }: { canErase: boolean }) {
+    useEraseShortcuts({ canErase, onErase });
+    return <input type="text" />;
+  }
+  const root = createRoot(container);
+  const dispatch = (target: EventTarget, key: string, options: KeyboardEventInit = {}) => {
+    const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...options });
+    target.dispatchEvent(event);
+    return event;
+  };
+  try {
+    await act(async () => root.render(<Host canErase={false} />));
+    dispatch(document.body, 'Delete');
+    expect(onErase).not.toHaveBeenCalled();
+
+    await act(async () => root.render(<Host canErase />));
+    expect(dispatch(document.body, 'Delete').defaultPrevented).toBe(true);
+    expect(dispatch(document.body, 'Backspace').defaultPrevented).toBe(true);
+    expect(onErase).toHaveBeenCalledTimes(2);
+    // 入力欄の中、修飾キー付き、ほかのキーでは消さない。
+    expect(dispatch(container.querySelector('input')!, 'Backspace').defaultPrevented).toBe(false);
+    dispatch(document.body, 'Backspace', { metaKey: true });
+    dispatch(document.body, 'Delete', { ctrlKey: true });
+    dispatch(document.body, 'Backspace', { altKey: true });
+    dispatch(document.body, 'x');
+    expect(onErase).toHaveBeenCalledTimes(2);
+    // iOSアプリの確認ダイアログなど、モーダルを開いている間は後ろの盤面を消さない。
+    const dialog = document.createElement('section');
+    dialog.setAttribute('aria-modal', 'true');
+    document.body.append(dialog);
+    expect(dispatch(document.body, 'Delete').defaultPrevented).toBe(false);
+    dialog.remove();
+    expect(onErase).toHaveBeenCalledTimes(2);
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
   }
 });

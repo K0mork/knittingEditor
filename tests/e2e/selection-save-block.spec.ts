@@ -15,17 +15,19 @@ test('saves a selection as a block from the selection toolbar without opening th
 
   // 名前の入力を断ると保存せず、選んだ範囲も残る。
   page.once('dialog', async (dialog) => dialog.dismiss());
-  await toolbar.getByRole('button', { name: 'ブロック保存', exact: true }).click();
+  await toolbar.getByRole('button', { name: '選択範囲をブロックに保存', exact: true }).click();
   await expect(toolbar).toBeVisible();
 
   page.once('dialog', async (dialog) => {
     expect(dialog.message()).toBe('ブロック名を入力してください');
     await dialog.accept('操作帯から保存');
   });
-  await toolbar.getByRole('button', { name: 'ブロック保存', exact: true }).click();
+  await toolbar.getByRole('button', { name: '選択範囲をブロックに保存', exact: true }).click();
   await expect(page.getByText('ブロックを保存しました')).toBeVisible();
   await expect(toolbar).toHaveCount(0);
-  await expect(page.getByRole('button', { name: '描く' })).toHaveAttribute('aria-pressed', 'true');
+  // 道具は範囲選択のまま、選択だけが外れる。
+  await expect(page.getByRole('button', { name: '範囲', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByLabel('編み図編集盤面')).toHaveAttribute('aria-label', /範囲選択モード。選択範囲なし/);
 
   await page.getByRole('button', { name: 'ブロック', exact: true }).click();
   await expect(page.locator('.block-list').getByRole('button', { name: /操作帯から保存/ })).toBeVisible();

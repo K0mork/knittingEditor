@@ -246,19 +246,17 @@ export class Board {
     };
   }
 
+  /** 選択範囲の記号と、範囲にかかる線を消す。消したものがあれば`true`を返す。 */
+  eraseSelection(rect: Rect): boolean {
+    const selection = this.normalizeSelection(rect);
+    return this.clearArea(selection.top, selection.left, selection.bottom - selection.top + 1, selection.right - selection.left + 1);
+  }
+
   pasteBlock(block: PatternBlock, top: number, left: number): boolean {
     if (top < 0 || left < 0 || top + block.rows > this.rows || left + block.cols > this.cols) return false;
-    // 貼付範囲にかかる線を消し、ブロックの線で置き換える。
-    this.guideLines = Object.freeze(this.lines.filter((line) => !(line.col >= left && line.col < left + block.cols && line.top < top + block.rows && line.bottom >= top)));
+    // 貼付範囲にかかる線と記号を消し、ブロックの線と記号で置き換える。
+    this.clearArea(top, left, block.rows, block.cols);
     for (const line of normalizeGuideLines(block.lines, block.rows, block.cols)) this.addLine(left + line.col, top + line.top, top + line.bottom);
-    const owners = new Set<number>();
-    for (let row = top; row < top + block.rows; row++) {
-      for (let col = left; col < left + block.cols; col++) {
-        const owner = this.ownerAt(row, col);
-        if (owner >= 0) owners.add(owner);
-      }
-    }
-    owners.forEach((owner) => this.clearOwner(owner));
     // 貼付範囲は空けてあるので、占有済みのセルは先に置いたブロックの記号のもの。
     // #157の修正前に作られ、記号が重なったブロックでは、盤面の読み込みと同じく先の記号を残す。
     for (const anchor of block.anchors) {
@@ -268,6 +266,25 @@ export class Board {
       if (definition && this.footprintFree(row, col, definition)) this.place(row, col, definition.key, cellColor(anchor.value), false);
     }
     return true;
+  }
+
+  /**
+   * 範囲にかかる記号と線を消す。範囲から一部はみ出す記号や線も丸ごと消す。
+   * 貼付と範囲の消去で同じ規則を使う。
+   */
+  private clearArea(top: number, left: number, rows: number, cols: number): boolean {
+    const lines = this.lines.filter((line) => !(line.col >= left && line.col < left + cols && line.top < top + rows && line.bottom >= top));
+    const erasedLines = lines.length !== this.lines.length;
+    if (erasedLines) this.guideLines = Object.freeze(lines);
+    const owners = new Set<number>();
+    for (let row = top; row < top + rows; row++) {
+      for (let col = left; col < left + cols; col++) {
+        const owner = this.ownerAt(row, col);
+        if (owner >= 0) owners.add(owner);
+      }
+    }
+    owners.forEach((owner) => this.clearOwner(owner));
+    return erasedLines || owners.size > 0;
   }
 
   /**
