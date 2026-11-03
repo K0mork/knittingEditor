@@ -8,8 +8,9 @@
 - [x] AppIconのAny・Dark・Tintedを1024×1024で登録する（小サイズはXcodeが生成）。素材・再生成手順は`../design/app-icon/README.md`。
 - [x] iPhone・iPadのホーム画面でライト・ダーク・色合いを切り替えて確認した（iOS 18.2）。小サイズは設定のアプリ一覧（iPhone、iOS 27.0）とSpotlight（iPhone・iPad、iOS 18.2）で確認した（#78、PR #94の比較画像）。
 - [x] 起動画面を確認する。（2026-10-21、Xcode 27.1のReleaseビルドをiOS 27.0 Simulatorのライト・ダークで録画し、白や黒の全面表示が出ないことを確認。[記録](RELEASE_VERIFICATION_RECORDS.md#2026-10-21-起動画面の確認simulator)。提出ビルドでの最終確認は実機リリースゲートのM6で行う）
-- [x] iPhone 6.9インチ（1320×2868）とiPad 13インチ（2064×2752）の、説明文入りの最終スクリーンショットを各5枚、`docs/screenshots/app-store-*.png`へ保存する（2026-10-20、#290。画面・順・文面は[`SCREENSHOTS.md`](SCREENSHOTS.md)）。App Store Connectが必ず求めるiPhoneの大きさはmedium display（1179×2556など）で、6.9インチの画像だけで足りるかは加入後に確かめる（#353、下の「検証・配布」）。
-- [x] iPhone Duoの外側（1398×2034）と内側（2007×2853）の、説明文入りのスクリーンショットを各5枚、同じ画面・順・文面で保存する（2026-10-29、#353。[`SCREENSHOTS.md`](SCREENSHOTS.md#iphone-duo)）。2027年4月から、iOS 27.1 SDK以降でビルドしたアプリの提出に必要になる。外側・内側のどちらが必須かは加入後に確かめる。
+- [x] iPhone 6.9インチ（1320×2868）とiPad 13インチ（2064×2752）の、説明文入りの最終スクリーンショットを各5枚、`docs/screenshots/app-store-*.png`へ保存する（2026-10-20、#290。画面・順・文面は[`SCREENSHOTS.md`](SCREENSHOTS.md)）。App Store ConnectのiPhoneの欄はmedium display（1179×2556または1206×2622）の大きさしか受け付けないので、6.9インチから縮小した6.3インチ（1206×2622）の5枚も保存する（2026-11-03、#353）。
+- [x] iPhone Duoの外側（1398×2034）と内側（2007×2853）の、説明文入りのスクリーンショットを各5枚、同じ画面・順・文面で保存する（2026-10-29、#353。[`SCREENSHOTS.md`](SCREENSHOTS.md#iphone-duo)）。2027年4月から、iOS 27.1 SDK以降でビルドしたアプリの提出に必要になる。App Store Connectの欄は外側・内側のどちらも受け付けるので、片方の5枚を登録する（2026-11-03に確かめた）。
+- [x] 製品ページのヘッダと検索結果に使う共通の画像（5244×2950、透過なし）を保存する（2026-11-03。[`SCREENSHOTS.md`](SCREENSHOTS.md#製品ページのヘッダと検索結果)）。任意の項目。
 - [ ] iPhone／iPadの実機スクリーンショットを撮影する（任意。提出要件はSimulator素材で満たしている）。
 - [x] iPhone 16／iPad (10th generation) Simulatorのスクリーンショット下書きを`docs/screenshots/`へ保存する。
 - [x] iPhone 16／iPad (10th generation) Simulatorの起動画面下書きを`docs/screenshots/`へ保存する（最終素材ではない）。
@@ -30,9 +31,9 @@
 - [x] 提出候補のPRでci-gate、提出候補を含むmainコミットで別のFull iOS validation（iPhone／iPad全テスト、両端末のapp_update、unsigned Release Archive・オフライン資産検査）の成功を確認する。全検証は関連マージ後・夜間・手動実行で行い、Pagesのゲートには含めない。main・夜間の失敗Issueがあれば調査・修正する。（2026-11-03、`main`の`b0a7f26`で`CI and deploy Pages`のrun [`41554607495`](https://github.com/K0mork/knittingEditor/actions/runs/41554607495)の`ci-gate`と、Full iOS validationのrun [`41557279662`](https://github.com/K0mork/knittingEditor/actions/runs/41557279662)の全ジョブが成功）
 - [x] 提出用のアーカイブはXcode 27.1（iOS 27.1 SDK）以降で作る。Xcode 26.6以前で作ると、iPhone Duoを開いたときに従来のiPhoneの大きさでしか表示されない（#96）。また、2027年4月からは、App Store ConnectへアップロードするアプリをiOS 27 SDK以降でビルドすることがAppleの必須要件になる（[Appleの告知](https://developer.apple.com/news/?id=k1mtkt1k)、2026-09-09）。CIのXcodeは26.6のまま（#289）なので、手元のXcodeで作る。アップロード前に、アーカイブ内のアプリの`Info.plist`で`DTSDKName`が`iphoneos27.1`以降、`DTXcodeBuild`がXcode 27.1以降のビルド番号（27.1正式版は`27A9275`）であることを確かめる。（2026-11-03、提出用のアーカイブを手元のXcode 27.2（`27B52`）で作り、`DTSDKName`が`iphoneos27.2`であることを確かめた。[記録](RELEASE_VERIFICATION_RECORDS.md#2026-11-03-提出用アーカイブのアップロードと審査への提出)）
   - 2026-10-21に手元のXcode 27.1で署名なしのReleaseアーカイブを試作し、SDKとXcodeの版の条件を満たすことを確かめた（[記録](RELEASE_VERIFICATION_RECORDS.md#2026-10-21-提出用アーカイブの試作手元のxcode-271)）。提出用は加入後に署名して作り直すので、この欄は未チェックのままにする。
-- [ ] App Store Connectでスクリーンショットを登録するときに、次を確かめて[`SCREENSHOTS.md`](SCREENSHOTS.md)を直す（#353）。2027年4月以降に提出するときは、iPhone Duoのスクリーンショットも登録する。
-  - iPhoneで必須のmedium displayの欄を、6.9インチ（1320×2868）の画像だけで満たせるか。
-  - iPhone Duoの外側・内側のどちらが必須か、縦と横のどちらでもよいか、何枚から登録できるか。
+- [x] App Store Connectでスクリーンショットを登録するときに、次を確かめて[`SCREENSHOTS.md`](SCREENSHOTS.md)を直す（#353）。2027年4月以降に提出するときは、iPhone Duoのスクリーンショットも登録する。（2026-11-03に確かめた）
+  - iPhoneで必須のmedium displayの欄を、6.9インチ（1320×2868）の画像だけで満たせるか。→ 満たせない。6.9インチの画像は大きさが無効として登録できなかったので、縮小した6.3インチ（1206×2622）の5枚を登録した。
+  - iPhone Duoの外側・内側のどちらが必須か、縦と横のどちらでもよいか、何枚から登録できるか。→ 欄は1つで、外側・内側のどちらの大きさも、縦横どちらの向きも受け付け、必須の表示は無い。最大10枚。v1.0では外側の5枚を登録した。
 - 「提出ビルドで」で始まる項目と、TestFlight内部テストの項目は、審査への提出と並行して確かめ、公開の前に終える。提出の前に終えなくてよいが、v1.0は手動公開で提出する（[`RELEASE_RUNBOOK.md`](RELEASE_RUNBOOK.md)の手順7・8）。
 - [ ] 提出ビルドで実機の機内モードのP0フローを再確認する。開発ビルドではiPad Air（第5世代、2026-09-22）とiPhone 17（2026-10-09）の主要フロー、iPadの機内モード前後の通信監視（2026-10-02）は確認済み。TestFlight等の提出ビルドは未確認なので、この欄は未チェックとする（[`REAL_DEVICE_RELEASE_CHECKLIST.md`](REAL_DEVICE_RELEASE_CHECKLIST.md)のM0・M6）。
 - [ ] 提出ビルドでFiles、AirDrop、共有先、外部`.knit`の往復と残りの異常系を実機で確認する。開発ビルドでのiPhone・iPadの保存・共有・復元は確認済みだが、存在しないファイルなどの異常系とTestFlightでの最終往復が残るため、未チェックとする（[`REAL_DEVICE_RELEASE_CHECKLIST.md`](REAL_DEVICE_RELEASE_CHECKLIST.md)のM3）。

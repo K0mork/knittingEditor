@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<!--
+  App Storeの製品ページのヘッダと検索結果に使う共通サイズ（16:9、5244×2950）の画像の元。
+  作り方と決めたことは ios/docs/SCREENSHOTS.md の「製品ページのヘッダと検索結果」にある。
+  端末によって表示される範囲が大きく違うので、文字は ?safe で表示する範囲がすべて重なる中央に置く。範囲は目安で、Appleのテンプレートの安全範囲ではない。
+-->
+<style>
+  :root {
+    --green: #1a4a2e;
+    --green-2: #245c3a;
+    --cream: #f7eedb;
+  }
+  html, body { margin: 0; width: 5244px; height: 2950px; overflow: hidden; }
+  body {
+    background: var(--green);
+    font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", sans-serif;
+    color: var(--cream);
+    position: relative;
+  }
+  /* 左右の余白に、編み図の方眼と記号を薄く敷く。中央は文字を読みやすくするため消していく。 */
+  .chart {
+    position: absolute; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='720' height='720' fill='none' stroke='%23f7eedb' stroke-width='7' stroke-linecap='round'%3E%3Cpath d='M0 0H720M0 120H720M0 240H720M0 360H720M0 480H720M0 600H720M0 0V720M120 0V720M240 0V720M360 0V720M480 0V720M600 0V720' stroke-width='3'/%3E%3Cpath d='M60 25V95M180 25V95M300 25V95M540 25V95M660 25V95M60 145V215M300 145V215M420 145V215M660 145V215M60 385V455M180 385V455M420 385V455M540 385V455M180 505V575M300 505V575M420 505V575M660 505V575M60 625V695M300 625V695M540 625V695M660 625V695M420 25V95M540 145V215M300 385V455M60 505V575M420 625V695'/%3E%3Cpath d='M145 300H215M385 300H455M625 300H695M25 300H95M265 660H335M505 540H575'/%3E%3Ccircle cx='180' cy='180' r='32'/%3E%3Ccircle cx='540' cy='420' r='32'/%3E%3Ccircle cx='180' cy='660' r='32'/%3E%3Ccircle cx='300' cy='300' r='32'/%3E%3Cpath d='M455 270L545 330M455 330L545 270M95 540L145 510M95 540L145 570'/%3E%3C/svg%3E");
+    background-size: 720px 720px;
+    background-position: 2622px 0;
+    opacity: .09;
+    -webkit-mask-image: linear-gradient(90deg, #000 0, #000 900px, transparent 1700px, transparent 3550px, #000 4350px, #000 100%);
+    mask-image: linear-gradient(90deg, #000 0, #000 900px, transparent 1700px, transparent 3550px, #000 4350px, #000 100%);
+  }
+  .glow { position: absolute; inset: 0; background: radial-gradient(ellipse 1900px 1500px at 3200px 1300px, var(--green-2), transparent 70%); }
+  .text { position: absolute; left: 1480px; top: 820px; }
+  .brand { display: flex; align-items: center; gap: 40px; }
+  .brand img { width: 190px; height: 190px; border-radius: 43px; box-shadow: 0 0 0 4px rgba(247,238,219,.25); }
+  .brand span { font-size: 86px; font-weight: 600; letter-spacing: .02em; }
+  h1 { margin: 90px 0 0; font-size: 130px; line-height: 1.38; white-space: nowrap; font-weight: 800; letter-spacing: .01em; }
+  h1 em { font-style: normal; color: #f2b48f; }
+  .features { margin-top: 70px; font-size: 68px; font-weight: 500; opacity: .9; white-space: nowrap; }
+  .device { position: absolute; background: #111; box-shadow: 0 40px 110px rgba(0,0,0,.45); overflow: hidden; }
+  .screen { overflow: hidden; }
+  .screen img { display: block; }
+  /* 提出用スクリーンショットから、説明文の帯を除いた画面の部分だけを切り出す。 */
+  .ipad { left: 3040px; top: 760px; width: 900px; padding: 24px; border-radius: 64px; }
+  .ipad .screen { width: 900px; height: calc(2286px * 900 / 1713); border-radius: 40px; }
+  .ipad img { width: calc(2064px * 900 / 1713); margin: calc(-466px * 900 / 1713) 0 0 calc(-175px * 900 / 1713); }
+  .iphone { left: 2830px; top: 1180px; width: 380px; padding: 17px; border-radius: 70px; }
+  .iphone .screen { width: 380px; height: calc(2381px * 380 / 1095); border-radius: 54px; }
+  .iphone img { width: calc(1320px * 380 / 1095); margin: calc(-487px * 380 / 1095) 0 0 calc(-112px * 380 / 1095); }
+  /* ?safe で開いたときだけ、プレビューのスクリーンショットから読み取った範囲と、縦横比から計算した範囲を重ねる（2026-11-03、目安）。 */
+  .area { display: none; position: absolute; outline: 10px dashed; }
+  body.safe-area .area { display: block; }
+  .area.wide { left: 0; top: 352px; width: 5244px; height: 2247px; color: #ff0; }      /* 21:9（ヘッダ） */
+  .area.search { left: 410px; top: 0; width: 4425px; height: 2950px; color: #0ff; }    /* 3:2（検索結果） */
+  .area.phone { left: 1281px; top: 30px; width: 2682px; height: 1800px; color: #f0f; } /* iPhoneの縦 */
+  .area.duo { left: 900px; top: 430px; width: 2820px; height: 1414px; color: #f80; }   /* iPhone Duo（右端はタブバーで隠れる） */
+  .area.button { width: 330px; height: 330px; border-radius: 50%; color: #f00; top: 440px; } /* iPhoneの戻る・共有ボタン */
+</style>
+</head>
+<body>
+  <div class="glow"></div>
+  <div class="chart"></div>
+  <div class="text">
+    <div class="brand"><img src="../../App/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png" alt=""><span>棒針編み図エディタ</span></div>
+    <h1>棒針の<em>編み図</em>を、<br>iPhoneとiPadで。</h1>
+    <div class="features">29種類の記号・自動保存・PNG／PDF</div>
+  </div>
+  <div class="device ipad"><div class="screen"><img src="../../docs/screenshots/app-store-ipad-13-01-editor.png" alt=""></div></div>
+  <div class="device iphone"><div class="screen"><img src="../../docs/screenshots/app-store-iphone-6.9-01-editor.png" alt=""></div></div>
+  <div class="area wide"></div>
+  <div class="area search"></div>
+  <div class="area phone"></div>
+  <div class="area duo"></div>
+  <div class="area button" style="left: 1373px"></div>
+  <div class="area button" style="left: 3529px"></div>
+  <script>if (location.search.includes('safe')) document.body.classList.add('safe-area');</script>
+</body>
+</html>

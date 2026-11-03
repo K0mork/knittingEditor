@@ -83,11 +83,21 @@ check_screenshot() {
 # App Store Connectが要求する提出サイズ。
 for shot in 01-editor 02-stitches 03-export 04-background 05-dark; do
   check_screenshot "$REPO_ROOT/docs/screenshots/app-store-iphone-6.9-$shot.png" 1320 2868
+  # App Store ConnectのiPhoneの欄はmedium displayの大きさしか受け付けない（#353）。
+  check_screenshot "$REPO_ROOT/docs/screenshots/app-store-iphone-6.3-$shot.png" 1206 2622
   check_screenshot "$REPO_ROOT/docs/screenshots/app-store-ipad-13-$shot.png" 2064 2752
   # iPhone Duoは閉じたときの外側の画面と、開いたときの内側の画面（どちらも縦）。
   check_screenshot "$REPO_ROOT/docs/screenshots/app-store-iphone-duo-outer-$shot.png" 1398 2034
   check_screenshot "$REPO_ROOT/docs/screenshots/app-store-iphone-duo-inner-$shot.png" 2007 2853
 done
+
+# 製品ページのヘッダと検索結果に共通で使う画像（16:9）。
+check_screenshot "$REPO_ROOT/docs/screenshots/app-store-creative-universal.png" 5244 2950
+# この画像は透過を含められない。
+[ "$(sips -g hasAlpha "$REPO_ROOT/docs/screenshots/app-store-creative-universal.png" | awk '/hasAlpha:/ { print $2; exit }')" = no ] || {
+  echo "App Store creative asset must not have an alpha channel" >&2
+  exit 1
+}
 
 # 解像度確認用の旧下書き。
 check_screenshot "$REPO_ROOT/docs/screenshots/iphone-16-editor-simulator.png" 1179 2556

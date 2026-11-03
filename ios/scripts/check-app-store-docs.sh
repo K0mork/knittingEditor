@@ -145,6 +145,8 @@ done
 for submission_shot in \
   app-store-iphone-6.9-01-editor.png app-store-iphone-6.9-02-stitches.png app-store-iphone-6.9-03-export.png \
   app-store-iphone-6.9-04-background.png app-store-iphone-6.9-05-dark.png \
+  app-store-iphone-6.3-01-editor.png app-store-iphone-6.3-02-stitches.png app-store-iphone-6.3-03-export.png \
+  app-store-iphone-6.3-04-background.png app-store-iphone-6.3-05-dark.png \
   app-store-ipad-13-01-editor.png app-store-ipad-13-02-stitches.png app-store-ipad-13-03-export.png \
   app-store-ipad-13-04-background.png app-store-ipad-13-05-dark.png \
   app-store-iphone-duo-outer-01-editor.png app-store-iphone-duo-outer-02-stitches.png \
@@ -152,7 +154,8 @@ for submission_shot in \
   app-store-iphone-duo-outer-05-dark.png \
   app-store-iphone-duo-inner-01-editor.png app-store-iphone-duo-inner-02-stitches.png \
   app-store-iphone-duo-inner-03-export.png app-store-iphone-duo-inner-04-background.png \
-  app-store-iphone-duo-inner-05-dark.png; do
+  app-store-iphone-duo-inner-05-dark.png \
+  app-store-creative-universal.png; do
   grep -qF -- "$submission_shot" "$SCREENSHOTS" || {
     echo "App Store submission screenshot is not documented: $submission_shot" >&2
     exit 1

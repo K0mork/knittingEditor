@@ -79,6 +79,11 @@ App Store Connectの年齢制限は、質問票への回答から決まる（202
 - v1.0では作らない。App Previewは任意で（[App preview specifications](https://developer.apple.com/help/app-store-connect/reference/app-information/app-preview-specifications/)、2026-10-09に確認）、スクリーンショットだけで提出できる。
 - 作る場合は、端末の大きさごとの収録と編集が要り、機能が変わるたびに撮り直しになる。公開後に必要になったら考える。
 
+### ヘッダと検索結果
+
+- 製品ページのヘッダと検索結果に、共通の画像を1枚入れる（2026-11-03に決定）。見出しは「棒針の編み図を、iPhoneとiPadで。」で、オフラインで使えることや「無料」は前面に出さない。画像、決めた理由、作り方は[`SCREENSHOTS.md`](SCREENSHOTS.md#製品ページのヘッダと検索結果)。
+- 任意の項目で、公開した後も版を出さずに差し替えられる。
+
 ### スクリーンショットの説明文
 
 - 機能を説明する短い文を、画面の上の帯に入れる。2026-10-20に、iPhone・iPadとも5枚の画面と文面を決めた（#290）。2026-10-29に、iPhone Duoの外側・内側も同じ5枚で作った（#353）。画面・順・文面と作り方は[`SCREENSHOTS.md`](SCREENSHOTS.md)。
@@ -134,7 +139,7 @@ App Store Connectの年齢制限は、質問票への回答から決まる（202
 - サポートURL: `https://knittingeditor.com/support/`。下記「サポート窓口」
 - プライバシーポリシーURL: `https://knittingeditor.com/privacy/app/`（App Store Connect登録前に公開状態と表示を確認）。正本はリポジトリルートの`public/privacy/app/index.html`。登録は#27で行う。
 - 審査メモ: [`APP_REVIEW_NOTES.md`](APP_REVIEW_NOTES.md)のアプリの説明と確認手順を、英語と日本語の両方で転記する。
-- スクリーンショット: 提出に使う最終版（iPhone 6.9インチ・iPad 13インチ、説明文入り各5枚）は[`SCREENSHOTS.md`](SCREENSHOTS.md#app-store-connect提出用最終版)のとおり用意済み（#290）。2027年4月以降の提出に要るiPhone Duoの外側・内側の各5枚も用意済み（#353）。実機での撮り直しは任意。提出ビルドでは、最終版と同じ画面になることを確かめる（[`RELEASE_RUNBOOK.md`](RELEASE_RUNBOOK.md)の手順8）。
+- スクリーンショット: 提出に使う最終版（説明文入り各5枚）は[`SCREENSHOTS.md`](SCREENSHOTS.md#app-store-connect提出用最終版)のとおり用意済み（#290）。App Store ConnectのiPhoneの欄はmedium displayの大きさしか受け付けないので、6.9インチから縮小した6.3インチ（1206×2622）の5枚を登録する。iPadの欄には13インチの5枚を登録する。2027年4月以降の提出に要るiPhone Duoは、外側・内側の各5枚を用意済みで、欄にはどちらか片方の5枚を登録する（#353）。実機での撮り直しは任意。提出ビルドでは、最終版と同じ画面になることを確かめる（[`RELEASE_RUNBOOK.md`](RELEASE_RUNBOOK.md)の手順8）。
 
 ## 配信地域
 
