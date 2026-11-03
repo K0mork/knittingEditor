@@ -96,10 +96,10 @@ grep -qE -- 'プライバシーポリシーURL: `https://knittingeditor\.com/pri
 }
 
 for required_text in \
-  '機内モード' \
+  '### 審査時の確認手順' \
   'Files' \
   '.knit' \
-  'Review guideline 4.2'; do
+  '### About this app'; do
   grep -qF -- "$required_text" "$REVIEW_NOTES" || {
     echo "review notes are missing required text: $required_text" >&2
     exit 1
