@@ -139,11 +139,14 @@ function main() {
       inUse: isPathInUse(worktree.path, cwds),
     }),
   );
+  const removedWorktrees = [];
   for (const { worktree, decision } of plans) {
     console.log(`${decision.remove ? 'remove' : 'keep  '} worktree ${worktree.listedPath} [${worktree.branch ?? 'detached'}]: ${decision.reason}`);
-    if (decision.remove) actions.push(['git', 'worktree', 'remove', worktree.listedPath]);
+    if (decision.remove) removedWorktrees.push(worktree.listedPath);
     else if (worktree.branch) kept.add(worktree.branch);
   }
+  // 入れ子のworktreeを親より先に消し、親と一緒に消えたディレクトリの扱いをgitに頼らない。
+  for (const path of removedWorktrees.sort((a, b) => b.length - a.length)) actions.push(['git', 'worktree', 'remove', path]);
 
   for (const line of run(['git', 'for-each-ref', 'refs/heads', '--format=%(refname:short) %(objectname)']).split('\n')) {
     const [branch, tip] = line.split(' ');

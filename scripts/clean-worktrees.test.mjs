@@ -1,7 +1,9 @@
 // @vitest-environment node
-import { mkdtempSync, writeFileSync, rmSync, realpathSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { existsSync, mkdirSync, mkdtempSync, writeFileSync, rmSync, realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { delimiter, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { decide, isPathInUse, parseLsofCwds, parseWorktrees, planWorktrees, processCwds } from './clean-worktrees.mjs';
 
@@ -139,5 +141,66 @@ describe('processCwds with a fake lsof', () => {
     expect(decisionFor('/repo/.claude/worktrees/x', result).remove).toBe(false);
     expect(decisionFor('/repo/.claude/worktrees/unused', result).remove).toBe(true);
     expect(decisionFor(realpathSync(process.cwd()), result).remove).toBe(false);
+  });
+});
+
+describe('--apply on a real repository with nested worktrees', () => {
+  const script = fileURLToPath(new URL('./clean-worktrees.mjs', import.meta.url));
+  let root;
+
+  afterEach(() => {
+    if (root) rmSync(root, { recursive: true, force: true });
+    root = undefined;
+  });
+
+  function git(cwd, ...args) {
+    return execFileSync('git', ['-c', 'user.email=test@example.com', '-c', 'user.name=test', ...args], { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+  }
+
+  // 親の中の`.claude/worktrees/`に入れ子のworktreeを作る。どちらもdetachedで、先端はorigin/mainに含まれる。
+  // 入れ子の名前は親より後に並ぶようにして、`git worktree list`で親が先に出るようにする。
+  function nestedRepository() {
+    root = realpathSync(mkdtempSync(join(tmpdir(), 'clean-worktrees-repo-')));
+    const bin = join(root, 'bin');
+    mkdirSync(bin);
+    writeFileSync(join(bin, 'gh'), '#!/bin/sh\necho "[]"\n', { mode: 0o755 });
+    writeFileSync(join(bin, 'lsof'), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
+    const repo = join(root, 'repo');
+    git(root, 'init', '--quiet', '--bare', '--initial-branch=main', 'origin.git');
+    git(root, 'init', '--quiet', '--initial-branch=main', 'repo');
+    writeFileSync(join(repo, '.gitignore'), '.claude/\n');
+    git(repo, 'add', '.gitignore');
+    git(repo, 'commit', '--quiet', '-m', 'init');
+    git(repo, 'remote', 'add', 'origin', join(root, 'origin.git'));
+    git(repo, 'push', '--quiet', 'origin', 'main');
+    const parent = join(repo, '.claude/worktrees/a-parent');
+    const nested = join(parent, '.claude/worktrees/z-nested');
+    git(repo, 'worktree', 'add', '--quiet', '--detach', parent, 'main');
+    git(parent, 'worktree', 'add', '--quiet', '--detach', nested, 'main');
+    const clean = () =>
+      execFileSync(process.execPath, [script, '--apply'], {
+        cwd: repo,
+        encoding: 'utf8',
+        env: { ...process.env, PATH: `${bin}${delimiter}${process.env.PATH}` },
+      });
+    return { repo, parent, nested, clean };
+  }
+
+  it('keeps the parent and the nested worktree when the nested one has uncommitted changes', () => {
+    const { repo, parent, nested, clean } = nestedRepository();
+    writeFileSync(join(nested, 'probe.txt'), 'probe\n');
+    const output = clean();
+    expect(output).toContain(`keep   worktree ${parent} [detached]: contains the kept nested worktree ${nested}`);
+    expect(existsSync(join(nested, 'probe.txt'))).toBe(true);
+    expect(git(repo, 'worktree', 'list', '--porcelain')).toContain(`worktree ${nested}`);
+  });
+
+  it('removes both, nested first, when neither needs to be kept', () => {
+    const { repo, parent, nested, clean } = nestedRepository();
+    const output = clean();
+    expect(output.indexOf(`remove worktree ${parent}`)).toBeLessThan(output.indexOf(`remove worktree ${nested}`));
+    expect(output).toContain('Removed 2 item(s).');
+    expect(existsSync(parent)).toBe(false);
+    expect(parseWorktrees(git(repo, 'worktree', 'list', '--porcelain')).map(({ path }) => path)).toEqual([repo]);
   });
 });
