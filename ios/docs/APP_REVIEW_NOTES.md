@@ -16,10 +16,11 @@ Main features:
 - Automatic saving on the device
 - Exporting PNG images and PDFs (one page, or split across A4 pages)
 - Backing up charts to .knit files and restoring them, including through the Files app
+- Sharing exported files with the standard share sheet
 
 ### How to review
 
-The app is in Japanese only. Buttons are written as "English (日本語)".
+The app is in Japanese only. Below, each button is written as "English (日本語)"; the app shows the Japanese label.
 
 1. Turn on Airplane Mode and open the app.
 2. Tap "Charts (編み図)" at the top right, then "New chart (新しい編み図)". Enter a name and tap "Confirm (決定)". Pick a stitch with the stitch button (e.g. "表目") next to the color. With "Draw (描く)" selected, tap or drag on the grid.
@@ -48,6 +49,7 @@ These have no on-screen button. They are optional, do the same as existing butto
 - 端末内への自動保存
 - PNG画像とPDF（1ページ、またはA4の複数ページ）の書き出し
 - .knitファイルへのバックアップと復元（「ファイル」アプリからの読み込みを含む）
+- 書き出したファイルの共有シートでの共有
 
 ### 審査時の確認手順
 
