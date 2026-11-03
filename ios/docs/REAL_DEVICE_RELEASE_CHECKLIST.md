@@ -64,10 +64,10 @@ TEST_RUNNER_KNITTING_EDITOR_AIRPLANE_MODE=1 xcodebuild test \
   -only-testing:knittingEditorTests/LocalWebSchemeHandlerTests/testAirplaneModeServesEditorWithoutNetwork
 ```
 
-なお、オフライン要件そのものは別経路で裏付けている。生成バンドルの静的検査（外部URL・CDN・分析の不在、CIで毎回実行）、実機WebKitでの`fetch`／`XHR`／`WebSocket`／`EventSource`未使用の実測、Swift側に通信コードが無いこと。利用者による機内モードの主要フロー（2026-09-22）と通信監視（2026-10-02）は[リリース確認の記録](RELEASE_VERIFICATION_RECORDS.md)のとおり確認済みである。TestFlight提出ビルドでの再確認は残っている。
+なお、オフライン要件そのものは別経路で裏付けている。生成バンドルの静的検査（外部URL・CDN・分析の不在、CIで毎回実行）、実機WebKitでの`fetch`／`XHR`／`WebSocket`／`EventSource`未使用の実測、Swift側に通信コードが無いこと。利用者による機内モードの主要フロー（2026-09-22）と通信監視（2026-10-02）は[リリース確認の記録](RELEASE_VERIFICATION_RECORDS.md)のとおり確認済みである。TestFlight提出ビルドでの再確認は2026-11-03に済んだ（[記録](RELEASE_VERIFICATION_RECORDS.md#2026-11-03-testflightでの提出ビルドの確認2526)）。
 
 - [x] 機内モードを有効にしてアプリを新規起動できる。（2026-09-22、iPad Air 第5世代。機内モード中にアプリを終了し、ホーム画面のアイコンから起動できることを確認）
-- [x] 新規編み図を作成し、全記号、Canvas描画、Blob生成、PNG保存、PDF保存を完了できる。（2026-09-22、iPad Air 第5世代。当時のカタログv3の26記号を、利用者が機内モード中に記号メニューで全種の表示を目視確認。その後に足した3記号を含むv4の29記号は、提出ビルドの機内モード確認（M6）で通す）
+- [x] 新規編み図を作成し、全記号、Canvas描画、Blob生成、PNG保存、PDF保存を完了できる。（2026-09-22、iPad Air 第5世代。当時のカタログv3の26記号を、利用者が機内モード中に記号メニューで全種の表示を目視確認。その後に足した3記号を含むv4の29記号は、2026-11-03にTestFlightの提出ビルド1.0 (1)で、iPhone 17とiPad Air 第5世代の機内モードで全種を表示して置けることを確かめた）
 - [x] `.knit`バックアップの圧縮・保存・復元を完了できる。
 - [x] Worker、Pointer Events、IndexedDBが機内モードでエラーなく動く。
 - [x] `設定 > 機内モード`の前後で、Safariや外部ホストへの要求が発生しない。（2026-10-02、iPad Air 第5世代。機内モードの前・中・後の操作を有線で通信監視し、アプリとWebKitのプロセスからの通信が無いことを確認。手順は下の「機内モード前後の通信監視の手順」）
@@ -186,7 +186,7 @@ Hangsは`potential-hangs`／`hang-risks`表のうちアプリとWebKitの行を�
 - [x] アプリからPNG、PDF、`.knit`をFilesへ保存する。（2026-09-22、iPad Air 第5世代。機内モードで3種すべてを「このiPad内」へ保存）
 - [x] 共有シートからAirDropまたは別の共有先へ送る。（2026-09-22、iPad Air 第5世代。`.knit`とPNGを共有シートから送り、編集画面へ復帰することを確認）
 - [x] Files、AirDrop、メール等から`.knit`をアプリで開き、同じ編み図へ復元する。（2026-09-22、iPad Air 第5世代。Filesから開く`onOpenURL`経路で復元し、13:09:56と13:10:28に編み図が作成されたことを端末内IndexedDBで実測。アプリ内「バックアップから復元」のDocument Picker経路も別途成立）
-- [ ] キャンセル、上書き、存在しないファイル、不正形式、巨大解凍データでアプリがクラッシュしない。（保存シートのキャンセルはiPhone・iPad実機とSimulatorで自動検証済み。2026-10-09にiPhone 17で、上書き保存、不正形式（でたらめなデータの`.knit`）、巨大解凍データ（解凍後300MBの`.knit`）を確かめ、どれもクラッシュせずに理由が表示された。不正形式の理由が英語だったので日本語にした（PR #147）。欠損ファイルは下記の単体テストで例外処理とエラー配送を検証する。iPhone・iPadでの読み込み直前の削除とオフラインのiCloud Driveの確認は未完了であり、下記の手順で確かめる）
+- [ ] キャンセル、上書き、存在しないファイル、不正形式、巨大解凍データでアプリがクラッシュしない。（保存シートのキャンセルはiPhone・iPad実機とSimulatorで自動検証済み。2026-10-09にiPhone 17で、上書き保存、不正形式（でたらめなデータの`.knit`）、巨大解凍データ（解凍後300MBの`.knit`）を確かめ、どれもクラッシュせずに理由が表示された。不正形式の理由が英語だったので日本語にした（PR #147）。欠損ファイルは下記の単体テストで例外処理とエラー配送を検証する。iPhone・iPadでの読み込み直前の削除は未完了であり、下記の手順で確かめる。2026-11-03にTestFlightの提出ビルド1.0 (1)で、iPhone 17とiPad Air 第5世代の両方で、キャンセル、上書き保存、不正形式、巨大解凍データ（解凍後300MB）がクラッシュせず理由が表示されることを確かめた。端末にダウンロードされていないiCloud Driveの`.knit`を機内モードで開くと、クラッシュはしないが「バックアップを読み込めませんでした」とだけ表示され、通信が要ることは分からない。利用者の判断でv1.0はクラッシュしないことで合格とし、理由の分かる表示は#387で扱う）
 - [x] iPhoneとiPadの双方で同じ往復を行う。（iPadは2026-09-22に保存・共有・両方の取り込み経路が成立。iPhone 17は2026-10-09に、PNG・PDF・`.knit`を「このiPhone内」へ保存し、Filesの`.knit`から復元、MacからAirDropで受け取った`.knit`の復元、共有シートからMacへのAirDropの送信を確かめた）
 
 欠損ファイルの自動テスト範囲（`ios/Tests/KnittingEditorAppTests/NativeErrorDeliveryTests.swift`）。WebViewへ送るスクリプトを記録し、イベント名とJSON化したメッセージを検証する。実機のFiles・共有やトーストの目視確認は含まない。
@@ -226,7 +226,7 @@ Hangsは`potential-hangs`／`hang-risks`表のうちアプリとWebKitの行を�
 - [x] VoiceOverで、道具・パネル・ダイアログのボタンの名前と状態が読み上げで分かる。（2026-10-09、iPhone 17 / iOS 27.0で`testCoreEditorControlsExposeAccessibleNamesAndState`が成功）
   - 2026-10-09に、この項目を見直した。以前は「見出し、記号選択、描画／消去／範囲、保存、ダイアログのラベル・状態・フォーカス順」をVoiceOverで手で確かめる項目だったが、盤面はVoiceOverで記号を置けない作り（1つのCanvas）で、VoiceOverだけでは編み図を作れない。App Storeのアクセシビリティの表示でも「VoiceOverに対応」とは答えない（[`APP_STORE_METADATA.md`](APP_STORE_METADATA.md)）。盤面以外のフォーカス順だけを整えても得られるものが小さいので、項目がアプリの作りに合っていなかったとして、v1.0では手動のフォーカス順の確認を外し、名前と状態の自動テストにした。盤面をVoiceOverで操作できるようにするときに、改めて確かめる。
 - [x] Dynamic Type最大設定で主要操作44pt以上、文字の切れ・重なりがない。（iPhone 17とiPad Air 第5世代で文字の切れ・重なりが無いことを確認済み（#23）。2026-10-09にiPhone 17で文字サイズ最大の3件のUIテストを各3回流し、すべて成功した。44ptは、iOS版のCSSで操作の最小の大きさを44pxにしていること（`ios/Web/src/styles.css`の`--tap-size`など）で担保する）
-- [ ] 「拡大表示」（設定 > 画面表示と明るさ > 画面表示を拡大）と太字テキストで、ホーム画面の表示名「棒針編み図」が切れないことを、iPhoneとiPadの実機で確かめる（[`APP_STORE_METADATA.md`](APP_STORE_METADATA.md)の「App名とホーム画面の表示名」。無料Personal Teamの開発ビルドでも確かめられる）。
+- [x] 「拡大表示」（設定 > 画面表示と明るさ > 画面表示を拡大）と太字テキストで、ホーム画面の表示名「棒針編み図」が切れないことを、iPhoneとiPadの実機で確かめる（[`APP_STORE_METADATA.md`](APP_STORE_METADATA.md)の「App名とホーム画面の表示名」。無料Personal Teamの開発ビルドでも確かめられる）。（2026-11-03、TestFlightの提出ビルド1.0 (1)で、iPhone 17とiPad Air 第5世代の両方で切れないことを確かめた）
 
 証跡: 端末設定（表示サイズ、Dynamic Type、VoiceOver）、画面収録、問題のある画面のスクリーンショット、再現手順。
 
@@ -248,10 +248,10 @@ TEST_RUNNER_KNITTING_EDITOR_MANUAL_WINDOW=1 xcodebuild test \
 
 提出ビルドの実機確認（TestFlightでのクラッシュログ・メモリ警告・出力時間、最終画面）は、審査への提出と並行して行い、公開の前に終える。v1.0は手動公開で提出する（[`RELEASE_RUNBOOK.md`](RELEASE_RUNBOOK.md)の手順7・8）。
 
-- [ ] 署名済みArchiveを作成し、App Store ConnectへTestFlight内部配布する。（2026-11-03、`b0a7f26`の署名済みArchiveをアップロードし、版1.0のビルド1が登録された。内部テスターへの配布は手順8で行う）
-- [x] iPhone／iPadで機内モードの主要フローを実施する。（iPadは2026-09-22（M0）。iPhone 17は2026-10-09に、機内モードでアプリを起動し直し、新しい編み図を作って記号を置き、PNG・PDF・`.knit`を「このiPhone内」へ保存できた）
-- [ ] TestFlightのクラッシュログ、メモリ警告、PNG/PDF出力時間を確認する。
-- [ ] 提出ビルドで、AppIcon、起動画面、iPhone縦横、iPad全画面／可変幅の画面を確かめ、提出用の最終スクリーンショット（[`SCREENSHOTS.md`](SCREENSHOTS.md)、#290とiPhone Duoの#353で用意済み）と食い違わないことを証跡に残す。
+- [x] 署名済みArchiveを作成し、App Store ConnectへTestFlight内部配布する。（2026-11-03、`b0a7f26`の署名済みArchiveをアップロードし、版1.0のビルド1が登録された。同日、内部テストグループに入れ、iPhone 17とiPad Air 第5世代へTestFlightから1.0 (1)を入れた）
+- [x] iPhone／iPadで機内モードの主要フローを実施する。（iPadは2026-09-22（M0）。iPhone 17は2026-10-09に、機内モードでアプリを起動し直し、新しい編み図を作って記号を置き、PNG・PDF・`.knit`を「このiPhone内」へ保存できた。2026-11-03に、TestFlightの提出ビルド1.0 (1)で両端末とも確かめ直した）
+- [x] TestFlightのクラッシュログ、メモリ警告、PNG/PDF出力時間を確認する。（2026-11-03、1.0 (1)。1000×1000盤面のPNG・PDF出力と再起動後の復元は、両端末ともストップウォッチで測れないほど短かった。App Store ConnectのTestFlightのクラッシュは0件で、両端末の解析データに当日の`knittingEditor`と`JetsamEvent`の記録は無かった。メモリの値は測っていない）
+- [x] 提出ビルドで、AppIcon、起動画面、iPhone縦横、iPad全画面／可変幅の画面を確かめ、提出用の最終スクリーンショット（[`SCREENSHOTS.md`](SCREENSHOTS.md)、#290とiPhone Duoの#353で用意済み）と食い違わないことを証跡に残す。（2026-11-03、1.0 (1)で両端末とも確かめ、登録したスクリーンショットと大きな食い違いが無かった）
 - [x] App Privacy回答、Privacy Policy URL、サポートURL、審査メモを登録内容と照合する。（2026-11-03、提出前に登録画面で照合した）
 - [ ] [`docs/APP_STORE_CHECKLIST.md`](APP_STORE_CHECKLIST.md)の全項目を更新し、承認前に「配布完了」と報告しない。
 
