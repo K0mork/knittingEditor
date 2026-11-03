@@ -35,11 +35,11 @@
   - iPhoneで必須のmedium displayの欄を、6.9インチ（1320×2868）の画像だけで満たせるか。→ 満たせない。6.9インチの画像は大きさが無効として登録できなかったので、縮小した6.3インチ（1206×2622）の5枚を登録した。
   - iPhone Duoの外側・内側のどちらが必須か、縦と横のどちらでもよいか、何枚から登録できるか。→ 欄は1つで、外側・内側のどちらの大きさも、縦横どちらの向きも受け付け、必須の表示は無い。最大10枚。v1.0では外側の5枚を登録した。
 - 「提出ビルドで」で始まる項目と、TestFlight内部テストの項目は、審査への提出と並行して確かめ、公開の前に終える。提出の前に終えなくてよいが、v1.0は手動公開で提出する（[`RELEASE_RUNBOOK.md`](RELEASE_RUNBOOK.md)の手順7・8）。
-- [ ] 提出ビルドで実機の機内モードのP0フローを再確認する。開発ビルドではiPad Air（第5世代、2026-09-22）とiPhone 17（2026-10-09）の主要フロー、iPadの機内モード前後の通信監視（2026-10-02）は確認済み。TestFlight等の提出ビルドは未確認なので、この欄は未チェックとする（[`REAL_DEVICE_RELEASE_CHECKLIST.md`](REAL_DEVICE_RELEASE_CHECKLIST.md)のM0・M6）。
-- [ ] 提出ビルドでFiles、AirDrop、共有先、外部`.knit`の往復と残りの異常系を実機で確認する。開発ビルドでのiPhone・iPadの保存・共有・復元は確認済みだが、存在しないファイルなどの異常系とTestFlightでの最終往復が残るため、未チェックとする（[`REAL_DEVICE_RELEASE_CHECKLIST.md`](REAL_DEVICE_RELEASE_CHECKLIST.md)のM3）。
-- [ ] 提出ビルドで、1000×1000盤面のメモリ、PNG拒否、PDF出力時間を記録する。開発ビルドでの記録は[`REAL_DEVICE_RELEASE_CHECKLIST.md`](REAL_DEVICE_RELEASE_CHECKLIST.md)のM2にある。
+- [x] 提出ビルドで実機の機内モードのP0フローを再確認する。開発ビルドではiPad Air（第5世代、2026-09-22）とiPhone 17（2026-10-09）の主要フロー、iPadの機内モード前後の通信監視（2026-10-02）は確認済み。2026-11-03に、TestFlightの提出ビルド1.0 (1)でiPhone 17とiPad Air 第5世代の両方を確かめた（[`REAL_DEVICE_RELEASE_CHECKLIST.md`](REAL_DEVICE_RELEASE_CHECKLIST.md)のM0・M6、[記録](RELEASE_VERIFICATION_RECORDS.md#2026-11-03-testflightでの提出ビルドの確認2526)）。
+- [ ] 提出ビルドでFiles、AirDrop、共有先、外部`.knit`の往復と残りの異常系を実機で確認する。開発ビルドでのiPhone・iPadの保存・共有・復元は確認済みだが、2026-11-03にTestFlightの提出ビルド1.0 (1)で、両端末の往復と、キャンセル・上書き・不正形式・巨大解凍データ・オフラインのiCloud Driveでクラッシュしないことを確かめた。読み込み直前のファイル削除（開発ビルドとLLDBが要る）が残り、オフラインのiCloud Driveの理由の表示は#387で扱うため、未チェックとする（[`REAL_DEVICE_RELEASE_CHECKLIST.md`](REAL_DEVICE_RELEASE_CHECKLIST.md)のM3）。
+- [x] 提出ビルドで、1000×1000盤面のメモリ、PNG拒否、PDF出力時間を記録する。（2026-11-03、1.0 (1)で両端末とも、PNGの上限超過で保存が押せなくなること、出力が測れないほど短いこと、メモリ不足による終了の記録が無いことを確かめた。メモリの値は測っていない）開発ビルドでの記録は[`REAL_DEVICE_RELEASE_CHECKLIST.md`](REAL_DEVICE_RELEASE_CHECKLIST.md)のM2にある。
 - Simulator／Webでの1000×1000保存復元・PDF基準値は[`SIMULATOR_PERFORMANCE_BASELINE.md`](SIMULATOR_PERFORMANCE_BASELINE.md)に記録済み（実機/TestFlight確認の代替ではない）。
-- [ ] TestFlight内部テストでクラッシュログとメモリ警告を確認する。
+- [x] TestFlight内部テストでクラッシュログとメモリ警告を確認する。（2026-11-03、1.0 (1)。TestFlightのクラッシュは0件、両端末の解析データにも当日の記録は無かった）
 - [x] App Store ConnectのApp Privacy回答をPrivacy Manifestと照合し、「データを収集しない」と入力する（[`docs/APP_STORE_METADATA.md`](APP_STORE_METADATA.md)の「App Store Connectの質問への回答」）。（2026-11-03に入力した）
 - [x] 第三者のコンテンツの権利、DSAの事業者申告、審査の連絡先、サインインの要否、価格を、[`docs/APP_STORE_METADATA.md`](APP_STORE_METADATA.md)の「App Store Connectの質問への回答」のとおり入力する。審査の連絡先の値はルートの`private/APP_STORE_CONNECT.md`。（2026-11-03に入力した）
 - [x] Privacy Policy URLをApp Store Connectへ登録し、公開状態と、審査端末から表示できることを確認する。（2026-11-03に登録した。公開ページがHTTPSで開けることは登録前に確かめた）

@@ -1,6 +1,6 @@
 # v1.0 提出・公開の手順
 
-v1.0をApp Storeへ提出・公開するまで、次の順に進める。Apple Developer Programへの個人での加入と有料のTeamでの署名（手順1〜3）は2026-11-02に、App Store Connectでのアプリの登録から審査への提出まで（手順4〜7）は2026-11-03に済んだ。v1.0は審査待ちで、次は[手順8](#8-審査と並行してtestflightで提出ビルドを実機で確かめる)を審査と並行して進める。全項目の管理は[提出チェックリスト](APP_STORE_CHECKLIST.md)、入力値の正本は[メタデータ](APP_STORE_METADATA.md)、実機の手順と証跡は[実機リリースゲート](REAL_DEVICE_RELEASE_CHECKLIST.md)を使う。v1.1以降の更新版は[手順10](#10-更新版を提出する)を加えて進める。
+v1.0をApp Storeへ提出・公開するまで、次の順に進める。Apple Developer Programへの個人での加入と有料のTeamでの署名（手順1〜3）は2026-11-02に、App Store Connectでのアプリの登録から審査への提出まで（手順4〜7）は2026-11-03に済んだ。v1.0は審査待ちで、[手順8](#8-審査と並行してtestflightで提出ビルドを実機で確かめる)の提出ビルドの実機確認も2026-11-03に済んだ。次は承認を待って[手順9](#9-承認後に公開し確認と記録を残す)へ進む。全項目の管理は[提出チェックリスト](APP_STORE_CHECKLIST.md)、入力値の正本は[メタデータ](APP_STORE_METADATA.md)、実機の手順と証跡は[実機リリースゲート](REAL_DEVICE_RELEASE_CHECKLIST.md)を使う。v1.1以降の更新版は[手順10](#10-更新版を提出する)を加えて進める。
 
 個人情報・Team ID・App Store ConnectのApp ID・登録画面の無加工画像を、公開リポジトリやGitHubへ載せない。非公開の入力値はメインチェックアウトのルートの `private/APP_STORE_CONNECT.md` を参照する。worktreeに別の `private/` は作らない。
 
@@ -119,6 +119,8 @@ MacとApple Vision Proは[#86の決定コメント](https://github.com/K0mork/kn
 - **関係するIssue／項目:** [#27](https://github.com/K0mork/knittingEditor/issues/27)、提出チェックリストの全必須項目と「提出後の承認」、実機ゲートM6。
 
 ## 8. 審査と並行して、TestFlightで提出ビルドを実機で確かめる
+
+2026-11-03に、TestFlightの1.0 (1)をiPhone 17とiPad Air 第5世代へ入れ、下の2〜5を確かめた。公開を止める問題は無かった（[記録](RELEASE_VERIFICATION_RECORDS.md#2026-11-03-testflightでの提出ビルドの確認2526)）。オフラインのiCloud Driveの`.knit`で理由の分かる表示にならないことは、v1.0では合格とし#387で扱う。
 
 手順7で提出したら、審査の結果を待たずに始める。提出ビルドの実機確認は、提出の条件ではなく公開の条件とする（2026-11-02の決定。提出を早めるため）。Appleは提出の前にTestFlightを通すことを求めていない。手順5でアップロードしたビルドはそのままTestFlightにも出るので、確認のために別のビルドを作らない。
 
