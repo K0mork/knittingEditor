@@ -186,3 +186,43 @@ test('ストレージにだけある編み図とブロックを起動・切り�
     await expectPreserved(page, 'stored-chart-tall');
   }
 });
+
+test('範囲の消去は開いている編み図だけを変え、ストレージにだけあるほかの編み図とブロックを変えない', async ({ page }) => {
+  await page.setViewportSize({ width: 1200, height: 900 });
+  await seedStoredCharts(page);
+  await page.goto('/');
+  const board = page.getByLabel('編み図編集盤面');
+  await expect(board).toHaveAttribute('aria-label', /^編み図編集盤面。8段、120目。記号4個。/);
+
+  // 横長の盤面は右端の目から表示され、8段が縦の中央に収まる。盤面の中央から右下の角まで囲み、
+  // 右端の表目・すべり目と右端の列の線を消す。左端の裏目と中央の交差は範囲の外に残る。
+  const box = (await board.boundingBox())!;
+  await page.getByRole('button', { name: '範囲', exact: true }).click();
+  await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.5);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width - 12, box.y + box.height * 0.5 + 40, { steps: 4 });
+  await page.mouse.up();
+  await page.getByRole('button', { name: '選択範囲を消去', exact: true }).click();
+  await expect(board).toHaveAttribute('aria-label', /記号2個。/);
+
+  const [tall, wide] = expectedRecords.documents;
+  expect(wide.id).toBe('stored-chart-wide');
+  await expect.poll(async () => (await readStoredCharts(page)).documents[1].updatedAt).not.toBe(wide.updatedAt);
+  await page.waitForTimeout(1000);
+  const stored = await readStoredCharts(page);
+  // ほかの編み図とブロックはバイト列まで元のまま。
+  expect(stored.documents[0]).toStrictEqual(tall);
+  expect(stored.blocks).toStrictEqual(expectedRecords.blocks);
+  // 消した編み図も、寸法・名前・背景と範囲外の記号は元のまま。
+  const { cells: erasedCells, updatedAt: _erasedAt, guideLines: erasedLines, ...erasedMeta } = stored.documents[1];
+  const { cells: originalCells, updatedAt: _originalAt, guideLines: originalLines, ...originalMeta } = wide;
+  expect(erasedMeta).toStrictEqual(originalMeta);
+  expect(originalLines).toHaveLength(1);
+  // 線が無い編み図は`guideLines`を書かずに保存する。
+  expect(erasedLines ?? []).toEqual([]);
+  const before = new Uint32Array(new Uint8Array(originalCells).buffer);
+  const after = new Uint32Array(new Uint8Array(erasedCells).buffer);
+  expect(Array.from(after.keys()).filter((index) => after[index] !== before[index])).toEqual([838, 959]);
+  expect(after[838]).toBe(0);
+  expect(after[959]).toBe(0);
+});

@@ -268,7 +268,7 @@ describe('EditorView', () => {
   it('shows only the paste band when copying a selection and preserves result notices', async () => {
     const { container, click, editor } = await renderEditor();
     await act(async () => { editor().setSelection({ top: 0, left: 0, bottom: 0, right: 0 }); });
-    await click('コピーして貼付');
+    await click('コピー');
     expect(container.querySelector('.paste-actions')?.textContent).toContain('貼付中：左上にするマスをタップ');
     expect(container.querySelector('.toast')).toBeNull();
     await act(async () => { editor().handlePasteComplete(false); });
@@ -276,7 +276,8 @@ describe('EditorView', () => {
     expect(container.querySelector('.paste-actions')).not.toBeNull();
     await act(async () => { editor().handlePasteComplete(true); });
     expect(container.querySelector('.toast')?.textContent).toBe('ブロックを貼付しました');
-    expect(container.querySelector('.paste-actions')).toBeNull();
+    // 続けて貼れるよう、貼付のあとも貼付中のまま。
+    expect(container.querySelector('.paste-actions')).not.toBeNull();
   });
 
   it('keeps the paste band after notices expire and lets the user stop', async () => {

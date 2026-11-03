@@ -554,7 +554,7 @@ async function clickCell(page: Page, origin: BoardOrigin, row: number, col: numb
 test('copies colored symbols including a multi-cell stitch to new positions and undoes the paste', async ({ page }) => {
   const { origin, expected } = await drawRealContent(page);
   await selectRealContent(page, origin);
-  await page.getByRole('button', { name: 'コピーして貼付' }).click();
+  await page.getByRole('button', { name: 'コピー', exact: true }).click();
   await clickCell(page, await measurePasteOrigin(page, origin), 4, 1);
   const first = [...expected];
   first.splice(4 * 20 + 1, 4, ...expected.slice(21, 25));
