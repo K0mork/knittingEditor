@@ -6,17 +6,16 @@ App Store Connectの審査メモ（App Review Informationの「メモ」）に�
 
 ## English
 
-### Review guideline 4.2 (Minimum Functionality)
+### About this app
 
-This app is not a wrapper around a website. The chart editor is bundled with the app, and all of the following works in Airplane Mode:
+This app lets users create hand-knitting charts on iPhone and iPad. Everything works offline, so the steps below can be done in Airplane Mode. No account is needed, and the app has no servers, ads, or analytics.
 
-- Editing knitting charts with 29 stitch symbols, with pan and pinch zoom
+Main features:
+
+- Editing charts with 29 stitch symbols, with pan and pinch zoom
 - Automatic saving on the device
 - Exporting PNG images and PDFs (one page, or split across A4 pages)
-- Backing up charts to .knit files and restoring them
-- Saving files to On My iPhone / On My iPad in Files, and opening .knit files from Files or other apps
-
-There are no accounts, servers, ads, analytics, or remote configuration. The app opens Safari only when the user taps the support page or privacy policy link in the guide, and Mail only when the user taps the support email address.
+- Backing up charts to .knit files and restoring them, including through the Files app
 
 ### How to review
 
@@ -37,21 +36,18 @@ These have no on-screen button. They are optional, do the same as existing butto
 - Keyboard shortcuts (iPad with a keyboard): ⌘N new chart, ⌘O restore, ⌘S back up this chart, ⌥⌘S back up all data, ⇧⌘E export PNG, ⌘P export PDF, ⌘Z undo, ⇧⌘Z redo, ⌘+ / ⌘− zoom, ⇧⌘H guide. The same commands are in the menu bar.
 - Trackpad pinch (iPad): zooms the chart.
 
-The app may show the standard App Store rating prompt (StoreKit) after several PNG or PDF exports, but never within three days of first launch.
-
 ## 日本語
 
-### ガイドライン4.2（最低限の機能）について
+### アプリについて
 
-本アプリはWebサイトを表示するだけのアプリではありません。編み図エディタはアプリに同梱されており、次の機能はすべて機内モードで動作します。
+本アプリは、棒針編みの編み図をiPhoneとiPadで作るためのアプリです。すべての機能がオフラインで動くため、下記の手順は機内モードのまま確認できます。アカウント登録は不要で、サーバー、広告、利用分析はありません。
+
+主な機能：
 
 - 29種類の編み目記号による編み図の編集（移動、ピンチでの拡大・縮小）
 - 端末内への自動保存
 - PNG画像とPDF（1ページ、またはA4の複数ページ）の書き出し
-- .knitファイルへのバックアップと復元
-- 「ファイル」アプリの「このiPhone内」「このiPad内」への保存と、「ファイル」アプリや他のアプリからの.knitファイルの読み込み
-
-アカウント、サーバー、広告、利用分析、リモート設定はありません。Safariは「使い方」のサポートページかプライバシーポリシーのリンクを押したときだけ、メールアプリはサポートのメールアドレスを押したときだけ開きます。
+- .knitファイルへのバックアップと復元（「ファイル」アプリからの読み込みを含む）
 
 ### 審査時の確認手順
 
@@ -69,5 +65,3 @@ The app may show the standard App Store rating prompt (StoreKit) after several P
 - Apple Pencilのダブルタップ（iPad）：「描く」と「消す」を切り替えます。「設定」>「Apple Pencil」のダブルタップの設定に従います。
 - キーボードショートカット（キーボードを接続したiPad）：⌘N 新しい編み図、⌘O 復元、⌘S この編み図をバックアップ、⌥⌘S 全データをバックアップ、⇧⌘E PNGで書き出す、⌘P PDFで書き出す、⌘Z 元に戻す、⇧⌘Z やり直す、⌘＋／⌘− 拡大／縮小、⇧⌘H 使い方。同じコマンドはメニューバーにもあります。
 - トラックパッドのピンチ（iPad）：盤面を拡大・縮小します。
-
-PNGやPDFを何度か書き出したあとに、App Storeの標準の評価画面（StoreKit）が表示されることがあります。初回起動から3日間は表示しません。
