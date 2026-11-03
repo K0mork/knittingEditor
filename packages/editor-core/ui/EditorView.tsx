@@ -132,6 +132,8 @@ export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, 
 
       {selection && <div className="selection-actions" role="toolbar" aria-label="選択範囲の操作">
         <button className="primary" onClick={editor.copySelection}>コピーして貼付</button>
+        {/* ブロックとして残せることを、選んだその場で見せる。 */}
+        <button onClick={() => void editor.saveSelectionAsBlock()}>ブロック保存</button>
         <button onClick={editor.clearSelection}>解除</button>
       </div>}
 
