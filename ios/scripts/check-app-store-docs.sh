@@ -96,7 +96,7 @@ grep -qE -- 'プライバシーポリシーURL: `https://knittingeditor\.com/pri
 }
 
 for required_text in \
-  '機内モード' \
+  '### 審査時の確認手順' \
   'Files' \
   '.knit' \
   '### About this app'; do

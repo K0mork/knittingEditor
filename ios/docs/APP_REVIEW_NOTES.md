@@ -8,7 +8,7 @@ App Store Connectの審査メモ（App Review Informationの「メモ」）に�
 
 ### About this app
 
-This app lets users create hand-knitting charts on iPhone and iPad. Everything works offline, so the steps below can be done in Airplane Mode. No account is needed, and the app has no servers, ads, or analytics.
+This app lets users create hand-knitting charts on iPhone and iPad. No account is needed, and the app has no servers, ads, or analytics.
 
 Main features:
 
@@ -22,12 +22,12 @@ Main features:
 
 The app is in Japanese only. Below, each button is written as "English (日本語)"; the app shows the Japanese label.
 
-1. Turn on Airplane Mode and open the app.
+1. Open the app.
 2. Tap "Charts (編み図)" at the top right, then "New chart (新しい編み図)". Enter a name and tap "Confirm (決定)". Pick a stitch with the stitch button (e.g. "表目") next to the color. With "Draw (描く)" selected, tap or drag on the grid.
 3. Send the app to the background, return, and check that the edits remain.
 4. Tap "Export (出力)" (at the bottom on iPhone, in the right column on iPad). Use "Save PNG (PNGを保存)", "Save PDF (PDFを保存)", and "Export this chart (この編み図を書き出す)" for a .knit backup. Each time, choose "Save to Files (ファイルに保存)" and save to "On My iPhone (このiPhone内)" or "On My iPad (このiPad内)".
 5. In the same panel, tap "Restore from backup (バックアップから復元)", choose the .knit file from step 4, and check the restored chart.
-6. Tap "Guide (使い方)" at the top right. "Privacy (プライバシー)" explains data handling. Its privacy policy link and the support page link in "Support (サポート)" open in Safari; check them with Airplane Mode off.
+6. Tap "Guide (使い方)" at the top right. "Privacy (プライバシー)" explains data handling. Its privacy policy link and the support page link in "Support (サポート)" open in Safari.
 
 ### Other input methods
 
@@ -41,7 +41,7 @@ These have no on-screen button. They are optional, do the same as existing butto
 
 ### アプリについて
 
-本アプリは、棒針編みの編み図をiPhoneとiPadで作るためのアプリです。すべての機能がオフラインで動くため、下記の手順は機内モードのまま確認できます。アカウント登録は不要で、サーバー、広告、利用分析はありません。
+本アプリは、棒針編みの編み図をiPhoneとiPadで作るためのアプリです。アカウント登録は不要で、サーバー、広告、利用分析はありません。
 
 主な機能：
 
@@ -53,12 +53,12 @@ These have no on-screen button. They are optional, do the same as existing butto
 
 ### 審査時の確認手順
 
-1. 機内モードをオンにして、アプリを起動してください。
+1. アプリを起動してください。
 2. 右上の「編み図」から「新しい編み図」を押し、名前を入力して「決定」を押してください。色の隣の記号のボタン（「表目」など）で記号を選び、「描く」が選ばれた状態で盤面をタップまたはなぞってください。
 3. アプリをバックグラウンドに移してから戻り、編集内容が残っていることを確認してください。
 4. 「出力」（iPhoneでは画面の下、iPadでは右の列）を開き、「PNGを保存」「PDFを保存」「この編み図を書き出す」（.knit）でそれぞれ書き出してください。そのたびに「ファイルに保存」を選び、「このiPhone内」または「このiPad内」に保存してください。
 5. 同じ画面の「バックアップから復元」を押し、手順4の.knitファイルを選んで、編み図が復元されることを確認してください。
-6. 右上の「使い方」を開くと、「プライバシー」にデータの扱いが書かれています。そこにあるプライバシーポリシーと、「サポート」のサポートページへのリンクはSafariで開くので、機内モードをオフにして確認してください。
+6. 右上の「使い方」を開くと、「プライバシー」にデータの扱いが書かれています。そこにあるプライバシーポリシーと、「サポート」のサポートページへのリンクはSafariで開きます。
 
 ### 画面のボタン以外の操作
 
