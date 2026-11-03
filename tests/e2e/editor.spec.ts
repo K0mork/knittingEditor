@@ -317,7 +317,7 @@ test('creates a block and exports backup and PDF', async ({ page }) => {
   await page.mouse.down();
   await page.mouse.move(box!.x + 135, box!.y + 135);
   await page.mouse.up();
-  await page.getByRole('button', { name: 'ブロック' }).click();
+  await page.getByRole('button', { name: 'ブロック', exact: true }).click();
   await page.getByRole('button', { name: '選択範囲をブロック保存' }).click();
   await expect(page.getByText('テストブロック')).toBeVisible();
 
