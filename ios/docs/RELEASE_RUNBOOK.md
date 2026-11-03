@@ -1,6 +1,6 @@
 # v1.0 提出・公開の手順
 
-v1.0をApp Storeへ提出・公開するまで、次の順に進める。Apple Developer Programへの個人での加入と有料のTeamでの署名（手順1〜3）は2026-11-02に、App Store Connectでのアプリの登録（手順4）は2026-11-03に済んでおり、次は[手順5](#5-提出用release-archiveを作成し検査アップロードする)から進める。全項目の管理は[提出チェックリスト](APP_STORE_CHECKLIST.md)、入力値の正本は[メタデータ](APP_STORE_METADATA.md)、実機の手順と証跡は[実機リリースゲート](REAL_DEVICE_RELEASE_CHECKLIST.md)を使う。v1.1以降の更新版は[手順10](#10-更新版を提出する)を加えて進める。
+v1.0をApp Storeへ提出・公開するまで、次の順に進める。Apple Developer Programへの個人での加入と有料のTeamでの署名（手順1〜3）は2026-11-02に、App Store Connectでのアプリの登録から審査への提出まで（手順4〜7）は2026-11-03に済んだ。v1.0は審査待ちで、次は[手順8](#8-審査と並行してtestflightで提出ビルドを実機で確かめる)を審査と並行して進める。全項目の管理は[提出チェックリスト](APP_STORE_CHECKLIST.md)、入力値の正本は[メタデータ](APP_STORE_METADATA.md)、実機の手順と証跡は[実機リリースゲート](REAL_DEVICE_RELEASE_CHECKLIST.md)を使う。v1.1以降の更新版は[手順10](#10-更新版を提出する)を加えて進める。
 
 個人情報・Team ID・App Store ConnectのApp ID・登録画面の無加工画像を、公開リポジトリやGitHubへ載せない。非公開の入力値はメインチェックアウトのルートの `private/APP_STORE_CONNECT.md` を参照する。worktreeに別の `private/` は作らない。
 
@@ -53,7 +53,12 @@ SKUは製品管理用の一意な文字列を利用者が決め、登録値は�
 - **完了の目安:** 目的のBundle IDとApp名でアプリのレコードが作成され、v1.0の入力・ビルド登録へ進める。
 - **関係するIssue／項目:** [#18の残件](https://github.com/K0mork/knittingEditor/issues/18#issuecomment-5947707284)、[#27](https://github.com/K0mork/knittingEditor/issues/27)、メタデータの基本情報・App名。
 
-## 5. 提出用Release Archiveを作成し、検査・アップロードする
+## 5. 提出用Release Archiveを作成し、検査・アップロードする（済み）
+
+2026-11-03に、`main`の`b0a7f26`（`ci-gate`とFull iOS validationの全ジョブが成功）から手元のXcode 27.2（`27B52`）でArchiveを作り、`check-release-assets.sh`が通り、`DTSDKName`が`iphoneos27.2`であることを確かめてアップロードした。App Store Connectに登録されたのは版1.0のビルド1（[記録](RELEASE_VERIFICATION_RECORDS.md#2026-11-03-提出用アーカイブのアップロードと審査への提出)）。
+
+更新版や作り直しのときは、次のとおりにする。
+
 
 1. 提出するソースのコミットを固定する。[検証・配布](APP_STORE_CHECKLIST.md#検証配布)に従い、提出候補PRの `ci-gate` と、その候補を含むmainコミットの `Full iOS validation`（iPhone・iPad全テスト、両端末のapp_update、unsigned Release Archive・資産検査）の成功を確認する。失敗Issueがあれば調査・修正する。
 2. **手元のXcode 27.1（iOS 27.1 SDK）以降**を使う。Xcode 26.6固定のCIアーカイブは提出に使わない。iPhone Duoでの全画面表示（#96）に加え、2027年4月からはiOS 27 SDK以降でのビルドがAppleの必須要件になる。版の根拠と検査条件は提出チェックリストの「提出用のアーカイブ」、CIとの違いは[#289](https://github.com/K0mork/knittingEditor/issues/289)を参照する。
@@ -73,7 +78,10 @@ SKUは製品管理用の一意な文字列を利用者が決め、登録値は�
 - **完了の目安:** SDK・Xcode・同梱資産の検査が通り、対象コミットに対応するv1.0のビルドがApp Store Connectで処理済みになった。
 - **関係するIssue／項目:** [#25](https://github.com/K0mork/knittingEditor/issues/25)、#289、提出チェックリストの候補CI・提出用アーカイブ・ビルド番号、実機ゲート[M6](REAL_DEVICE_RELEASE_CHECKLIST.md#m6-testflightapp-store)。
 
-## 6. App Store Connectの提出情報を入力する
+## 6. App Store Connectの提出情報を入力する（済み）
+
+2026-11-03に入力し、登録画面を下の参照先と照合した。任意のヘッダと検索結果の画像は入れず、質を上げてから次の版以降で入れる。アクセシビリティの表示は、実機で確かめてから入力する（[記録](RELEASE_VERIFICATION_RECORDS.md#2026-11-03-提出用アーカイブのアップロードと審査への提出)）。
+
 
 入力値は次の参照先から転記し、画面の必須項目・質問が変わっていないかを提出時に確認する。
 
@@ -96,7 +104,10 @@ MacとApple Vision Proは[#86の決定コメント](https://github.com/K0mork/kn
 - **完了の目安:** #27の入力がそろい、[提出チェックリストの「検証・配布」](APP_STORE_CHECKLIST.md#検証配布)と実機ゲートM6の登録内容照合を終え、手順8で審査と並行して確かめる提出ビルドの実機確認のほかに、未解決の必須項目がない。
 - **関係するIssue／項目:** [#27](https://github.com/K0mork/knittingEditor/issues/27)、[#86](https://github.com/K0mork/knittingEditor/issues/86)、提出チェックリストのApp Privacyから配信地域までの各登録項目、実機ゲートM6。
 
-## 7. 審査に提出する
+## 7. 審査に提出する（提出済み、審査待ち）
+
+2026-11-03 11:14（JST）に、ビルド1を選び、手動公開にして提出した。状態は「審査待ち」（[記録](RELEASE_VERIFICATION_RECORDS.md#2026-11-03-提出用アーカイブのアップロードと審査への提出)）。承認されるまで、この手順は完了にしない。
+
 
 1. 手順5でアップロードし、処理済みになったビルド番号をv1.0に選ぶ。[提出チェックリスト](APP_STORE_CHECKLIST.md)を再確認し、任意項目・将来対応と、手順8で審査と並行して確かめる提出ビルドの実機確認とを区別する。それ以外の必須の未完了があれば先に解消する。
 2. 公開方法は**手動公開**にして、提出前にApp Store Connectへ設定する。手順8の確認が承認より後に終わっても、確認の前に公開されないようにするためである。内容を保存して審査へ追加し、最終の提出操作まで進める。
