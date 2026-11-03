@@ -2,17 +2,17 @@
 
 ## App Store Connect提出用（最終版）
 
-2026-10-20に撮り直し、使う画面・枚数・文面を決めた（#290）。6.9インチiPhone（1320×2868）と13インチiPad（2064×2752）のそれぞれに、同じ順で5枚を登録する。2026-10-29にiPhone Duoの外側・内側の画面を同じ順と文面で足した（#353、[下の節](#iphone-duo)）。
+2026-10-20に撮り直し、使う画面・枚数・文面を決めた（#290）。2026-10-29にiPhone Duoの外側・内側の画面を同じ順と文面で足した（#353、[下の節](#iphone-duo)）。
 
-App Store Connectが必ず求めるのは、iPhoneは「iPhone with Dynamic Island (medium display)」（縦1179×2556または1206×2622）、iPadは13インチ（[スクリーンショットの仕様](https://developer.apple.com/help/app-store-connect/reference/app-information/screenshot-specifications)、2026-10-29に確認）。1320×2868は「large display」の大きさで、仕様のページには、medium displayの画像が無いときは大きい画面の画像を縮小して使う、とある。ただ、6.9インチの画像だけで提出できるかはページからは判断できないので、加入後にApp Store Connectで確かめる（#353）。
+2026-11-03にApp Store Connectへ登録した（#353）。iPhoneの欄が受け付けるのは「iPhone with Dynamic Island (medium display)」の大きさ（縦1179×2556または1206×2622、横はその逆）だけで、6.9インチ（1320×2868）の画像は大きさが無効として登録できなかった。そのため、6.9インチの5枚を1206×2622に縮小した6.3インチの5枚を、iPhoneの欄に登録した。iPadの欄には13インチ（2064×2752）の5枚を登録した。6.9インチの5枚は、6.3インチの5枚の元として残す。
 
-| 順 | 説明文 | iPhone 6.9インチ | iPad 13インチ |
-| ---: | --- | --- | --- |
-| 1 | 29種類の編み目記号で作る | [app-store-iphone-6.9-01-editor.png](screenshots/app-store-iphone-6.9-01-editor.png) | [app-store-ipad-13-01-editor.png](screenshots/app-store-ipad-13-01-editor.png) |
-| 2 | 記号は一覧から選ぶだけ | [app-store-iphone-6.9-02-stitches.png](screenshots/app-store-iphone-6.9-02-stitches.png) | [app-store-ipad-13-02-stitches.png](screenshots/app-store-ipad-13-02-stitches.png) |
-| 3 | PDFにしてA4で印刷 | [app-store-iphone-6.9-03-export.png](screenshots/app-store-iphone-6.9-03-export.png) | [app-store-ipad-13-03-export.png](screenshots/app-store-ipad-13-03-export.png) |
-| 4 | 背景色を変えて見やすく | [app-store-iphone-6.9-04-background.png](screenshots/app-store-iphone-6.9-04-background.png) | [app-store-ipad-13-04-background.png](screenshots/app-store-ipad-13-04-background.png) |
-| 5 | ダークモードにも対応 | [app-store-iphone-6.9-05-dark.png](screenshots/app-store-iphone-6.9-05-dark.png) | [app-store-ipad-13-05-dark.png](screenshots/app-store-ipad-13-05-dark.png) |
+| 順 | 説明文 | iPhone 6.3インチ（登録用） | iPhone 6.9インチ（元） | iPad 13インチ |
+| ---: | --- | --- | --- | --- |
+| 1 | 29種類の編み目記号で作る | [app-store-iphone-6.3-01-editor.png](screenshots/app-store-iphone-6.3-01-editor.png) | [app-store-iphone-6.9-01-editor.png](screenshots/app-store-iphone-6.9-01-editor.png) | [app-store-ipad-13-01-editor.png](screenshots/app-store-ipad-13-01-editor.png) |
+| 2 | 記号は一覧から選ぶだけ | [app-store-iphone-6.3-02-stitches.png](screenshots/app-store-iphone-6.3-02-stitches.png) | [app-store-iphone-6.9-02-stitches.png](screenshots/app-store-iphone-6.9-02-stitches.png) | [app-store-ipad-13-02-stitches.png](screenshots/app-store-ipad-13-02-stitches.png) |
+| 3 | PDFにしてA4で印刷 | [app-store-iphone-6.3-03-export.png](screenshots/app-store-iphone-6.3-03-export.png) | [app-store-iphone-6.9-03-export.png](screenshots/app-store-iphone-6.9-03-export.png) | [app-store-ipad-13-03-export.png](screenshots/app-store-ipad-13-03-export.png) |
+| 4 | 背景色を変えて見やすく | [app-store-iphone-6.3-04-background.png](screenshots/app-store-iphone-6.3-04-background.png) | [app-store-iphone-6.9-04-background.png](screenshots/app-store-iphone-6.9-04-background.png) | [app-store-ipad-13-04-background.png](screenshots/app-store-ipad-13-04-background.png) |
+| 5 | ダークモードにも対応 | [app-store-iphone-6.3-05-dark.png](screenshots/app-store-iphone-6.3-05-dark.png) | [app-store-iphone-6.9-05-dark.png](screenshots/app-store-iphone-6.9-05-dark.png) | [app-store-ipad-13-05-dark.png](screenshots/app-store-ipad-13-05-dark.png) |
 
 各画面に写っているもの:
 
@@ -30,12 +30,15 @@ App Store Connectが必ず求めるのは、iPhoneは「iPhone with Dynamic Isla
 - 4枚目は、iPhoneで背景色を選んだあと、端末内のデータ（アプリのコンテナの`Library/WebKit`）をiPadへ写して撮った。iPadのSimulatorでは「ほかの色を選ぶ」から色の選択画面が開かなかったため。アプリの不具合ではなく、色の選択画面を出すシステムのプロセスの起動が、Simulatorの起動直後やMacが重いときに間に合わず、システムが表示をやめるためだった（Safariでも同じ）。ほかの入力欄を押してから見本を押すか、パネルを開き直すと開く。
 - iPadで外観を切り替えたあとに画面下のホームバーが出たままになったので、Simulatorを再起動してから撮り直した。
 - 説明文の帯と文字は、下の「説明文を入れる（最終版）」の決まりに従って付けた。文字はヒラギノ丸ゴ ProN W4、帯の高さは画像の高さの17%で、画面の部分は残りの高さに合わせて縮小し、左右中央に置いた。
+- 6.3インチの5枚は、6.9インチの5枚を`sips --resampleHeight 2622`で縮小し（幅は1207になる）、`sips --cropToHeightWidth 2622 1206`で幅を1ピクセル削って作った。縦横比がほぼ同じなので、撮り直していない。6.9インチの5枚を作り直したときは、6.3インチの5枚も同じ手順で作り直す。
 
 ### iPhone Duo
 
 2027年4月から、iOS 27.1 SDK以降でビルドしたアプリにはiPhone Duoのスクリーンショットが必要になる（[Appleの告知](https://developer.apple.com/news/?id=kkphp5qo)、2026-10-05）。このアプリは提出用のアーカイブをXcode 27.1以降で作るので（[提出チェックリスト](APP_STORE_CHECKLIST.md)）、2027年4月以降の提出では、v1.0でも更新版でも登録する。
 
-仕様のページには外側の画面（閉じた状態、縦1398×2034）と内側の画面（開いた状態、縦2007×2853）の大きさが載っているが、どちらが必須かは書かれていない。そのため両方を撮り、どちらも上と同じ5つの画面・順・文面にした（2026-10-29、#353）。外側・内側のどちらが必須か、縦と横のどちらでもよいか、何枚から登録できるかは、加入後にApp Store Connectで確かめる（#353）。
+仕様のページには外側の画面（閉じた状態、縦1398×2034）と内側の画面（開いた状態、縦2007×2853）の大きさが載っているが、どちらが必須かは書かれていない。そのため両方を撮り、どちらも上と同じ5つの画面・順・文面にした（2026-10-29、#353）。
+
+2026-11-03にApp Store Connectで確かめた（#353）。iPhone Duoの欄は1つで、外側と内側のどちらの大きさも、縦と横のどちらの向きも受け付け、どちらかが必須という表示は無かった。欄には10枚まで入り、外側と内側の両方の5枚を入れると同じ画面が2回ずつ並ぶので、片方の5枚だけを登録する。v1.0では、製品ページで文字が大きく見える外側の5枚を登録した。
 
 | 順 | 説明文 | 外側（1398×2034） | 内側（2007×2853） |
 | ---: | --- | --- | --- |
@@ -58,6 +61,36 @@ App Store Connectが必ず求めるのは、iPhoneは「iPhone with Dynamic Isla
 - 開閉したあと、盤面が画面の一部にしか描かれないことがあった。アプリを起動し直すと直ったので、外側は起動し直してから撮った（#367で扱う）。
 - 帯と文字は上と同じ決まりで付けた。文字の大きさは、幅が1500未満の外側は幅の6.8%（95px）、内側は幅の5%（100px）で、上の5枚と同じ計算にした。
 
+## 製品ページのヘッダと検索結果
+
+iOS 27・iPadOS 27以降のApp Storeでは、製品ページの最上部（ヘッダ）と検索結果に、スクリーンショットとは別の画像や動画を出せる（Appleの呼び方はcreative assets）。どちらも任意で、入れない場合、検索結果にはスクリーンショットが出る。版の審査と一緒に審査され、公開した後も、アセットライブラリで承認された画像に版を出さずに差し替えられる（[Creative assets specifications](https://developer.apple.com/help/app-store-connect/reference/app-information/creative-assets-specifications)、[Manage your App Store assets](https://developer.apple.com/help/app-store-connect/manage-app-information/manage-your-app-store-assets)、[App Store asset best practices](https://developer.apple.com/app-store/asset-best-practices/)、2026-11-03に確認）。
+
+大きさは、ヘッダが21:9（3840×1646）、検索結果が3:2（1920×1280〜3840×2560）で、両方に使える共通の16:9（5244×2950、PNGだけ）もある。透過は使えない。共通の画像をヘッダに入れ、検索結果で「Use header asset in search results」をオンにすると、同じ画像が両方に出る。
+
+2026-11-03に、共通の1枚[app-store-creative-universal.png](screenshots/app-store-creative-universal.png)（5244×2950、透過なし）を作り、版1.0のヘッダに登録して検索結果にも使う設定にした。
+
+決めたこと:
+
+- 見出しは「棒針の編み図を、iPhoneとiPadで。」にした。Appleは、ヘッダでは伝えることを1つに絞り、検索結果では何のアプリかがひと目でわかるように、としている。
+- オフラインで使えることは機能の1つで、ブランドとして前面に出すことではないので、見出しにしない。Web版の見出しにある「無料」は、Appleが載せないよう求める価格の表示に当たるおそれがあり、有料の機能（#38）を足したときに実態と合わなくなるので、入れない。URL、©マーク、受賞歴も入れない。
+- 見出しの下に、機能の行「29種類の記号・自動保存・PNG／PDF」を置く。
+- 左にアイコン、アプリ名、見出し、機能の行を、右にiPadとiPhoneの編集画面を置く。画面は、提出用スクリーンショットの1枚目（iPad 13インチと6.9インチ）から説明文の帯を除いて切り出したもので、加工しない。色はアイコンの深緑とクリームに合わせた。
+- 16:9の画像は、ヘッダでは上下が、検索結果では左右が切り取られる。文字とアイコンは、どちらに切り取られても残る中央の範囲（左から410、上から352、幅4425×高さ2247）に置いた。Appleのテンプレートにある安全範囲は使っていない（テンプレートを取り込んでいない）。見え方はApp Store Connectの「Preview」で、iPhone・iPadの縦横を確かめる。
+
+作り方:
+
+元は[`ios/design/app-store-creative/universal.html`](../design/app-store-creative/universal.html)で、提出用スクリーンショットとアプリアイコンを直接読み込む。文字はmacOSのヒラギノ角ゴシックを使うので、macOSでリポジトリルートから次を実行する。
+
+```sh
+npx playwright screenshot --browser chromium --viewport-size "5244, 2950" --wait-for-timeout 1000 \
+  "file://$PWD/ios/design/app-store-creative/universal.html" ios/docs/screenshots/app-store-creative-universal.png
+sips -g pixelWidth -g pixelHeight -g hasAlpha ios/docs/screenshots/app-store-creative-universal.png
+```
+
+- URLの末尾に`?safe`を付けると、切り取られても残る範囲を黄色の破線で表示する。確かめるときだけ使い、登録する画像には付けない。
+- 登録した画像は、画面を先に切り出してから縮小して作った。このHTMLから作り直すと、細い線の画素の縮小のされ方がわずかに変わるが、配置と見た目は同じ。
+- 見出し、機能の行、提出用スクリーンショットの1枚目、アイコンを変えたときに作り直して、App Store Connectの画像も差し替える。
+
 ## 説明文を入れる（最終版）
 
 2026-10-09に、最終版のスクリーンショットには機能を説明する短い文を入れると決めた（#85）。2026-10-20に上の5枚で作った。
@@ -65,7 +98,7 @@ App Store Connectが必ず求めるのは、iPhoneは「iPhone with Dynamic Isla
 - 1枚に1つの文を、画面の上の帯に置く。文は全角16文字以内にし、iPhoneの縮小表示でも読める大きさにする。
 - 帯の色はアプリのヘッダーの緑（`#346f42`）、文字は白にする（コントラスト比6.0:1）。
 - 画面の部分は撮ったものを縮小して帯の下に置き、加工しない（実際にない機能や表示を描き足さない）。
-- 仕上がりの解像度は提出サイズ（iPhone 6.9インチは1320×2868、iPad 13インチは2064×2752、iPhone Duoは外側1398×2034・内側2007×2853）のままにする。
+- 仕上がりの解像度は提出サイズ（iPhone 6.9インチは1320×2868、iPad 13インチは2064×2752、iPhone Duoは外側1398×2034・内側2007×2853）のままにする。App Store ConnectのiPhoneの欄に登録する6.3インチ（1206×2622）は、6.9インチから縮小して作る（上の取得条件）。
 - 文は、その画面で実際に見せている機能だけを書く。
 
 文の案（2026-10-20に、6つ目を除く5つを採用した。2つ目は「分類から」を「一覧から」に変えた）:

@@ -1,0 +1,7 @@
+# 2026-11-03 — App Store Connectに登録したスクリーンショットとヘッダの画像を記録する
+
+- 影響: App Store Connectへの登録で分かったことを提出資料に反映した（#353）。iPhoneの欄はmedium displayの大きさ（1179×2556または1206×2622）しか受け付けず、6.9インチ（1320×2868）の画像は登録できなかったので、6.9インチの5枚を縮小した6.3インチ（1206×2622）の5枚を足した。iPhone Duoの欄は外側・内側のどちらの大きさも縦横どちらの向きも受け付け、必須の表示が無く、最大10枚なので、片方の5枚（v1.0では外側）を登録することを書いた。iOS 27以降の製品ページのヘッダと検索結果に共通で使う16:9の画像（5244×2950、透過なし）と、それを作るHTMLを足し、見出し（「棒針の編み図を、iPhoneとiPadで。」）とオフラインや「無料」を前面に出さない理由を書いた。`ios/scripts/check-release-assets.sh`は6.3インチの5枚とヘッダの画像の大きさ、ヘッダの画像に透過が無いことを、`ios/scripts/check-app-store-docs.sh`はそれらのファイルが`SCREENSHOTS.md`に載っていることを検査するようにした。
+- 主なファイル: `ios/docs/SCREENSHOTS.md`、`ios/docs/APP_STORE_METADATA.md`、`ios/docs/APP_STORE_CHECKLIST.md`、`ios/docs/RELEASE_RUNBOOK.md`、`ios/docs/screenshots/app-store-iphone-6.3-0*.png`、`ios/docs/screenshots/app-store-creative-universal.png`、`ios/design/app-store-creative/universal.html`、`ios/scripts/check-release-assets.sh`、`ios/scripts/check-app-store-docs.sh`
+- テスト: 検査スクリプトに項目を足した。追加したテストファイルは無い。
+- 検証: `bash ios/scripts/check-release-assets.sh <b0a7f26のアーカイブ内の.app>`（成功）。ヘッダの画像を一時的に透過ありにすると同じ検査が失敗し、戻すと成功することを確かめた。`bash ios/scripts/check-app-store-docs.sh`（成功）、`npx vitest run scripts/app-privacy-docs.test.mjs`（15件成功）、`git diff --check`（成功）。`SCREENSHOTS.md`に書いたコマンドでHTMLから画像を作り直し、登録した画像と比べて、違いが細い線の縮小のされ方だけで、配置と見た目が同じことを確かめた。
+- デプロイ影響: なし。Pagesは再配信されず、アプリのビルドにも影響しない。App Store Connectには、2026-11-03にこの画像を登録済み。

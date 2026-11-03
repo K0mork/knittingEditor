@@ -87,7 +87,8 @@ SKUは製品管理用の一意な文字列を利用者が決め、登録値は�
 | 価格 | [質問への回答](APP_STORE_METADATA.md#app-store-connectの質問への回答)のv1.0無料を設定する |
 | 販売元・著作権 | [販売元と著作権表記](APP_STORE_METADATA.md#販売元と著作権表記)。販売元の表示を確認し、著作権欄は同節の公開表記にする |
 | 審査メモ | [質問への回答](APP_STORE_METADATA.md#app-store-connectの質問への回答)から[審査メモ](APP_REVIEW_NOTES.md)の英語・日本語を転記する |
-| スクリーンショット | [スクリーンショットの説明文](APP_STORE_METADATA.md#スクリーンショットの説明文)から[最終版の画面・順・ファイル](SCREENSHOTS.md#app-store-connect提出用最終版)へ進み、iPhone・iPadそれぞれ登録する。2027年4月以降の提出では、[iPhone Duo](SCREENSHOTS.md#iphone-duo)の画像も登録する（iOS 27.1 SDK以降のアプリで必須）。iPhoneで必須のmedium displayの欄と、iPhone Duoの外側・内側のどちらが必須かを登録画面で確かめ、結果に合わせて`SCREENSHOTS.md`を直す（#353） |
+| スクリーンショット | [スクリーンショットの説明文](APP_STORE_METADATA.md#スクリーンショットの説明文)から[最終版の画面・順・ファイル](SCREENSHOTS.md#app-store-connect提出用最終版)へ進み、iPhoneの欄には6.3インチ（1206×2622）、iPadの欄には13インチの5枚を登録する。iPhoneの欄はmedium displayの大きさしか受け付けず、6.9インチの画像は使えない。2027年4月以降の提出では、[iPhone Duo](SCREENSHOTS.md#iphone-duo)の外側か内側の片方の5枚も登録する（iOS 27.1 SDK以降のアプリで必須、#353） |
+| ヘッダと検索結果（任意） | [製品ページのヘッダと検索結果](SCREENSHOTS.md#製品ページのヘッダと検索結果)の共通の画像を「Header and Search Results」のHeaderに入れ、Search Resultsで「Use header asset in search results」をオンにする。Previewで見え方を確かめる |
 | 輸出コンプライアンス | [輸出コンプライアンス（暗号化）](APP_STORE_METADATA.md#輸出コンプライアンス暗号化)。アップロードしたビルドの設定と質問の有無を確認する |
 | アクセシビリティの表示 | [アクセシビリティの表示](APP_STORE_METADATA.md#アクセシビリティの表示accessibility-nutrition-labels)。実機で確かめた範囲に従い回答する |
 

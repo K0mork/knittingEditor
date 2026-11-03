@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<!--
+  App Storeの製品ページのヘッダと検索結果に使う共通サイズ（16:9、5244×2950）の画像の元。
+  作り方と決めたことは ios/docs/SCREENSHOTS.md の「ヘッダと検索結果」にある。
+-->
+<style>
+  :root {
+    --green: #1a4a2e;
+    --green-2: #245c3a;
+    --cream: #f7eedb;
+  }
+  html, body { margin: 0; width: 5244px; height: 2950px; overflow: hidden; }
+  body {
+    background:
+      radial-gradient(ellipse 2600px 2000px at 78% 45%, var(--green-2), transparent 70%),
+      var(--green);
+    font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", sans-serif;
+    color: var(--cream);
+    position: relative;
+  }
+  /* 21:9（ヘッダ）と3:2（検索結果）に切り取っても残る範囲。?safe を付けて開くと表示する。 */
+  .safe { display: none; position: absolute; left: 410px; top: 352px; width: 4425px; height: 2247px; outline: 8px dashed #ff0; }
+  body.safe-area .safe { display: block; }
+  .text { position: absolute; left: 560px; top: 640px; width: 2050px; }
+  .brand { display: flex; align-items: center; gap: 56px; }
+  .brand img { width: 300px; height: 300px; border-radius: 68px; box-shadow: 0 0 0 6px rgba(247,238,219,.25); }
+  .brand span { font-size: 112px; font-weight: 600; letter-spacing: .02em; }
+  h1 { margin: 150px 0 0; font-size: 192px; line-height: 1.36; white-space: nowrap; font-weight: 800; letter-spacing: .01em; }
+  h1 em { font-style: normal; color: #f2b48f; }
+  .features { margin-top: 110px; font-size: 104px; font-weight: 500; opacity: .9; }
+  .device { position: absolute; background: #111; box-shadow: 0 60px 160px rgba(0,0,0,.45); overflow: hidden; }
+  .screen { overflow: hidden; }
+  .screen img { display: block; }
+  /* 提出用スクリーンショットから、説明文の帯を除いた画面の部分だけを切り出す。 */
+  .ipad { left: 2900px; top: 470px; width: 1840px; height: 2700px; padding: 44px; border-radius: 120px; }
+  .ipad .screen { width: 1840px; height: calc(2286px * 1840 / 1713); border-radius: 76px 76px 0 0; }
+  .ipad img { width: calc(2064px * 1840 / 1713); margin: calc(-466px * 1840 / 1713) 0 0 calc(-175px * 1840 / 1713); }
+  .iphone { left: 2620px; top: 1240px; width: 720px; height: 1900px; padding: 30px; border-radius: 130px; }
+  .iphone .screen { width: 720px; height: calc(2381px * 720 / 1095); border-radius: 100px 100px 0 0; }
+  .iphone img { width: calc(1320px * 720 / 1095); margin: calc(-487px * 720 / 1095) 0 0 calc(-112px * 720 / 1095); }
+</style>
+</head>
+<body>
+  <div class="text">
+    <div class="brand"><img src="../../App/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png" alt=""><span>棒針編み図エディタ</span></div>
+    <h1>棒針の<em>編み図</em>を、<br>iPhoneとiPadで。</h1>
+    <div class="features">29種類の記号・自動保存・PNG／PDF</div>
+  </div>
+  <div class="device ipad"><div class="screen"><img src="../../docs/screenshots/app-store-ipad-13-01-editor.png" alt=""></div></div>
+  <div class="device iphone"><div class="screen"><img src="../../docs/screenshots/app-store-iphone-6.9-01-editor.png" alt=""></div></div>
+  <div class="safe"></div>
+  <script>if (location.search.includes('safe')) document.body.classList.add('safe-area');</script>
+</body>
+</html>
