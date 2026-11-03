@@ -169,6 +169,7 @@ App Store Connectの年齢制限は、質問票への回答から決まる（202
 - XcodeのOrganizerからアップロードするときは、配布オプションの「Manage Version and Build Number」をオンにする。Xcodeが、App Store Connectにあるビルドより大きい番号を付けてアップロードする。
 - コマンドラインでArchiveするときは、`xcodebuild archive ... CURRENT_PROJECT_VERSION=<番号>`で、前回より大きい番号を指定する。
 - アップロードしたビルド番号は、[`REAL_DEVICE_RELEASE_CHECKLIST.md`](REAL_DEVICE_RELEASE_CHECKLIST.md)のM6の証跡と`docs/dev-log/`の記録に書く。
+- `project.yml`のビルド番号はアップロードしたものと一致しないため、Archiveを作ったコミットに`ios-v<バージョン>-build<ビルド番号>`のタグを付けて対応を残す（[`RELEASE_RUNBOOK.md`](RELEASE_RUNBOOK.md)の手順5の7）。
 
 ## 申請前確認
 
