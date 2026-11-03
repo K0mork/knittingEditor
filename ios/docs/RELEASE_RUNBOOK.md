@@ -80,7 +80,7 @@ SKUは製品管理用の一意な文字列を利用者が決め、登録値は�
 
 ## 6. App Store Connectの提出情報を入力する（済み）
 
-2026-11-03に入力し、登録画面を下の参照先と照合した。任意のヘッダと検索結果の画像は入れず、質を上げてから次の版以降で入れる。アクセシビリティの表示は、実機で確かめてから入力する（[記録](RELEASE_VERIFICATION_RECORDS.md#2026-11-03-提出用アーカイブのアップロードと審査への提出)）。
+2026-11-03に入力し、登録画面を下の参照先と照合した。任意のヘッダと検索結果の画像は入れず、質を上げてから次の版以降で入れる。アクセシビリティの表示は、2026-11-03に提出ビルドと同じアプリで確かめて回答を決めた（[確認の記録](RELEASE_VERIFICATION_RECORDS.md#2026-11-03-アクセシビリティの表示の確認)、[提出の記録](RELEASE_VERIFICATION_RECORDS.md#2026-11-03-提出用アーカイブのアップロードと審査への提出)）。
 
 
 入力値は次の参照先から転記し、画面の必須項目・質問が変わっていないかを提出時に確認する。
@@ -98,7 +98,7 @@ SKUは製品管理用の一意な文字列を利用者が決め、登録値は�
 | スクリーンショット | [スクリーンショットの説明文](APP_STORE_METADATA.md#スクリーンショットの説明文)から[最終版の画面・順・ファイル](SCREENSHOTS.md#app-store-connect提出用最終版)へ進み、iPhoneの欄には6.3インチ（1206×2622）、iPadの欄には13インチの5枚を登録する。iPhoneの欄はmedium displayの大きさしか受け付けず、6.9インチの画像は使えない。2027年4月以降の提出では、[iPhone Duo](SCREENSHOTS.md#iphone-duo)の外側か内側の片方の5枚も登録する（iOS 27.1 SDK以降のアプリで必須、#353） |
 | ヘッダと検索結果（任意） | [製品ページのヘッダと検索結果](SCREENSHOTS.md#製品ページのヘッダと検索結果)の共通の画像を「Header and Search Results」のHeaderに入れ、Search Resultsで「Use header asset in search results」をオンにする。Previewで見え方を確かめる |
 | 輸出コンプライアンス | [輸出コンプライアンス（暗号化）](APP_STORE_METADATA.md#輸出コンプライアンス暗号化)。アップロードしたビルドの設定と質問の有無を確認する |
-| アクセシビリティの表示 | [アクセシビリティの表示](APP_STORE_METADATA.md#アクセシビリティの表示accessibility-nutrition-labels)。実機で確かめた範囲に従い回答する |
+| アクセシビリティの表示 | [アクセシビリティの表示](APP_STORE_METADATA.md#アクセシビリティの表示accessibility-nutrition-labels)。表の回答どおりに入力する。回答は版を出さずに変えられる |
 
 MacとApple Vision Proは[#86の決定コメント](https://github.com/K0mork/knittingEditor/issues/86#issuecomment-6010786273)に従い、**v1.0では既定のまま配信を止めない**。両環境の動作確認はv1.0の必須条件に追加しない。提出チェックリストの未チェック欄は、この決定への参照とともに扱いを記録する。
 
