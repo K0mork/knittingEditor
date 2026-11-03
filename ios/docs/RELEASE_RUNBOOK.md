@@ -120,7 +120,7 @@ MacとApple Vision Proは[#86の決定コメント](https://github.com/K0mork/kn
 
 ## 8. 審査と並行して、TestFlightで提出ビルドを実機で確かめる
 
-2026-11-03に、TestFlightの1.0 (1)をiPhone 17とiPad Air 第5世代へ入れ、下の2〜5を確かめた。公開を止める問題は無かった（[記録](RELEASE_VERIFICATION_RECORDS.md#2026-11-03-testflightでの提出ビルドの確認2526)）。オフラインのiCloud Driveの`.knit`で理由の分かる表示にならないことは、v1.0では合格とし#387で扱う。
+2026-11-03に、TestFlightの1.0 (1)をiPhone 17とiPad Air 第5世代へ入れ、下の2〜5を確かめた。公開を止める問題は無かった（[記録](RELEASE_VERIFICATION_RECORDS.md#2026-11-03-testflightでの提出ビルドの確認2526)）。オフラインのiCloud Driveの`.knit`で理由の分かる表示にならないことは、v1.0では合格とし#387で扱う。同日、TestFlightのビルドでは確かめられない読み込み直前のファイル削除（M3）を、アプリのコードが同じ開発ビルドで両端末で確かめた（[記録](RELEASE_VERIFICATION_RECORDS.md#2026-11-03-読み込み直前のファイル削除の確認m3)）。
 
 手順7で提出したら、審査の結果を待たずに始める。提出ビルドの実機確認は、提出の条件ではなく公開の条件とする（2026-11-02の決定。提出を早めるため）。Appleは提出の前にTestFlightを通すことを求めていない。手順5でアップロードしたビルドはそのままTestFlightにも出るので、確認のために別のビルドを作らない。
 

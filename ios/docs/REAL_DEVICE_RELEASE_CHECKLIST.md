@@ -186,7 +186,7 @@ Hangsは`potential-hangs`／`hang-risks`表のうちアプリとWebKitの行を�
 - [x] アプリからPNG、PDF、`.knit`をFilesへ保存する。（2026-09-22、iPad Air 第5世代。機内モードで3種すべてを「このiPad内」へ保存）
 - [x] 共有シートからAirDropまたは別の共有先へ送る。（2026-09-22、iPad Air 第5世代。`.knit`とPNGを共有シートから送り、編集画面へ復帰することを確認）
 - [x] Files、AirDrop、メール等から`.knit`をアプリで開き、同じ編み図へ復元する。（2026-09-22、iPad Air 第5世代。Filesから開く`onOpenURL`経路で復元し、13:09:56と13:10:28に編み図が作成されたことを端末内IndexedDBで実測。アプリ内「バックアップから復元」のDocument Picker経路も別途成立）
-- [ ] キャンセル、上書き、存在しないファイル、不正形式、巨大解凍データでアプリがクラッシュしない。（保存シートのキャンセルはiPhone・iPad実機とSimulatorで自動検証済み。2026-10-09にiPhone 17で、上書き保存、不正形式（でたらめなデータの`.knit`）、巨大解凍データ（解凍後300MBの`.knit`）を確かめ、どれもクラッシュせずに理由が表示された。不正形式の理由が英語だったので日本語にした（PR #147）。欠損ファイルは下記の単体テストで例外処理とエラー配送を検証する。iPhone・iPadでの読み込み直前の削除は未完了であり、下記の手順で確かめる。2026-11-03にTestFlightの提出ビルド1.0 (1)で、iPhone 17とiPad Air 第5世代の両方で、キャンセル、上書き保存、不正形式、巨大解凍データ（解凍後300MB）がクラッシュせず理由が表示されることを確かめた。端末にダウンロードされていないiCloud Driveの`.knit`を機内モードで開くと、クラッシュはしないが「バックアップを読み込めませんでした」とだけ表示され、通信が要ることは分からない。利用者の判断でv1.0はクラッシュしないことで合格とし、理由の分かる表示は#387で扱う）
+- [x] キャンセル、上書き、存在しないファイル、不正形式、巨大解凍データでアプリがクラッシュしない。（保存シートのキャンセルはiPhone・iPad実機とSimulatorで自動検証済み。2026-10-09にiPhone 17で、上書き保存、不正形式（でたらめなデータの`.knit`）、巨大解凍データ（解凍後300MBの`.knit`）を確かめ、どれもクラッシュせずに理由が表示された。不正形式の理由が英語だったので日本語にした（PR #147）。欠損ファイルは下記の単体テストで例外処理とエラー配送を検証する。iPhone・iPadでの読み込み直前の削除は、下記の手順1で確かめる。2026-11-03にTestFlightの提出ビルド1.0 (1)で、iPhone 17とiPad Air 第5世代の両方で、キャンセル、上書き保存、不正形式、巨大解凍データ（解凍後300MB）がクラッシュせず理由が表示されることを確かめた。端末にダウンロードされていないiCloud Driveの`.knit`を機内モードで開くと、クラッシュはしないが「バックアップを読み込めませんでした」とだけ表示され、通信が要ることは分からない。利用者の判断でv1.0はクラッシュしないことで合格とし、理由の分かる表示は#387で扱う。同日、`main`の`ce40940`（アプリのコードは提出ビルドと同じ）の開発ビルドにLLDBをつなぎ、iPhone 17とiPad Air 第5世代の両方で、読み込み直前にファイルを消しても、起動中・使い方ページの表示中・終了した状態から開く場合と「バックアップから復元」のどれもクラッシュせず、編集画面に「バックアップを読み込めませんでした」が出ることを確かめた（[記録](RELEASE_VERIFICATION_RECORDS.md#2026-11-03-読み込み直前のファイル削除の確認m3)））
 - [x] iPhoneとiPadの双方で同じ往復を行う。（iPadは2026-09-22に保存・共有・両方の取り込み経路が成立。iPhone 17は2026-10-09に、PNG・PDF・`.knit`を「このiPhone内」へ保存し、Filesの`.knit`から復元、MacからAirDropで受け取った`.knit`の復元、共有シートからMacへのAirDropの送信を確かめた）
 
 欠損ファイルの自動テスト範囲（`ios/Tests/KnittingEditorAppTests/NativeErrorDeliveryTests.swift`）。WebViewへ送るスクリプトを記録し、イベント名とJSON化したメッセージを検証する。実機のFiles・共有やトーストの目視確認は含まない。
@@ -198,10 +198,11 @@ Hangsは`potential-hangs`／`hang-risks`表のうちアプリとWebKitの行を�
 
 実機で残る確認は、以下をiPhone・iPadの両方で行う。
 
-1. 開発ビルドをLLDBでデバッグし、読み込み直前で止め、テスト用の`.knit`を削除してから再開する。停止場所は`WebViewModel.readIncomingBackup(at:)`の`Data(contentsOf: readingURL, ...)`と、`Coordinator.importBackup(from:)`の`Data(contentsOf: url, ...)`である。行番号ではなく、例えば以下のソースパターンでブレークポイントを置く。
+1. 開発ビルドをLLDBでデバッグし、読み込み直前で止め、テスト用の`.knit`を削除してから再開する。停止場所は、Files・共有からの経路が`WebViewModel.readIncomingBackup(at:)`（`WebViewModel.swift`）の`Data(contentsOf: readingURL, ...)`、Document Picker経路が`Coordinator.importBackup(from:)`から呼ぶ`PickedBackupFile.read(at:)`（`PickedBackupFile.swift`）の`Data(contentsOf: url, ...)`である。行番号ではなく、例えば以下のソースパターンでブレークポイントを置く。Document Pickerの行には停止位置が2つでき、続けて2回止まる。1回目で削除すれば、2回目はそのまま再開してよい。
 
    ```lldb
-   breakpoint set --file WebViewContainer.swift --source-pattern-regexp 'Data\(contentsOf'
+   breakpoint set --file WebViewModel.swift --source-pattern-regexp 'Data\(contentsOf: readingURL'
+   breakpoint set --file PickedBackupFile.swift --source-pattern-regexp 'Data\(contentsOf: url'
    ```
 
    Files・共有からの経路で停止したら、テスト用ファイルだけを次で削除して再開する。
@@ -212,6 +213,8 @@ Hangsは`potential-hangs`／`hang-risks`表のうちアプリとWebKitの行を�
    ```
 
    Document Picker経路では削除する変数を`url`に替える。Filesからは、アプリを終了した状態から開く場合（Xcodeのスキームで「Wait for the executable to be launched」を使う）と、起動中に開く場合の両方を確認する。使い方ページ表示中からも開き、編集画面へ戻る。期待結果は、クラッシュせず、準備後の編集画面に「バックアップを読み込めませんでした」が表示されることである。
+
+   Xcodeを使わずに進めてもよい。`xcrun devicectl device process launch --start-stopped`で起動し、`lldb`で`target create <ビルドした.app>`、`device select <UDID>`、`device process attach -p <PID>`の順につなぐ。Files・共有の経路は、`xcrun devicectl device copy to --domain-type appDataContainer`でアプリの`Documents/`に置いたファイルのURLを`devicectl device process launch --payload-url`で渡すと、同じ`handleIncomingURL`の処理を通る。終了した状態からは`--start-stopped`と`--payload-url`を一緒に付ける。
 
 2. iCloud Driveの端末へダウンロードされていない`.knit`を、機内モード（オフライン）でFilesから開く経路と、アプリの「バックアップから復元」で選ぶ経路で確認する。期待結果は、クラッシュせず、理由が表示されることである。Picker側で選べない・ダウンロードできない表示になる場合は、その表示を記録する。
 
