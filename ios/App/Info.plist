@@ -16,6 +16,8 @@
 	<string>棒針編み図</string>
 	<key>CFBundleName</key>
 	<string>棒針編み図</string>
+	<key>CFBundlePackageType</key>
+	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NSPhotoLibraryAddUsageDescription</key>
