@@ -305,7 +305,7 @@ v1.0の提出用アーカイブを作ってApp Store Connectへアップロー�
 |---|---|
 | 実施日 | 2026-11-03 |
 | 実施者 | K0mork |
-| Git commit | `main`の`b0a7f26` |
+| Git commit | `main`の`b0a7f26`（2026-11-04にタグ`ios-v1.0-build1`を付けた） |
 | 提出前のCI | `CI and deploy Pages`のrun [`41554607495`](https://github.com/K0mork/knittingEditor/actions/runs/41554607495)（`ci-gate`、`deploy`、`smoke`が成功）、Full iOS validationのrun [`41557279662`](https://github.com/K0mork/knittingEditor/actions/runs/41557279662)（`ios_full`×2、`app_update`×2、`release_archive`が成功） |
 | Xcode / macOS | Xcode 27.2 (27B52) / macOS 27.2 (26B123) |
 | アーカイブ | Release、汎用のiOS実機向け、Automatic署名。`DTSDKName`は`iphoneos27.2`、`DTXcodeBuild`は`27B52`、`CFBundlePackageType`は`APPL` |

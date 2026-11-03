@@ -55,7 +55,7 @@ SKUは製品管理用の一意な文字列を利用者が決め、登録値は�
 
 ## 5. 提出用Release Archiveを作成し、検査・アップロードする（済み）
 
-2026-11-03に、`main`の`b0a7f26`（`ci-gate`とFull iOS validationの全ジョブが成功）から手元のXcode 27.2（`27B52`）でArchiveを作り、`check-release-assets.sh`が通り、`DTSDKName`が`iphoneos27.2`であることを確かめてアップロードした。App Store Connectに登録されたのは版1.0のビルド1（[記録](RELEASE_VERIFICATION_RECORDS.md#2026-11-03-提出用アーカイブのアップロードと審査への提出)）。
+2026-11-03に、`main`の`b0a7f26`（`ci-gate`とFull iOS validationの全ジョブが成功）から手元のXcode 27.2（`27B52`）でArchiveを作り、`check-release-assets.sh`が通り、`DTSDKName`が`iphoneos27.2`であることを確かめてアップロードした。App Store Connectに登録されたのは版1.0のビルド1（[記録](RELEASE_VERIFICATION_RECORDS.md#2026-11-03-提出用アーカイブのアップロードと審査への提出)）。2026-11-04に、`b0a7f26`へタグ`ios-v1.0-build1`を付けた。
 
 更新版や作り直しのときは、次のとおりにする。
 
@@ -74,8 +74,16 @@ SKUは製品管理用の一意な文字列を利用者が決め、登録値は�
    資産検査の成功に加え、`DTSDKName` が `iphoneos27.1` 以降、`DTXcodeBuild` がXcode 27.1以降のビルド番号であることを確認する（27.1正式版は `27A9275`）。Xcodeの選択表示だけで済ませない。
 5. [バージョンとビルド番号](APP_STORE_METADATA.md#バージョンとビルド番号)に従い、OrganizerのDistribute AppからApp Store Connectへアップロードする。「Manage Version and Build Number」をオンにし、前回より大きいビルド番号を使う。`project.yml` の `MARKETING_VERSION` は `1.0`、`CURRENT_PROJECT_VERSION` は `1` のままとする。コマンドラインのArchiveでは同節のビルド番号指定に従う。
 6. App Store Connectで処理完了を待ち、実際に登録されたバージョン・ビルド番号を記録する。内部テストからApp Reviewへ提出できるビルドとしてアップロードする（内部テスト専用の配布に限定しない）。
+7. Archiveを作ったコミット（1で固定したコミット）に、登録されたバージョンとビルド番号を名前にした注釈付きタグを付けて、GitHubへpushする。記録を書いたコミットやマージ先の新しいコミットには付けない。TestFlightだけで配ったビルドも含め、App Store Connectに登録されたビルドごとに1つ付ける。
 
-- **完了の目安:** SDK・Xcode・同梱資産の検査が通り、対象コミットに対応するv1.0のビルドがApp Store Connectで処理済みになった。
+   ```sh
+   git tag -a ios-v<バージョン>-build<ビルド番号> <コミット> -m "iOS <バージョン> (<ビルド番号>): uploaded to App Store Connect on YYYY-MM-DD"
+   git push origin ios-v<バージョン>-build<ビルド番号>
+   ```
+
+   pushしたタグは動かしたり消したりしない。同じコミットから作り直してアップロードしても、ビルド番号が変わるので新しいタグを付ける。タグの名前は手順8以降の記録にも書く。
+
+- **完了の目安:** SDK・Xcode・同梱資産の検査が通り、対象コミットに対応するビルドがApp Store Connectで処理済みになり、そのコミットにバージョンとビルド番号のタグが付いた。
 - **関係するIssue／項目:** [#25](https://github.com/K0mork/knittingEditor/issues/25)、#289、提出チェックリストの候補CI・提出用アーカイブ・ビルド番号、実機ゲート[M6](REAL_DEVICE_RELEASE_CHECKLIST.md#m6-testflightapp-store)。
 
 ## 6. App Store Connectの提出情報を入力する（済み）
@@ -153,7 +161,7 @@ MacとApple Vision Proは[#86の決定コメント](https://github.com/K0mork/kn
 
 v1.1以降の更新版も、手順5〜9に従ってビルド・確認・入力・提出・公開する。2027年4月以降の提出では、iOS 27 SDK以降でのビルドとiPhone Duoのスクリーンショットが必要になる（手順5・6）。UIを変えた版では、iPhone Duoの画像も撮り直す。バージョン番号は[バージョンとビルド番号](APP_STORE_METADATA.md#バージョンとビルド番号)に従って上げる。App Review Guidelinesは、新しい機能を審査メモに具体的に書くよう求めており（2.3.1(a)。一般的な説明はリジェクトの対象になる）、説明のない機能を禁じている（2.5.19）。このため、手順6で審査メモを転記する前に、次のとおり[審査メモ](APP_REVIEW_NOTES.md)を直す。
 
-1. 前に公開した版のコミットから提出するコミットまでの、マージ済みPRと `docs/dev-log/` の記録を読み、利用者が使える機能・操作で増えたものと変わったものを書き出す。不具合の修正だけで、操作が変わらないものは除いてよい。
+1. 前に公開した版のタグ（`ios-v1.0-build1`など、手順5の7）から提出するコミットまでの、マージ済みPRと `docs/dev-log/` の記録を読み、利用者が使える機能・操作で増えたものと変わったものを書き出す。不具合の修正だけで、操作が変わらないものは除いてよい。
 2. 審査メモの英語・日本語の両方に、その版で増えた機能・変わった操作と、審査担当者が確かめる手順を具体的に書く。「不具合の修正と改善」のような一般的な説明だけにしない。アプリ内課金を加える版では、購入・復元を確かめる手順も書く（[#38](https://github.com/K0mork/knittingEditor/issues/38)）。
 3. 画面のボタンに出ない操作（ジェスチャー、キーボードショートカット、Apple Pencil、システムが出す画面など）を足したり変えたりしたときは、アプリ内の「使い方」と、審査メモの「Other input methods」「画面のボタン以外の操作」の両方に書く。
 4. 無効にしたまま同梱する機能や、審査のあとで機能を出し入れするリモートの切り替えを入れていないことを確かめる（2.5.19）。
