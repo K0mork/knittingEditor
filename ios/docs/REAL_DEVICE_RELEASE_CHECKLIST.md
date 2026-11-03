@@ -248,11 +248,11 @@ TEST_RUNNER_KNITTING_EDITOR_MANUAL_WINDOW=1 xcodebuild test \
 
 提出ビルドの実機確認（TestFlightでのクラッシュログ・メモリ警告・出力時間、最終画面）は、審査への提出と並行して行い、公開の前に終える。v1.0は手動公開で提出する（[`RELEASE_RUNBOOK.md`](RELEASE_RUNBOOK.md)の手順7・8）。
 
-- [ ] 署名済みArchiveを作成し、App Store ConnectへTestFlight内部配布する。
+- [ ] 署名済みArchiveを作成し、App Store ConnectへTestFlight内部配布する。（2026-11-03、`b0a7f26`の署名済みArchiveをアップロードし、版1.0のビルド1が登録された。内部テスターへの配布は手順8で行う）
 - [x] iPhone／iPadで機内モードの主要フローを実施する。（iPadは2026-09-22（M0）。iPhone 17は2026-10-09に、機内モードでアプリを起動し直し、新しい編み図を作って記号を置き、PNG・PDF・`.knit`を「このiPhone内」へ保存できた）
 - [ ] TestFlightのクラッシュログ、メモリ警告、PNG/PDF出力時間を確認する。
 - [ ] 提出ビルドで、AppIcon、起動画面、iPhone縦横、iPad全画面／可変幅の画面を確かめ、提出用の最終スクリーンショット（[`SCREENSHOTS.md`](SCREENSHOTS.md)、#290とiPhone Duoの#353で用意済み）と食い違わないことを証跡に残す。
-- [ ] App Privacy回答、Privacy Policy URL、サポートURL、審査メモを登録内容と照合する。
+- [x] App Privacy回答、Privacy Policy URL、サポートURL、審査メモを登録内容と照合する。（2026-11-03、提出前に登録画面で照合した）
 - [ ] [`docs/APP_STORE_CHECKLIST.md`](APP_STORE_CHECKLIST.md)の全項目を更新し、承認前に「配布完了」と報告しない。
 
 証跡: Archiveのビルド番号、TestFlightテスター・実施端末、クラッシュ／メモリ結果、App Store Connectの各登録画面、最終スクリーンショット。

@@ -296,3 +296,25 @@ largeでは、Swift側の変換が203 ms、JavaScriptの完了までが240 msで
 3台のうち最も古いiPhone 13 miniでも、通常の復元で受け付ける最大のバックアップ（約30.2 MiB）で、Swift側の各区間は最大約0.24秒（`BridgeBackupJavaScript`、239.6 ms）、復元の時刻のアプリのHangsは239 msの1件で、Appleがハングとする250 msを超えなかった。編み図1枚（約3.8 MiB）では、どの端末も0.05秒未満だった。
 
 このため、処理をMainActorの外へ移す改修と、復号の前に大きさを確かめる改修は行わないと決めた。復号の前の確認は、Web側の圧縮後32 MiBの上限があり、ネイティブ側の128 MiBを超えるデータが通常の経路で届かないため、効果も小さい。ただしiPhone 13 miniでは基準との差が小さいので、Web側の上限を上げるときや、復元のデータの形を変えるときは、変換をメインスレッドの外へ移すことを先に検討し、この手順で測り直す。
+
+## 2026-11-03 提出用アーカイブのアップロードと審査への提出
+
+v1.0の提出用アーカイブを作ってApp Store Connectへアップロードし、提出情報を入力して審査に提出した（#27）。
+
+| 項目 | 記録 |
+|---|---|
+| 実施日 | 2026-11-03 |
+| 実施者 | K0mork |
+| Git commit | `main`の`b0a7f26` |
+| 提出前のCI | `CI and deploy Pages`のrun [`41554607495`](https://github.com/K0mork/knittingEditor/actions/runs/41554607495)（`ci-gate`、`deploy`、`smoke`が成功）、Full iOS validationのrun [`41557279662`](https://github.com/K0mork/knittingEditor/actions/runs/41557279662)（`ios_full`×2、`app_update`×2、`release_archive`が成功） |
+| Xcode / macOS | Xcode 27.2 (27B52) / macOS 27.2 (26B123) |
+| アーカイブ | Release、汎用のiOS実機向け、Automatic署名。`DTSDKName`は`iphoneos27.2`、`DTXcodeBuild`は`27B52`、`CFBundlePackageType`は`APPL` |
+| アップロード | `xcodebuild -exportArchive`（`method`が`app-store-connect`、`destination`が`upload`、Automatic署名、`manageAppVersionAndBuildNumber`をオン）。登録されたのは版1.0のビルド1 |
+| 提出 | 2026-11-03 11:14（JST）、手動公開。状態は「審査待ち」 |
+
+- `ios/scripts/check-release-assets.sh`は、アーカイブ内の`.app`を渡して成功した。`.xcarchive`そのものを渡すと、同梱のWeb資産が見つからず失敗する。
+- 提出前に、App Store Connectの登録画面を文書と照合した。名前、サブタイトル（オフラインを売りにしない方針で「iPhone・iPadで簡単に編み図を作成」に変えた）、カテゴリ、第三者のコンテンツの権利、年齢制限（4+）、App Privacy（データを収集しない）、プライバシーポリシーURL、サポートURL、配信地域（EU加盟国と中国本土を外した）、価格（無料）、プロモーションテキスト、概要、キーワード、著作権、審査メモ、手動公開を確かめた。審査の連絡先の値は`private/APP_STORE_CONNECT.md`にある。
+- スクリーンショットは、iPhoneの欄に6.3インチ、iPadの欄に13インチ、iPhone Duoの欄に外側の各5枚を登録した（[`SCREENSHOTS.md`](SCREENSHOTS.md)）。
+- 任意のヘッダと検索結果の画像は入れていない。利用者の判断で、質を上げてから次の版以降で入れる。
+- アクセシビリティの表示は入力していない。実機で確かめてから入力する（[`APP_STORE_METADATA.md`](APP_STORE_METADATA.md)の「アクセシビリティの表示」）。
+- 残り：審査と並行して、TestFlightで提出ビルドを実機で確かめる（[`RELEASE_RUNBOOK.md`](RELEASE_RUNBOOK.md)の手順8、M6、#25、#26）。承認されても、確認が終わるまで公開しない。
