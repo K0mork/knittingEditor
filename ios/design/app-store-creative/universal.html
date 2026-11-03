@@ -5,7 +5,7 @@
 <!--
   App Storeの製品ページのヘッダと検索結果に使う共通サイズ（16:9、5244×2950）の画像の元。
   作り方と決めたことは ios/docs/SCREENSHOTS.md の「製品ページのヘッダと検索結果」にある。
-  端末によって表示される範囲が大きく違うので、文字は ?safe で表示する範囲がすべて重なる中央に置く。
+  端末によって表示される範囲が大きく違うので、文字は ?safe で表示する範囲がすべて重なる中央に置く。範囲は目安で、Appleのテンプレートの安全範囲ではない。
 -->
 <style>
   :root {
@@ -48,7 +48,7 @@
   .iphone { left: 2830px; top: 1180px; width: 380px; padding: 17px; border-radius: 70px; }
   .iphone .screen { width: 380px; height: calc(2381px * 380 / 1095); border-radius: 54px; }
   .iphone img { width: calc(1320px * 380 / 1095); margin: calc(-487px * 380 / 1095) 0 0 calc(-112px * 380 / 1095); }
-  /* ?safe で開いたときだけ、App Store Connectのプレビューで測った表示範囲を重ねる（2026-11-03）。 */
+  /* ?safe で開いたときだけ、プレビューのスクリーンショットから読み取った範囲と、縦横比から計算した範囲を重ねる（2026-11-03、目安）。 */
   .area { display: none; position: absolute; outline: 10px dashed; }
   body.safe-area .area { display: block; }
   .area.wide { left: 0; top: 352px; width: 5244px; height: 2247px; color: #ff0; }      /* 21:9（ヘッダ） */
