@@ -1,79 +1,73 @@
 # App Review notes
 
-App Store Connectの審査メモには、英語と日本語の両方を転記する。アプリの画面は日本語だけなので、英語の手順にはボタンの日本語名を添え、日本語を読めない審査担当者でも手順をたどれるようにする（#292）。ボタン名を変えたときは、両方の手順を直す。
+App Store Connectの審査メモ（App Review Informationの「メモ」）には、「## English」から最後までを転記する。メモは4000文字までなので、英語と日本語を合わせてこの範囲に収める。転記した先では書式が付かないため、本文には太字やコードの書式を使わない。アプリの画面は日本語だけなので、英語の手順にはボタンの日本語名を添え、日本語を読めない審査担当者でも手順をたどれるようにする（#292）。ボタン名を変えたときは、両方の手順を直す。
 
 画面のボタンに出ない操作（ジェスチャー、キーボードショートカット、Apple Pencil、システムが出す画面など）は、審査担当者が気づきにくい。App Review Guidelines 2.5.19は説明のない機能を禁じているので、こうした操作を足したり変えたりしたときは、アプリ内の「使い方」と、ここの「Other input methods」「画面のボタン以外の操作」の両方を直す（#352）。更新版を提出するときの手順は[提出手順の10](RELEASE_RUNBOOK.md#10-更新版を提出する)にある。
 
 ## English
 
-### About Guideline 4.2
+### Review guideline 4.2 (Minimum Functionality)
 
-This app is not a wrapper that only displays a website. The editing engine is bundled in the app, and the following work completes even in Airplane Mode:
+This app is not a wrapper around a website. The chart editor is bundled with the app, and all of the following works in Airplane Mode:
 
-- Editing knitting charts on a canvas with 29 stitch symbols, with pan and pinch zoom
-- Automatic saving to on-device storage (IndexedDB), flushed when the app moves to the background
-- Generating PNG images, single-page PDFs, and A4 tiled PDFs
-- Compressing, validating, and restoring `.knit` backups
-- Saving to on-device storage in Files and opening local `.knit` files from Files or other apps
-- Adaptive layouts for iPhone and iPad (including resizable windows), VoiceOver labels, and in-app input dialogs
+- Editing knitting charts with 29 stitch symbols, with pan and pinch zoom
+- Automatic saving on the device
+- Exporting PNG images and PDFs (one page, or split across A4 pages)
+- Backing up charts to .knit files and restoring them
+- Saving files to On My iPhone / On My iPad in Files, and opening .knit files from Files or other apps
 
-The app also supports sharing through the native share sheet, including AirDrop. These destinations can be checked separately from the offline steps below, with the required connections enabled.
-
-The app does not load any external website to start the editor. It opens Safari only when the user taps the support page or app privacy policy link in the in-app guide, and opens Mail only when the user taps the support email address. There are no accounts, servers, ads, analytics SDKs, or remote configuration.
+There are no accounts, servers, ads, analytics, or remote configuration. The app opens Safari only when the user taps the support page or privacy policy link in the guide, and Mail only when the user taps the support email address.
 
 ### How to review
 
-The app's interface is in Japanese. Button names are shown as "English (日本語)".
+The app is in Japanese only. Buttons are written as "English (日本語)".
 
-1. Turn on Airplane Mode and launch the app.
-2. Tap "Charts (編み図)" at the top right, then "New chart (新しい編み図)". Enter a chart name and tap "Confirm (決定)" to create it. Choose a stitch with the stitch button (for example "表目") next to the color, make sure "Draw (描く)" is selected, and tap or drag on the grid to place several stitches.
-3. Move the app to the background, return to it, and confirm the edits are still there.
-4. Tap "Export (出力)" (at the bottom on iPhone, in the column on the right on iPad). Export a PNG with "Save PNG (PNGを保存)", a PDF with "Save PDF (PDFを保存)", and a `.knit` backup with "Export this chart (この編み図を書き出す)". For each file, choose "Save to Files (ファイルに保存)" in the confirmation dialog, select "On My iPhone (このiPhone内)" or "On My iPad (このiPad内)", and complete the save to keep the file available offline.
-5. In the same panel, tap "Restore from backup (バックアップから復元)" and choose the `.knit` file from the on-device location used in step 4, or open that file from the Files app. Confirm the restored chart.
-6. Tap "Guide (使い方)" at the top right and read the "Privacy (プライバシー)" section. The app privacy policy (https://knittingeditor.com/privacy/app/) in the Privacy section and the support page link in the "Support (サポート)" section open in Safari only when tapped and can be checked while online. The email link opens Mail only when the user taps it.
+1. Turn on Airplane Mode and open the app.
+2. Tap "Charts (編み図)" at the top right, then "New chart (新しい編み図)". Enter a name and tap "Confirm (決定)". Pick a stitch with the stitch button (e.g. "表目") next to the color. With "Draw (描く)" selected, tap or drag on the grid.
+3. Send the app to the background, return, and check that the edits remain.
+4. Tap "Export (出力)" (at the bottom on iPhone, in the right column on iPad). Use "Save PNG (PNGを保存)", "Save PDF (PDFを保存)", and "Export this chart (この編み図を書き出す)" for a .knit backup. Each time, choose "Save to Files (ファイルに保存)" and save to "On My iPhone (このiPhone内)" or "On My iPad (このiPad内)".
+5. In the same panel, tap "Restore from backup (バックアップから復元)", choose the .knit file from step 4, and check the restored chart.
+6. Tap "Guide (使い方)" at the top right. "Privacy (プライバシー)" explains data handling. Its privacy policy link and the support page link in "Support (サポート)" open in Safari; check them with Airplane Mode off.
 
 ### Other input methods
 
-The following inputs are not shown as on-screen buttons. They are optional, run the same actions as the buttons, and are described in "Guide (使い方)". They can be tried when the accessory is available.
+These have no on-screen button. They are optional, do the same as existing buttons, and are explained in "Guide (使い方)".
 
-- **Apple Pencil double-tap (iPad, with an Apple Pencil that supports double-tap):** switches between "Draw (描く)" and "Erase (消す)". It follows the double-tap setting in iPad Settings > Apple Pencil, and does nothing when that setting is "Off" or an action the app does not have. It has no menu item.
-- **Menu bar and keyboard shortcuts (iPad with a hardware keyboard):** ⌘N new chart, ⌘O restore from backup, ⌘S back up this chart, ⌥⌘S back up all data, ⇧⌘E export PNG, ⌘P export PDF, ⌘Z undo, ⇧⌘Z redo, ⌘+ / ⌘− zoom in / out, and ⇧⌘H open the guide. The same items appear in the File, Edit, View, and Help menus of the menu bar.
-- **Trackpad pinch (iPad with a trackpad):** zooms the chart in and out.
+- Apple Pencil double-tap (iPad): switches between "Draw (描く)" and "Erase (消す)", following the double-tap setting in Settings > Apple Pencil.
+- Keyboard shortcuts (iPad with a keyboard): ⌘N new chart, ⌘O restore, ⌘S back up this chart, ⌥⌘S back up all data, ⇧⌘E export PNG, ⌘P export PDF, ⌘Z undo, ⇧⌘Z redo, ⌘+ / ⌘− zoom, ⇧⌘H guide. The same commands are in the menu bar.
+- Trackpad pinch (iPad): zooms the chart.
 
-After the user has saved or shared PNG or PDF files several times, the app may ask the system to show the standard App Store rating prompt (StoreKit). The prompt is drawn by the system, and the system decides whether to show it. The app does not ask within three days of the first launch, so the prompt is not expected during review. Rating is optional, and no chart content is sent.
+The app may show the standard App Store rating prompt (StoreKit) after several PNG or PDF exports, but never within three days of first launch.
 
 ## 日本語
 
-### Review guideline 4.2 に関する説明
+### ガイドライン4.2（最低限の機能）について
 
-本アプリは、Webサイトを表示するだけのラッパーではありません。編集エンジンはアプリバンドルへ同梱し、機内モードでも次の処理を完了できます。
+本アプリはWebサイトを表示するだけのアプリではありません。編み図エディタはアプリに同梱されており、次の機能はすべて機内モードで動作します。
 
-- 29種類の編み目記号を使ったCanvas編集、パン、ピンチズーム
-- IndexedDBへの自動保存とscene phase連動の保存flush
-- PNG、1ページPDF、A4分割PDFの生成
-- `.knit`バックアップの圧縮、検証、復元
-- Filesの端末内保存先への保存、Filesや他アプリからの端末内の`.knit`受け入れ
-- iPhoneとiPadの可変幅レイアウト、VoiceOver向けラベル、アプリ内入力ダイアログ
+- 29種類の編み目記号による編み図の編集（移動、ピンチでの拡大・縮小）
+- 端末内への自動保存
+- PNG画像とPDF（1ページ、またはA4の複数ページ）の書き出し
+- .knitファイルへのバックアップと復元
+- 「ファイル」アプリの「このiPhone内」「このiPad内」への保存と、「ファイル」アプリや他のアプリからの.knitファイルの読み込み
 
-ネイティブの共有シートによる共有（AirDropを含む）にも対応しています。これらの共有先は、必要な接続を有効にした状態で、下記の機内モードの手順とは別に確認できます。
-
-外部Webサイトは編集画面の起動に使いません。アプリ内ヘルプからユーザーが明示的にサポートページまたはアプリのプライバシーポリシーへのリンクを選んだ場合だけSafariを、サポートのメールアドレスを選んだ場合だけメールアプリを開きます。アカウント、サーバー、広告、分析SDK、リモート設定はありません。
+アカウント、サーバー、広告、利用分析、リモート設定はありません。Safariは「使い方」のサポートページかプライバシーポリシーのリンクを押したときだけ、メールアプリはサポートのメールアドレスを押したときだけ開きます。
 
 ### 審査時の確認手順
 
-1. 機内モードで起動する。
-2. 右上の「編み図」から「新しい編み図」を押し、編み図名を入力して「決定」を押す。色の隣の記号のボタン（「表目」など）で記号を選び、「描く」が選ばれた状態で盤面をタップまたはなぞって、複数の記号を置く。
-3. アプリをバックグラウンドへ移し、戻って編集内容を確認する。
-4. 「出力」（iPhoneでは画面の下、iPadでは右の列）を開き、「PNGを保存」「PDFを保存」「この編み図を書き出す」（`.knit`）でそれぞれ出力する。各ファイルの確認画面で「ファイルに保存」を選び、保存先を「このiPhone内」または「このiPad内」にして保存を完了する。端末内へ保存することで、機内モードのまま次の復元を確認できる。
-5. 同じ画面の「バックアップから復元」で手順4の端末内の保存先から`.knit`を選ぶか、Filesからそのファイルを開き、復元された編み図を確認する。
-6. 右上の「使い方」を開き、「プライバシー」の本文を確認する。アプリのプライバシーポリシー（https://knittingeditor.com/privacy/app/）へのリンクは、タップした場合だけSafariで開く。「サポート」のサポートページへのリンクはネットワーク接続時に確認する。メールのリンクは利用者が選んだ場合だけメールアプリを開く。
+1. 機内モードをオンにして、アプリを起動してください。
+2. 右上の「編み図」から「新しい編み図」を押し、名前を入力して「決定」を押してください。色の隣の記号のボタン（「表目」など）で記号を選び、「描く」が選ばれた状態で盤面をタップまたはなぞってください。
+3. アプリをバックグラウンドに移してから戻り、編集内容が残っていることを確認してください。
+4. 「出力」（iPhoneでは画面の下、iPadでは右の列）を開き、「PNGを保存」「PDFを保存」「この編み図を書き出す」（.knit）でそれぞれ書き出してください。そのたびに「ファイルに保存」を選び、「このiPhone内」または「このiPad内」に保存してください。
+5. 同じ画面の「バックアップから復元」を押し、手順4の.knitファイルを選んで、編み図が復元されることを確認してください。
+6. 右上の「使い方」を開くと、「プライバシー」にデータの扱いが書かれています。そこにあるプライバシーポリシーと、「サポート」のサポートページへのリンクはSafariで開くので、機内モードをオフにして確認してください。
 
 ### 画面のボタン以外の操作
 
-次の操作は画面のボタンには出ません。どれも任意の操作で、画面のボタンと同じ処理を行い、「使い方」に説明があります。対応する機器があれば試せます。
+次の操作には画面上のボタンがありません。どれも任意で、既存のボタンと同じ処理を行い、「使い方」で説明しています。
 
-- **Apple Pencilのダブルタップ（iPad、ダブルタップに対応するApple Pencil）:** 「描く」と「消す」を切り替える。iPadの「設定」>「Apple Pencil」のダブルタップの設定に従い、「オフ」やこのアプリに無い動作のときは何もしない。メニューの項目はない。
-- **メニューバーとキーボードショートカット（ハードウェアキーボードを接続したiPad）:** ⌘N 新しい編み図、⌘O バックアップから復元、⌘S この編み図をバックアップ、⌥⌘S 全データをバックアップ、⇧⌘E PNGで書き出す、⌘P PDFで書き出す、⌘Z 元に戻す、⇧⌘Z やり直す、⌘＋／⌘− 拡大／縮小、⇧⌘H 使い方を開く。同じ項目をメニューバーの「ファイル」「編集」「表示」「ヘルプ」にも置いている。
-- **トラックパッドのピンチ（トラックパッドを接続したiPad）:** 盤面を拡大・縮小する。
+- Apple Pencilのダブルタップ（iPad）：「描く」と「消す」を切り替えます。「設定」>「Apple Pencil」のダブルタップの設定に従います。
+- キーボードショートカット（キーボードを接続したiPad）：⌘N 新しい編み図、⌘O 復元、⌘S この編み図をバックアップ、⌥⌘S 全データをバックアップ、⇧⌘E PNGで書き出す、⌘P PDFで書き出す、⌘Z 元に戻す、⇧⌘Z やり直す、⌘＋／⌘− 拡大／縮小、⇧⌘H 使い方。同じコマンドはメニューバーにもあります。
+- トラックパッドのピンチ（iPad）：盤面を拡大・縮小します。
 
-PNGやPDFを何度か保存・共有したあとに、App Storeの評価を依頼するシステムの標準の画面（StoreKit）を出すようシステムに求めることがあります。画面はシステムが描き、表示するかどうかもシステムが決めます。初めて起動してから3日間は求めないため、審査中に表示されることは想定していません。評価は任意で、編み図の内容は送りません。
+PNGやPDFを何度か書き出したあとに、App Storeの標準の評価画面（StoreKit）が表示されることがあります。初回起動から3日間は表示しません。
