@@ -51,9 +51,13 @@ test.each(['APP_STORE_CHECKLIST', 'RELEASE_RUNBOOK'].flatMap((name) => ['iPhone 
   expect(check).toThrow();
 });
 
-test('rejects screenshot documentation missing an iPhone Duo image', () => {
+test.each([
+  'app-store-iphone-duo-inner-05-dark.png',
+  'app-store-iphone-6.3-01-editor.png',
+  'app-store-creative-universal.png',
+])('rejects screenshot documentation missing the submission image %s', (file) => {
   const screenshots = join(directory, 'ios/docs/SCREENSHOTS.md');
-  writeFileSync(screenshots, readFileSync(screenshots, 'utf8').replaceAll('app-store-iphone-duo-inner-05-dark.png', ''));
+  writeFileSync(screenshots, readFileSync(screenshots, 'utf8').replaceAll(file, ''));
   expect(check).toThrow();
 });
 
