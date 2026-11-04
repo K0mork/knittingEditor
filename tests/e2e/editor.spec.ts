@@ -725,7 +725,13 @@ test('keeps header actions visible when text is enlarged in landscape', async ({
   expect(layout.headerTop).toBeGreaterThanOrEqual(0);
   expect(layout.actionsTop).toBeGreaterThanOrEqual(layout.headerTop);
   expect(layout.actionsBottom).toBeLessThanOrEqual(layout.headerBottom);
-  expect(layout.buttonFontSize).toBeLessThanOrEqual(20);
+  // 文字は上限で止めず、端末の文字サイズ（ここでは32px）に追従して大きくなる。
+  expect(layout.buttonFontSize).toBeGreaterThanOrEqual(30);
+  // ヘッダーが伸びても画面の下端までは占めず、盤面が残る。
+  expect(layout.headerBottom).toBeLessThanOrEqual(375);
+  const canvas = page.getByLabel('編み図編集盤面');
+  await expect(canvas).toBeVisible();
+  expect((await canvas.boundingBox())!.height, '横向きでも盤面が見える').toBeGreaterThan(0);
 });
 
 test('resizes to one million cells without creating cell DOM nodes', async ({ page }) => {

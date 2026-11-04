@@ -31,6 +31,9 @@ for (const width of [390, 760, 1024, 1280]) {
       }
       for (const name of ['コピー', '選択範囲をブロックに保存', '選択範囲を消去', 'キャンセル', '盤面', 'ブロック', '出力']) {
         const button = page.getByRole('button', { name, exact: true });
+        // 大きな文字では、狭い画面の操作帯を横スクロールさせて1段に保つ。画面の外にあるボタンは
+        // まずスクロールして連れてきてから、中心が覆われていないことを確かめる。
+        await button.scrollIntoViewIfNeeded();
         expect(await button.evaluate((element) => {
           const rect = element.getBoundingClientRect();
           return element.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));

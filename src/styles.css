@@ -5,9 +5,16 @@
 
 /* Web版のヘッダーはSEO向けの説明文と現在の編み図名を並べる。iOS版にはない。 */
 .app-heading-row { min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 10px; }
-.app-tagline, .app-document-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.app-tagline { margin: 0; font-size: .72rem; }
-.app-document-name { margin: 2px 0 0; font-size: .76rem; }
+/* 既定の大きさでは説明文を1行に保つ（originと同じ）。大きな文字のときだけ折り返す。
+   名前と保存状態は横に並べる。保存状態が1行増えてもヘッダーの高さが変わらないので、
+   保存が始まった瞬間に盤面が動いてタップ位置がずれることがない。全体は一覧で読める。 */
+.app-tagline { max-width: 100%; margin: 0; font-size: .72rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-document-name { max-width: 100%; margin: 2px 0 0; display: flex; align-items: flex-start; gap: .35em; font-size: .76rem; overflow-wrap: anywhere; }
+.app-document-name-text { flex: 1 1 auto; min-width: 0; display: -webkit-box; overflow: hidden; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+/* 名前と保存状態は同じ行の高さにし、保存状態が出てもヘッダーの高さを変えない（盤面を動かさない）。 */
+.app-document-status { flex: none; white-space: nowrap; }
+.app-shell[data-large-text] .app-tagline { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; line-height: 1.12; }
+.app-shell[data-large-text] .app-document-name { line-height: 1.12; }
 
 @media (max-width: 420px) {
   .app-tagline { font-size: .66rem; }
@@ -19,5 +26,5 @@
 .share-dialog { width: min(100%, 420px); padding: 20px; border: 1px solid var(--border); border-radius: 18px; background: var(--paper); box-shadow: var(--shadow); }
 .share-dialog h2 { margin: 0 0 8px; font-size: 1.05rem; line-height: 1.5; overflow-wrap: anywhere; }
 .share-dialog p { margin: 0 0 16px; font-size: .9rem; line-height: 1.6; }
-.share-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.share-dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 .share-dialog-actions button { white-space: nowrap; }

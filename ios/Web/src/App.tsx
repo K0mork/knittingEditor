@@ -149,7 +149,7 @@ export default function App() {
 
   return <EditorView
     editor={editor}
-    renderTitle={(documentStatus) => <div className="app-title"><h1>棒針編み図エディタ</h1><p aria-live="polite" aria-atomic="true">{documentStatus}</p></div>}
+    renderTitle={(documentStatus) => <div className="app-title"><h1>棒針編み図エディタ</h1><p className="app-document-name" aria-live="polite" aria-atomic="true">{documentStatus}</p></div>}
     onGuideClick={openGuide}
     requestRestore={requestNativeBackupOpen}
     backupNote="アプリを削除すると端末内のデータも消えます。定期的にバックアップを保存してください。"

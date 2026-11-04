@@ -1,4 +1,4 @@
-import { useEffect, useState, type MouseEvent, type MouseEventHandler, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent, type MouseEventHandler, type ReactNode } from 'react';
 import { BoardCanvas, type CanvasMode } from '../canvas/BoardCanvas';
 import { parseColor } from '../model/Board';
 import { describeColor } from '../model/usedColors';
@@ -74,20 +74,72 @@ function GestureHint({ pointerZoomGesture, mode }: { mode: CanvasMode; pointerZo
   return <div className={visible ? 'gesture-hint' : 'gesture-hint is-hidden'} aria-hidden={!visible || undefined}>{gestureHintText(mode, environment, pointerZoomGesture)}</div>;
 }
 
+/**
+ * ヘッダーの実測高さをCSS変数へ、ルートの文字サイズを`data-large-text`へ反映する。
+ * Dynamic Typeの変更・回転・長い編み図名ではヘッダーの高さが変わるので、ResizeObserverで測り直す。
+ * ResizeObserverが無い環境では`resize`だけで追従する。戻り値は後片付け。
+ */
+export function watchHeaderLayout(header: HTMLElement, shell: HTMLElement) {
+  const update = () => {
+    const height = header.getBoundingClientRect().height;
+    if (height > 0) shell.style.setProperty('--app-header-height', `${height}px`);
+    // iOSのDynamic Typeで本文が21px以上（xxL以上）になったら、折り返しや横スクロールの
+    // レイアウトに切り替える。既定の16px/17pxではorigin/mainと同じ見た目にする。
+    const rootFontSize = Number.parseFloat(getComputedStyle(document.documentElement).fontSize);
+    if (rootFontSize >= 21) shell.dataset.largeText = '';
+    else delete shell.dataset.largeText;
+  };
+  update();
+  window.addEventListener('resize', update);
+  if (typeof ResizeObserver === 'undefined') {
+    return () => window.removeEventListener('resize', update);
+  }
+  const observer = new ResizeObserver(update);
+  observer.observe(header);
+  return () => {
+    window.removeEventListener('resize', update);
+    observer.disconnect();
+  };
+}
+
 /** 編集画面の組み立て。Web版とiOS版で共通。 */
 export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, backupNote, documentsNote, children }: EditorViewProps) {
   const { session, mode, panel, selection, copiedBlock } = editor;
   const history = historyTitles(useInputEnvironment());
   const { board, activeDocument, dirty } = session;
+  const headerRef = useRef<HTMLElement>(null);
+  const editorShown = Boolean(board && activeDocument);
+  /*
+   * ヘッダーの実際の高さをCSS変数に入れる。広い画面のパネル（`.drawer`）はヘッダーの下に
+   * 置くので、Dynamic Typeでヘッダーが伸びても「使い方」「編み図」を覆わない。
+   * 文字サイズの変更や回転でも高さが変わるため、ResizeObserverと`resize`で測り直す。
+   * 同時にルートの文字サイズを読み、iOSのDynamic Typeが21px以上（xxL以上）なら
+   * `data-large-text`を付ける。既定の16px/17pxではorigin/mainと同じ見た目を保つ。
+   */
+  useLayoutEffect(() => {
+    const header = headerRef.current;
+    const shell = header?.parentElement;
+    if (!header || !shell) return;
+    return watchHeaderLayout(header, shell);
+  }, [editorShown]);
   if (editor.initializationError) return <main className="loading" role="alert">編み図を読み込めませんでした：{editor.initializationError}<button onClick={() => window.location.reload()}>再読み込み</button></main>;
   if (!board || !activeDocument) return <main className="loading">編み図を読み込んでいます…</main>;
 
   const saveStatus = dirty ? (session.saveFailed ? '保存失敗' : '保存中') : '保存済み';
-  const documentStatus = <>{activeDocument.name}<span aria-hidden="true">{dirty ? (session.saveFailed ? '（保存失敗）' : '（保存中…）') : ''}</span><span className="visually-hidden">、{saveStatus}</span></>;
+  /*
+   * 編み図名だけを`app-document-name-text`に入れ、2行クランプはこの要素にだけ掛ける。
+   * 保存状態はクランプの外に置き、長い名前＋大きな文字でも「保存中」「保存失敗」を隠さない。
+   * 読み上げ用の「、保存中」は従来どおり名前と同じ要素の中に残す。
+   */
+  const documentStatus = <>
+    <span className="app-document-name-text">{activeDocument.name}</span>
+    <span className="app-document-status" aria-hidden="true">{dirty ? (session.saveFailed ? '（保存失敗）' : '（保存中…）') : ''}</span>
+    <span className="visually-hidden">、{saveStatus}</span>
+  </>;
   const modeButton = (target: CanvasMode, label: string, onClick: () => void) => <button key={target} className={mode === target ? 'active' : ''} aria-pressed={mode === target} onClick={onClick}>{label}</button>;
 
   return <div className="app-shell">
-    <header className="app-header">
+    <header ref={headerRef} className="app-header">
       {renderTitle(documentStatus)}
       <div className="header-actions">
         <a className="header-guide" href="/guide/" onClick={onGuideClick}>使い方</a>

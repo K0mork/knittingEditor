@@ -6,7 +6,7 @@ import type { EditorAnalytics } from '../analytics';
 import { Board } from '../model/Board';
 import { SAVE_RESULT_UNKNOWN, type EditorPlatform } from '../platform';
 import { deleteBlock, initializeStorage, listBlocks, saveBlock, type ChartDocument } from '../storage/database';
-import { EditorView, GESTURE_HINT_DURATION_MS, type EditorViewProps } from './EditorView';
+import { EditorView, GESTURE_HINT_DURATION_MS, watchHeaderLayout, type EditorViewProps } from './EditorView';
 import { saveErrorMessage, useEditorController, type EditorControllerOptions } from './useEditorController';
 
 declare global {
@@ -95,7 +95,12 @@ async function renderEditor(
   };
   const click = async (label: string) => { await act(async () => { button(label).click(); }); };
   const notify: ReturnType<typeof useEditorController>['notify'] = (...args) => latest.notify(...args);
-  return { container, platform, button, click, notify, editor: () => latest };
+  const unmount = async () => {
+    const run = cleanup;
+    cleanup = undefined;
+    await run?.();
+  };
+  return { container, platform, button, click, notify, editor: () => latest, unmount };
 }
 
 describe('EditorView', () => {
@@ -154,6 +159,127 @@ describe('EditorView', () => {
     await click('盤面');
     expect(container.querySelector('#app-drawer-title')?.textContent).toBe('盤面設定');
     expect(analytics.track).toHaveBeenCalledWith('feature_opened', { feature_name: 'grid' });
+  });
+
+  it('keeps the measured header height for the drawer when text grows', async () => {
+    const callbacks: ResizeObserverCallback[] = [];
+    class TestResizeObserver {
+      constructor(callback: ResizeObserverCallback) { callbacks.push(callback); }
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+    vi.stubGlobal('ResizeObserver', TestResizeObserver);
+    let headerHeight = 74;
+    const rect = (height: number) => ({
+      x: 0, y: 0, width: 390, height, top: 0, right: 390, bottom: height, left: 0, toJSON: () => ({}),
+    }) as DOMRect;
+    const original = HTMLElement.prototype.getBoundingClientRect;
+    const rectSpy = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      return this.classList.contains('app-header') ? rect(headerHeight) : original.call(this);
+    });
+    try {
+      const { container } = await renderEditor();
+      const shell = container.querySelector<HTMLElement>('.app-shell')!;
+      expect(shell.style.getPropertyValue('--app-header-height')).toBe('74px');
+
+      // Dynamic Typeでヘッダーが伸びたら、パネルの開始位置も測り直す。
+      headerHeight = 168;
+      // 盤面のCanvasもResizeObserverを使うので、登録された監視すべてを動かす。
+      act(() => { for (const callback of callbacks) callback([], {} as ResizeObserver); });
+      expect(shell.style.getPropertyValue('--app-header-height')).toBe('168px');
+    } finally {
+      rectSpy.mockRestore();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('switches to the large-text layout at a 21px root and back', async () => {
+    document.documentElement.style.fontSize = '16px';
+    const { container, unmount } = await renderEditor();
+    try {
+      const shell = container.querySelector<HTMLElement>('.app-shell')!;
+      expect(shell.hasAttribute('data-large-text'), '既定の16pxでは大きな文字のレイアウトにしない').toBe(false);
+
+      // Dynamic TypeのxxL（21px）から切り替える。40px（AX3）でも同じ。
+      document.documentElement.style.fontSize = '20px';
+      act(() => { window.dispatchEvent(new Event('resize')); });
+      expect(shell.hasAttribute('data-large-text'), '20pxではまだ切り替えない').toBe(false);
+
+      document.documentElement.style.fontSize = '21px';
+      act(() => { window.dispatchEvent(new Event('resize')); });
+      expect(shell.hasAttribute('data-large-text'), '21pxで切り替える').toBe(true);
+
+      document.documentElement.style.fontSize = '40px';
+      act(() => { window.dispatchEvent(new Event('resize')); });
+      expect(shell.getAttribute('data-large-text'), 'AX3でも切り替えたまま').toBe('');
+
+      // 文字サイズを戻したら、元の1行レイアウトへ戻す。
+      document.documentElement.style.fontSize = '16px';
+      act(() => { window.dispatchEvent(new Event('resize')); });
+      expect(shell.hasAttribute('data-large-text'), '既定へ戻したら属性を外す').toBe(false);
+    } finally {
+      await unmount();
+      document.documentElement.style.fontSize = '';
+    }
+  });
+
+  it('falls back to window resize when ResizeObserver is unavailable', () => {
+    document.documentElement.style.fontSize = '16px';
+    const shell = document.createElement('div');
+    const header = document.createElement('header');
+    shell.append(header);
+    document.body.append(shell);
+    vi.stubGlobal('ResizeObserver', undefined);
+    try {
+      const stop = watchHeaderLayout(header, shell);
+      expect(shell.hasAttribute('data-large-text')).toBe(false);
+
+      document.documentElement.style.fontSize = '40px';
+      window.dispatchEvent(new Event('resize'));
+      expect(shell.hasAttribute('data-large-text'), 'resizeだけで大きな文字に追従する').toBe(true);
+
+      stop();
+      document.documentElement.style.fontSize = '16px';
+      window.dispatchEvent(new Event('resize'));
+      // 後片付けのあとは、resizeが来ても変えない。
+      expect(shell.hasAttribute('data-large-text'), '後片付け後は監視しない').toBe(true);
+    } finally {
+      shell.remove();
+      document.documentElement.style.fontSize = '';
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('disconnects the header observer on unmount', async () => {
+    const disconnect = vi.fn();
+    class TestResizeObserver {
+      constructor(_callback: ResizeObserverCallback) {}
+      observe() {}
+      unobserve() {}
+      disconnect() { disconnect(); }
+    }
+    vi.stubGlobal('ResizeObserver', TestResizeObserver);
+    document.documentElement.style.fontSize = '16px';
+    try {
+      const { unmount } = await renderEditor();
+      expect(disconnect).not.toHaveBeenCalled();
+      await unmount();
+      expect(disconnect).toHaveBeenCalled();
+    } finally {
+      document.documentElement.style.fontSize = '';
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('keeps the save status outside the chart-name clamp', async () => {
+    const { container } = await renderEditor();
+    const name = container.querySelector('.app-document-name-text')!;
+    const status = container.querySelector('.app-document-status')!;
+    expect(name.textContent).toBe('新しい編み図');
+    expect(name.contains(status), '保存状態は名前のクランプの外にある').toBe(false);
+    // 読み上げ用の「、保存済み」は従来どおり名前と同じ要素の中に残す。
+    expect(name.parentElement?.textContent).toContain('、保存済み');
   });
 
   it('switches the canvas mode from the tool buttons', async () => {

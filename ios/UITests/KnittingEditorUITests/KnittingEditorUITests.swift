@@ -1603,7 +1603,10 @@ final class KnittingEditorUITests: XCTestCase {
         let app = launchWithAccessibilityExtraExtraExtraLarge()
         assertPrimaryControlsAreUsable(in: app)
         add(screenshotAttachment(named: "最大文字・通常の操作列"))
-        app.switches["範囲"].tap()
+        // 上の確認は道具列を「線」まで送った状態で終わるため、「範囲」を押せる位置へ戻す。
+        let rangeSwitch = app.switches["範囲"]
+        scrollHorizontallyUntilHittable(rangeSwitch, in: app, row: primaryToolsRow(in: app))
+        rangeSwitch.tap()
         let canvas = app.webViews.firstMatch.otherElements
             .matching(NSPredicate(format: "label CONTAINS %@", "編み図編集盤面"))
             .firstMatch
@@ -1617,13 +1620,15 @@ final class KnittingEditorUITests: XCTestCase {
         let erase = app.buttons["選択範囲を消去"]
         let clear = app.buttons["キャンセル"]
         XCTAssertTrue(copy.waitForExistence(timeout: 10), app.debugDescription)
+        // 選択操作帯は1行のまま横スクロールし、最大文字では「キャンセル」が最初は画面の外にある。
+        // 各操作を帯の内側で押せる位置へ出し、見えている間だけ下の操作メニューと重ならないことを確かめる。
+        let selectionBar = selectionActionsRow(in: app)
+        XCTAssertTrue(selectionBar.waitForExistence(timeout: 10), app.debugDescription)
         for action in [copy, save, erase, clear] {
-            XCTAssertTrue(action.isHittable, app.debugDescription)
-        }
-        for name in ["盤面", "ブロック", "出力"] {
-            let button = app.buttons[name]
-            XCTAssertTrue(button.isHittable, app.debugDescription)
-            for action in [copy, save, erase, clear] {
+            scrollHorizontallyUntilHittable(action, in: app, row: selectionBar)
+            for name in ["盤面", "ブロック", "出力"] {
+                let button = app.buttons[name]
+                XCTAssertTrue(button.isHittable, app.debugDescription)
                 XCTAssertFalse(action.frame.intersects(button.frame), "選択操作帯の\(action.label)が\(name)を覆う")
             }
         }
@@ -1652,13 +1657,64 @@ final class KnittingEditorUITests: XCTestCase {
         assertPrimaryControlsAreUsable(in: app)
     }
 
-    /// 文字サイズを最大（アクセシビリティXXXL）にして起動し、編集画面が`webReady`を送り、
+    /// AX3（アクセシビリティL）でも、文字が200%まで大きくなって主要な操作が押せることを確認する。
+    /// ヘッダーは折り返して「使い方」「編み図」を画面内に残し、操作メニューは折り返して
+    /// 全ボタンを見せる。道具列は1行のまま横スクロールするため「範囲」「線」は帯を送って出す。
+    func testAccessibilityExtraLargeKeepsPrimaryControlsUsable() {
+        // AX5のテストと同じく、CIの遅い起動が既定の3分を超えないようにする（#355）。
+        executionTimeAllowance = 240
+        let app = launchWithAccessibilityExtraLarge()
+
+        assertPrimaryControlsAreUsable(in: app)
+
+        let guide = app.links["使い方"]
+        let documents = app.buttons["編み図"]
+        for element in [guide, documents] {
+            XCTAssertTrue(element.isHittable, "\(element.label) を操作できない: \(app.debugDescription)")
+            assertWithinWindow(element, in: app)
+        }
+
+        // 盤面設定パネルを開いても、ヘッダーの「使い方」「編み図」は隠れない。
+        // iPhoneは全画面のシートなので、パネルの下にヘッダーが残るiPadだけで確かめる。
+        app.buttons["盤面"].tap()
+        XCTAssertTrue(app.staticTexts["盤面設定"].waitForExistence(timeout: 10), app.debugDescription)
+        let close = app.buttons["閉じる"]
+        XCTAssertTrue(close.waitForExistence(timeout: 10), app.debugDescription)
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            for element in [guide, documents] {
+                XCTAssertTrue(element.isHittable, "パネルを開くと\(element.label)を操作できない: \(app.debugDescription)")
+                XCTAssertFalse(
+                    element.frame.intersects(close.frame),
+                    "パネルを開くと\(element.label)が閉じるボタンと重なる " +
+                        "\(element.label)=\(element.frame) 閉じる=\(close.frame): \(app.debugDescription)"
+                )
+            }
+        }
+        add(screenshotAttachment(named: "AX3・盤面設定パネル"))
+        XCTAssertTrue(close.isHittable, "盤面設定パネルを閉じられない: \(app.debugDescription)")
+        close.tap()
+        XCTAssertTrue(waitForDisappearance(of: close, timeout: 10), app.debugDescription)
+
+        // 記号の選択画面は道具列の先頭にある。横スクロールで「線」まで送ったあとも開けることを確かめる。
+        let stitchPicker = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label == %@", "編み目記号を選ぶ"))
+            .firstMatch
+        scrollHorizontallyUntilHittable(stitchPicker, in: app, row: primaryToolsRow(in: app))
+        stitchPicker.tap()
+        XCTAssertTrue(app.staticTexts["編み目記号"].waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertTrue(close.isHittable, "記号の選択画面を閉じられない: \(app.debugDescription)")
+        close.tap()
+        XCTAssertTrue(waitForDisappearance(of: app.staticTexts["編み目記号"], timeout: 10), app.debugDescription)
+        XCTAssertTrue(stitchPicker.isHittable, "記号の選択画面を閉じたあと道具列へ戻れない: \(app.debugDescription)")
+    }
+
+    /// 指定した文字サイズ（Dynamic Type）にして起動し、編集画面が`webReady`を送り、
     /// 準備中の表示が消えるまで待ってからWebの内容を探す（#64）。
-    private func launchWithAccessibilityExtraExtraExtraLarge() -> XCUIApplication {
+    private func launchWithContentSizeCategory(_ category: String) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments += [
             "-UIPreferredContentSizeCategoryName",
-            "UICTContentSizeCategoryAccessibilityXXXL",
+            category,
         ]
         app.launch()
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
@@ -1667,6 +1723,16 @@ final class KnittingEditorUITests: XCTestCase {
             app.debugDescription
         )
         return app
+    }
+
+    /// 文字サイズを最大（アクセシビリティXXXL・AX5）にして起動する。
+    private func launchWithAccessibilityExtraExtraExtraLarge() -> XCUIApplication {
+        launchWithContentSizeCategory("UICTContentSizeCategoryAccessibilityXXXL")
+    }
+
+    /// 文字サイズをAX3（アクセシビリティL）にして起動する。
+    private func launchWithAccessibilityExtraLarge() -> XCUIApplication {
+        launchWithContentSizeCategory("UICTContentSizeCategoryAccessibilityL")
     }
 
     /// 要素がウィンドウの内側に収まっていることを確認する。
@@ -1745,6 +1811,96 @@ final class KnittingEditorUITests: XCTestCase {
             }
         }
         XCTFail("スクロールしても操作対象がパネル内に見えない: \(app.debugDescription)")
+    }
+
+    /// 編集ツール列を返す。大きな文字では1行のまま横スクロールする。
+    private func primaryToolsRow(in app: XCUIApplication) -> XCUIElement {
+        app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label BEGINSWITH %@", "編集ツール"))
+            .firstMatch
+    }
+
+    /// 選択範囲の操作帯を返す。大きな文字では1行のまま横スクロールする。
+    private func selectionActionsRow(in app: XCUIApplication) -> XCUIElement {
+        app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label BEGINSWITH %@", "選択範囲の操作"))
+            .firstMatch
+    }
+
+    /// 横スクロールする帯の中の要素が、画面内に収まって押せるところまで来たかを返す。
+    ///
+    /// WebViewの`isHittable`はスクロール領域のクリップを考慮しないことがあるため、
+    /// 枠が画面内に収まっていることも確かめる。
+    private func isFullyHittableInWindow(_ element: XCUIElement, in app: XCUIApplication) -> Bool {
+        guard element.exists else { return false }
+        let frame = element.frame
+        guard !frame.isEmpty else { return false }
+        let window = app.windows.firstMatch.frame.insetBy(dx: -1, dy: -1)
+        return window.contains(frame) && isHittableWithoutFailing(element)
+    }
+
+    /// 横スクロールする帯（編集ツール列・選択範囲の操作帯）の中の要素を、押せる位置まで送る。
+    ///
+    /// 大きな文字では帯が1行のまま横スクロールし、「範囲」「線」「キャンセル」は最初は
+    /// 画面の右外にある。`swipeLeft()`は勢いで行き過ぎ、戻す操作も要るため、帯の内側を
+    /// 小さくドラッグして少しずつ送る。要素の上からドラッグを始めると、押した位置の
+    /// ボタンがタップとして成立することがあるので（#317）、帯の上端の余白を掴む。
+    /// 画面端4pt以内から始めると端のスワイプとして扱われるため、端から離した位置から動かす。
+    /// 左へ送っても押せないときは、行き過ぎた場合に備えて右へ戻す。
+    private func scrollHorizontallyUntilHittable(
+        _ element: XCUIElement,
+        in app: XCUIApplication,
+        row: XCUIElement,
+        maximumScrolls: Int = 8
+    ) {
+        XCTAssertTrue(element.waitForExistence(timeout: 10), "横スクロールで出す要素が見つからない: \(app.debugDescription)")
+        XCTAssertTrue(row.waitForExistence(timeout: 10), "横スクロールする帯が見つからない: \(app.debugDescription)")
+        var direction: CGFloat = -1
+        var scrolls = 0
+        while scrolls < maximumScrolls * 2 {
+            if isFullyHittableInWindow(element, in: app) { return }
+            let window = app.windows.firstMatch.frame
+            // 中身がはみ出す帯の枠は内容の幅になることがあるため、画面内に切ってから使う。
+            let rowFrame = row.frame.intersection(window)
+            guard rowFrame.width > 48, rowFrame.height > 16 else {
+                XCTFail("横スクロールする帯の位置を取れない row=\(row.frame) window=\(window): \(app.debugDescription)")
+                return
+            }
+            if scrolls == 0 {
+                // 右外にある要素は左へ、行き過ぎて左外にある要素は右へ送る。
+                let frame = element.frame
+                direction = frame.isEmpty || frame.midX >= rowFrame.midX ? -1 : 1
+            } else if scrolls == maximumScrolls {
+                // 押せないまま送り切ったら、行き過ぎた場合に備えて逆へ戻す。
+                direction = -direction
+            }
+            // 角の丸みとボタンを避け、帯の上端の余白を掴む。画面端から24pt内側から始める。
+            let startX = direction < 0 ? rowFrame.maxX - 24 : rowFrame.minX + 24
+            let y = rowFrame.minY + 4
+            guard startX > window.minX + 4, startX < window.maxX - 4 else {
+                XCTFail("横スクロールを始める位置が画面端に近い startX=\(startX) window=\(window): \(app.debugDescription)")
+                return
+            }
+            let distance = min(160, max(60, rowFrame.width * 0.35))
+            let start = app.coordinate(withNormalizedOffset: .zero)
+                .withOffset(CGVector(dx: startX, dy: y))
+            let end = start.withOffset(CGVector(dx: direction * distance, dy: 0))
+            start.press(forDuration: 0.05, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.1)
+            scrolls += 1
+            // スクロールの反映が遅れることがあるため、位置が止まり、押せるようになるまで待つ。
+            let deadline = Date().addingTimeInterval(2)
+            var settled = element.frame
+            while Date() < deadline {
+                Thread.sleep(forTimeInterval: 0.2)
+                let current = element.frame
+                if current == settled, isFullyHittableInWindow(element, in: app) { return }
+                settled = current
+            }
+        }
+        XCTFail(
+            "横スクロール\(scrolls)回でも操作対象が画面内で押せない " +
+                "要素=\(element.frame) 帯=\(row.frame): \(app.debugDescription)"
+        )
     }
 
     /// 開いているパネル（「閉じる」を直接の子に持つ要素）の枠を、画面の木を1回だけ取得して求める。
@@ -2016,6 +2172,11 @@ final class KnittingEditorUITests: XCTestCase {
         )
     }
 
+    /// 主要な操作が押せることを確認する。
+    ///
+    /// ヘッダーの「編み図」と操作メニュー（盤面・ブロック・出力）は折り返して
+    /// 全体を見せるため、スクロールせずに押せる。編集ツール列は1行のまま横スクロールし、
+    /// 大きな文字では「範囲」「線」が最初は画面の外にあるので、帯を送って押せる位置へ出す。
     private func assertPrimaryControlsAreUsable(in app: XCUIApplication) {
         for name in ["編み図", "盤面", "ブロック", "出力"] {
             let button = app.buttons[name]
@@ -2033,30 +2194,14 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertTrue(stitchPicker.waitForExistence(timeout: 10), app.debugDescription)
         XCTAssertTrue(stitchPicker.isHittable, app.debugDescription)
 
-        for name in ["描く", "消す", "範囲"] {
-            XCTAssertTrue(app.switches[name].waitForExistence(timeout: 10), "\(name) が見つかりません: \(app.debugDescription)")
+        // 4つのモードは帯の左から順に並ぶ。左端の2つはスクロールせずに押せ、
+        // 右の2つは大きな文字で画面の外に出るため、帯を送って確かめる。
+        let toolbar = primaryToolsRow(in: app)
+        for name in ["描く", "消す", "範囲", "線"] {
+            let mode = app.switches[name]
+            XCTAssertTrue(mode.waitForExistence(timeout: 10), "\(name) が見つかりません: \(app.debugDescription)")
+            scrollHorizontallyUntilHittable(mode, in: app, row: toolbar)
         }
-        // 編集ツールは横スクロールで、狭い画面や大きな文字では「範囲」が右の画面外にある。
-        // スワイプの直後はスクロールがまだ反映されていないことがある（CIのiPhone 17・文字サイズ
-        // 最大で、スワイプ0.02秒後の検査では「範囲」がスワイプ前の位置のままだった。成功した
-        // 回は0.7秒後に検査していた）。押せる位置に来るまで待ち、来なければスワイプし直す。
-        // ツールバーが動かない・届かない不具合は、最後の検査で失敗になる。
-        let rangeSwitch = app.switches["範囲"]
-        let toolbar = app.otherElements
-            .matching(NSPredicate(format: "label BEGINSWITH %@", "編集ツール"))
-            .firstMatch
-        var swipes = 0
-        while !rangeSwitch.isHittable, swipes < 3 {
-            XCTAssertTrue(toolbar.waitForExistence(timeout: 5), app.debugDescription)
-            toolbar.swipeLeft()
-            swipes += 1
-            _ = waitForHittable(rangeSwitch, timeout: 5)
-        }
-        XCTAssertTrue(
-            rangeSwitch.isHittable,
-            "「範囲」をツールバーのスクロールで押せる位置へ出せない（スワイプ\(swipes)回） " +
-                "範囲=\(rangeSwitch.frame) ツールバー=\(toolbar.frame): \(app.debugDescription)"
-        )
     }
 
     /// WebViewのページを上へ送り、要素が押せる位置に来るまで待つ。
