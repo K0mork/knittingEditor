@@ -420,8 +420,11 @@ final class KnittingEditorUITests: XCTestCase {
             add(screenshotAttachment(named: "保存検証のセル消去に失敗"))
         }
         XCTAssertTrue(didErase, "row=\(row) col=\(col) frame=\(canvas.frame): \(app.debugDescription)")
-        app.buttons["元に戻す"].tap()
-        _ = saveProbeCanvas(count: count, in: app)
+        // 履歴は文書を切り替えると捨てるので、ここで戻せるのは直前の消去1件だけになる。
+        // 押し直しが遅れて2回効いても、2回目は何も戻さない。
+        let undo = app.buttons["元に戻す"]
+        tapChangingStitchCount("「元に戻す」", from: count - 1, to: count, in: app,
+                               canRetry: { undo.isEnabled }) { undo.tap() }
         app.switches["描く"].tap()
     }
 
@@ -456,6 +459,55 @@ final class KnittingEditorUITests: XCTestCase {
             .firstMatch
         XCTAssertTrue(canvas.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
         return canvas
+    }
+
+    /// 盤面や「元に戻す」をタップし、記号数が`from`から`to`へ変わるまで待つ。
+    ///
+    /// CIのSimulatorでは、合成したタップがWebViewで効かないことがまれにある（#44、#375）。
+    /// 盤面への描画（`testSeedDocumentForAppUpdateProbe`）も、有効な「元に戻す」
+    /// （`testDocumentSwitchSavesWithoutAutosave`）も、タップのあと記号数が変わらないまま
+    /// 時間切れになった。10秒たっても`from`個のままで、`canRetry`が真のときだけ同じ操作を
+    /// もう1回行う。押し直すのは、遅れて2回効いても結果が変わらない操作に限る。
+    /// 押し直したときと効かなかったときは、各操作の時刻と画面写真を残し、ジョブログにも出す。
+    private func tapChangingStitchCount(
+        _ action: String,
+        from current: Int,
+        to expected: Int,
+        in app: XCUIApplication,
+        timeout: TimeInterval? = nil,
+        canRetry: () -> Bool = { true },
+        tap: () -> Void
+    ) {
+        let timeout = timeout ?? Self.editorAppearanceTimeout
+        let webView = app.webViews.firstMatch
+        func canvas(_ count: Int) -> XCUIElement {
+            webView.otherElements.matching(NSPredicate(format: "label CONTAINS %@", "記号\(count)個")).firstMatch
+        }
+        let started = Date()
+        var events: [String] = []
+        func record(_ event: String) {
+            events.append(String(format: "%.1f秒 ", Date().timeIntervalSince(started)) + event)
+        }
+
+        tap()
+        record("\(action)をタップ")
+        if canvas(expected).waitForExistence(timeout: 10) { return }
+        let unchanged = canvas(current).exists
+        let retry = unchanged && canRetry()
+        record("10秒待っても記号\(expected)個にならない（記号\(current)個のまま=\(unchanged)、押し直す=\(retry)）")
+        if retry {
+            add(screenshotAttachment(named: "\(action)が効かず押し直す"))
+            tap()
+            record("\(action)を押し直した")
+        }
+        let reached = canvas(expected).waitForExistence(timeout: timeout)
+        record(reached ? "記号\(expected)個になった" : "最後の待機でも記号\(expected)個にならない")
+        let summary = "TAPRETRY \(action) " + events.joined(separator: " → ")
+        print(summary)
+        XCTContext.runActivity(named: summary) { _ in }
+        if reached { return }
+        add(screenshotAttachment(named: "\(action)で記号数が変わらない"))
+        XCTFail("\(action)で記号が\(expected)個にならない 経過: \(events.joined(separator: " → ")): \(app.debugDescription)")
     }
 
     private func selectSaveProbeDocument(_ name: String, in app: XCUIApplication) {
@@ -931,14 +983,10 @@ final class KnittingEditorUITests: XCTestCase {
             .matching(NSPredicate(format: "label CONTAINS %@", "記号0個"))
             .firstMatch
         XCTAssertTrue(canvas.waitForExistence(timeout: appUpdateElementTimeout), app.debugDescription)
-        canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
-        XCTAssertTrue(
-            webView.otherElements
-                .matching(NSPredicate(format: "label CONTAINS %@", "記号1個"))
-                .firstMatch
-                .waitForExistence(timeout: appUpdateElementTimeout),
-            app.debugDescription
-        )
+        // 押し直しは同じマスへの描画なので、遅れて2回効いても記号は1個のまま。
+        tapChangingStitchCount("盤面の中央", from: 0, to: 1, in: app, timeout: appUpdateElementTimeout) {
+            canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        }
         waitForDocumentSave(named: "アプリ更新復元fixture", in: webView)
     }
 
