@@ -33,9 +33,10 @@ input, textarea, [contenteditable]:not([contenteditable="false"]) { -webkit-user
  */
 .app-header h1 { overflow-wrap: anywhere; }
 .app-header p { max-width: 100%; margin: 2px 0 0; display: flex; align-items: flex-start; gap: .35em; font-size: .76rem; line-height: 1.2; overflow-wrap: anywhere; }
-.app-document-name-text { flex: 1 1 auto; min-width: 0; display: -webkit-box; overflow: hidden; line-height: 1.2; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-.app-document-status { flex: 0 1 auto; min-width: 0; }
-.app-shell[data-large-text] .app-header h1, .app-shell[data-large-text] .app-document-name-text { line-height: 1.12; }
+.app-document-name-text { flex: 1 1 auto; min-width: 0; display: -webkit-box; overflow: hidden; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+/* 名前と保存状態は同じ行の高さにし、保存状態が出てもヘッダーの高さを変えない（盤面を動かさない）。 */
+.app-document-status { flex: none; white-space: nowrap; }
+.app-shell[data-large-text] .app-header h1, .app-shell[data-large-text] .app-header p { line-height: 1.12; }
 
 .export-controls input[type="range"] { min-height: var(--tap-size); }
 

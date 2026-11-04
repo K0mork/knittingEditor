@@ -10,10 +10,11 @@
    保存が始まった瞬間に盤面が動いてタップ位置がずれることがない。全体は一覧で読める。 */
 .app-tagline { max-width: 100%; margin: 0; font-size: .72rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .app-document-name { max-width: 100%; margin: 2px 0 0; display: flex; align-items: flex-start; gap: .35em; font-size: .76rem; overflow-wrap: anywhere; }
-.app-document-name-text { flex: 1 1 auto; min-width: 0; display: -webkit-box; overflow: hidden; line-height: 1.3; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-.app-document-status { flex: 0 1 auto; min-width: 0; }
+.app-document-name-text { flex: 1 1 auto; min-width: 0; display: -webkit-box; overflow: hidden; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+/* 名前と保存状態は同じ行の高さにし、保存状態が出てもヘッダーの高さを変えない（盤面を動かさない）。 */
+.app-document-status { flex: none; white-space: nowrap; }
 .app-shell[data-large-text] .app-tagline { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; line-height: 1.12; }
-.app-shell[data-large-text] .app-document-name-text { line-height: 1.12; }
+.app-shell[data-large-text] .app-document-name { line-height: 1.12; }
 
 @media (max-width: 420px) {
   .app-tagline { font-size: .66rem; }
