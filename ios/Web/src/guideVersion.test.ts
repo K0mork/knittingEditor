@@ -55,6 +55,25 @@ describe('guide app version', () => {
 });
 
 
+describe('guide Dynamic Type', () => {
+  it('follows the body text size and keeps every font size relative', () => {
+    const parsed = new DOMParser().parseFromString(guideHtml, 'text/html');
+    const css = [...parsed.querySelectorAll('style')].map((style) => style.textContent ?? '').join('\n');
+    // 本文は`-apple-system-body`でDynamic Typeに追従させる。
+    expect(css).toMatch(/:root\s*\{[^}]*font:\s*-apple-system-body/);
+    // px指定の文字サイズはDynamic Typeで大きくならないので置かない。
+    const fontSizes = [...css.matchAll(/font-size:\s*([^;}]+)/g)].map((match) => match[1].trim());
+    expect(fontSizes.length).toBeGreaterThan(0);
+    for (const value of fontSizes) expect(value).toMatch(/(?:rem|em|%)/);
+    // h1のclampも上限をremにして、本文が大きくなれば見出しも大きくなるようにする。
+    const clamp = /h1\s*\{[^}]*clamp\(([^)]+)\)/.exec(css);
+    expect(clamp).not.toBeNull();
+    const parts = clamp![1].split(',').map((part) => part.trim());
+    expect(parts).toHaveLength(3);
+    expect(parts[2]).toMatch(/rem$/);
+  });
+});
+
 it('線の作成・間隔・消去・出力をアプリ内の使い方で説明する', () => {
   const text = new DOMParser().parseFromString(guideHtml, 'text/html').body.textContent;
   expect(text).toContain('縦の点線の矢印');

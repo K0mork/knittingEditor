@@ -156,6 +156,39 @@ describe('EditorView', () => {
     expect(analytics.track).toHaveBeenCalledWith('feature_opened', { feature_name: 'grid' });
   });
 
+  it('keeps the measured header height for the drawer when text grows', async () => {
+    const callbacks: ResizeObserverCallback[] = [];
+    class TestResizeObserver {
+      constructor(callback: ResizeObserverCallback) { callbacks.push(callback); }
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+    vi.stubGlobal('ResizeObserver', TestResizeObserver);
+    let headerHeight = 74;
+    const rect = (height: number) => ({
+      x: 0, y: 0, width: 390, height, top: 0, right: 390, bottom: height, left: 0, toJSON: () => ({}),
+    }) as DOMRect;
+    const original = HTMLElement.prototype.getBoundingClientRect;
+    const rectSpy = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      return this.classList.contains('app-header') ? rect(headerHeight) : original.call(this);
+    });
+    try {
+      const { container } = await renderEditor();
+      const shell = container.querySelector<HTMLElement>('.app-shell')!;
+      expect(shell.style.getPropertyValue('--app-header-height')).toBe('74px');
+
+      // Dynamic Typeでヘッダーが伸びたら、パネルの開始位置も測り直す。
+      headerHeight = 168;
+      // 盤面のCanvasもResizeObserverを使うので、登録された監視すべてを動かす。
+      act(() => { for (const callback of callbacks) callback([], {} as ResizeObserver); });
+      expect(shell.style.getPropertyValue('--app-header-height')).toBe('168px');
+    } finally {
+      rectSpy.mockRestore();
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('switches the canvas mode from the tool buttons', async () => {
     const { container, button, click } = await renderEditor();
 

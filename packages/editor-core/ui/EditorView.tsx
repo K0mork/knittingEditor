@@ -1,4 +1,4 @@
-import { useEffect, useState, type MouseEvent, type MouseEventHandler, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent, type MouseEventHandler, type ReactNode } from 'react';
 import { BoardCanvas, type CanvasMode } from '../canvas/BoardCanvas';
 import { parseColor } from '../model/Board';
 import { describeColor } from '../model/usedColors';
@@ -79,6 +79,30 @@ export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, 
   const { session, mode, panel, selection, copiedBlock } = editor;
   const history = historyTitles(useInputEnvironment());
   const { board, activeDocument, dirty } = session;
+  const headerRef = useRef<HTMLElement>(null);
+  const editorShown = Boolean(board && activeDocument);
+  /*
+   * ヘッダーの実際の高さをCSS変数に入れる。広い画面のパネル（`.drawer`）はヘッダーの下に
+   * 置くので、Dynamic Typeでヘッダーが伸びても「使い方」「編み図」を覆わない。
+   * 文字サイズの変更や回転でも高さが変わるため、ResizeObserverで測り直す。
+   */
+  useLayoutEffect(() => {
+    const header = headerRef.current;
+    const shell = header?.parentElement;
+    if (!header || !shell) return;
+    const update = () => {
+      const height = header.getBoundingClientRect().height;
+      if (height > 0) shell.style.setProperty('--app-header-height', `${height}px`);
+    };
+    update();
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', update);
+      return () => window.removeEventListener('resize', update);
+    }
+    const observer = new ResizeObserver(update);
+    observer.observe(header);
+    return () => observer.disconnect();
+  }, [editorShown]);
   if (editor.initializationError) return <main className="loading" role="alert">編み図を読み込めませんでした：{editor.initializationError}<button onClick={() => window.location.reload()}>再読み込み</button></main>;
   if (!board || !activeDocument) return <main className="loading">編み図を読み込んでいます…</main>;
 
@@ -87,7 +111,7 @@ export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, 
   const modeButton = (target: CanvasMode, label: string, onClick: () => void) => <button key={target} className={mode === target ? 'active' : ''} aria-pressed={mode === target} onClick={onClick}>{label}</button>;
 
   return <div className="app-shell">
-    <header className="app-header">
+    <header ref={headerRef} className="app-header">
       {renderTitle(documentStatus)}
       <div className="header-actions">
         <a className="header-guide" href="/guide/" onClick={onGuideClick}>使い方</a>

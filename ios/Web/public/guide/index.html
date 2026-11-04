@@ -9,6 +9,8 @@
     <title>棒針編み図エディタの使い方</title>
     <style>
       :root {
+        /* 本文サイズをDynamic Typeに追従させる。`font`で本文サイズを決めてから書体だけ戻す。 */
+        font: -apple-system-body;
         font-family: Inter, "Hiragino Sans", "Yu Gothic", system-ui, sans-serif;
         color: #26322c;
         background: #f3f0e8;
@@ -16,6 +18,7 @@
         color-scheme: light dark;
       }
       * { box-sizing: border-box; }
+      html { -webkit-text-size-adjust: 100%; }
       /* アプリのWebViewは画面の端まで広げている（#146）。横向きでDynamic Islandや角に文字がかからないよう、
          左右のセーフエリアの分だけ内側に寄せる。 */
       body { margin: 0; padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); }
@@ -23,7 +26,8 @@
       header { padding: 28px 0 12px; }
       main { padding: 8px 0 48px; }
       footer { padding: 20px 0 40px; border-top: 1px solid #d5dbd3; }
-      h1 { font-size: clamp(1.7rem, 5vw, 2.5rem); line-height: 1.35; }
+      /* 上限もremで指定し、Dynamic Typeで本文が大きくなると見出しも一緒に大きくなるようにする。 */
+      h1 { font-size: clamp(1.7rem, 5vw + 0.6rem, 2.5rem); line-height: 1.35; overflow-wrap: anywhere; }
       h2 { margin-top: 2.2em; line-height: 1.45; }
       h3 { margin-top: 1.8em; line-height: 1.45; }
       /* 編集画面の「やり方を見る」から節へ直接開いたとき、見出しが画面の上端や切り欠きに重ならないようにする。 */
