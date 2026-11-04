@@ -1,16 +1,16 @@
 // @vitest-environment node
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { STITCHES } from './catalog';
+import { STITCHES } from '../packages/editor-core/stitches/catalog.ts';
 
 /**
  * 利用者向け文書の「29種類」「29記号」のような件数が、記号カタログの件数と
  * ずれていないかを検査する。記号を追加・削除したときに、文書側の更新漏れを
  * ここで検出する。SEO用の文言は変えず、件数だけをカタログに合わせる。
  */
-const root = new URL('../../../', import.meta.url);
+const root = new URL('../', import.meta.url);
 
-const checks: ReadonlyArray<{ file: string; pattern: RegExp }> = [
+const checks = [
   { file: 'README.md', pattern: /(\d+)種類/g },
   { file: 'index.html', pattern: /(\d+)種類/g },
   { file: 'public/llms.txt', pattern: /(\d+)種類/g },
