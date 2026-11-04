@@ -1,0 +1,24 @@
+# 2026-11-04 — iOS UIテストで「使い方」を押す前に保存を待ち、移らなかった理由を残す（#401）
+
+- 影響: `testGuideNavigationReturnsToUsableEditor`が、記号を置いた直後に「使い方」を押して使い方ページへ移らないことがある（#401）。原因は未確認で、直ったとは扱わない。
+  - Full iOS validation run 41541479471の`ios_full (iPhone 17)`（main `f921068`）で1回目に失敗し、再試行で成功した。xcresultでは「使い方」への合成タップが(281, 94)にあり、リンクの枠`{{255, 84}, {51, 19}}`の中央に当たっていた。タップ自体はリンクへ届いている。
+  - タップは記号を置いてから約3秒後（記号を置いたタップt=38.05秒、「使い方」のタップt=41.03秒）。成功した再試行では約7秒後だった。
+  - 待っている間、XCUITestは問い合わせ結果だけを保持して要素の木を残しておらず、通知は4.5秒で消える（`NOTIFICATION_DURATION_MS`）。最初に残った要素の木（t≈86秒）は編集画面で、ヘッダーは「保存済み」、盤面は「記号1個」、通知は無かった。このため、(a) 保存が2秒以内に終わらず仕様どおり編集画面に残った（「保存の完了を2秒以内に確認できませんでした…」または「保存中に新しい編集が入りました…」の通知）のか、(b) タップがWebKitでクリックにならなかった（通知が無い）のかを区別できなかった。
+  - テストは「使い方」を押す前にヘッダーの保存状態が「保存済み」になるのを待ち、(a)の可能性をテストから除く。「保存失敗」になったときや確認できないときは、画面写真を残してその場で失敗にし、「使い方」は押さない。押した後は、通知の文言とヘッダーの保存状態の変化を時刻付きで記録する。通知が1つも出ないまま、タップから10秒たっても見出しが出ず編集画面のときだけ、タップ前に読んだリンクの中心を座標で1回押し直す。通知が出ていればアプリはタップを受けているので押し直さず、保存待ちやアプリ側の問題を隠さない。押し直したときは`GUIDE_RETRY`（押し直した時点）と`GUIDE_RETRY_RESULT`（結果）、押し直さずに移らなかったときは`GUIDE_FAIL`として、経過をジョブログとxcresultに残す。テストの実行時間の上限は、このファイルのほかの長いテストと同じく240秒にした。
+  - アプリは、保存を確かめられなかったときに編集画面へ残った理由を通知で示しており（`packages/editor-core/ui/guideNavigation.ts`）、既存のVitestと`tests/e2e/save-before-guide.spec.ts`で覆われている。アプリコードは変更しない。
+  - 再発の観察は#44で続ける。対応Issue: Closes #401。
+- 主なファイル: `ios/UITests/KnittingEditorUITests/KnittingEditorUITests.swift`、`docs/dev-log/2026-11-04-guide-navigation-ui-test-wait.md`
+- テスト: `testGuideNavigationReturnsToUsableEditor`を更新し、ヘッダーの「保存済み」を待ってから「使い方」を押すようにした。新しいprivateヘルパー`openGuide(with:in:)`が、見出しを0.5秒ごとに待ちながら、WebViewのスナップショット1回から通知と保存状態を読んで記録し（移る途中に消えた要素を読んでテストが失敗しないようにするため）、条件を満たすときだけ1回押し直す。見出しが出ないときは画面写真を添えて`XCTFail`する。新しいテストは足しておらず、PRスモークの一覧（`ios/UITests/pr-smoke-ui-tests.txt`）も変えていない。
+- 検証（手元、Xcode 27.2、iPhone Simulator「KE verify iPhone」iOS 27.2）:
+  - `xcodegen generate --spec ios/project.yml`: 成功。追跡しているファイルに差分なし。
+  - `xcodebuild test -project ios/knittingEditor.xcodeproj -scheme knittingEditor -destination 'id=<iPhone Simulator>' -derivedDataPath <一時ディレクトリ> CODE_SIGNING_ALLOWED=NO -only-testing:knittingEditorUITests/KnittingEditorUITests/testGuideNavigationReturnsToUsableEditor`: 成功（90.4秒）。
+  - 同じコマンドで、診断の経路を一時的なアプリの変更で確かめた（どちらの変更もコミットしていない）。
+    - `guideNavigation.ts`を保存結果にかかわらずタイムアウトの通知を出して残るようにした場合: 押し直さずに失敗し、`GUIDE_FAIL`に「タップ0.4秒→通知「保存の完了を2秒以内に確認できませんでした…」1.0秒→最後まで見出しが出ない」と保存状態「保存済み」が残った。通知はWebViewのスナップショットの静的テキストとして読めた。
+    - `ios/Web/src/App.tsx`で「使い方」の1回目のクリックを無視した場合: 通知が無いまま10.6秒で座標を押し直し、12.0秒で使い方ページが出て成功した。`GUIDE_RETRY`と`GUIDE_RETRY_RESULT`が残った。
+  - `xcrun --sdk iphonesimulator swiftc -typecheck`（UIテストの2ファイル）: 成功。既存のSwift 6警告1件のみ。
+  - `node scripts/check-pr-smoke-ui-tests.mjs`: 成功（11件、一覧は未変更）。
+  - `npx vitest run scripts/check-pr-smoke-ui-tests.test.mjs`: 16件成功。
+  - `git diff --check`: 成功。
+  - Web・共有コードは変えていないため、`npm run typecheck`・`npm test`・`npm run build`・`npm run check:dist`・`npm run test:e2e`は実行していない。
+- PRのCIと手動のFull iOS validationに任せる確認: iPhone 17のUIスモーク（このテストを含む）と単体テスト、ブランチで手動実行する`ios-full.yml`のiPhone 17・iPad (A16)で、このテストが1回目に成功すること。iPadでは手元で実行していない。
+- デプロイ影響: なし（none）。UIテストだけの変更で、アプリの動作・Pagesの配信物・TestFlight／App Storeの配布設定は変わらない。配信後の確認も不要。

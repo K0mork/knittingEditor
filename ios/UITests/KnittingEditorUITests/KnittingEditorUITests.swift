@@ -38,7 +38,12 @@ final class KnittingEditorUITests: XCTestCase {
 
     /// 使い方ページは同梱資産だがReactの`webReady`を送らない。編集画面と同じ
     /// 読み込み表示を出したままにせず、戻ったときに編集画面が再び使えることを確認する。
+    ///
+    /// 保存の完了待ちはこのテストで行い、移らなかったときの記録と再タップは
+    /// `openGuide(with:in:)`が行う（#401）。
     func testGuideNavigationReturnsToUsableEditor() {
+        // 保存待ちとガイドの待機が続いても実行時間の上限に掛からないよう、広げる。
+        executionTimeAllowance = 240
         let app = XCUIApplication()
         app.launch()
 
@@ -52,14 +57,46 @@ final class KnittingEditorUITests: XCTestCase {
         waitForStitchCount(0, on: canvas, in: app)
         canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
         waitForStitchCount(1, on: canvas, in: app)
+        // アプリは「使い方」を押す前に保存の完了を最大2秒待ち、確かめられなければ
+        // 編集画面に残って理由を通知する（`guideNavigation.ts`）。記号を置いた直後の
+        // 保存が終わる前に押すと、CIの遅いSimulatorでは仕様どおり残るため、ヘッダーの
+        // 保存状態が「保存済み」か「保存失敗」になるまで待ってから押す（#401）。
+        // 状態は読み上げ用に「、保存済み」のように読点が付くので終わりで照合する
+        // （「保存済みブロックはありません。」には一致しない）。
+        let webView = app.webViews.firstMatch
+        let savedStatus = webView.staticTexts
+            .matching(NSPredicate(format: "label ENDSWITH %@", "保存済み"))
+            .firstMatch
+        let failedStatus = webView.staticTexts
+            .matching(NSPredicate(format: "label ENDSWITH %@", "保存失敗"))
+            .firstMatch
+        var saveState = ""
+        let saveDeadline = Date().addingTimeInterval(Self.editorAppearanceTimeout)
+        while Date() < saveDeadline {
+            if failedStatus.exists {
+                saveState = "保存失敗"
+                break
+            }
+            if savedStatus.exists {
+                saveState = "保存済み"
+                break
+            }
+            // 見つからなければ0.5秒だけ待ち、その間の変化を次の周回で読む。
+            _ = savedStatus.waitForExistence(timeout: 0.5)
+        }
+        // 保存を確認できないまま押すと、アプリが編集画面に残って別の失敗も重なる。
+        // 状態と画面写真を残してここで止め、「使い方」は押さない（#401）。
+        guard saveState == "保存済み" else {
+            add(screenshotAttachment(named: "保存の完了を確認できない"))
+            XCTFail(
+                "保存の完了を待てない（見えた状態: \(saveState.isEmpty ? "なし" : saveState)）: \(app.debugDescription)"
+            )
+            return
+        }
         let guideLink = app.links["使い方"]
         XCTAssertTrue(guideLink.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
-        guideLink.tap()
+        openGuide(with: guideLink, in: app)
 
-        XCTAssertTrue(
-            app.webViews.firstMatch.staticTexts["棒針編み図の作り方"].waitForExistence(timeout: Self.editorAppearanceTimeout),
-            app.debugDescription
-        )
         XCTAssertFalse(
             app.otherElements["editorLoadingOverlay"].exists,
             "使い方ページで編集画面の読み込み表示を残さない: \(app.debugDescription)"
@@ -2151,6 +2188,134 @@ final class KnittingEditorUITests: XCTestCase {
             .completed,
             "記号が\(count)個にならない: \(canvas.label) \(app.debugDescription)"
         )
+    }
+
+    /// 「使い方」を押し、使い方ページの見出しが出るまで待つ。
+    ///
+    /// アプリはリンクを押す前に保存の完了を最大2秒待ち、確かめられなければ編集画面に
+    /// 残って理由を通知する（`guideNavigation.ts`）。このヘルパー自身は保存を待たず、
+    /// 受け取ったリンクを押して、保存待ちで仕様どおり残った場合と、タップがWebKitで
+    /// クリックにならなかった場合を見分けられるよう、通知の文言とヘッダーの保存状態の
+    /// 変化を時刻付きで残す。通知が1つも出ず、タップから10秒たっても見出しが出ないまま
+    /// 編集画面のときだけ、クリックが届かなかったとみなして1回押し直す（#401）。
+    /// 通知が出ていればアプリはタップを受けているので、押し直して隠さない。
+    /// 再発の観察は#44で続ける。
+    private func openGuide(with link: XCUIElement, in app: XCUIApplication) {
+        let webView = app.webViews.firstMatch
+        let heading = webView.staticTexts["棒針編み図の作り方"].firstMatch
+        let export = app.buttons["出力"]
+        let started = Date()
+        var events: [String] = []
+        func record(_ event: String) {
+            events.append(String(format: "%.1f秒 ", Date().timeIntervalSince(started)) + event)
+        }
+        func emit(_ prefix: String) {
+            let summary = prefix + " " + events.joined(separator: " → ")
+            print(summary)
+            XCTContext.runActivity(named: summary) { _ in }
+        }
+        // 通知は4.5秒で消える（`NOTIFICATION_DURATION_MS`）。使い方への移動を説明する
+        // 文言だけを拾い、保存待ちのタイムアウト・保留・保存失敗のどれだったか分ける。
+        func isGuideToast(_ label: String) -> Bool {
+            label.contains("使い方を開") || label.contains("もう一度「使い方」")
+        }
+        // ページが切り替わる途中に要素を個別に読むと、`exists`と`label`の間で消えて
+        // 「Failed to get matching snapshot」のテスト失敗になる。1回のスナップショット
+        // から静的なテキストのラベルだけを取り出し、失敗した回は数えて次の周回に任せる
+        // （`snapshot()`は例外を投げるだけでテストを失敗させない）。
+        func staticTextLabels() -> [String]? {
+            guard let snapshot = try? webView.snapshot() else { return nil }
+            var labels: [String] = []
+            func collect(_ node: XCUIElementSnapshot) {
+                if node.elementType == .staticText { labels.append(node.label) }
+                node.children.forEach(collect)
+            }
+            collect(snapshot)
+            return labels
+        }
+        func saveStatus(in labels: [String]) -> String {
+            // 通知の「保存中に新しい編集が入りました」と混同しないよう、状態の文言で
+            // 終わる静的テキストだけを見る（読み上げ用は「、保存済み」のように読点が付く）。
+            for status in ["保存済み", "保存中", "保存失敗"]
+            where labels.contains(where: { $0.hasSuffix(status) }) {
+                return status
+            }
+            return ""
+        }
+
+        var lastSaveStatus = ""
+        if let labels = staticTextLabels() {
+            lastSaveStatus = saveStatus(in: labels)
+            record("ヘッダーの保存状態「\(lastSaveStatus.isEmpty ? "なし" : lastSaveStatus)」")
+        }
+        var toasts: Set<String> = []
+        var retried = false
+        var readSnapshots = 0
+        var unreadSnapshots = 0
+
+        // 再タップは要素を解決し直さず、タップ前に読んだリンクの中心を座標で押す。
+        // 遷移が始まった直後に消えた要素を押して「Failed to get matching snapshot」に
+        // なるのを避ける（#401）。
+        let linkFrame = link.frame
+        link.tap()
+        // 10秒の再タップ判定と45秒の見出し待ちは、タップ自体に時間が掛かっても
+        // 足りなくならないよう、タップが戻った時点から数える。
+        let tappedAt = Date()
+        record(String(format: "「使い方」をタップ（タップに%.1f秒）", tappedAt.timeIntervalSince(started)))
+        var shown = false
+        while Date().timeIntervalSince(tappedAt) < Self.editorAppearanceTimeout {
+            // 見出しが現れれば直ちに戻る。現れないときだけ0.5秒待つ。
+            if heading.waitForExistence(timeout: 0.5) {
+                shown = true
+                break
+            }
+            if let labels = staticTextLabels() {
+                readSnapshots += 1
+                for label in labels where isGuideToast(label) {
+                    if toasts.insert(label).inserted {
+                        record("通知「\(label)」")
+                    }
+                }
+                let status = saveStatus(in: labels)
+                if status != lastSaveStatus {
+                    record("ヘッダーの保存状態「\(status.isEmpty ? "なし" : status)」")
+                    lastSaveStatus = status
+                }
+            } else {
+                unreadSnapshots += 1
+            }
+            // 通知が無いまま10秒たっても見出しが出ず、編集画面のままなら、タップが
+            // WebKitでクリックになっていない可能性がある。結果が同じ操作なので1回だけ
+            // 押し直し、次回に分かるよう画面写真とその時点の経過を残す。通知を1件でも
+            // 見た場合と、タップ後にスナップショットを1回も読めなかった場合は、通知の
+            // 有無を判断できないため押し直さない。
+            if !retried, toasts.isEmpty, readSnapshots > 0,
+                Date().timeIntervalSince(tappedAt) >= 10,
+                !heading.exists, link.exists, export.exists {
+                retried = true
+                record("通知が無いまま10秒たっても見出しが出ない（編集画面のまま）。クリックが届いていないとみなして押し直す")
+                add(screenshotAttachment(named: "「使い方」のタップが届かない"))
+                emit("GUIDE_RETRY")
+                app.coordinate(withNormalizedOffset: .zero)
+                    .withOffset(CGVector(dx: linkFrame.midX, dy: linkFrame.midY)).tap()
+                record("「使い方」を押し直した")
+            }
+        }
+        let appeared = shown || heading.exists
+        if appeared {
+            record("「棒針編み図の作り方」が出た")
+        } else {
+            record("最後まで「棒針編み図の作り方」が出ない（通知\(toasts.count)件、保存状態「\(lastSaveStatus.isEmpty ? "なし" : lastSaveStatus)」、スナップショット成功\(readSnapshots)回・読めなかった回 \(unreadSnapshots)）")
+            add(screenshotAttachment(named: "「使い方」で見出しが出ない"))
+        }
+        // 押し直した場合は、通っても通らなくても経過をジョブログとxcresultへ残す。
+        if retried {
+            emit("GUIDE_RETRY_RESULT")
+        } else if !appeared {
+            emit("GUIDE_FAIL")
+        }
+        if appeared { return }
+        XCTFail("「使い方」を押しても使い方ページへ移らない（通知\(toasts.count)件、保存状態「\(lastSaveStatus.isEmpty ? "なし" : lastSaveStatus)」、読めなかった回 \(unreadSnapshots)） 経過: \(events.joined(separator: " → ")): \(app.debugDescription)")
     }
 
     /// 盤面のアクセシブルな名前から現在の記号数を読む。
