@@ -13,5 +13,6 @@
   - `xcodebuild test ... -only-testing:knittingEditorUITests/KnittingEditorUITests/testDocumentSwitchSavesWithoutAutosave`（iPad (A16)）: 1回目は失敗した。Spotlightの索引作成でMacの負荷（load average）が150〜200になり、要素の検索1回に十数秒かかって、盤面の静止の確認（`:379`、今回変えていない箇所）が10秒で終わらなかった。負荷が下がってから実行し直して成功（171秒、`TAPRETRY`の行なし）
   - `SIMULATOR_UDID=<iPhone 17> ios/scripts/simulate-app-update.sh "iPhone 17"`: 成功（`testSeedDocumentForAppUpdateProbe`、`testUpdatedAppRestoresSeedDocument`。`TAPRETRY`の行なし）
   - Web・共有コードは変えていないので、`npm run typecheck`などWebの検査は実行していない。
-  - PRのCIと、ブランチで手動実行するFull iOS validation（iPhone 17・iPad (A16)）で2件が1回目に成功することを確かめる（#375の完了条件）。
+  - PRのCI（`4f2084b`）: `ci-gate`・`ios`・`ios_web`・`app_store_docs`・`changes`が成功（`web`はWebの変更が無いため実行されない）。
+  - ブランチで手動実行したFull iOS validation（run 41743624120、`4f2084b`）: `ios_full`（iPhone 17・iPad (A16)）、`app_update`（iPhone 17・iPad (A16)）、`release_archive`がすべて成功。`testDocumentSwitchSavesWithoutAutosave`と`testSeedDocumentForAppUpdateProbe`は両端末で1回目に成功し、4つのテストジョブのログに`Iteration 2 of 2`・`exceeded execution time allowance`・`Restarting after unexpected exit`・`TAPRETRY`は無かった。
 - デプロイ影響: なし（UIテストだけの変更。Pages・TestFlight・App Storeへの影響なし）
