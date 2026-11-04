@@ -1,11 +1,22 @@
 // @vitest-environment node
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, writeFileSync, rmSync, realpathSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, writeFileSync, rmSync, realpathSync, utimesSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { decide, isPathInUse, parseLsofCwds, parseWorktrees, planWorktrees, processCwds } from './clean-worktrees.mjs';
+import {
+  RECENT_CREATION_MS,
+  decide,
+  formatAge,
+  isPathInUse,
+  latestCreatedAt,
+  parseLsofCwds,
+  parseReflogCreatedAt,
+  parseWorktrees,
+  planWorktrees,
+  processCwds,
+} from './clean-worktrees.mjs';
 
 describe('parseWorktrees', () => {
   it('reads branches and detached worktrees from porcelain output', () => {
@@ -38,6 +49,54 @@ describe('decide', () => {
     expect(decide({ inMain: false, pr: null }).remove).toBe(false);
     expect(decide({ inMain: true, pr: merged, dirty: true })).toEqual({ remove: false, reason: 'uncommitted changes' });
     expect(decide({ inMain: true, pr: merged, inUse: true })).toEqual({ remove: false, reason: 'in use by a running process' });
+  });
+
+  describe('recently created work', () => {
+    const now = Date.UTC(2026, 10, 4, 12);
+    const minutesAgo = (minutes) => now - minutes * 60 * 1000;
+
+    it('keeps a worktree or branch created moments ago from origin/main that has no PR yet', () => {
+      expect(decide({ inMain: true, pr: null, createdAt: minutesAgo(5), now })).toEqual({ remove: false, reason: 'created 5m ago and has no PR yet' });
+      expect(decide({ inMain: true, pr: null, createdAt: now - RECENT_CREATION_MS + 60 * 1000, now }).remove).toBe(false);
+    });
+
+    it('keeps it when the only PR of that name does not contain its tip (an older branch of the same name)', () => {
+      expect(decide({ inMain: true, pr: { ...merged, headIsTipOrDescendant: false }, createdAt: minutesAgo(5), now })).toEqual({
+        remove: false,
+        reason: 'created 5m ago and PR #7 does not contain its tip',
+      });
+    });
+
+    it('still removes recently created work whose merged or closed PR contains its tip', () => {
+      expect(decide({ inMain: true, pr: merged, createdAt: minutesAgo(5), now }).remove).toBe(true);
+      expect(decide({ inMain: false, pr: merged, createdAt: minutesAgo(5), now }).remove).toBe(true);
+      expect(decide({ inMain: false, pr: { ...merged, state: 'CLOSED' }, createdAt: minutesAgo(5), now }).remove).toBe(true);
+    });
+
+    it('removes work in origin/main once the creation is old or unknown, as before', () => {
+      expect(decide({ inMain: true, pr: null, createdAt: now - RECENT_CREATION_MS, now })).toEqual({ remove: true, reason: 'tip is in origin/main' });
+      expect(decide({ inMain: true, pr: null, createdAt: null, now }).remove).toBe(true);
+    });
+  });
+});
+
+describe('creation times', () => {
+  it('reads the oldest reflog entry as the creation time', () => {
+    expect(parseReflogCreatedAt('fix/x@{1793750700}\nfix/x@{1793750639}\n')).toBe(1793750639000);
+    expect(parseReflogCreatedAt('')).toBeNull();
+  });
+
+  it('uses the latest known time, so a new branch in an old worktree counts as new', () => {
+    expect(latestCreatedAt(1000, 5000)).toBe(5000);
+    expect(latestCreatedAt(null, 5000)).toBe(5000);
+    expect(latestCreatedAt(null, null)).toBeNull();
+  });
+
+  it('formats ages briefly', () => {
+    expect(formatAge(30 * 1000)).toBe('0m');
+    expect(formatAge(59 * 60 * 1000)).toBe('59m');
+    expect(formatAge(3 * 60 * 60 * 1000)).toBe('3h');
+    expect(formatAge(3 * 24 * 60 * 60 * 1000)).toBe('3d');
   });
 });
 
@@ -144,8 +203,9 @@ describe('processCwds with a fake lsof', () => {
   });
 });
 
-describe('--apply on a real repository with nested worktrees', () => {
+describe('on a real repository', () => {
   const script = fileURLToPath(new URL('./clean-worktrees.mjs', import.meta.url));
+  const oldDate = '2020-01-02T00:00:00Z';
   let root;
 
   afterEach(() => {
@@ -157,13 +217,11 @@ describe('--apply on a real repository with nested worktrees', () => {
     return execFileSync('git', ['-c', 'user.email=test@example.com', '-c', 'user.name=test', ...args], { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
   }
 
-  // 親の中の`.claude/worktrees/`に入れ子のworktreeを作る。どちらもdetachedで、先端はorigin/mainに含まれる。
-  // 入れ子の名前は親より後に並ぶようにして、`git worktree list`で親が先に出るようにする。
-  function nestedRepository() {
+  // origin/mainを持つリポジトリを作る。`prs`はブランチ名からPR（`gh pr list --json`の1件）への対応で、偽の`gh`が返す。
+  function repository() {
     root = realpathSync(mkdtempSync(join(tmpdir(), 'clean-worktrees-repo-')));
     const bin = join(root, 'bin');
     mkdirSync(bin);
-    writeFileSync(join(bin, 'gh'), '#!/bin/sh\necho "[]"\n', { mode: 0o755 });
     writeFileSync(join(bin, 'lsof'), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
     const repo = join(root, 'repo');
     git(root, 'init', '--quiet', '--bare', '--initial-branch=main', 'origin.git');
@@ -173,16 +231,38 @@ describe('--apply on a real repository with nested worktrees', () => {
     git(repo, 'commit', '--quiet', '-m', 'init');
     git(repo, 'remote', 'add', 'origin', join(root, 'origin.git'));
     git(repo, 'push', '--quiet', 'origin', 'main');
-    const parent = join(repo, '.claude/worktrees/a-parent');
-    const nested = join(parent, '.claude/worktrees/z-nested');
-    git(repo, 'worktree', 'add', '--quiet', '--detach', parent, 'main');
-    git(parent, 'worktree', 'add', '--quiet', '--detach', nested, 'main');
-    const clean = () =>
-      execFileSync(process.execPath, [script, '--apply'], {
+    const clean = ({ apply = true, prs = {} } = {}) => {
+      const cases = Object.entries(prs)
+        .map(([branch, pr]) => `  *"--head ${branch} "*) echo '${JSON.stringify([pr])}' ;;\n`)
+        .join('');
+      writeFileSync(join(bin, 'gh'), `#!/bin/sh\ncase "$* " in\n${cases}  *) echo "[]" ;;\nesac\n`, { mode: 0o755 });
+      return execFileSync(process.execPath, [script, ...(apply ? ['--apply'] : [])], {
         cwd: repo,
         encoding: 'utf8',
         env: { ...process.env, PATH: `${bin}${delimiter}${process.env.PATH}` },
       });
+    };
+    return { repo, clean };
+  }
+
+  // worktreeの作成時刻（管理ディレクトリの`commondir`の更新時刻）を古くする。
+  function ageWorktree(path) {
+    const old = new Date(oldDate);
+    utimesSync(join(git(path, 'rev-parse', '--absolute-git-dir'), 'commondir'), old, old);
+  }
+
+  // 親の中の`.claude/worktrees/`に入れ子のworktreeを作る。どちらもdetachedで、先端はorigin/mainに含まれる。
+  // 入れ子の名前は親より後に並ぶようにして、`git worktree list`で親が先に出るようにする。
+  function nestedRepository({ old = true } = {}) {
+    const { repo, clean } = repository();
+    const parent = join(repo, '.claude/worktrees/a-parent');
+    const nested = join(parent, '.claude/worktrees/z-nested');
+    git(repo, 'worktree', 'add', '--quiet', '--detach', parent, 'main');
+    git(parent, 'worktree', 'add', '--quiet', '--detach', nested, 'main');
+    if (old) {
+      ageWorktree(parent);
+      ageWorktree(nested);
+    }
     return { repo, parent, nested, clean };
   }
 
@@ -202,5 +282,42 @@ describe('--apply on a real repository with nested worktrees', () => {
     expect(output).toContain('Removed 2 item(s).');
     expect(existsSync(parent)).toBe(false);
     expect(parseWorktrees(git(repo, 'worktree', 'list', '--porcelain')).map(({ path }) => path)).toEqual([repo]);
+  });
+
+  it('keeps a worktree and branch just created from origin/main, before any commit or PR', () => {
+    const { repo, clean } = repository();
+    const fresh = join(repo, '.claude/worktrees/x');
+    git(repo, 'fetch', '--quiet', 'origin');
+    git(repo, 'worktree', 'add', '--quiet', '-b', 'fix/x', fresh, 'origin/main');
+    expect(clean({ apply: false })).toMatch(new RegExp(`keep   worktree ${fresh} \\[fix/x\\]: created \\d+m ago and has no PR yet`));
+    const output = clean();
+    expect(output).toContain('Removed 0 item(s).');
+    expect(existsSync(fresh)).toBe(true);
+    expect(git(repo, 'branch', '--list', 'fix/x')).toContain('fix/x');
+  });
+
+  it('keeps a branch without a worktree only while it is recent', () => {
+    const { repo, clean } = repository();
+    git(repo, 'branch', 'fix/new', 'main');
+    execFileSync('git', ['branch', 'fix/old', 'main'], { cwd: repo, env: { ...process.env, GIT_COMMITTER_DATE: oldDate } });
+    const output = clean();
+    expect(output).toMatch(/keep   branch fix\/new: created \d+m ago and has no PR yet/);
+    expect(output).toContain('remove branch fix/old: tip is in origin/main');
+    expect(git(repo, 'branch', '--list', 'fix/*').split('\n').map((line) => line.replace(/^[*+ ] /, ''))).toEqual(['fix/new']);
+  });
+
+  it('removes a recently created worktree and branch whose merged PR head is the tip', () => {
+    const { repo, clean } = repository();
+    const done = join(repo, '.claude/worktrees/done');
+    git(repo, 'worktree', 'add', '--quiet', '-b', 'fix/done', done, 'main');
+    writeFileSync(join(done, 'change.txt'), 'change\n');
+    git(done, 'add', 'change.txt');
+    git(done, 'commit', '--quiet', '-m', 'change');
+    const head = git(done, 'rev-parse', 'HEAD');
+    const output = clean({ prs: { 'fix/done': { number: 7, state: 'MERGED', headRefOid: head } } });
+    expect(output).toContain(`remove worktree ${done} [fix/done]: PR #7 merged, tip matches the PR head`);
+    expect(output).toContain('remove branch fix/done: PR #7 merged, tip matches the PR head');
+    expect(existsSync(done)).toBe(false);
+    expect(git(repo, 'branch', '--list', 'fix/done')).toBe('');
   });
 });
