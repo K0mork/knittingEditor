@@ -169,7 +169,7 @@ iPhone 13 miniでは、PNGの書き出しでSwiftに届いたデータが163 byt
 `BridgeExportWrite`（atomic write）、`BridgeBackupRead`（security scopeとmapped read、外部URLではcoordinationを含む）、
 `BridgeBackupEncode`（Base64とJSON）、`BridgeBackupJavaScript`（evaluateJavaScript完了まで）。
 終了metadataは`bytes`とMIMEのみ。JavaScript区間のbytesはUTF-8スクリプトサイズ、その他は復号ファイルサイズ。
-読み込み失敗時のbytesは0の場合がある。ファイル名・内容は記録しない。
+readFailed時のbytesは0の場合がある。ファイル名・内容は記録しない。
 JavaScriptの完了は非同期のWeb復元完了を意味しないため、復元完了はUIテストの秒数でも確認する。
 保存先の選択は人の操作待ちを含むため、受信からpicker提示までのsignpostは設けない。
 所要時間はDEBUGビルドのアプリが書く区間ファイル（`Library/Caches/bridge-io-intervals.tsv`、
@@ -195,6 +195,14 @@ Hangsは`potential-hangs`／`hang-risks`表のうちアプリとWebKitの行を�
 - `testMissingIncomingBackupErrorWaitsForWebViewAndReady`／`testMissingIncomingBackupErrorWaitsForReady`／`testMissingIncomingBackupErrorIsDeliveredImmediatelyWhenReady`: Files・共有から開く`handleIncomingURL`経路で欠損を捕まえ、「バックアップを読み込めませんでした」を通知する。WebView接続前・起動直後は編集画面の準備後、準備済みなら直ちに一度だけ配送し、使い方ページから戻っても再送しない。
 - `testIncomingBackupErrorDuringGuideWaitsForEditorReady`: 使い方ページ表示中の読み込みエラーも、編集画面が再び`webReady`を送ってから一度だけ配送する。
 - `testMissingPickerBackupReportsErrorAndClearsPresentationState`: Document Picker経路で欠損を捕まえて同じエラーを通知し、選択画面の状態を解除する。
+
+iCloudのreadFailedの自動テスト範囲（`ios/Tests/KnittingEditorAppTests/BackupReadFailureTests.swift`）。合成したエラーと原本の状態で判定と文言を検証する。実機で届くエラーの種類と表示の確認は含まない。
+
+- `testCocoaUbiquitousErrorsShowICloudMessage`／`testNestedNetworkErrorShowsICloudMessage`／`testMultipleUnderlyingDataNotAllowedShowsICloudMessage`／`testNetworkAndCloudDocsErrorsShowICloudMessage`: iCloudのCocoaエラー、単一・複数の原因に含まれる通信エラー、CloudDocsのエラーを同じ通信案内へ対応づける。
+- `testNotDownloadedICloudItemShowsICloudMessage`／`testResourceDownloadingErrorIsClassifiedAndLogged`: 原本のダウンロード状態とダウンロードエラーも判定に使う。
+- `testOtherFailuresKeepDefaultMessage`／`testDownloadedOrLocalItemKeepsDefaultMessage`: iCloudのダウンロード失敗と区別できないものは従来の文言を維持する。
+- `testCyclicUnderlyingErrorsTerminate`／`testDeepAndWideErrorChainsAreBounded`／`testLoggedChainHasOnlyDomainsAndCodes`: 走査を有限にし、記録用の値にファイル名・パス・説明を含めない。
+- `NativeErrorDeliveryTests.testBothReadPathsChooseSameMessages`: Files・共有経路とDocument Picker経路で使う文言の対応づけをそれぞれ検証し、容量超過の文言も維持する。
 
 実機で残る確認は、以下をiPhone・iPadの両方で行う。
 
