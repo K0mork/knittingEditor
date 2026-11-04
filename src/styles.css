@@ -5,10 +5,15 @@
 
 /* Web版のヘッダーはSEO向けの説明文と現在の編み図名を並べる。iOS版にはない。 */
 .app-heading-row { min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 10px; }
-/* 文字を大きくしても説明文と編み図名を切らない。編み図名はヘッダーでは2行までに抑え、
-   全体は「編み図」パネルの一覧で読めるようにする。 */
-.app-tagline { max-width: 100%; margin: 0; font-size: .72rem; overflow-wrap: anywhere; }
-.app-document-name { display: -webkit-box; max-width: 100%; margin: 2px 0 0; overflow: hidden; font-size: .76rem; line-height: 1.3; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+/* 既定の大きさでは説明文を1行に保つ（originと同じ）。大きな文字のときだけ折り返す。
+   名前と保存状態は横に並べる。保存状態が1行増えてもヘッダーの高さが変わらないので、
+   保存が始まった瞬間に盤面が動いてタップ位置がずれることがない。全体は一覧で読める。 */
+.app-tagline { max-width: 100%; margin: 0; font-size: .72rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-document-name { max-width: 100%; margin: 2px 0 0; display: flex; align-items: flex-start; gap: .35em; font-size: .76rem; overflow-wrap: anywhere; }
+.app-document-name-text { flex: 1 1 auto; min-width: 0; display: -webkit-box; overflow: hidden; line-height: 1.3; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.app-document-status { flex: 0 1 auto; min-width: 0; }
+.app-shell[data-large-text] .app-tagline { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; line-height: 1.12; }
+.app-shell[data-large-text] .app-document-name-text { line-height: 1.12; }
 
 @media (max-width: 420px) {
   .app-tagline { font-size: .66rem; }

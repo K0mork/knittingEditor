@@ -26,12 +26,16 @@ body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none
 input, textarea, [contenteditable]:not([contenteditable="false"]) { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
 
 /*
- * iOS版のヘッダーは編み図名だけを出す。Web版の説明文・編み図名クラスは持たない。
- * 大きな文字では題字も編み図名も折り返し、途中で切らない。編み図名はヘッダーでは2行までに抑え、
- * 全体は「編み図」パネルの一覧で読めるようにする。
+ * iOS版のヘッダーは編み図名だけを出す。Web版の説明文は持たず、編み図名のクラスだけ共有する。
+ * 大きな文字では題字も編み図名も折り返し、途中で切らない。名前だけを2行までに抑え、
+ * 保存状態は名前の横に並べて「保存中」「保存失敗」を隠さない。横に並べるので、
+ * 保存状態が出てもヘッダーの高さは変わらず、盤面が動かない。全体は一覧で読める。
  */
-.app-header h1 { line-height: 1.2; overflow-wrap: anywhere; }
-.app-header p { display: -webkit-box; max-width: 100%; margin: 2px 0 0; overflow: hidden; font-size: .76rem; line-height: 1.2; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.app-header h1 { overflow-wrap: anywhere; }
+.app-header p { max-width: 100%; margin: 2px 0 0; display: flex; align-items: flex-start; gap: .35em; font-size: .76rem; line-height: 1.2; overflow-wrap: anywhere; }
+.app-document-name-text { flex: 1 1 auto; min-width: 0; display: -webkit-box; overflow: hidden; line-height: 1.2; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.app-document-status { flex: 0 1 auto; min-width: 0; }
+.app-shell[data-large-text] .app-header h1, .app-shell[data-large-text] .app-document-name-text { line-height: 1.12; }
 
 .export-controls input[type="range"] { min-height: var(--tap-size); }
 

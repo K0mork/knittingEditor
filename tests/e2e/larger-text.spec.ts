@@ -30,8 +30,18 @@ const VIEWPORTS = [
 
 /** `css`が空のときは、ビルドに含まれるWeb版のCSSをそのまま使う。 */
 const HOSTS = [
-  { name: 'iOS版', css: IOS_HOST_CSS },
-  { name: 'Web版', css: '' },
+  // iOSの既定の本文サイズは17px（Large）。ブラウザ任せにせず明示して、iOS実機の既定を再現する。
+  { name: 'iOS版', css: IOS_HOST_CSS, defaultRootFontSize: 17 },
+  { name: 'Web版', css: '', defaultRootFontSize: 16 },
+] as const;
+
+/** 既定サイズの回帰を確かめる画面。320pxはヘッダーだけ、それ以外はパネルも開く。 */
+const DEFAULT_VIEWPORTS = [
+  { name: 'iPhone SE幅', width: 320, height: 844, headerOnly: true },
+  { name: 'iPhone 17', width: 390, height: 844, headerOnly: false },
+  { name: 'iPhone 17 Pro Max', width: 430, height: 932, headerOnly: false },
+  { name: 'iPad (A16)', width: 820, height: 1180, headerOnly: false },
+  { name: 'iPad 横向き', width: 1180, height: 820, headerOnly: false },
 ] as const;
 
 /** 長い名前でも全体が読めることを確かめるための編み図名。 */
@@ -223,8 +233,9 @@ async function expectChartNamePolicy(page: Page, name: string, label: string) {
   expect(listMetrics.scrollWidth, `${label}の一覧が横に切れていない`).toBeLessThanOrEqual(listMetrics.clientWidth + 1);
   expect(listMetrics.scrollHeight, `${label}の一覧が縦に切れていない`).toBeLessThanOrEqual(listMetrics.clientHeight + 1);
 
-  const headerName = page.locator('.app-document-name');
-  await expect(headerName, `${label}のヘッダー`).toContainText(name);
+  // クランプは名前だけの要素に掛ける。保存状態はその外なので、長い名前でも隠れない。
+  const headerName = page.locator('.app-document-name-text');
+  await expect(headerName, `${label}のヘッダー`).toHaveText(name);
   const headerMetrics = await headerName.evaluate((element) => {
     const style = getComputedStyle(element);
     const fontSize = Number.parseFloat(style.fontSize);
@@ -300,9 +311,91 @@ async function expectToolbarReachable(page: Page) {
 }
 
 /**
- * 使い方ページの本文が大きくなり、見出しや段落が横にはみ出さないことを確かめる。
- * 呼ぶ前にページを開いておく（既定の文字サイズの測定に使う）。
+ * 操作メニュー（盤面・ブロック・出力・元に戻す・やり直す）が、横スクロールなしで
+ * すべて画面内にあり、ほかの要素に覆われていないことを確かめる。
  */
+async function expectActionBarReachable(page: Page) {
+  const metrics = await page.locator('.action-bar').evaluate((bar) => ({
+    scrollWidth: bar.scrollWidth,
+    clientWidth: bar.clientWidth,
+  }));
+  expect(metrics.scrollWidth, '操作メニューが横スクロールしない').toBeLessThanOrEqual(metrics.clientWidth + 1);
+  const buttons = page.locator('.action-bar button');
+  const count = await buttons.count();
+  expect(count, '操作メニューのボタン数').toBeGreaterThan(0);
+  for (let index = 0; index < count; index += 1) {
+    const button = buttons.nth(index);
+    const name = (await button.getAttribute('aria-label')) ?? (await button.textContent())?.trim() ?? `ボタン${index}`;
+    const problem = await button.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      if (rect.left < -1 || rect.right > window.innerWidth + 1 || rect.top < -1 || rect.bottom > window.innerHeight + 1) {
+        return '画面の外にある';
+      }
+      const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+      return hit && (hit === element || element.contains(hit)) ? null : 'ほかの要素に覆われている';
+    });
+    expect(problem, `${name}を横スクロールなしで押せる`).toBeNull();
+  }
+}
+
+/**
+ * 選択操作の帯の全ボタンを、横スクロールで連れてきたあとに押せることを確かめる。
+ * 帯自体が横スクロールできることも確認し、iOSで見えないスクロールバーだけに頼らない
+ * （帯には端のフェードを付けてある）。
+ */
+async function expectSelectionActionsReachable(page: Page, label: string) {
+  const bar = page.locator('.selection-actions');
+  const metrics = await bar.evaluate((element) => ({
+    scrolling: element.scrollWidth > element.clientWidth + 1,
+    overflowX: getComputedStyle(element).overflowX,
+    maskImage: getComputedStyle(element).maskImage,
+  }));
+  if (metrics.scrolling) {
+    expect(metrics.overflowX, `${label}の帯が横スクロールできる`).toMatch(/auto|scroll/);
+    // iOSのオーバーレイスクロールバーは見えないので、端のフェードで「続きがある」ことを示す。
+    expect(metrics.maskImage, `${label}の帯にスクロールできることを示すフェードがある`).not.toBe('none');
+  }
+  const buttons = bar.locator('button');
+  const count = await buttons.count();
+  expect(count, `${label}のボタン数`).toBeGreaterThan(0);
+  for (let index = 0; index < count; index += 1) {
+    const button = buttons.nth(index);
+    const name = (await button.textContent())?.trim() ?? `ボタン${index}`;
+    await button.scrollIntoViewIfNeeded();
+    const problem = await button.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      if (rect.left < -1 || rect.right > window.innerWidth + 1 || rect.top < -1 || rect.bottom > window.innerHeight + 1) {
+        return 'スクロールしても画面の外にある';
+      }
+      const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+      return hit && (hit === element || element.contains(hit)) ? null : 'ほかの要素に覆われている';
+    });
+    expect(problem, `${label}の${name}を押せる`).toBeNull();
+  }
+}
+
+/** ヘッダーが1行の高さに収まり、操作ボタンが1段目にあることを確かめる。 */
+async function expectHeaderSingleRow(page: Page, label: string) {
+  const metrics = await page.locator('.app-header').evaluate((header) => {
+    const bounds = header.getBoundingClientRect();
+    const actions = header.querySelector<HTMLElement>('.header-actions')!.getBoundingClientRect();
+    return { height: bounds.height, actionsTop: actions.top - bounds.top, actionsBottom: actions.bottom - bounds.top };
+  });
+  expect(metrics.height, `${label}のヘッダーが1行の高さに収まる`).toBeLessThan(80);
+  expect(metrics.actionsTop, `${label}の操作ボタンが1段目にある`).toBeLessThan(metrics.height / 2);
+  expect(metrics.actionsBottom, `${label}の操作ボタンがヘッダー内にある`).toBeLessThanOrEqual(metrics.height);
+}
+
+/** 記号パネルの列数を数える。 */
+async function expectStitchColumns(page: Page, expected: number, label: string) {
+  await openStitchPicker(page);
+  const columns = await page.locator('.stitch-grid').first().evaluate((grid) =>
+    getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length);
+  expect(columns, `${label}の記号の列数`).toBe(expected);
+  await closeStitchPicker(page);
+}
+
+
 async function expectGuideReadable(page: Page, rootFontSize: number, label: string) {
   const before = await fontSizeSamples(page, ['main p']);
   await setRootFontSize(page, rootFontSize);
@@ -341,9 +434,10 @@ for (const host of HOSTS) {
         await page.goto('/');
         await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
         if (host.css !== '') await page.addStyleTag({ content: host.css });
-        await waitForLayout(page);
+        // 既定の文字サイズを先に測る。iOS版は実機の既定（Large）の17pxにする。
+        await setRootFontSize(page, host.defaultRootFontSize);
 
-        // 既定の文字サイズ（ブラウザの16px）を先に測り、拡大後の倍率を比べる。
+        // 既定の文字サイズを先に測り、拡大後の倍率を比べる。
         const defaultToolbarSizes = await fontSizeSamples(page, ['.header-guide', '.header-document', '.stitch-tool-name']);
         await expect(page.locator('.header-guide')).toHaveText('使い方');
         await expect(page.locator('.header-document')).toHaveText('編み図');
@@ -361,6 +455,8 @@ for (const host of HOSTS) {
 
         // 端末の文字サイズ（Webではブラウザの文字拡大）に合わせて、ルートを大きくする。
         await setRootFontSize(page, scale.rootFontSize);
+        await expect(page.locator('.app-shell'), `${host.name} ${viewport.name} ${scale.name}で大きな文字のレイアウトに切り替わる`)
+          .toHaveAttribute('data-large-text', '');
 
         const enlargedToolbarSizes = await fontSizeSamples(page, ['.header-guide', '.header-document', '.stitch-tool-name']);
         expectFontGrowth(`ヘッダーと編集ツール（${host.name}）`, defaultToolbarSizes, enlargedToolbarSizes);
@@ -376,6 +472,8 @@ for (const host of HOSTS) {
 
         // 画面の外にある道具も、横スクロールでたどり着けて、ほかの要素に隠れない。
         await expectToolbarReachable(page);
+        // 操作メニューは折り返して、スクロールせずに全部押せる。
+        await expectActionBarReachable(page);
 
         // 編み目記号のパネル: 名前が大きくなり、見出しが1文字ずつ折り返さない。
         await openStitchPicker(page);
@@ -389,6 +487,11 @@ for (const host of HOSTS) {
         await page.getByRole('button', { name: '盤面', exact: true }).click();
         const drawer = page.locator('#app-drawer');
         await expect(drawer).toBeVisible();
+        // パネルがヘッダーを覆うと「使い方」「編み図」を押せない。iPhone幅では上端がヘッダーの下に来る。
+        if (viewport.width < 760) {
+          await expectControlReachable(page, '.header-guide', 'パネルを開いている間の使い方');
+          await expectControlReachable(page, '.header-document', 'パネルを開いている間の編み図');
+        }
         await expectHeadingReadable(page, '#app-drawer .drawer-heading h2', '盤面設定');
         await page.getByLabel('段数', { exact: true }).fill('1000');
         await page.getByLabel('列数', { exact: true }).fill('1000');
@@ -412,17 +515,54 @@ for (const host of HOSTS) {
         await expectChartNamePolicy(page, LONG_CHART_NAME, '長い編み図名');
         // 編み図名（2行までのヘッダーの表示）以外は、ヘッダーも一覧も切れていない。
         expect(await clipProblems(page, [
-          { label: 'ヘッダー', selector: '.app-header', ignore: '.app-document-name' },
+          { label: 'ヘッダー', selector: '.app-header', ignore: '.app-document-name-text' },
           { label: '編み図パネル', selector: '#app-drawer' },
         ]), '長い編み図名の画面が切れていない').toEqual([]);
         await drawer.getByRole('button', { name: '閉じる', exact: true }).click();
         await expect(drawer).toHaveCount(0);
+
+        /*
+         * 長い編み図名＋大きな文字でも、保存状態（保存失敗）がヘッダーの中に見える。
+         * IndexedDBの書き込みだけを失敗させ、盤面を編集して保存失敗の表示を出す。
+         */
+        await page.evaluate(() => {
+          const original = IDBObjectStore.prototype.put;
+          Object.assign(window, { restoreDocumentPut: () => { IDBObjectStore.prototype.put = original; } });
+          IDBObjectStore.prototype.put = function (...args: Parameters<IDBObjectStore['put']>) {
+            if (this.name === 'documents') throw new DOMException('test quota', 'QuotaExceededError');
+            return original.apply(this, args);
+          };
+        });
+        let canvasBox = (await page.getByLabel('編み図編集盤面').boundingBox())!;
+        await page.mouse.click(canvasBox.x + canvasBox.width / 2, canvasBox.y + canvasBox.height / 2);
+        const status = page.locator('.app-document-status');
+        await expect(status, `${host.name} ${scale.name}で保存失敗が見える`).toContainText('保存失敗', { timeout: 10_000 });
+        const statusBounds = await status.evaluate((element) => {
+          const rect = element.getBoundingClientRect();
+          const header = element.closest('.app-header')!.getBoundingClientRect();
+          const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+          return {
+            insideHeader: rect.top >= header.top - 1 && rect.bottom <= header.bottom + 1,
+            visible: Boolean(hit && (hit === element || element.contains(hit))),
+            text: element.textContent ?? '',
+          };
+        });
+        expect(statusBounds.text, '保存失敗の文字').toContain('保存失敗');
+        expect(statusBounds.insideHeader, '保存状態がヘッダーの中に収まる').toBe(true);
+        expect(statusBounds.visible, '保存状態がほかの要素に隠れない').toBe(true);
+        // 次の保存を成功させ、保存状態の行を消してから盤面の高さを測る。
+        await page.evaluate(() => (window as unknown as { restoreDocumentPut: () => void }).restoreDocumentPut());
+        canvasBox = (await page.getByLabel('編み図編集盤面').boundingBox())!;
+        await page.mouse.click(canvasBox.x + canvasBox.width / 2, canvasBox.y + canvasBox.height / 2);
+        await expect(status).toHaveText('', { timeout: 10_000 });
 
         // 選択操作の帯: 選んだ範囲の操作が、拡大しても切れずに読める（大きさは上の既定値と比べる）。
         await selectOnCanvas(page);
         const enlargedSelectionSizes = await fontSizeSamples(page, ['.selection-actions button']);
         expectFontGrowth('選択範囲の操作', defaultSelectionSizes, enlargedSelectionSizes);
         expect(await clipProblems(page, [{ label: '選択範囲の操作', selector: '.selection-actions' }]), '選択範囲の操作の文字の切れ').toEqual([]);
+        // 帯は1行のまま横スクロールし、4つの操作すべてにスクロールで届く。
+        await expectSelectionActionsReachable(page, `${host.name} ${scale.name}の選択範囲の操作`);
         // 選択中でも、ヘッダーと操作の段を残して盤面が見える（iPhoneの縦長で確かめる）。
         if (viewport.name === 'iPhone 17') {
           const canvasHeight = (await page.getByLabel('編み図編集盤面').boundingBox())!.height;
@@ -430,6 +570,96 @@ for (const host of HOSTS) {
         }
       });
     }
+  }
+}
+
+/*
+ * 既定の文字サイズ（Web 16px / iOS 17px）では、origin/mainと同じ1行レイアウトのままにする。
+ * `data-large-text`が付かず、ヘッダー・選択操作・操作メニュー・記号の列が変わらないことを確かめる。
+ */
+for (const host of HOSTS) {
+  for (const viewport of DEFAULT_VIEWPORTS) {
+    test(`${host.name} ${viewport.name}（既定${host.defaultRootFontSize}px）で既定の見た目が変わらない`, async ({ page }) => {
+      await page.setViewportSize({ width: viewport.width, height: viewport.height });
+      await page.goto('/');
+      await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
+      if (host.css !== '') await page.addStyleTag({ content: host.css });
+      await setRootFontSize(page, host.defaultRootFontSize);
+
+      await expect(page.locator('.app-shell'), '既定では大きな文字のレイアウトにしない').not.toHaveAttribute('data-large-text', '');
+      await expectHeaderSingleRow(page, `${host.name} ${viewport.name}`);
+      if (viewport.headerOnly) return;
+
+      // 選択操作と操作メニューは折り返しても横スクロールしない。
+      await selectOnCanvas(page);
+      const noScroll = await page.evaluate(() => ['.selection-actions', '.action-bar'].map((selector) => {
+        const element = document.querySelector<HTMLElement>(selector)!;
+        return { selector, scrollWidth: element.scrollWidth, clientWidth: element.clientWidth };
+      }));
+      for (const metrics of noScroll) {
+        expect(metrics.scrollWidth, `${host.name} ${viewport.name}の${metrics.selector}が横スクロールしない`)
+          .toBeLessThanOrEqual(metrics.clientWidth + 1);
+      }
+      await page.locator('.selection-actions').getByRole('button', { name: 'キャンセル', exact: true }).click();
+
+      // 記号は390pxで3列、iPad幅で5列（originと同じ）。
+      await expectStitchColumns(page, viewport.width >= 760 ? 5 : 3, `${host.name} ${viewport.name}`);
+
+      // 編み図パネルの選択バーは、件数と2ボタンが1段に並ぶ。
+      await page.getByRole('button', { name: '編み図', exact: true }).click();
+      const drawer = page.locator('#app-drawer');
+      await expect(drawer).toBeVisible();
+      await page.locator('.document-select input').first().click();
+      const tops = await page.locator('.document-selection button')
+        .evaluateAll((buttons) => buttons.map((button) => Math.round(button.getBoundingClientRect().top)));
+      expect(tops.length, '選択バーのボタン数').toBeGreaterThan(0);
+      expect(new Set(tops).size, `${host.name} ${viewport.name}の選択バーが1段`).toBe(1);
+      await drawer.getByRole('button', { name: '閉じる', exact: true }).click();
+    });
+  }
+}
+
+/*
+ * Web版の390×844（iPhone相当）・48px（AX4相当）でも、選択中に盤面が120px以上残る。
+ * iOS版の402×874・53pxは上のテストで確かめる。
+ */
+test('Web版 390x844・48pxで選択中も盤面が120px以上残る', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
+  await setRootFontSize(page, 48);
+  await expect(page.locator('.app-shell')).toHaveAttribute('data-large-text', '');
+  await expectActionBarReachable(page);
+  await selectOnCanvas(page);
+  await expectSelectionActionsReachable(page, 'Web版 48pxの選択範囲の操作');
+  const canvasHeight = (await page.getByLabel('編み図編集盤面').boundingBox())!.height;
+  expect(canvasHeight, 'Web版 390x844・48pxで選択中も盤面が見える').toBeGreaterThanOrEqual(120);
+});
+
+/*
+ * iPadの横向き（1180×820）。ヘッダーが横1段のままでも、パネルがヘッダーの下から開き、
+ * 操作メニューの全ボタンを押せることを確かめる。
+ */
+for (const host of HOSTS) {
+  for (const scale of TEXT_SCALES) {
+    test(`${host.name} iPad横向き 1180x820 ${scale.name}でパネルがヘッダーを覆わない`, async ({ page }) => {
+      await page.setViewportSize({ width: 1180, height: 820 });
+      await page.goto('/');
+      await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
+      if (host.css !== '') await page.addStyleTag({ content: host.css });
+      await setRootFontSize(page, scale.rootFontSize);
+      await expect(page.locator('.app-shell')).toHaveAttribute('data-large-text', '');
+      await expectControlReachable(page, '.header-guide', 'iPad横向きの使い方');
+      await expectControlReachable(page, '.header-document', 'iPad横向きの編み図');
+      await expectActionBarReachable(page);
+
+      await page.getByRole('button', { name: '盤面', exact: true }).click();
+      const drawer = page.locator('#app-drawer');
+      await expect(drawer).toBeVisible();
+      await expectControlReachable(page, '.header-guide', 'パネルを開いている間の使い方');
+      await expectControlReachable(page, '.header-document', 'パネルを開いている間の編み図');
+      await drawer.getByRole('button', { name: '閉じる', exact: true }).click();
+    });
   }
 }
 
@@ -454,6 +684,8 @@ for (const viewport of VIEWPORTS) {
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
       await page.setContent(IOS_GUIDE_HTML);
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+      // iOS実機の既定本文サイズ（17px）を基準に、AX3/AX5での倍率を測る。
+      await setRootFontSize(page, 17);
       await expectGuideReadable(page, scale.rootFontSize, `iOS版の使い方（${scale.name}）`);
     }
   });
