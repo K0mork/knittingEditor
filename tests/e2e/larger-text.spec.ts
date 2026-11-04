@@ -43,7 +43,7 @@ const LONG_CHART_NAME = 'ブリッジ計測1（一時保存版）とても長い
  */
 const CLIP_SELECTOR = 'button, a, h1, h2, h3, label, .document-name, .stitch-option-name, .stitch-tool-name';
 
-interface ClipScope { label: string; selector: string }
+interface ClipScope { label: string; selector: string; ignore?: string }
 
 /** レイアウトが落ち着くまで待つ。文字サイズを変えた直後の測定に使う。 */
 async function waitForLayout(page: Page) {
@@ -170,6 +170,8 @@ async function clipProblems(page: Page, scopes: ClipScope[]): Promise<string[]> 
         if (!visible(root)) continue;
         for (const element of root.querySelectorAll(selector)) {
           if (!visible(element)) continue;
+          // ヘッダーの編み図名は2行までに抑えてよい。行数と読み上げ文字列は別に確かめる。
+          if (scope.ignore && (element.matches(scope.ignore) || element.closest(scope.ignore))) continue;
           const style = getComputedStyle(element);
           const label = `${scope.label}: 「${textOf(element)}」`;
           const clipsX = style.overflowX === 'hidden' || style.overflowX === 'clip';
@@ -199,6 +201,44 @@ async function clipProblems(page: Page, scopes: ClipScope[]): Promise<string[]> 
     }
     return [...new Set(problems)];
   }, { scopes, selector: CLIP_SELECTOR });
+}
+
+/**
+ * 編み図名の方針を確かめる。一覧では折り返して全体を見せ、ヘッダーでは2行までに抑えてよい
+ * （全体は一覧で読める）。ヘッダーは省略記号を使わず、読み上げ用の文字列も欠かさない。
+ */
+async function expectChartNamePolicy(page: Page, name: string, label: string) {
+  const listName = page.locator('.document-name').filter({ hasText: name });
+  await expect(listName, `${label}の一覧`).toHaveCount(1);
+  const listMetrics = await listName.evaluate((element) => ({
+    text: element.textContent ?? '',
+    textOverflow: getComputedStyle(element).textOverflow,
+    scrollWidth: element.scrollWidth,
+    clientWidth: element.clientWidth,
+    scrollHeight: element.scrollHeight,
+    clientHeight: element.clientHeight,
+  }));
+  expect(listMetrics.text, `${label}の一覧に全体が出ている`).toContain(name);
+  expect(listMetrics.textOverflow, `${label}の一覧が省略記号で切れていない`).not.toBe('ellipsis');
+  expect(listMetrics.scrollWidth, `${label}の一覧が横に切れていない`).toBeLessThanOrEqual(listMetrics.clientWidth + 1);
+  expect(listMetrics.scrollHeight, `${label}の一覧が縦に切れていない`).toBeLessThanOrEqual(listMetrics.clientHeight + 1);
+
+  const headerName = page.locator('.app-document-name');
+  await expect(headerName, `${label}のヘッダー`).toContainText(name);
+  const headerMetrics = await headerName.evaluate((element) => {
+    const style = getComputedStyle(element);
+    const fontSize = Number.parseFloat(style.fontSize);
+    return {
+      text: element.textContent ?? '',
+      textOverflow: style.textOverflow,
+      height: element.getBoundingClientRect().height,
+      lineHeight: style.lineHeight === 'normal' ? fontSize * 1.2 : Number.parseFloat(style.lineHeight),
+    };
+  });
+  // ヘッダーは2行まで。文字を小さくも省略もせず、読み上げ用の文字列は全体のままにする。
+  expect(headerMetrics.text, `${label}のヘッダーの読み上げ文字列`).toContain(name);
+  expect(headerMetrics.textOverflow, `${label}のヘッダーが省略記号で切れていない`).not.toBe('ellipsis');
+  expect(headerMetrics.height, `${label}のヘッダーが2行までに収まる`).toBeLessThanOrEqual(headerMetrics.lineHeight * 2 + 2);
 }
 
 /**
@@ -360,7 +400,7 @@ for (const host of HOSTS) {
         await drawer.getByRole('button', { name: '閉じる', exact: true }).click();
         await expect(drawer).toHaveCount(0);
 
-        // 編み図名: 長い名前でも、ヘッダーと一覧の両方で全体が読める（省略記号で切らない）。
+        // 編み図名: 一覧では折り返して全体を読み、ヘッダーでは2行までに抑える（全体は一覧で読める）。
         await page.getByRole('button', { name: '編み図', exact: true }).click();
         await expect(drawer).toBeVisible();
         page.once('dialog', (dialog) => dialog.accept(LONG_CHART_NAME));
@@ -369,11 +409,12 @@ for (const host of HOSTS) {
         await expect(page.locator('.app-document-name')).toContainText(LONG_CHART_NAME);
         await page.getByRole('button', { name: '編み図', exact: true }).click();
         await expect(page.locator('.document-list')).toBeVisible();
-        await expect(page.locator('.document-name').filter({ hasText: LONG_CHART_NAME })).toHaveCount(1);
+        await expectChartNamePolicy(page, LONG_CHART_NAME, '長い編み図名');
+        // 編み図名（2行までのヘッダーの表示）以外は、ヘッダーも一覧も切れていない。
         expect(await clipProblems(page, [
-          { label: 'ヘッダーの編み図名', selector: '.app-title' },
+          { label: 'ヘッダー', selector: '.app-header', ignore: '.app-document-name' },
           { label: '編み図パネル', selector: '#app-drawer' },
-        ]), '長い編み図名が切れていない').toEqual([]);
+        ]), '長い編み図名の画面が切れていない').toEqual([]);
         await drawer.getByRole('button', { name: '閉じる', exact: true }).click();
         await expect(drawer).toHaveCount(0);
 
@@ -382,6 +423,11 @@ for (const host of HOSTS) {
         const enlargedSelectionSizes = await fontSizeSamples(page, ['.selection-actions button']);
         expectFontGrowth('選択範囲の操作', defaultSelectionSizes, enlargedSelectionSizes);
         expect(await clipProblems(page, [{ label: '選択範囲の操作', selector: '.selection-actions' }]), '選択範囲の操作の文字の切れ').toEqual([]);
+        // 選択中でも、ヘッダーと操作の段を残して盤面が見える（iPhoneの縦長で確かめる）。
+        if (viewport.name === 'iPhone 17') {
+          const canvasHeight = (await page.getByLabel('編み図編集盤面').boundingBox())!.height;
+          expect(canvasHeight, `${host.name} ${scale.name}で選択中も盤面が見える`).toBeGreaterThanOrEqual(120);
+        }
       });
     }
   }

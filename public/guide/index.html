@@ -32,7 +32,8 @@
         color-scheme: light dark;
       }
       * { box-sizing: border-box; }
-      body { margin: 0; }
+      /* 長いURLなども画面の幅に合わせて折り返し、横スクロールを出さない。 */
+      body { margin: 0; overflow-wrap: break-word; overflow-wrap: anywhere; }
       header, main, footer { width: min(880px, calc(100% - 32px)); margin-inline: auto; }
       header { padding: 28px 0 12px; }
       main { padding: 8px 0 48px; }

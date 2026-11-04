@@ -267,7 +267,8 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; } .gesture-hint.is-hidden { transition: none; } }
 
 @media (max-width: 759px) {
-  .app-header { gap: 6px 8px; padding-left: max(10px, var(--safe-left)); padding-right: max(10px, var(--safe-right)); }
+  /* 折り返したときの行間だけ詰める。1行に収まる既定の大きさでは高さが変わらない。 */
+  .app-header { gap: 4px 8px; padding-left: max(10px, var(--safe-left)); padding-right: max(10px, var(--safe-right)); }
   .app-header h1 { font-size: 1rem; }
   .header-actions { gap: 5px; }
   .header-guide, .header-document { min-width: 0; padding-inline: 9px; }
@@ -279,10 +280,17 @@ button:disabled { opacity: .45; cursor: not-allowed; }
   .primary-tools > .stitch-tool { flex: 1 1 170px; min-width: 5.2em; gap: 5px; padding-inline: 5px; }
   .stitch-tool-name { min-width: 0; white-space: normal; overflow-wrap: anywhere; line-height: 1.2; }
   .stitch-tool-chevron { display: none; }
-  /* 選択操作の帯は、大きな文字でも少しでも低く収める。既定の大きさでは従来に近い余白を保つ。 */
-  .selection-actions { gap: 5px; padding: 4px; margin-block: 5px; }
+  /* 選択操作の帯は、大きな文字でも少しでも低く収める。既定の大きさでは従来に近い余白を保つ。
+     文字を大きくして1行に収まらないときは、折り返して盤面を削らず、横にスクロールして全部押せるようにする。
+     収まるときは自動マージンで中央に寄せ、はみ出すときは左端から並べて先頭の操作へ戻れるようにする。 */
+  .selection-actions { gap: 5px; padding: 5px 4px; margin-block: 5px; flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; -webkit-overflow-scrolling: touch; }
+  .selection-actions > :first-child { margin-left: auto; }
+  .selection-actions > :last-child { margin-right: auto; }
+  .selection-actions > button { flex: 0 0 auto; }
   .selection-actions button { padding-inline: max(4px, 13px - .17em); }
-  .action-bar { gap: 6px; padding-top: 6px; padding-bottom: calc(6px + env(safe-area-inset-bottom)); }
+  /* 操作メニューも同じく1行のまま横にスクロールさせる。折り返して2段にすると盤面が消えるため。 */
+  .action-bar { gap: 6px; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; -webkit-overflow-scrolling: touch; padding-top: 6px; padding-bottom: calc(6px + env(safe-area-inset-bottom)); }
+  .action-bar > .history-tools { flex: 0 0 auto; }
   .action-bar button { padding-inline: max(3px, 8px - .1em); }
 }
 
