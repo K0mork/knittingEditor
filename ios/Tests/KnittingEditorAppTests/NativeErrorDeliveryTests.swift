@@ -8,6 +8,20 @@ import XCTest
 /// 読めないバックアップの通知を、編集画面が購読を始めるまで保留する。
 final class NativeErrorDeliveryTests: XCTestCase {
     @MainActor
+    func testBothReadPathsChooseSameMessages() {
+        let iCloudMessage = "iCloudからファイルをダウンロードできませんでした。インターネットに接続してから、もう一度お試しください。"
+        for error: Error in [CocoaError(.ubiquitousFileUnavailable), URLError(.notConnectedToInternet)] {
+            XCTAssertEqual(WebViewModel.incomingBackupErrorMessage(for: error), iCloudMessage)
+            XCTAssertEqual(WebViewContainer.Coordinator.importBackupErrorMessage(for: error), iCloudMessage)
+        }
+        let missing = CocoaError(.fileReadNoSuchFile)
+        XCTAssertEqual(WebViewModel.incomingBackupErrorMessage(for: missing), "バックアップを読み込めませんでした")
+        XCTAssertEqual(WebViewContainer.Coordinator.importBackupErrorMessage(for: missing), "バックアップを読み込めませんでした")
+        XCTAssertEqual(WebViewModel.incomingBackupErrorMessage(for: WebViewModel.IncomingBackupError.iCloudDownloadFailed), iCloudMessage)
+        XCTAssertEqual(WebViewModel.incomingBackupErrorMessage(for: WebViewModel.IncomingBackupError.tooLarge), "バックアップが大きすぎます")
+    }
+
+    @MainActor
     private final class Harness {
         let model = WebViewModel()
         let webView = WKWebView(frame: .zero)

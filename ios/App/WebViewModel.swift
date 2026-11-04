@@ -167,16 +167,23 @@ final class WebViewModel {
             case .success(let data):
                 deliverBackup(data, filename: url.lastPathComponent)
                 Self.removeImportedCopy(at: url)
-            case .failure(IncomingBackupError.tooLarge):
-                presentError("バックアップが大きすぎます")
-            case .failure:
-                presentError("バックアップを読み込めませんでした")
+            case .failure(let error):
+                presentError(Self.incomingBackupErrorMessage(for: error))
             }
         }
     }
 
     enum IncomingBackupError: Error {
         case tooLarge
+        case iCloudDownloadFailed
+    }
+
+    nonisolated static func incomingBackupErrorMessage(for error: Error) -> String {
+        switch error {
+        case IncomingBackupError.tooLarge: return BackupReadFailure.tooLargeMessage
+        case IncomingBackupError.iCloudDownloadFailed: return BackupReadFailure.iCloudMessage
+        default: return BackupReadFailure.message(for: error)
+        }
     }
 
     /// 受け取った`.knit`のバイト列を読む。「ファイル」アプリでタップしたときは、複製ではなく利用者の
@@ -198,8 +205,29 @@ final class WebViewModel {
                 return data
             }
         }
-        if let coordinationError { throw coordinationError }
-        return try result.get()
+        do {
+            if let coordinationError { throw coordinationError }
+            return try result.get()
+        } catch IncomingBackupError.tooLarge {
+            throw IncomingBackupError.tooLarge
+        } catch {
+            // security scopeを返す前に原本を調べる。値を取得できなければエラーだけで判定する。
+            let values = try? url.resourceValues(forKeys: [
+                .isUbiquitousItemKey, .ubiquitousItemDownloadingStatusKey, .ubiquitousItemDownloadingErrorKey,
+            ])
+            let item = values.map {
+                BackupReadFailure.ICloudItemState(
+                    isUbiquitousItem: $0.isUbiquitousItem == true,
+                    downloadingStatus: $0.ubiquitousItemDownloadingStatus,
+                    downloadingError: $0.ubiquitousItemDownloadingError
+                )
+            }
+            BackupReadFailure.log(error, item: item)
+            if BackupReadFailure.isICloudDownloadFailure(error, item: item) {
+                throw IncomingBackupError.iCloudDownloadFailed
+            }
+            throw error
+        }
     }
 
     /// WebViewが準備できていない間は保留し、`webReady`到着後に一度だけ配送する。

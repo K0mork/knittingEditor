@@ -294,13 +294,18 @@ struct WebViewContainer: UIViewRepresentable {
             do {
                 let data = try PickedBackupFile.read(at: url)
                 guard data.count <= NativeBridgeLimits.maxFileBytes else {
-                    model.presentError("バックアップが大きすぎます")
+                    model.presentError(BackupReadFailure.tooLargeMessage)
                     return
                 }
                 model.deliverBackup(data, filename: url.lastPathComponent)
             } catch {
-                model.presentError("バックアップを読み込めませんでした")
+                BackupReadFailure.log(error)
+                model.presentError(Self.importBackupErrorMessage(for: error))
             }
+        }
+
+        nonisolated static func importBackupErrorMessage(for error: Error) -> String {
+            BackupReadFailure.message(for: error)
         }
 
         private func presentBackupPicker() {
