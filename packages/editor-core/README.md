@@ -24,8 +24,8 @@ Web固有・iOS固有の分岐は持たない。分岐が要るものは`platfor
 まず各ビルド側に置けないかを検討する。`platform.ts`には、両方で実際に呼ばれる操作だけを置く。
 
 `ui/`の部品は環境固有の処理をpropsで受け取る。`window.prompt`とアプリ内ダイアログの違いは
-`askText`・`askConfirm`、ファイルの受け渡しは`platform`、分析は`analytics`、見出し・フッター・
-案内文の違いは`EditorView`の`renderTitle`・`footer`・`backupNote`・`documentsNote`で渡し、部品の中で分岐させない。
+`askText`・`askConfirm`、ファイルの受け渡しは`platform`、分析は`analytics`、見出し・
+案内文の違いは`EditorView`の`renderTitle`・`backupNote`・`documentsNote`で渡し、部品の中で分岐させない。
 PDFの推定ページ数は`export/pdfLayout.ts`をPDF Workerと共有し、用紙寸法をUI側へ書き写さない。
 
 ここへ置かないもの: SEO、分析、旧Safari移行、`WKWebView`ブリッジ、Files・共有シート、
