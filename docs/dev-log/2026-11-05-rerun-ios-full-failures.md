@@ -1,0 +1,34 @@
+# 2026-11-05 — iOSの全検証の失敗は1回再実行し、繰り返すものだけIssueにする
+
+- 影響: GitHubのmacOSランナーでは、Simulatorのテストがランナーの遅さで時々落ちる。#414 では、アプリの起動からUI操作の準備ができるまでに約45秒かかり、実行時間の上限を超えた。これまでは、`main`や夜間の実行が失敗するたびにIssueを作って調べ、直すことにしていた。しかしランナーの遅さは消せず、#44 の「続けて10回、再試行ゼロ」も満たせないまま、数え直しを繰り返していた。そこで方針を次のように変えた。
+  - 同じジョブの中の再試行で通った失敗と、失敗したジョブを再実行して通った失敗は、正常として扱う。
+  - Full iOS validationが`main`で失敗したら、新しいワークフロー`ios-full-failure.yml`が、失敗したジョブを1回だけ再実行する。`main`で後の実行が始まっているときは、その実行が新しいコミットを検証するので、再実行しない。`ios-full.yml`のconcurrencyのせいで、古いコミットの再実行が後の実行を取り消してしまうのを避けるためである。
+  - Issueを作るのは、次の2つの場合だけにした。
+    - 再実行でも失敗したとき
+    - 失敗したテストが、過去14日以内の`main`の別の実行でもジョブを失敗させていたとき。ジョブのログにある`Test Case ... failed`と`exceeded execution time allowance`の行から判定する。
+  - 再実行で通っても調べるものも決めた。値が違うアサーションやアプリのクラッシュのように、遅さでは説明できない失敗と、変更に関わるテストの失敗である。
+  - `ios-full.yml`の`report_failure`ジョブは削除した。実行中のrunは自分を再実行できないので、`workflow_run`で、runが終わってから動く別のワークフローにした。`actions: write`と`issues: write`の権限は、このワークフローのジョブにだけ与える。
+  - PRの`ios`ジョブが落ちたときは、失敗したジョブを1回再実行してよいことにした。再実行で通り、落ちたテストが変更に関わらなければ、マージしてよい。
+- 主なファイル: `.github/workflows/ios-full-failure.yml`、`scripts/ios-full-failure.mjs`、`.github/workflows/ios-full.yml`、`AGENTS.md`、`ios/AGENTS.md`、`docs/ARCHITECTURE.md`
+- テスト: `scripts/ios-full-failure.test.mjs`を追加した（23件）。次のことを確かめる。
+  - ログから失敗したテストを読み取ること
+  - 同じテストの繰り返しの判定
+  - 再実行するか、Issueにするかの判断
+  - 実行一覧のページ送り
+  - ログを読めなくても再実行すること
+  - Issueの本文
+  - GitHub APIの呼び出し
+  - 2つのワークフローの条件と権限
+- 検証:
+  - 過去に実際に失敗したrunに対して、`node scripts/ios-full-failure.mjs --run-id <id> --attempt 1 --dry-run`を実行した。
+    - #414 のrun 41827275355：失敗したテストを`testSeedDocumentForAppUpdateProbe`と読み取った。14日以内に同じテストの失敗がないので、Issueにしない判定になった。
+    - 10月のrun 39068013765・39356453594・39681979012・40132205311・41138476481：`testBlockSaveAndFullBackupRestoreFollowGuide`の繰り返しとして検出し、Issueにする判定になった。
+    - run 38495274672・39707277724：繰り返しがないので、Issueにしない判定になった。
+  - `ios/scripts/check-app-store-docs.sh`と`node scripts/check-pr-smoke-ui-tests.mjs`：成功した。
+  - `npx vitest run scripts/ios-full-failure.test.mjs scripts/japanese-punctuation.test.mjs`：25件すべて成功した。
+  - `npm ci`をしたworktreeで、全体の検査を実行した。
+    - `npm run typecheck`、`npm test`（1050件）、`npm run build`、`npm run check:dist`：成功した。
+    - `npm run test:e2e`：623件成功、1件失敗、36件スキップ。失敗したのは、`[chromium-mobile]`の`layout-focus-and-hover.spec.ts`の「keeps selection and action controls separate at 1024x1024 with 28px text」で、操作バーの位置が42px ずれていた。この変更はWebのコードに触れていない。同じファイルを`--project chromium-mobile --repeat-each 5`で流し直したところ、65件すべて成功した。断続的な失敗とみている。
+  - `git diff --check`：成功した。
+  - 手元で確かめられないこと：`workflow_run`のワークフローは既定ブランチにあるものしか動かないので、マージ前にCIで動かすことはできない。マージ後、`main`のFull iOS validationが失敗したときに初めて動く。
+- デプロイ影響: なし。CIと文書だけの変更で、Pagesに配信される内容は変わらない。マージ後、`main`のFull iOS validationが次に失敗したときに、`Full iOS validation failure`ワークフローが失敗したジョブを再実行するか、Issueを作ることを確かめる。

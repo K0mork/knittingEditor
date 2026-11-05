@@ -1,0 +1,44 @@
+name: Full iOS validation failure
+
+# Full iOS validationが`main`（push・夜間・手動実行）で失敗したときに動く。GitHubのmacOSランナーでは
+# Simulatorのテストがランナーの遅さで時々落ちるため、1回目の失敗は失敗したジョブを1回だけ再実行し、
+# 再実行でも失敗したときか、同じテストが過去14日以内の`main`の別の実行でもジョブを失敗させていたときだけ
+# Issueにする。実行中のrunは自分を再実行できないので、ios-full.ymlの中ではなく、終わってから動く
+# 別のワークフローにしている。判断はscripts/ios-full-failure.mjs、方針はAGENTS.mdの
+# 「Intermittent iOS test failures」に書いてある。
+on:
+  workflow_run:
+    workflows: [Full iOS validation]
+    types: [completed]
+
+permissions:
+  contents: read
+
+jobs:
+  handle_failure:
+    if: >-
+      github.event.workflow_run.conclusion == 'failure' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+      issues: write
+    # 同時に終わった実行どうしで、Issueを重ねて作らないようにする。
+    concurrency:
+      group: ios-full-failure
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: .node-version
+      - name: Rerun failed jobs once or report the failure
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+        run: node scripts/ios-full-failure.mjs
