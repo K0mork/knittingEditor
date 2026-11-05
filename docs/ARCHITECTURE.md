@@ -41,7 +41,12 @@
 - `ios_full`: iPhone 17・iPad (A16)の全単体／UIテストとDebug bundle検査。iPadのUI除外一覧は使わない。
 - `app_update`: 両端末で更新後の復元を確認する。
 - `release_archive`: unsigned Release Archiveを作り、同梱資産を検査する。
-- `report_failure`: `main`・夜間の失敗時に、`bug`・`priority:P1`・`platform:ios`付きIssueを作成する。同名の未完了Issueがある場合は実行URLをコメントする。
+
+`.github/workflows/ios-full-failure.yml`は、Full iOS validationが`main`（push・夜間・手動実行）で失敗して終わったときに動く。判断は`scripts/ios-full-failure.mjs`が行う。
+
+- 1回目の失敗では、失敗したジョブを1回だけ再実行する。`main`で後から始まった実行があるときは、その実行が新しいコミットを検証するので、再実行しない。
+- 再実行でも失敗したとき、または失敗したテストが過去14日以内の`main`の別の実行でもジョブを失敗させていたとき（ジョブのログから判定する）に、`bug`・`priority:P1`・`platform:ios`付きIssueを作成する。同名の未完了Issueがある場合は、そこへコメントする。
+- どの失敗を調べるかの方針は、[`AGENTS.md`](../AGENTS.md)の「Intermittent iOS test failures」を正とする。
 
 iOS・共通コードの完了確認の条件（マージ後のコミットでの全検証、リスクの高い変更のマージ前実行を含む）は、[`AGENTS.md`](../AGENTS.md)の「Deployment Procedure」を正とする。
 

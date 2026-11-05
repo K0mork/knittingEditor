@@ -31,6 +31,8 @@ concurrency:
   group: ios-full-${{ github.ref }}
   cancel-in-progress: true
 
+# `main`で失敗したときの再実行とIssueの作成は、終わってからios-full-failure.ymlが行う。
+
 jobs:
   ios_full:
     strategy:
@@ -191,34 +193,3 @@ jobs:
           CODE_SIGNING_REQUIRED=NO
       - name: Verify archived app bundle
         run: ios/scripts/check-release-assets.sh "$RUNNER_TEMP/knittingEditor.xcarchive/Products/Applications/knittingEditor.app"
-
-  report_failure:
-    needs: [ios_full, app_update, release_archive]
-    if: ${{ failure() && (github.ref == 'refs/heads/main' || github.event_name == 'schedule') }}
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      issues: write
-    # 同時に失敗したrunによるIssueの重複作成を防ぐ。
-    concurrency:
-      group: ios-full-failure-issue
-      cancel-in-progress: false
-    steps:
-      - name: Report full iOS validation failure
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          COMMIT: ${{ github.sha }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          title='Full iOS validation failed'
-          issue="$(gh issue list --state open --label bug --label priority:P1 --label platform:ios --limit 1000 --json number,title --jq 'map(select(.title == "Full iOS validation failed")) | first | .number // empty')"
-          body="iOSの全検証が失敗しました。該当コミットの失敗ジョブとログを確認してください。\n\nCommit: $COMMIT\nRun: $RUN_URL"
-          printf '%b\n' "$body" > "$RUNNER_TEMP/ios-full-failure.md"
-          if [[ -n "$issue" ]]; then
-            gh issue comment "$issue" --body-file "$RUNNER_TEMP/ios-full-failure.md"
-          else
-            gh issue create --title "$title" --label bug --label priority:P1 --label platform:ios --body-file "$RUNNER_TEMP/ios-full-failure.md"
-          fi
