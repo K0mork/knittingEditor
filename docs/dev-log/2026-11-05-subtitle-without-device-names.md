@@ -4,4 +4,4 @@
 - 主なファイル: `ios/docs/APP_STORE_METADATA.md`、`ios/docs/RELEASE_VERIFICATION_RECORDS.md`、`ios/docs/RELEASE_RUNBOOK.md`、`ios/docs/SCREENSHOTS.md`、`ios/scripts/check-app-store-docs.sh`、`scripts/app-privacy-docs.test.mjs`
 - テスト: `scripts/app-privacy-docs.test.mjs`に、サブタイトル（英字・小文字・カタカナ）、App名、キーワードに製品名があると検査が失敗するテストを5件足した。
 - 検証: `sh ios/scripts/check-app-store-docs.sh`（成功）、旧サブタイトルに戻すと`サブタイトル (iPhone)`で失敗することを手で確かめた、`npx vitest run scripts/app-privacy-docs.test.mjs`（22件成功）、`npm test`（82ファイル・1060件成功）、`git diff --check`（成功）。WebとiOSのコードは変えていないので、ビルド・E2E・Simulatorのテストは実行していない。
-- デプロイ影響: なし。Pagesは再配信されず、アプリのビルドも変わらない。App Store Connectの「App情報」でサブタイトルを「編み図を簡単に作成・印刷」に替え、ビルド1のまま再提出する（利用者が行う）。
+- デプロイ影響: なし。Pagesは再配信されず、アプリのビルドも変わらない。利用者が、App Store Connectの「App情報」でサブタイトルを「編み図を簡単に作成・印刷」に替え、2026-11-05 17:22（JST）にビルド1のまま再提出した。ヘッダと検索結果の画像が版1.0に無いことも確かめた。
