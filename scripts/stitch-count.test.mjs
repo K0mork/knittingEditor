@@ -10,15 +10,19 @@ import { STITCHES } from '../packages/editor-core/stitches/catalog.ts';
  */
 const root = new URL('../', import.meta.url);
 
+// 記号と関係のない「3種類のファイル」のような文で誤って失敗しないよう、
+// 「種類」の後に続く語まで含めて照合する。
+const stitchKinds = /(\d+)種類の編み目記号/g;
+
 const checks = [
-  { file: 'README.md', pattern: /(\d+)種類/g },
-  { file: 'index.html', pattern: /(\d+)種類/g },
-  { file: 'public/llms.txt', pattern: /(\d+)種類/g },
-  { file: 'public/guide/index.html', pattern: /(\d+)種類/g },
-  { file: 'ios/Web/public/guide/index.html', pattern: /(\d+)種類/g },
+  { file: 'README.md', pattern: stitchKinds },
+  { file: 'index.html', pattern: stitchKinds },
+  { file: 'public/llms.txt', pattern: /(\d+)種類の選択肢/g },
+  { file: 'public/guide/index.html', pattern: stitchKinds },
+  { file: 'ios/Web/public/guide/index.html', pattern: stitchKinds },
   { file: 'ios/SPECIFICATION.md', pattern: /(?:カタログv\d+の|全)(\d+)記号/g },
   { file: 'ios/DEVELOPMENT.md', pattern: /全(\d+)記号/g },
-  { file: 'tests/e2e/seo.spec.ts', pattern: /(\d+)種類/g },
+  { file: 'tests/e2e/seo.spec.ts', pattern: stitchKinds },
 ];
 
 describe('user-facing stitch counts', () => {

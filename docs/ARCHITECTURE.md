@@ -22,7 +22,7 @@
 
 ## ビルドと公開
 
-この節は実際のCIジョブ構成の正本である。CIの必須条件とデプロイ手順はルートの[`AGENTS.md`](../AGENTS.md)の「Hosting & Production Constraints」「Deployment Procedure」を正とし、ここではジョブの構成だけを書く。
+この節は実際のCIジョブ構成の正本で、各ジョブが何を実行し、`ci-gate`がどのジョブを必須にするかを書く。マージと公開の手順、完了確認の条件はルートの[`AGENTS.md`](../AGENTS.md)の「Deployment Procedure」を正とする。
 
 ルートの`package.json`と`package-lock.json`をworkspaceの唯一のNode依存定義とする。iOSの`ios/scripts/build-web.sh`はルート依存を使って`ios/Web`をビルドし、`ios/AppResources/Web/`へコピーする。
 
