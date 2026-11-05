@@ -70,6 +70,44 @@ for (const mode of ['描く', '消す', '範囲']) {
   });
 }
 
+test('line mode drops the pending start point when a two-finger gesture begins', async ({ page }) => {
+  const canvas = page.getByLabel('編み図編集盤面');
+  await expect(canvas).toBeVisible();
+  await page.getByRole('button', { name: '線', exact: true }).click();
+  const undo = page.getByRole('button', { name: '元に戻す', exact: true });
+  await expect(undo).toBeDisabled();
+  // 始点Aをタップする。まだ線はできず、履歴にも残らない。
+  await canvas.click({ position: { x: 75, y: 75 } });
+  await expect(undo).toBeDisabled();
+  await canvas.evaluate(async (element) => {
+    element.setPointerCapture = () => {};
+    const rect = element.getBoundingClientRect();
+    // 実際のタッチ画面と同じく、イベントごとに1フレーム待ってReactの更新を反映させる。
+    const dispatch = async (type: string, id: number, x: number, y: number) => {
+      element.dispatchEvent(new PointerEvent(type, {
+        bubbles: true, pointerId: id, pointerType: 'touch', clientX: rect.left + x, clientY: rect.top + y, button: 0,
+      }));
+      await new Promise(requestAnimationFrame);
+    };
+    // 2本指で移動・拡大してから元の位置へ戻し、離した後の表示位置を操作前と同じにする。
+    await dispatch('pointerdown', 1, 75, 75);
+    await dispatch('pointerdown', 2, 255, 75);
+    await dispatch('pointermove', 1, 95, 95);
+    await dispatch('pointermove', 2, 295, 105);
+    await dispatch('pointermove', 1, 75, 75);
+    await dispatch('pointermove', 2, 255, 75);
+    await dispatch('pointerup', 2, 255, 75);
+    await dispatch('pointerup', 1, 75, 75);
+  });
+  await expect(undo).toBeDisabled();
+  // 同じ列の2段下を押しても、2本指操作の前の始点からは線を作らない。
+  await canvas.click({ position: { x: 75, y: 135 } });
+  await expect(undo).toBeDisabled();
+  // そのタップが新しい始点になり、さらに2段下のマスで線を作る。
+  await canvas.click({ position: { x: 75, y: 195 } });
+  await expect(undo).toBeEnabled();
+});
+
 interface DrawnLabel { text: string; x: number; y: number; width: number; fontSize: number }
 type LabelLogWindow = Window & { boardLabels: DrawnLabel[] };
 
