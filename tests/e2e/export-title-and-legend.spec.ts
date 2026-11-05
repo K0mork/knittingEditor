@@ -76,3 +76,36 @@ test('exports PNG and single/tiled PDF with the optional title and legend on and
     }
   }
 });
+
+test('catches the shown PNG size up with the legend after drawing while the export panel is open', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'webkit-mobile', 'iPhone 14の幅では出力パネルが盤面のほぼ全体を覆い、開いたまま記号を置けない');
+  await page.goto('/');
+  const canvas = page.getByLabel('編み図編集盤面');
+  await expect(canvas).toBeVisible();
+  const exportPanel = page.getByRole('button', { name: '出力', exact: true });
+  const option = page.getByRole('checkbox', { name: '編み図名と記号の一覧を入れる' });
+  const size = page.getByText(/^\d+×\d+px/);
+  await exportPanel.click();
+  await option.check();
+  const empty = (await size.textContent())!;
+  // 出力パネルを開いたまま記号を置くと、変更が止まってから一覧を数え直し、寸法の表示が追いつく。
+  // 狭い画面ではパネルが盤面の一部に重なるので、段・目番号の帯を避け、パネルに覆われていない盤面の点を押す。
+  const position = await canvas.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    for (let y = rect.top + 75; y < Math.min(rect.bottom, innerHeight) - 10; y += 20) {
+      for (let x = rect.left + 75; x < Math.min(rect.right, innerWidth) - 10; x += 20) {
+        if (document.elementFromPoint(x, y) === element) return { x: x - rect.left, y: y - rect.top };
+      }
+    }
+    return undefined;
+  });
+  expect(position).toBeDefined();
+  await canvas.click({ position });
+  await expect(size).not.toHaveText(empty);
+  const shown = (await size.textContent())!;
+  // パネルを開き直して数えた表示と一致する。
+  await page.getByRole('button', { name: '閉じる', exact: true }).click();
+  await exportPanel.click();
+  await option.check();
+  await expect(size).toHaveText(shown);
+});

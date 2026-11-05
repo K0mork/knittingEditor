@@ -1,0 +1,31 @@
+# 2026-11-05 — 出力パネルの記号一覧を、盤面の変更が止まってから数え直す
+
+- 影響: 出力パネルで「編み図名と記号の一覧を入れる」を有効にすると、パネルは再描画のたびに盤面全体を走査して記号の一覧を作り直していた（#410）。一覧は、パネルに表示するPNGの寸法とPDFの推定ページ数の計算に使っている。編集画面は盤面の版（`revision`）が進むたびに再描画し、マウスやペンでなぞる間は、マスが変わるたびに版が進む。そのため、出力パネルを開いたまま描くと、マスごとに盤面全体の走査が走っていた。1000×1000の盤面では、1回の走査に手元のMacで約6msかかる。次のように変えた。
+  - 表示に使う一覧は`useMemo`で保持し、盤面・一覧の有無・落ち着いた版の番号のどれかが変わったときだけ作り直す。版の番号は、最後の変更から300ms（`LEGEND_SETTLE_MS`）変わらなくなってから追いつく。このため、編集とは関係のない再描画（処理中の表示、通知など）では走査しない。なぞる間も走査せず、変更が止まってから1回だけ走査する。
+  - 編み図を切り替えたときと、一覧の有無を切り替えたときは、すぐに数え直す。
+  - 「PNGを保存」「PDFを保存」を押したときは、押した時点の盤面で数え直した一覧を渡す。PNGの描画とPDF Workerも、もともと自分で一覧を数え直している。このため、出力されるPNG/PDFの内容（一覧の記号・順序・高さ）は変わらない。
+  - 変わるのは表示だけで、編集の直後の300msは、パネルのPNGの寸法とPDFの推定ページ数が、直前の一覧のままになる。
+- 主なファイル: `packages/editor-core/ui/ExportControls.tsx`、`packages/editor-core/ui/EditorView.tsx`（`ExportControls`に`revision`を渡す）
+- テスト:
+  - `packages/editor-core/ui/ExportControls.annotations.test.tsx`に、1000×1000の盤面で一覧の走査（`exportLegend`）の回数を数えるテストを足した。次のことを確かめる。
+    - 盤面が変わらない再描画では走査しない。
+    - 版を4回進める間（各回の間隔は300ms未満）は走査せず、表示も変わらない。
+    - その間に押した出力ボタンには、押した時点の盤面の一覧（3件）を渡す。
+    - 変更が止まると1回だけ走査し、表示する寸法が新しい一覧に合う。
+    - 修正前の実装では、このテストが「盤面が変わらない再描画」の段階で失敗することを確かめた。
+  - `tests/e2e/export-title-and-legend.spec.ts`に、出力パネルを開いたまま盤面に記号を置くと、表示するPNGの寸法が追いつき、パネルを開き直したときの表示と一致することを確かめるE2Eを足した。
+    - 狭い画面ではパネルが盤面に重なるので、段・目番号の帯を避け、パネルに覆われていない盤面の点を探して押す。
+    - webkit-mobile（iPhone 14）では、パネルが盤面のほぼ全体を覆い、開いたまま記号を置ける点がないので、このテストを飛ばす。
+    - `EditorView`が`revision`を渡さないようにすると、このE2Eが失敗することを確かめた。
+  - 既存の`ExportControls`のテスト2件は、必須にした`revision`を渡すように直した。
+- 検証:
+  - `vitest run packages/editor-core/ui/ExportControls`：3件すべて成功した。
+  - `playwright test tests/e2e/export-title-and-legend.spec.ts --repeat-each 3`：24件成功、3件スキップ（上のwebkit-mobileの1件×3回）。
+  - `npm ci`をしたworktreeで、全体の検査を実行した。
+    - `npm run typecheck`、`npm test`（1053件）、`npm run build`、`npm run check:dist`：成功した。
+    - `npm run test:e2e`：625件成功、1件失敗、37件スキップ。
+      - 失敗したのは、`[chromium-mobile]`の`layout-focus-and-hover.spec.ts`の「keeps selection and action controls separate at 1024x1024 with 48px text」で、操作バーの位置がずれていた。範囲選択と操作バーのテストで、出力パネルは開かない。
+      - 同じファイルを`--project chromium-mobile --repeat-each 5`で流し直したところ、65件すべて成功した。断続的な失敗とみている。
+  - iOS Web（`ios/Web`）：`tsc -p tsconfig.app.json --noEmit`と`vitest run --config vite.config.ts`（151件）が成功した。
+  - Simulatorのテストは手元で実行していない。Swiftとアプリの設定には触れていないので、PRのCIの`ios`ジョブと、マージ後のFull iOS validationに任せる。
+- デプロイ影響: Pagesへ配信される。iOSアプリにも次のビルドから入る。出力されるファイルは変わらない。配信後に確かめることはない。

@@ -14,7 +14,7 @@ it('warns above 100 tiled pages, passes A4 landscape options, and clears the war
   const onPdf = vi.fn();
   const warning = 'ページ数が多いため1ページ版もご検討ください';
   try {
-    await act(async () => root.render(<ExportControls board={board} onPdf={onPdf} onPng={vi.fn()}
+    await act(async () => root.render(<ExportControls board={board} revision={0} onPdf={onPdf} onPng={vi.fn()}
       onBackup={vi.fn()} onRestore={vi.fn()} backupNote="" />));
     const [layout, orientation] = container.querySelectorAll('select');
     const select = async (element: HTMLSelectElement, value: string) => {
