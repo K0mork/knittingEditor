@@ -147,11 +147,16 @@ export function isEditableTarget(target: EventTarget | null): boolean {
   return target instanceof HTMLElement && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName));
 }
 
+/** モーダルを開いている間は、背後の盤面を操作するショートカットを実行しない。 */
+export function hasOpenModal(doc: Document = document): boolean {
+  return doc.querySelector('[aria-modal="true"]') !== null;
+}
+
 /** Ctrl/Cmd+CとCtrl/Cmd+Vで選択範囲のコピーと貼り付けを始める。 */
 export function useClipboardShortcuts({ canCopy, canPaste, onCopy, onPaste }: ClipboardShortcutOptions) {
   useEffect(() => {
     const handleShortcut = (event: KeyboardEvent) => {
-      if (isEditableTarget(event.target)) return;
+      if (isEditableTarget(event.target) || hasOpenModal()) return;
       if (!(event.ctrlKey || event.metaKey)) return;
       if (event.key.toLowerCase() === 'c' && canCopy) {
         event.preventDefault();
@@ -179,7 +184,7 @@ export function useEraseShortcuts({ canErase, onErase }: EraseShortcutOptions) {
       if (event.key !== 'Delete' && event.key !== 'Backspace') return;
       if (event.ctrlKey || event.metaKey || event.altKey || isEditableTarget(event.target)) return;
       // 確認などのダイアログを開いている間は、後ろの盤面を書き換えない。
-      if (document.querySelector('[aria-modal="true"]')) return;
+      if (hasOpenModal()) return;
       event.preventDefault();
       onErase();
     };
@@ -198,6 +203,8 @@ export function useHistoryShortcuts({ onUndo, onRedo }: HistoryShortcutOptions) 
   useEffect(() => {
     const handleShortcut = (event: KeyboardEvent) => {
       if (isEditableTarget(event.target) || event.altKey) return;
+      // ダイアログを開いている間は、後ろの盤面の履歴を動かさない。入力欄での操作は上で除外する。
+      if (hasOpenModal()) return;
       if (!(event.ctrlKey || event.metaKey)) return;
       const key = event.key.toLowerCase();
       if (key === 'z') {

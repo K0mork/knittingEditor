@@ -1,7 +1,7 @@
 import { BOARD_ZOOM_FACTOR } from '@knitting-editor/editor-core/canvas/BoardCanvas';
 import { defaultPngCellSize } from '@knitting-editor/editor-core/export/exporters';
 import type { PdfLayoutOptions } from '@knitting-editor/editor-core/export/pdfLayout';
-import { isEditableTarget } from '@knitting-editor/editor-core/ui/hooks';
+import { hasOpenModal, isEditableTarget } from '@knitting-editor/editor-core/ui/hooks';
 import type { EditorController } from '@knitting-editor/editor-core/ui/useEditorController';
 import type { NativeCommand } from './nativeBridge';
 
@@ -51,7 +51,8 @@ export type NativeCommandOutcome = 'performed' | 'textEditing' | 'blocked';
  *
  * - 元に戻す・やり直すはWeb版のキー操作（`useHistoryShortcuts`）と同じ扱いにする。入力欄
  *   （`isEditableTarget`）にフォーカスがある間は盤面ではなく入力中の文字に効かせ、
- *   それ以外では処理中やダイアログ・記号の一覧を開いている間も受け付ける。
+ *   それ以外ではダイアログ・記号の一覧を開いている間は盤面の履歴を動かさない。
+ *   出力や復元などの処理中でも、Web版と同じく履歴だけは操作できる。
  * - ほかの操作は、出力や復元などの処理中と、ダイアログ・記号の一覧を開いている間は始めない。
  */
 export function runNativeCommand(command: NativeCommand, handlers: NativeCommandHandlers, state: { busy: boolean }, doc: Document = document): NativeCommandOutcome {
@@ -61,7 +62,7 @@ export function runNativeCommand(command: NativeCommand, handlers: NativeCommand
     if (typeof doc.execCommand === 'function') doc.execCommand(command);
     return 'textEditing';
   }
-  if (!history && nativeInteractionBlocked(state, doc)) return 'blocked';
+  if (history ? hasOpenModal(doc) : nativeInteractionBlocked(state, doc)) return 'blocked';
   handlers[command]();
   return 'performed';
 }
@@ -113,5 +114,5 @@ export function watchTextEditing(listener: (editing: boolean) => void, doc: Docu
 
 /** メニューと間接ピンチで共通の、編集画面の操作を始めない条件。 */
 export function nativeInteractionBlocked(state: { busy: boolean }, doc: Document = document): boolean {
-  return state.busy || doc.querySelector('[aria-modal="true"]') !== null;
+  return state.busy || hasOpenModal(doc);
 }

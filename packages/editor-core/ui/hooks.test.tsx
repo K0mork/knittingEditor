@@ -1,7 +1,7 @@
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { expect, it, vi } from 'vitest';
-import { NOTIFICATION_DURATION_MS, useEraseShortcuts, useModalFocus, useNotifier, usePanelFocus } from './hooks';
+import { NOTIFICATION_DURATION_MS, useClipboardShortcuts, useEraseShortcuts, useHistoryShortcuts, useModalFocus, useNotifier, usePanelFocus } from './hooks';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -231,6 +231,107 @@ it('erases the selection with Delete or Backspace only while a selection exists 
     expect(dispatch(document.body, 'Delete').defaultPrevented).toBe(false);
     dialog.remove();
     expect(onErase).toHaveBeenCalledTimes(2);
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+  }
+});
+
+it('ignores history shortcuts behind a modal unless a text field has focus', async () => {
+  const container = document.body.appendChild(document.createElement('div'));
+  const onUndo = vi.fn();
+  const onRedo = vi.fn();
+  function Host() {
+    useHistoryShortcuts({ onUndo, onRedo });
+    return null;
+  }
+  const root = createRoot(container);
+  const dispatch = (target: EventTarget, key: string, options: KeyboardEventInit = {}) => {
+    const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...options });
+    target.dispatchEvent(event);
+    return event;
+  };
+  try {
+    await act(async () => root.render(<Host />));
+    // モーダルがなければ、Ctrl/Cmd+Z・Ctrl/Cmd+Shift+Z・Ctrl+Yで盤面の履歴を操作する。
+    expect(dispatch(document.body, 'z', { ctrlKey: true }).defaultPrevented).toBe(true);
+    expect(dispatch(document.body, 'z', { metaKey: true, shiftKey: true }).defaultPrevented).toBe(true);
+    expect(dispatch(document.body, 'y', { ctrlKey: true }).defaultPrevented).toBe(true);
+    expect(onUndo).toHaveBeenCalledTimes(1);
+    expect(onRedo).toHaveBeenCalledTimes(2);
+
+    const modal = document.createElement('section');
+    modal.setAttribute('aria-modal', 'true');
+    const close = document.createElement('button');
+    const input = document.createElement('input');
+    modal.append(close, input);
+    document.body.append(modal);
+    close.focus();
+    // モーダル内のボタンにフォーカスがある間は、後ろの盤面を戻さない。
+    for (const [key, options] of [
+      ['z', { ctrlKey: true }],
+      ['z', { metaKey: true, shiftKey: true }],
+      ['y', { ctrlKey: true }],
+    ] as const) {
+      expect(dispatch(close, key, options).defaultPrevented).toBe(false);
+    }
+    expect(onUndo).toHaveBeenCalledTimes(1);
+    expect(onRedo).toHaveBeenCalledTimes(2);
+
+    // モーダル内の入力欄では、文字の取り消しを従来どおりブラウザへ任せる。
+    input.focus();
+    expect(dispatch(input, 'z', { metaKey: true }).defaultPrevented).toBe(false);
+    expect(onUndo).toHaveBeenCalledTimes(1);
+    expect(onRedo).toHaveBeenCalledTimes(2);
+    modal.remove();
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+  }
+});
+
+it('ignores clipboard shortcuts behind a modal unless a text field has focus', async () => {
+  const container = document.body.appendChild(document.createElement('div'));
+  const onCopy = vi.fn();
+  const onPaste = vi.fn();
+  function Host() {
+    useClipboardShortcuts({ canCopy: true, canPaste: true, onCopy, onPaste });
+    return null;
+  }
+  const root = createRoot(container);
+  const dispatch = (target: EventTarget, key: string, options: KeyboardEventInit = {}) => {
+    const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...options });
+    target.dispatchEvent(event);
+    return event;
+  };
+  try {
+    await act(async () => root.render(<Host />));
+    // モーダルがなければ、Ctrl/Cmd+CとCtrl/Cmd+Vでコピーと貼付モードを始める。
+    expect(dispatch(document.body, 'c', { metaKey: true }).defaultPrevented).toBe(true);
+    expect(dispatch(document.body, 'v', { ctrlKey: true }).defaultPrevented).toBe(true);
+    expect(onCopy).toHaveBeenCalledTimes(1);
+    expect(onPaste).toHaveBeenCalledTimes(1);
+
+    const modal = document.createElement('section');
+    modal.setAttribute('aria-modal', 'true');
+    const close = document.createElement('button');
+    const input = document.createElement('input');
+    modal.append(close, input);
+    document.body.append(modal);
+    close.focus();
+    // モーダル内のボタンにフォーカスがある間は、後ろの盤面をコピー・貼付しない。
+    expect(dispatch(close, 'c', { ctrlKey: true }).defaultPrevented).toBe(false);
+    expect(dispatch(close, 'v', { metaKey: true }).defaultPrevented).toBe(false);
+    expect(onCopy).toHaveBeenCalledTimes(1);
+    expect(onPaste).toHaveBeenCalledTimes(1);
+
+    // モーダル内の入力欄では、文字のコピー・貼り付けを従来どおりブラウザへ任せる。
+    input.focus();
+    expect(dispatch(input, 'c', { metaKey: true }).defaultPrevented).toBe(false);
+    expect(dispatch(input, 'v', { ctrlKey: true }).defaultPrevented).toBe(false);
+    expect(onCopy).toHaveBeenCalledTimes(1);
+    expect(onPaste).toHaveBeenCalledTimes(1);
+    modal.remove();
   } finally {
     await act(async () => root.unmount());
     container.remove();
