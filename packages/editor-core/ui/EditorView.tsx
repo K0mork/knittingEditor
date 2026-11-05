@@ -239,7 +239,7 @@ export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, 
         {!selection && <button onClick={editor.startSelecting}>盤面で範囲を選択</button>}
         <div className="block-list">{session.blocks.length === 0 && <p>保存済みブロックはありません。</p>}{session.blocks.map((block) => <div key={block.id}><button onClick={() => editor.choosePasteBlock(block)}>{block.name}<small>{block.rows}段×{block.cols}目</small></button><button onClick={() => void editor.removeBlock(block)}>削除</button></div>)}</div>
       </>}
-      {panel === 'export' && <ExportControls board={board} onPng={editor.runPngExport} onPdf={editor.runPdfExport} onBackup={editor.backup}
+      {panel === 'export' && <ExportControls board={board} revision={session.revision} onPng={editor.runPngExport} onPdf={editor.runPdfExport} onBackup={editor.backup}
         onRestore={() => { if (!requestRestore?.()) editor.fileInputRef.current?.click(); }}
         backupStatus={editor.backupReminder.loaded ? backupStatusText(editor.backupReminder.lastBackupAt) : undefined}
         backupNote={backupNote} />}
