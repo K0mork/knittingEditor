@@ -121,8 +121,8 @@ runの待ち方のコマンド、runが現れないときの調べ方、ロー�
 
 runは、pushしたコミットのSHA（完全な40桁）と`ci.yml`で絞って選ぶ。`gh run list --limit 1`だけでは、CodeQLのrunや、別のブランチ・別のセッションのrunを拾い、他人の結果を見て完了と報告してしまう。
 
-- `changes`、`app_store_docs`、変更範囲に応じた`web`、`ios_web`、`ios`（iPhone 17）、`ci-gate`を個別に確認する。Web影響のある`main`更新では`deploy`と`smoke`も確認する。`RUN: success`だけを見て済ませない。
-- マージ後は`gh run list --workflow ios-full.yml --commit <SHA>`で変更を含むコミットのrunを選び、`gh run view <id> --json headSha,conclusion,jobs`で`ios_full`×2、`app_update`×2、`release_archive`の成功を個別に確認する。PRゲートだけでiOS作業完了としない。
+- 対象ジョブと完了条件は[`docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md)の「ビルドと公開」を正とする。`changes`、`app_store_docs`、変更範囲に応じた`web`・`ios_web`・`ios`、`ci-gate`を個別に確認し、Web影響のある`main`更新では`deploy`・`smoke`も確認する。`RUN: success`だけを見て済ませない。
+- マージ後は、同節に列挙されたFull iOS validationのジョブをコミットSHAで選び、すべての成功を個別に確認する。PRゲートだけでiOS作業完了としない。
 - 失敗したら、そのpushで完了とせずに原因を特定して直す。
 - 断続的に失敗するテストは、原因を特定できるまで「直った」と記録しない。失敗時の診断情報と画面添付を仕込み、次の発生を待つ。
 - CIが赤いまま別の作業へ移る場合は、赤であることと原因の切り分け状況をユーザーへ明示する。

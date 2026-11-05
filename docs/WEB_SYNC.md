@@ -61,7 +61,7 @@ Web版とiOS版は同じリポジトリで管理する。以前の固定コミ�
 - `src/`（Web固有）：旧Safari `localStorage`からの移行、GA4アナリティクス、iPhone・iPad Safariの共有シート判定と確認ダイアログ、Worker先読みローダー（`workerPrefetch.test.ts`）、使い方ページ遷移前の保存確認と修飾キー付きクリック（`App.guide.test.tsx`）。
 - `ios/Web/src/`（iOS固有）：ネイティブブリッジ、ネイティブ操作と入力欄のフォーカス監視（`nativeCommands.test.ts`）、自動保存間隔（`nativeEditorConfiguration.test.ts`）、アプリ内ダイアログ（`AppDialog.test.tsx`）、使い方ページ遷移前の保存確認（`App.guide.test.tsx`）、バックグラウンド移行前の保存（`App.backgroundSave.test.tsx`）、ネイティブズーム（`App.zoom.test.tsx`）、共有失敗時の案内（`shareResult.test.tsx`）、折り目の操作禁止帯（`nativeFold.test.ts`）、WebViewのviewport設定（`webViewBehaviors.test.ts`）、`webReady`を編集画面が画面に出てから送ること（`editorReady.test.ts`）、`async`のタイムアウト、使い方ページのバージョン表示（`guideVersion.test.ts`）とフッターのリンク（`guideFooter.test.ts`）、ファイル受け渡し（`platform.test.ts`）、ブリッジ経由の`.knit`入出力と`.knit`相互運用fixture（`backupInterchange.test.ts`、`ios/test-fixtures/`）。
 
-両ビルドのVitest設定は`*.test.tsx`に対応するが、対象ディレクトリは異なる。ルートの`npm test`は`packages/`の共通テストを実行する（CIでは`web`ジョブ）。iOS単独のVitestは`ios/Web/src/`の固有テストだけを実行し、共通テストは実行しない。
+両ビルドのVitest設定は`*.test.tsx`に対応するが、対象ディレクトリは異なる。ルートの`npm test`は`packages/`の共通テストに加えて、`src/`のWeb固有テストと`scripts/`のリポジトリテストを実行する（CIでは`web`ジョブ）。iOS単独のVitestは`ios/Web/src/`の固有テストだけを実行し、共通テストは実行しない。
 
 ## 同期ではなく同時検証
 
