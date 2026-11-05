@@ -61,6 +61,21 @@ test.each([
   expect(check).toThrow();
 });
 
+test.each([
+  ['サブタイトル', 'iPhone・iPadで'],
+  ['サブタイトル', 'ipad対応 '],
+  ['サブタイトル', 'アイフォンで'],
+  ['App名', 'iPad '],
+  ['キーワード', 'iOS,'],
+])('rejects an Apple product name in the %s value (%s)', (key, prefix) => {
+  const metadata = join(directory, 'ios/docs/APP_STORE_METADATA.md');
+  const row = `| ${key} | `;
+  const text = readFileSync(metadata, 'utf8');
+  expect(text).toContain(row);
+  writeFileSync(metadata, text.replace(row, `${row}${prefix}`));
+  expect(check).toThrow(/Apple product name/);
+});
+
 test('rejects metadata pointing to the Web policy instead of the app policy', () => {
   const metadata = join(directory, 'ios/docs/APP_STORE_METADATA.md');
   writeFileSync(metadata, readFileSync(metadata, 'utf8').replaceAll('https://knittingeditor.com/privacy/app/', 'https://knittingeditor.com/privacy/'));

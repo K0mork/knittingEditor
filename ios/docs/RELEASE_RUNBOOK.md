@@ -1,6 +1,6 @@
 # v1.0 提出・公開の手順
 
-v1.0をApp Storeへ提出・公開するまで、次の順に進める。Apple Developer Programへの個人での加入と有料のTeamでの署名（手順1〜3）は2026-11-02に、App Store Connectでのアプリの登録から審査への提出まで（手順4〜7）は2026-11-03に済んだ。v1.0は審査待ちで、[手順8](#8-審査と並行してtestflightで提出ビルドを実機で確かめる)の提出ビルドの実機確認も2026-11-03に済んだ。次は承認を待って[手順9](#9-承認後に公開し確認と記録を残す)へ進む。全項目の管理は[提出チェックリスト](APP_STORE_CHECKLIST.md)、入力値の正本は[メタデータ](APP_STORE_METADATA.md)、実機の手順と証跡は[実機リリースゲート](REAL_DEVICE_RELEASE_CHECKLIST.md)を使う。v1.1以降の更新版は[手順10](#10-更新版を提出する)を加えて進める。
+v1.0をApp Storeへ提出・公開するまで、次の順に進める。Apple Developer Programへの個人での加入と有料のTeamでの署名（手順1〜3）は2026-11-02に、App Store Connectでのアプリの登録から審査への提出まで（手順4〜7）は2026-11-03に済んだ。v1.0は2026-11-05にガイドライン5.2.5で却下され、サブタイトルを直して同日に再提出した（[手順7](#7-審査に提出する再提出済み審査待ち)）。[手順8](#8-審査と並行してtestflightで提出ビルドを実機で確かめる)の提出ビルドの実機確認も2026-11-03に済んだ。次は承認を待って[手順9](#9-承認後に公開し確認と記録を残す)へ進む。全項目の管理は[提出チェックリスト](APP_STORE_CHECKLIST.md)、入力値の正本は[メタデータ](APP_STORE_METADATA.md)、実機の手順と証跡は[実機リリースゲート](REAL_DEVICE_RELEASE_CHECKLIST.md)を使う。v1.1以降の更新版は[手順10](#10-更新版を提出する)を加えて進める。
 
 個人情報・Team ID・App Store ConnectのApp ID・登録画面の無加工画像を、公開リポジトリやGitHubへ載せない。非公開の入力値はメインチェックアウトのルートの `private/APP_STORE_CONNECT.md` を参照する。worktreeに別の `private/` は作らない。
 
@@ -113,15 +113,20 @@ MacとApple Vision Proは[#86の決定コメント](https://github.com/K0mork/kn
 - **完了の目安:** #27の入力がそろい、[提出チェックリストの「検証・配布」](APP_STORE_CHECKLIST.md#検証配布)と実機ゲートM6の登録内容照合を終え、手順8で審査と並行して確かめる提出ビルドの実機確認のほかに、未解決の必須項目がない。
 - **関係するIssue／項目:** [#27](https://github.com/K0mork/knittingEditor/issues/27)、[#86](https://github.com/K0mork/knittingEditor/issues/86)、提出チェックリストのApp Privacyから配信地域までの各登録項目、実機ゲートM6。
 
-## 7. 審査に提出する（提出済み、審査待ち）
+## 7. 審査に提出する（再提出済み、審査待ち）
 
-2026-11-03 11:14（JST）に、ビルド1を選び、手動公開にして提出した。状態は「審査待ち」（[記録](RELEASE_VERIFICATION_RECORDS.md#2026-11-03-提出用アーカイブのアップロードと審査への提出)）。承認されるまで、この手順は完了にしない。
+2026-11-03 11:14（JST）に、ビルド1を選び、手動公開にして提出した（[記録](RELEASE_VERIFICATION_RECORDS.md#2026-11-03-提出用アーカイブのアップロードと審査への提出)）。2026-11-05に、ガイドライン5.2.5（法的事項：知的財産）で却下された。サブタイトルの「iPhone」「iPad」が、Appleの製品名の不適切な使い方とされた。指摘はメタデータだけなので、ビルド1のまま、App Store Connectの「App情報」でサブタイトルを「編み図を簡単に作成・印刷」に替え、2026-11-05 17:22（JST）に再提出した（[記録](RELEASE_VERIFICATION_RECORDS.md#2026-11-05-審査の却下ガイドライン525とサブタイトルの変更)）。承認されるまで、この手順は完了にしない。
 
 
 1. 手順5でアップロードし、処理済みになったビルド番号をv1.0に選ぶ。[提出チェックリスト](APP_STORE_CHECKLIST.md)を再確認し、任意項目・将来対応と、手順8で審査と並行して確かめる提出ビルドの実機確認とを区別する。それ以外の必須の未完了があれば先に解消する。
 2. 公開方法は**手動公開**にして、提出前にApp Store Connectへ設定する。手順8の確認が承認より後に終わっても、確認の前に公開されないようにするためである。内容を保存して審査へ追加し、最終の提出操作まで進める。
 3. 審査は通常1〜2日を目安にするが、追加確認等で長くなる場合もある（[Appleの審査案内](https://developer.apple.com/jp/help/app-review/after-submitting-for-review/request-expedited-review/)）。App Store Connectの状態とAppleからの連絡を確認する。
-4. リジェクトされたら、指摘された条項と再現手順を読み、App Store Connectの審査連絡へ回答する。アプリの説明と確認手順は[審査メモ](APP_REVIEW_NOTES.md)にある。メタデータの不足なら正本も更新し、コード修正なら新しいビルド番号で手順5〜8をやり直して再提出する。
+4. リジェクトされたら、指摘された条項と再現手順を読み、再提出する前に、App Store Connectでアプリの状態を確かめて対応を選ぶ。Appleの案内は状態ごとに違う（[App and submission statuses](https://developer.apple.com/help/app-store-connect/reference/app-and-submission-statuses)、2026-11-05に確認）。審査担当者への返信は再提出するまでしか送れない（[Reply to App Review messages](https://developer.apple.com/help/app-store-connect/manage-submissions-to-app-review/reply-to-app-review-messages/)）ので、返信が要るときは再提出の前に送る。アプリの説明と確認手順は[審査メモ](APP_REVIEW_NOTES.md)にある。
+   - 状態が「Metadata Rejected」（メタデータの却下）なら、メタデータを直してから審査担当者に返信し、直したことを伝える。Appleはこの状態では再提出ではなく返信を案内している。
+   - 状態が「Rejected」（却下）なら、指摘された項目を直し、提出の詳細画面の「Resubmit to App Review」で再提出する（[Manage a submission with unresolved issues](https://developer.apple.com/help/app-store-connect/manage-submissions-to-app-review/manage-a-submission-with-unresolved-issues/)）。メタデータだけの指摘なら、同じビルドのまま出せる。
+   - コードの修正が要るなら、新しいビルド番号で手順5〜8をやり直して再提出する。
+   - メタデータを直したときは、正本の[メタデータ](APP_STORE_METADATA.md)も直す。
+   - 2026-11-05のv1.0の却下（ガイドライン5.2.5）では、状態を確かめないまま再提出した。この手順は案内に沿っているが、状態がMetadata Rejectedだったなら、返信だけで審査が続いた可能性がある。再提出した後で審査から取り下げると、状態は「Developer Rejected」になって再提出し直すしかなく、返信の道には戻れない。
 
 - **完了の目安:** 提出が受理され、最終的に承認を確認できた。審査待ち・審査中・リジェクトは承認として扱わない。
 - **関係するIssue／項目:** [#27](https://github.com/K0mork/knittingEditor/issues/27)、提出チェックリストの全必須項目と「提出後の承認」、実機ゲートM6。

@@ -70,6 +70,22 @@ metadata_value_within_limit "サブタイトル" 30
 metadata_value_within_limit "キーワード" 100
 metadata_value_within_limit "プロモーションテキスト" 170
 
+# App名・サブタイトル・キーワードにAppleの製品名を入れると、ガイドライン5.2.5（知的財産）で却下される。
+# v1.0はサブタイトルの「iPhone・iPad」で却下された（2026-11-05、APP_STORE_METADATA.md）。
+# 日本語に続く「iPadで」も見つけられるよう、\bではなく前後が英字でないことで語を区切る。
+for key in "App名" "サブタイトル" "キーワード"; do
+  value=$(metadata_value "$key" "$METADATA") || value=''
+  apple_term=$(printf '%s\n' "$value" | perl -CS -Mutf8 -ne '
+    if (/((?<![A-Za-z])(?:iPhone|iPadOS|iPad|iPod|iOS|macOS|Mac|Apple|App Store|Siri)(?![A-Za-z])|アイフォー?ン|アイパッド)/i) {
+      print $1;
+    }
+  ')
+  if [ -n "$apple_term" ]; then
+    echo "metadata value must not use an Apple product name (App Review Guideline 5.2.5): $key ($apple_term)" >&2
+    exit 1
+  fi
+done
+
 # ホーム画面の表示名は、全角7文字以上だと文字サイズを大きくしたiPhoneで切れる（APP_STORE_METADATA.mdの実測）。
 # 文書の値とInfo.plistの値がずれないよう、両方を照合する。plutilの無いLinuxでも動くようperlで読む。
 metadata_value_is_nonempty "ホーム画面の表示名" "$METADATA"
