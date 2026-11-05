@@ -425,6 +425,30 @@ it.each(['png', 'pdf'] as const)('clears busy and reports a %s file handoff fail
   expect(track.mock.calls.some(([event]) => event === 'chart_exported')).toBe(false);
 });
 
+it.each(['png', 'pdf'] as const)('records the %s board size from the start of the export even if the board is resized meanwhile', async (format) => {
+  let finishRender!: (blob: Blob) => void;
+  const rendering = new Promise<Blob>((resolve) => { finishRender = resolve; });
+  vi.spyOn(exporters, 'renderPng').mockReturnValue(rendering);
+  vi.spyOn(exporters, 'renderPdf').mockReturnValue(rendering);
+  let exporting!: Promise<void>;
+  await act(async () => {
+    exporting = format === 'png' ? editor.runPngExport(24)
+      : editor.runPdfExport({ layout: 'tiled', orientation: 'portrait', cellMillimeters: 5 });
+  });
+  expect(editor.busy).toBe(format === 'png' ? 'PNGを生成中' : 'PDFを生成中');
+  // 出力の処理中表示は盤面を覆わないので、その間に盤面パネルからサイズを変えられる。
+  await act(async () => { editor.session.board!.resize(120, 120); editor.changed(); });
+  await act(async () => { finishRender(new Blob([format])); await exporting; });
+  expect(saveFile).toHaveBeenCalledWith(expect.any(Blob), `${source.name}.${format}`);
+  const exported = track.mock.calls.filter(([event]) => event === 'chart_exported');
+  expect(exported).toHaveLength(1);
+  expect(exported[0][1]).toMatchObject({
+    export_format: format,
+    board_size_bucket: 'small',
+    ...(format === 'pdf' ? { pdf_layout: 'tiled' } : {}),
+  });
+});
+
 it('reports the original initialization error category', async () => {
   function FailedProbe() {
     useEditorController({
