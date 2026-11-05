@@ -89,15 +89,19 @@ describe('shared guide content', () => {
   const headings = (path) => [...new JSDOM(readFileSync(new URL(path, root), 'utf8')).window.document.querySelectorAll('main h2')]
     .map((heading) => heading.textContent?.replace(/\s+/g, ' ').trim() ?? '');
 
+  // Web版とiOS版で完全一致している説明段落と見出しの数。片方だけを変更すると数が減って失敗する。
+  // 共通の説明を両方へ足したときや、意図して片方だけ変えたときは、この数を更新する。
+  // 下限ではなく一致で比べるのは、共通部分が増えたあとの片側変更も検出するため。
+  const SHARED_PARAGRAPHS = 9;
+  const SHARED_HEADINGS = 9;
+
   it('keeps the shared explanatory paragraphs and headings in both guides', () => {
-    // Web版とiOS版で共通する説明。片方だけを変更すると、この下限を下回って失敗する。
-    // 2026-11-04時点では9段落・9見出しが完全一致している。
     const [webParagraphs, iosParagraphs] = guides.map(paragraphs);
     const sharedParagraphs = webParagraphs.filter((paragraph) => iosParagraphs.includes(paragraph));
-    expect(sharedParagraphs.length).toBeGreaterThanOrEqual(9);
+    expect(sharedParagraphs.length, '両方の使い方ページで一致する段落の数').toBe(SHARED_PARAGRAPHS);
 
     const [webHeadings, iosHeadings] = guides.map(headings);
     const sharedHeadings = webHeadings.filter((heading) => iosHeadings.includes(heading));
-    expect(sharedHeadings.length).toBeGreaterThanOrEqual(9);
+    expect(sharedHeadings.length, '両方の使い方ページで一致する見出しの数').toBe(SHARED_HEADINGS);
   });
 });
