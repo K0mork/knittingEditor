@@ -1,0 +1,24 @@
+# 2026-11-05 — モーダルを開いている間は、背後の盤面に履歴・コピー/貼付のショートカットを効かせない（#405）
+
+- 影響: 編み目記号・記号の色・共有・アプリ内ダイアログなどのモーダル（`[aria-modal="true"]`）を開いている間、フォーカスが入力欄にないときは、Ctrl/Cmd+Z・Ctrl/Cmd+Shift+Z・Ctrl+Yによる元に戻す・やり直すと、Ctrl/Cmd+C・Ctrl/Cmd+Vによる範囲コピー・貼付モードの開始を実行しないようにした。これまでは、記号ピッカーの「閉じる」ボタンにフォーカスがある状態でCtrl/Cmd+Zを押すと、ピッカーの背後で盤面が元に戻っていた。
+  - `packages/editor-core/ui/hooks.ts`に、`useEraseShortcuts`が使っていたモーダル判定を`hasOpenModal`として切り出し、`useClipboardShortcuts`と`useHistoryShortcuts`でも使う。既存の削除ショートカットの挙動は変えない。
+  - 入力欄（input・textarea・select・contenteditable）にフォーカスがある間は、これまでどおりブラウザ自身の文字操作を優先し、盤面のハンドラーを呼ばず`preventDefault`もしない。この判定をモーダル判定より先に置く。
+  - `ios/Web/src/nativeCommands.ts`のネイティブメニュー経由のundo/redoも同じ方針にそろえた。入力欄にフォーカスがあれば従来どおり`execCommand`で文字の取り消し・やり直しを行い、モーダルが開いていてフォーカスが入力欄でなければ`blocked`を返して盤面の履歴を動かさない。処理中（`busy`）でも履歴だけは操作できる既存の挙動は、Web版のキー操作に合わせて維持する。
+  - モーダル判定は`nativeInteractionBlocked`でも共通の`hasOpenModal`を使うようにした。Web版の`src/`にはネイティブメニュー相当のundo/redo経路がないことを確認した。
+- 主なファイル: `packages/editor-core/ui/hooks.ts`、`ios/Web/src/nativeCommands.ts`、`packages/editor-core/ui/hooks.test.tsx`、`ios/Web/src/nativeCommands.test.ts`、`tests/e2e/editor.spec.ts`、`tests/e2e/backup-pipeline.spec.ts`
+- テスト:
+  - `hooks.test.tsx`に、`aria-modal="true"`の要素がありモーダル内のボタンにフォーカスがあるとき、Ctrl/Cmd+Z・Ctrl/Cmd+Shift+Z・Ctrl+Y・Ctrl/Cmd+C・Ctrl/Cmd+Vがハンドラーを呼ばず`preventDefault`もしないこと、モーダルがなければ従来どおり呼ぶこと、モーダル内の入力欄ではハンドラーを呼ばず`preventDefault`もしないことを追加した。
+  - `nativeCommands.test.ts`の既存の「ダイアログ中はundo/redoだけ通す」テストを、ダイアログ内のボタンにフォーカスがある間は全コマンドが`blocked`になるテストに更新した。モーダル内の入力欄では`execCommand`による文字操作を優先し、盤面の履歴を呼ばないテストも追加した。
+  - `tests/e2e/editor.spec.ts`に、盤面を1マス編集して記号ピッカーを開き、閉じるボタンにフォーカスがある状態で`ControlOrMeta+z`を押しても盤面が戻らないこと、ピッカーを閉じたあとの`ControlOrMeta+z`では戻ることを確かめるE2Eを追加した。
+  - `tests/e2e/backup-pipeline.spec.ts`の「iPhone共有ダイアログを開いたまま元に戻すと記録しない」テストは、#405の方針に合わせて「共有ダイアログを開いている間は盤面を戻さず、共有したらバックアップとして記録する」テストへ改名・変更した。ダイアログの「共有・保存」にフォーカスがある状態で`Meta+z`を押しても盤面が記号1個のままで、共有後に出力パネルが「この編み図の最後のバックアップ：…」を表示することを確かめる。
+  - 共有中に盤面が変わったときに記録しない安全規則は、既存の`packages/editor-core/ui/backupPipeline.test.tsx`の「does not record an export when undo changes the generation during sharing」が、共有の途中で`undo()`して世代が変わると`lastBackupAt`を記録しないことを確かめているため、新しい単体テストは追加していない。
+  - ほかにモーダルを開いたまま履歴・コピー/貼付のショートカットを押すE2E・単体テストがないか、`tests/e2e`の`keyboard.press`（Ctrl/Meta付き）と`KeyboardEvent`の送出、`useHistoryShortcuts`・`useClipboardShortcuts`・`runNativeCommand`を呼ぶテストを検索した。該当したのは上記の1件だけだった。`pdf-export-snapshot.spec.ts`・`editor.spec.ts`・`canvas-pointer-and-view.spec.ts`のショートカットはダイアログを開いておらず、処理中表示だけなので変更していない。
+- 検証（Node.js v26.8.1）:
+  - `npm run typecheck`: 成功。
+  - `npm test`: 81ファイル・1028件成功。
+  - `cd ios/Web && ../../node_modules/.bin/tsc -p tsconfig.app.json --noEmit && ../../node_modules/.bin/vitest run --config vite.config.ts`: 型検査成功、18ファイル・151件成功。
+  - `npm run build`: 成功。`npm run check:dist`: 成功。
+  - `npx playwright test tests/e2e/editor.spec.ts -g "behind an open stitch picker"`: chromium-desktop・chromium-mobile・webkit-mobileの3件成功。`hooks.ts`の修正を一時的に外すと、このE2Eと`hooks.test.tsx`の追加テスト2件が失敗することを確かめてから戻した。
+  - `npm run test:e2e`: 最初の実行で、共有ダイアログ中に元に戻すことを前提にしていた`backup-pipeline.spec.ts`の1件がwebkit-mobileで失敗した。上のとおりテストを直したあとの実行では、620件成功、36件スキップ（プロジェクトの条件によるもの）、1件失敗。失敗は今回の変更と関係しない`layout-focus-and-hover.spec.ts`の「keeps selection and action controls separate at 1024x1024 with 28px text」（chromium-mobile）で、直前の実行では成功しており、`npx playwright test tests/e2e/layout-focus-and-hover.spec.ts --project chromium-mobile --repeat-each 3`では39件すべて成功した。
+  - iOS SimulatorのテストはPRのCI（`ios`ジョブ）とマージ後の`Full iOS validation`に任せた。実機のハードウェアキーボードとメニューでは確かめていない。
+- デプロイ影響: Pagesへ配信される（Web版のキー操作の変更）。iOSは次のビルドから反映される。データ形式・保存には影響しない。配信後に`https://knittingeditor.com/`で、盤面を編集して記号ピッカーを開き、Ctrl/Cmd+Zで盤面が戻らないこと、閉じたあとは戻ることを確かめる。

@@ -669,6 +669,31 @@ test('undoes and redoes a stroke and a grid change, then saves the result', asyn
   await expect.poll(readStored).toEqual({ filled: 0, rows: 150 });
 });
 
+test('does not undo the board behind an open stitch picker', async ({ page }) => {
+  const canvas = page.getByLabel('編み図編集盤面');
+  const box = (await canvas.boundingBox())!;
+  await page.mouse.click(box.x + 75, box.y + 75);
+  await waitForDrawnStitches(page);
+  const edited = await canvas.getAttribute('aria-label');
+  const undo = page.getByRole('button', { name: '元に戻す' });
+  await expect(undo).toBeEnabled();
+
+  await page.getByRole('button', { name: '編み目記号を選ぶ', exact: true }).click();
+  const picker = page.getByRole('dialog', { name: '編み目記号' });
+  // 開いた直後は閉じるボタンへフォーカスが移る。Issueの再現と同じく、入力欄ではない要素から押す。
+  await expect(picker.getByRole('button', { name: '閉じる', exact: true })).toBeFocused();
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect(canvas).toHaveAttribute('aria-label', edited!);
+  await expect(undo).toBeEnabled();
+
+  // ピッカーを閉じれば、いつもどおりCtrl/Cmd+Zで盤面を戻せる。
+  await picker.getByRole('button', { name: '閉じる', exact: true }).click();
+  await expect(picker).toBeHidden();
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect(undo).toBeDisabled();
+  await expect(canvas).toHaveAttribute('aria-label', /記号0個/);
+});
+
 test('keeps the cast-on row when the row count grows and shrinks again', async ({ page }) => {
   const readFilled = async () => {
     const { filled: indexes, rows, cols } = await storedCells(page);

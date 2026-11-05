@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Board } from '@knitting-editor/editor-core/model/Board';
 import { defaultPngCellSize } from '@knitting-editor/editor-core/export/exporters';
-import { isNativeCommand, listenNativeCommand, NATIVE_COMMANDS, notifyNativeCommandState, type NativeCommand } from './nativeBridge';
+import { isNativeCommand, listenNativeCommand, NATIVE_COMMANDS, notifyNativeCommandState } from './nativeBridge';
 import {
   MENU_PDF_OPTIONS, nativeCommandHandlers, nativeHistoryState, runNativeCommand, watchTextEditing, type NativeCommandHandlers,
 } from './nativeCommands';
@@ -80,13 +80,14 @@ describe('native menu commands', () => {
     }
   });
 
-  it('keeps a dialog in front: only undo and redo pass through, as with the web shortcuts', () => {
+  it('keeps a dialog in front: no command reaches the board while a button in it has focus', () => {
     document.body.innerHTML = '<section role="dialog" aria-modal="true"><button>決定</button></section>';
+    document.querySelector('button')!.focus();
     const handlers = fakeHandlers();
-    const blocked: NativeCommand[] = ['newDocument', 'restoreBackup', 'exportBackup', 'exportAllBackup', 'exportPng', 'exportPdf', 'openGuide', 'zoomIn', 'zoomOut'];
-    for (const command of blocked) expect(runNativeCommand(command, handlers, { busy: false })).toBe('blocked');
-    expect(runNativeCommand('undo', handlers, { busy: false })).toBe('performed');
-    expect(handlers.undo).toHaveBeenCalledTimes(1);
+    for (const command of NATIVE_COMMANDS) {
+      expect(runNativeCommand(command, handlers, { busy: false })).toBe('blocked');
+      expect(handlers[command]).not.toHaveBeenCalled();
+    }
   });
 
   it('undoes typing instead of the board while a text field has focus', () => {
@@ -99,6 +100,28 @@ describe('native menu commands', () => {
     expect(runNativeCommand('redo', handlers, { busy: false })).toBe('textEditing');
     expect(execCommand).toHaveBeenNthCalledWith(1, 'undo');
     expect(execCommand).toHaveBeenNthCalledWith(2, 'redo');
+    expect(handlers.undo).not.toHaveBeenCalled();
+    expect(handlers.redo).not.toHaveBeenCalled();
+  });
+
+  it('uses the text field instead of the board history behind a dialog too', () => {
+    document.body.innerHTML = '<section role="dialog" aria-modal="true"><button>閉じる</button><input aria-label="入力"></section>';
+    const execCommand = vi.fn(() => true);
+    Object.defineProperty(document, 'execCommand', { value: execCommand, configurable: true });
+    const handlers = fakeHandlers();
+
+    document.querySelector('button')!.focus();
+    expect(runNativeCommand('undo', handlers, { busy: false })).toBe('blocked');
+    expect(runNativeCommand('redo', handlers, { busy: false })).toBe('blocked');
+    expect(execCommand).not.toHaveBeenCalled();
+    expect(handlers.undo).not.toHaveBeenCalled();
+    expect(handlers.redo).not.toHaveBeenCalled();
+
+    // モーダルが開いていても、入力欄にフォーカスがあれば文字の取り消しを優先する。
+    document.querySelector('input')!.focus();
+    expect(runNativeCommand('undo', handlers, { busy: false })).toBe('textEditing');
+    expect(runNativeCommand('redo', handlers, { busy: false })).toBe('textEditing');
+    expect(execCommand.mock.calls).toEqual([['undo'], ['redo']]);
     expect(handlers.undo).not.toHaveBeenCalled();
     expect(handlers.redo).not.toHaveBeenCalled();
   });

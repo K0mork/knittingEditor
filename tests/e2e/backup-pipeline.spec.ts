@@ -116,7 +116,7 @@ test('updates the busy indicator and handles events during a twenty-chart backup
   await expect(page.getByText('21件の編み図を復元しました', { exact: true })).toBeVisible({ timeout: 60_000 });
 });
 
-test('keeps the shared generation unrecorded when undo runs while the iPhone share dialog is open', async ({ page }, testInfo) => {
+test('keeps the board unchanged while the iPhone share dialog is open, then records the shared backup', async ({ page }, testInfo) => {
   const shareSheet = await stubShareSheet(page, testInfo);
   await page.reload();
   const canvas = page.getByLabel('編み図編集盤面');
@@ -127,11 +127,13 @@ test('keeps the shared generation unrecorded when undo runs while the iPhone sha
   await page.locator('#app-drawer').getByRole('button', { name: 'この編み図を書き出す' }).click();
   const dialog = page.getByRole('dialog', { name: '「新しい編み図.knit」の準備ができました' });
   await expect(dialog).toBeVisible();
-  // 確認ダイアログを開いたまま元に戻すと、渡すファイルは今の盤面のバックアップではなくなる。
+  // モーダルを開いている間は、入力欄ではない「共有・保存」にフォーカスがあるので、Ctrl/Cmd+Zは盤面を戻さない（#405）。
+  await expect(dialog.getByRole('button', { name: '共有・保存' })).toBeFocused();
   await page.keyboard.press('Meta+z');
-  await expect(canvas).toHaveAttribute('aria-label', /記号0個/);
+  await expect(canvas).toHaveAttribute('aria-label', /記号1個/);
+  // 盤面が変わっていないので、共有したファイルは今の編み図のバックアップとして記録する。
   await dialog.getByRole('button', { name: '共有・保存' }).click();
   await expect(dialog).toBeHidden();
   expect(await shareSheet.sharedNames()).toEqual(['新しい編み図.knit']);
-  await expect(page.locator('#app-drawer')).toContainText('この編み図はまだバックアップしていません。');
+  await expect(page.locator('#app-drawer')).toContainText(/この編み図の最後のバックアップ：\d{4}年\d{1,2}月\d{1,2}日/);
 });
