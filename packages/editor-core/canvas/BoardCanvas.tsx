@@ -591,9 +591,10 @@ export function BoardCanvas(props: Props) {
     lastCellRef.current = cell;
     if (pointersRef.current.size === 2) {
       gestureBlockedRef.current = true;
-      // 2本目が触れた時点で、1本目の保留タップは取り消す。
+      // 2本目が触れた時点で、1本目の保留タップと、前のタップで決めた線の始点を取り消す。
       pendingTapRef.current = undefined;
       lineDragRef.current = undefined;
+      lineStartRef.current = undefined;
       provisionalRef.current = undefined;
       touchChangedRef.current = false;
       if (props.mode === 'select') props.onSelectionChange(previousSelectionRef.current);

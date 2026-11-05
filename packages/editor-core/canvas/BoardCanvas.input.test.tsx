@@ -189,6 +189,33 @@ it('線のドラッグは列を固定し、2本指やキャンセルでは作ら
   ui.close();
 });
 
+it('2本指操作の後のタップは新しい始点にし、操作前の始点から線を引かない', () => {
+  const ui = setup('line');
+  const tap = (x: number, y: number) => {
+    ui.pointer('pointerdown', 1, x, y);
+    ui.pointer('pointerup', 1, x, y);
+  };
+  tap(75, 75);
+  // 2本指で移動・拡大してから元の位置へ戻す。離した後の表示位置は操作前と同じ。
+  ui.pointer('pointerdown', 1, 75, 75);
+  ui.pointer('pointerdown', 2, 255, 75);
+  ui.pointer('pointermove', 1, 95, 95);
+  ui.pointer('pointermove', 2, 295, 105);
+  ui.pointer('pointermove', 1, 75, 75);
+  ui.pointer('pointermove', 2, 255, 75);
+  ui.pointer('pointerup', 2, 255, 75);
+  ui.pointer('pointerup', 1, 75, 75);
+  // 同じ列の2段以上下を押しても、2本指操作の前の始点からは線を作らない。
+  tap(75, 195);
+  expect(ui.board.lines).toEqual([]);
+  expect(ui.onChange).not.toHaveBeenCalled();
+  // そのタップが新しい始点になり、さらに下のマスで線を作る。
+  tap(75, 255);
+  expect(ui.board.lines).toEqual([{ col: 1, top: 5, bottom: 7 }]);
+  expect(ui.onChange).toHaveBeenCalledTimes(1);
+  ui.close();
+});
+
 it('同じマスとEscapeで始点を取り消し、隣接マスは新しい始点にする', () => {
   const ui = setup('line');
   const tap = (y: number) => {
