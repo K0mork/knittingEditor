@@ -9,6 +9,10 @@
   - 再実行で通っても調べるものも決めた。値が違うアサーションやアプリのクラッシュのように、遅さでは説明できない失敗と、変更に関わるテストの失敗である。
   - `ios-full.yml`の`report_failure`ジョブは削除した。実行中のrunは自分を再実行できないので、`workflow_run`で、runが終わってから動く別のワークフローにした。`actions: write`と`issues: write`の権限は、このワークフローのジョブにだけ与える。
   - PRの`ios`ジョブが落ちたときは、失敗したジョブを1回再実行してよいことにした。再実行で通り、落ちたテストが変更に関わらなければ、マージしてよい。
+- 閉じるIssue:
+  - #44：完了条件の「続けて10回、再試行ゼロ」を、上の線引きに置き換える。再発の観察は、新しいワークフローが自動で行う。
+  - #414：11/4の`app_update (iPhone 17)`の失敗。起動が遅く、実行時間の上限を超えた。同じコミット`a4d1a69`の夜間の実行は、全ジョブ成功している。過去14日以内に同じテストでジョブが失敗したことはないので、調べる対象に当たらない。
+  - #402：単体テスト`testGuideDirectoryURLLoadsBundledIndex`が1回目に失敗し、同じジョブの中の再試行で通った件。新しい方針では正常に当たる。エラー（`InvalidTransition`）はWebKit側から来たもので、WebContentプロセスが応答しなくなった時期と重なっている。アプリの状態がおかしいことを示すものではない。
 - 主なファイル: `.github/workflows/ios-full-failure.yml`、`scripts/ios-full-failure.mjs`、`.github/workflows/ios-full.yml`、`AGENTS.md`、`ios/AGENTS.md`、`docs/ARCHITECTURE.md`
 - テスト: `scripts/ios-full-failure.test.mjs`を追加した（23件）。次のことを確かめる。
   - ログから失敗したテストを読み取ること
