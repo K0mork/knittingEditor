@@ -81,3 +81,23 @@ for (const path of guides) {
     }
   });
 }
+
+describe('shared guide content', () => {
+  const paragraphs = (path) => [...new JSDOM(readFileSync(new URL(path, root), 'utf8')).window.document.querySelectorAll('main p')]
+    .map((paragraph) => paragraph.textContent?.replace(/\s+/g, ' ').trim() ?? '')
+    .filter(Boolean);
+  const headings = (path) => [...new JSDOM(readFileSync(new URL(path, root), 'utf8')).window.document.querySelectorAll('main h2')]
+    .map((heading) => heading.textContent?.replace(/\s+/g, ' ').trim() ?? '');
+
+  it('keeps the shared explanatory paragraphs and headings in both guides', () => {
+    // Web版とiOS版で共通する説明。片方だけを変更すると、この下限を下回って失敗する。
+    // 2026-11-04時点では9段落・9見出しが完全一致している。
+    const [webParagraphs, iosParagraphs] = guides.map(paragraphs);
+    const sharedParagraphs = webParagraphs.filter((paragraph) => iosParagraphs.includes(paragraph));
+    expect(sharedParagraphs.length).toBeGreaterThanOrEqual(9);
+
+    const [webHeadings, iosHeadings] = guides.map(headings);
+    const sharedHeadings = webHeadings.filter((heading) => iosHeadings.includes(heading));
+    expect(sharedHeadings.length).toBeGreaterThanOrEqual(9);
+  });
+});
