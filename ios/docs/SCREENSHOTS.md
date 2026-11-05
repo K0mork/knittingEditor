@@ -67,7 +67,7 @@ iOS 27・iPadOS 27以降のApp Storeでは、製品ページの最上部（ヘ�
 
 大きさは、ヘッダが21:9（3840×1646）、検索結果が3:2（1920×1280〜3840×2560）で、両方に使える共通の16:9（5244×2950、PNGだけ）もある。透過は使えない。共通の画像をヘッダに入れ、検索結果で「Use header asset in search results」をオンにすると、同じ画像が両方に出る。
 
-2026-11-03に、共通の1枚[app-store-creative-universal.png](screenshots/app-store-creative-universal.png)（5244×2950、透過なし）を作り、版1.0のヘッダに登録して検索結果にも使う設定にした。同じ日に、iPhoneの縦の画面で文字が切れていたので、中央にまとめた構図に作り直した（下記）。
+2026-11-03に、共通の1枚[app-store-creative-universal.png](screenshots/app-store-creative-universal.png)（5244×2950、透過なし）を作り、版1.0のヘッダに登録して検索結果にも使う設定にした。同じ日に、iPhoneの縦の画面で文字が切れていたので、中央にまとめた構図に作り直した（下記）。その後、利用者の判断で、質を上げてから次の版以降で入れることにし、提出前に外した（[提出の記録](RELEASE_VERIFICATION_RECORDS.md#2026-11-03-提出用アーカイブのアップロードと審査への提出)）。2026-11-05に、版1.0のヘッダと検索結果に何も入っていないことを、利用者がApp Store Connectで確かめた。
 
 決めたこと:
 
