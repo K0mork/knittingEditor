@@ -21,7 +21,7 @@
 | `feature_opened` | パネルを開いたとき | `feature_name`: `documents`, `grid`, `blocks`, `export` |
 | `block_saved` | ブロック保存成功時 | `board_size_bucket`: 下表の盤面区分（ブロックの寸法） |
 | `block_pasted` | 貼り付け成功時 | 追加なし |
-| `chart_exported` | PNG/PDF生成後、保存・共有をブラウザへ求めたとき | `export_format`: `png`, `pdf`; `pdf_layout`: PDFのみ`single`, `tiled`; `board_size_bucket`。今回の追加情報は後述 |
+| `chart_exported` | PNG/PDF生成後、保存・共有をブラウザへ求めたとき | `export_format`: `png`, `pdf`; `pdf_layout`: PDFのみ`single`, `tiled`; `board_size_bucket`: 出力を始めた時点の盤面（出力中にサイズを変えても変わらない）。今回の追加情報は後述 |
 | `backup_exported` | `.knit`生成後、保存・共有を求めたとき | `backup_scope`: `current`, `all` |
 | `backup_restored` | バックアップ復元成功時 | `document_count_bucket`: `1`, `2-3`, `4-9`, `10+` |
 | `save_failed` | 保存失敗時（次の保存成功まで重複させない） | `save_trigger`: `autosave`, `manual`, `background`; `failure_reason`: 下記 |

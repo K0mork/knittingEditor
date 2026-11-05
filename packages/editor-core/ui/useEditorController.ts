@@ -342,11 +342,13 @@ export function useEditorController(options: EditorControllerOptions) {
     if (!board || !activeDocument) return;
     setBusy(busyLabel);
     try {
+      // 盤面は出力の待機中もサイズ変更で書き換わるので、出力した盤面の寸法を開始時に固定する。
+      const boardSize = boardSizeBucket(board.rows, board.cols);
       const progress = metric((tracker) => tracker.exportParams(board, session.backgroundColor));
       const blob = await render();
       const outcome = await platform.saveFile(blob, `${activeDocument.name}.${format}`);
       const extra: AnalyticsParameters = progress ? { export_state: progress.export_state, progress_bucket: progress.progress_bucket, chart_origin: progress.chart_origin } : {};
-      analytics.track('chart_exported', { export_format: format, ...extraParams, board_size_bucket: boardSizeBucket(board.rows, board.cols), ...extra });
+      analytics.track('chart_exported', { export_format: format, ...extraParams, board_size_bucket: boardSize, ...extra });
       // 共有シートの完了待ちは処理中表示を延長しない。
       void outcome.saved.then((saved) => {
         if (saved !== false && progress) metric((tracker) => tracker.commitExport(progress.token, format));
