@@ -133,6 +133,20 @@ for required_heading in \
   }
 done
 
+# App Store Connectの審査メモは4000文字まで。転記する「## English」から最後までを数える。
+# 更新版ごとに変更点を足すので、上限を超えたまま提出の画面で気づかないよう、ここで止める。
+review_notes_length=$(perl -CSD -0777 -ne '
+  if (/^## English\n(.*)\z/ms) { my $notes = "## English\n$1"; $notes =~ s/\n+\z//; print length($notes) }
+' "$REVIEW_NOTES")
+if [ -z "$review_notes_length" ]; then
+  echo "review notes have no ## English section to paste" >&2
+  exit 1
+fi
+if [ "$review_notes_length" -gt 4000 ]; then
+  echo "review notes exceed the App Store Connect limit: ${review_notes_length}/4000" >&2
+  exit 1
+fi
+
 for required_text in \
   '<h1>アプリのプライバシーポリシー</h1>' \
   '情報を収集しません' \

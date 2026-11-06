@@ -72,7 +72,7 @@ SKUは製品管理用の一意な文字列を利用者が決め、登録値は�
    ```
 
    資産検査の成功に加え、`DTSDKName` が `iphoneos27.1` 以降、`DTXcodeBuild` がXcode 27.1以降のビルド番号であることを確認する（27.1正式版は `27A9275`）。Xcodeの選択表示だけで済ませない。
-5. [バージョンとビルド番号](APP_STORE_METADATA.md#バージョンとビルド番号)に従い、OrganizerのDistribute AppからApp Store Connectへアップロードする。「Manage Version and Build Number」をオンにし、前回より大きいビルド番号を使う。`project.yml` の `MARKETING_VERSION` は `1.0`、`CURRENT_PROJECT_VERSION` は `1` のままとする。コマンドラインのArchiveでは同節のビルド番号指定に従う。
+5. [バージョンとビルド番号](APP_STORE_METADATA.md#バージョンとビルド番号)に従い、OrganizerのDistribute AppからApp Store Connectへアップロードする。「Manage Version and Build Number」をオンにし、前回より大きいビルド番号を使う。`project.yml` の `MARKETING_VERSION` は提出する版の番号（v1.0なら`1.0`、v1.1なら`1.1`）、`CURRENT_PROJECT_VERSION` は `1` のままとする。コマンドラインのArchiveでは同節のビルド番号指定に従う。
 6. App Store Connectで処理完了を待ち、実際に登録されたバージョン・ビルド番号を記録する。内部テストからApp Reviewへ提出できるビルドとしてアップロードする（内部テスト専用の配布に限定しない）。
 7. Archiveを作ったコミット（1で固定したコミット）に、登録されたバージョンとビルド番号を名前にした注釈付きタグを付けて、GitHubへpushする。記録を書いたコミットやマージ先の新しいコミットには付けない。TestFlightだけで配ったビルドも含め、App Store Connectに登録されたビルドごとに1つ付ける。
 
@@ -170,6 +170,9 @@ v1.1以降の更新版も、手順5〜9に従ってビルド・確認・入力�
 2. 審査メモの英語・日本語の両方に、その版で増えた機能・変わった操作と、審査担当者が確かめる手順を具体的に書く。「不具合の修正と改善」のような一般的な説明だけにしない。アプリ内課金を加える版では、購入・復元を確かめる手順も書く（[#38](https://github.com/K0mork/knittingEditor/issues/38)）。
 3. 画面のボタンに出ない操作（ジェスチャー、キーボードショートカット、Apple Pencil、システムが出す画面など）を足したり変えたりしたときは、アプリ内の「使い方」と、審査メモの「Other input methods」「画面のボタン以外の操作」の両方に書く。
 4. 無効にしたまま同梱する機能や、審査のあとで機能を出し入れするリモートの切り替えを入れていないことを確かめる（2.5.19）。
+5. 審査メモの英語・日本語を合わせた転記範囲が4000文字に収まることを、`ios/scripts/check-app-store-docs.sh` で確かめる。超えたら、前の版の変更点を消すか、既存の手順に含めて短くする。
+6. App Store Connectの版のページの「このバージョンの新機能」の文を、[メタデータ](APP_STORE_METADATA.md#このバージョンの新機能)に書き、手順6でそこから転記する。
+7. `ios/project.yml` の `MARKETING_VERSION` を提出する版の番号に上げ、XcodeGenで `ios/knittingEditor.xcodeproj` を作り直して、両方をコミットする。
 
 - **完了の目安:** 審査メモの英語・日本語の両方に、前の版から増えた機能・変わった操作と確認手順が書かれ、`ios/scripts/check-app-store-docs.sh` が通る。
 - **関係するIssue／項目:** [#352](https://github.com/K0mork/knittingEditor/issues/352)、[#38](https://github.com/K0mork/knittingEditor/issues/38)、提出チェックリストの[検証・配布](APP_STORE_CHECKLIST.md#検証配布)。

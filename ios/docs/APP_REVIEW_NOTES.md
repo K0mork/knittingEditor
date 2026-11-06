@@ -29,6 +29,13 @@ The app is in Japanese only. Below, each button is written as "English (日本�
 5. In the same panel, tap "Restore from backup (バックアップから復元)", choose the .knit file from step 4, and check the restored chart.
 6. Tap "Guide (使い方)" at the top right. "Privacy (プライバシー)" explains data handling. Its privacy policy link and the support page link in "Support (サポート)" open in Safari.
 
+### New in version 1.1
+
+1. Tap "Select (範囲)" and drag on the grid. In the bar below, "Erase (消去)" clears the stitches and lines in the area, and "Save (保存)" saves it as a block.
+2. After "Copy (コピー)", each tap on the grid pastes again until "Stop (やめる)".
+3. Larger Text (Settings > Accessibility > Display & Text Size) now enlarges the editor and the guide.
+4. If an iCloud Drive file cannot be downloaded offline, the app asks to go online.
+
 ### Other input methods
 
 These have no on-screen button. They are optional, do the same as existing buttons, and are explained in "Guide (使い方)".
@@ -59,6 +66,13 @@ These have no on-screen button. They are optional, do the same as existing butto
 4. 「出力」（iPhoneでは画面の下、iPadでは右の列）を開き、「PNGを保存」「PDFを保存」「この編み図を書き出す」（.knit）でそれぞれ書き出してください。そのたびに「ファイルに保存」を選び、「このiPhone内」または「このiPad内」に保存してください。
 5. 同じ画面の「バックアップから復元」を押し、手順4の.knitファイルを選んで、編み図が復元されることを確認してください。
 6. 右上の「使い方」を開くと、「プライバシー」にデータの扱いが書かれています。そこにあるプライバシーポリシーと、「サポート」のサポートページへのリンクはSafariで開きます。
+
+### バージョン1.1の変更点
+
+1. 「範囲」を選んで盤面をなぞると、下の「消去」で範囲の記号と線を消し、「保存」で範囲をブロックとして保存できます。
+2. 「コピー」のあとは、「やめる」を押すまで、盤面をタップするたびに貼付します。
+3. 「設定」>「アクセシビリティ」>「画面表示とテキストサイズ」の「さらに大きな文字」で、編集画面と「使い方」の文字が大きくなります。
+4. オフラインでiCloud Driveのファイルをダウンロードできないときは、接続を促します。
 
 ### 画面のボタン以外の操作
 
