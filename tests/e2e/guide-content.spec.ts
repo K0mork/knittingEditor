@@ -25,6 +25,37 @@ test('guide explains chart reading, block reuse and backup scope', async ({ page
   await expect(page.getByRole('button', { name: '編み図', exact: true })).toBeVisible();
 });
 
+test('explains how to move Web charts into the iPhone and iPad app', async ({ page }) => {
+  await page.goto('/guide/');
+  const main = page.locator('main');
+  await expect(main.getByRole('heading', { name: /iPhone・iPadアプリへ編み図を移す/ })).toBeVisible();
+  for (const text of [
+    'App Store',
+    '「全データを書き出す」',
+    '「この編み図を書き出す」',
+    '「ファイルに保存」',
+    'AirDrop',
+    '「バックアップから復元」',
+    '「ファイル」アプリで',
+    '「（復元）」を付けた別の編み図',
+    'Web版の編み図や保存済みブロックはそのまま残る',
+    'アプリからWeb版へ移すときも同じ',
+  ]) {
+    await expect(main).toContainText(text);
+  }
+  await expect(main.getByRole('link', { name: 'App Store', exact: true })).toHaveAttribute('href', 'https://apps.apple.com/jp/app/id6829961403');
+
+  // サポートのよくある質問からも、同じ手順とApp Storeへ案内する。
+  await page.goto('/support/');
+  const support = page.locator('main');
+  await expect(support.getByRole('heading', { name: 'Web版で作った編み図を、iPhone・iPadアプリへ移せますか？' })).toBeVisible();
+  await expect(support).toContainText('「ファイルに保存」');
+  await expect(support).toContainText('Web版のデータは消えずに残ります');
+  await support.getByRole('link', { name: '使い方の「iPhone・iPadアプリへ編み図を移す」' }).click();
+  await expect(page).toHaveURL(/\/guide\/#transfer-to-app$/);
+  await expect(page.getByRole('heading', { name: /iPhone・iPadアプリへ編み図を移す/ })).toBeInViewport();
+});
+
 test('follows guide steps for a second chart, reusable block and all-data restore', async ({ page }) => {
   await downloadInsteadOfShare(page);
   await page.goto('/');

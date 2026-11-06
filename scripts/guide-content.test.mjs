@@ -60,6 +60,13 @@ for (const path of guides) {
         for (const link of links) expect(link.textContent).not.toContain('編み図を作成する');
       });
 
+      it('explains how to move a chart made in the Web version into the app', () => {
+        for (const phrase of ['Web版で作った編み図', '「全データを書き出す」', '「この編み図を書き出す」', '「ファイルに保存」', 'AirDrop', '「バックアップから復元」', '「（復元）」を付けた別の編み図', 'Web版のデータは消えずにそのまま残ります']) {
+          expect(text).toContain(phrase);
+        }
+        expect(text).toContain('アプリで作った編み図をWeb版へ移すときは');
+      });
+
       it('explains how to allow Photos in the section that the denied-save toast opens', () => {
         // 写真への追加を拒否したときのトーストの「やり方を見る」は、アプリが渡す節のIDでこの節を開く（#208）。
         const swift = readFileSync(new URL('ios/App/WebViewContainer.swift', root), 'utf8');

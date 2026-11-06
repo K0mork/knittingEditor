@@ -140,7 +140,7 @@ test('serves the support page with a private contact and links it from the guide
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('サポート');
   await expect(page.getByRole('link', { name: 'support@knittingeditor.com' })).toHaveAttribute('href', 'mailto:support@knittingeditor.com');
   await expect(page.getByRole('link', { name: 'GitHub Issues' })).toHaveAttribute('href', 'https://github.com/K0mork/knittingEditor/issues');
-  await page.getByRole('link', { name: '使い方' }).click();
+  await page.getByRole('link', { name: '使い方', exact: true }).click();
   await expect(page).toHaveURL(/\/guide\/$/);
 });
 
