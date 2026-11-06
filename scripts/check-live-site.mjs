@@ -23,6 +23,7 @@ export const LIVE_SITE_FILES = [
   { path: '/icon-192.png', type: 'image/png' },
   { path: '/apple-touch-icon.png', type: 'image/png' },
   { path: '/og-image.png', type: 'image/png' },
+  { path: '/app-store-badge.svg', type: 'image/svg+xml' },
   { path: '/robots.txt', type: 'text/plain' },
   { path: '/sitemap.xml', type: 'application/xml' },
   { path: '/llms.txt', type: 'text/plain', distFile: 'llms.txt' },

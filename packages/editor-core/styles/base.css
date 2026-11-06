@@ -231,6 +231,9 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 .document-list, .block-list { display: grid; gap: 8px; margin-top: 12px; }
 .document-list { padding: 0; margin-bottom: 0; list-style: none; }
 .documents-note { margin: 14px 2px 0; font-size: .85rem; }
+/* 段落の間を空け、並んだリンクを押し分けられるようにする。 */
+.documents-note p { margin: 0; }
+.documents-note p + p { margin-top: 10px; }
 .documents-note a { color: var(--link); }
 /* 左端のチェック欄は2段にまたがり、縮小画像と名前のボタン・下の段のボタンは右の列に置く（#268）。 */
 .document { min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px; border: 1px solid var(--border); border-radius: 12px; padding: 6px; }
