@@ -20,6 +20,10 @@
 - [サポート](https://knittingeditor.com/support/): 問い合わせ方法と、不具合報告時に必要な情報。
 - [プライバシーポリシー](https://knittingeditor.com/privacy/): 端末内保存とアクセス解析に関する説明。
 
+## アプリ
+
+- [iPhone・iPad版アプリ（App Store）](https://apps.apple.com/jp/app/id6829961403): 同じ編み図エディタのiPhone・iPad用アプリ。Web版の編み図は.knitバックアップで移せます。
+
 ## Optional
 
 - [第三者ソフトウェアのライセンス](https://knittingeditor.com/third-party-notices/): 使用しているソフトウェアのライセンス表記。

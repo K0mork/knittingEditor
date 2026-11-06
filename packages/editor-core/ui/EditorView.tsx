@@ -25,8 +25,17 @@ export interface EditorViewProps {
   requestRestore?: () => boolean;
   /** 端末内データが消える条件はWeb版とiOS版で違うので、案内文だけ差し替える。 */
   backupNote: ReactNode;
-  /** 「編み図」パネルの一覧の後ろに置く案内。Web版はプライバシーポリシーへのリンクを渡し、iOS版は何も渡さない。 */
+  /**
+   * 「編み図」パネルの一覧の後ろに置く案内。段落（`<p>`）で渡す。
+   * Web版はアプリとプライバシーポリシーへのリンクを渡し、iOS版は何も渡さない。
+   */
   documentsNote?: ReactNode;
+  /**
+   * 盤面の上の段に出すホストの案内。書き出しの勧めと同じ段を使い、渡している間は勧めを出さない。
+   * 勧めと同じく、保存失敗の警告・開いているパネル・処理中の表示があるときは出さない。
+   * Web版はiPhone・iPadでアプリの案内を渡し、iOS版は渡さない。
+   */
+  notice?: ReactNode;
   /** 盤面の上に重ねる環境固有の要素。iOS版のアプリ内ダイアログなど。 */
   children?: ReactNode;
 }
@@ -103,7 +112,7 @@ export function watchHeaderLayout(header: HTMLElement, shell: HTMLElement) {
 }
 
 /** 編集画面の組み立て。Web版とiOS版で共通。 */
-export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, backupNote, documentsNote, children }: EditorViewProps) {
+export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, backupNote, documentsNote, notice, children }: EditorViewProps) {
   const { session, mode, panel, selection, copiedBlock } = editor;
   const history = historyTitles(useInputEnvironment());
   const { board, activeDocument, dirty } = session;
@@ -136,6 +145,9 @@ export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, 
     <span className="app-document-status" aria-hidden="true">{dirty ? (session.saveFailed ? '（保存失敗）' : '（保存中…）') : ''}</span>
     <span className="visually-hidden">、{saveStatus}</span>
   </>;
+  // 盤面の上の段は1つだけ出す。保存の失敗、ホストの案内、書き出しの勧めの順に優先する。
+  // 案内と勧めは、ドロワーや処理中の表示と重なるときは出さない。
+  const noticeRowFree = !editor.backupReminder.saveFailureShown && !panel && !editor.busy;
   const modeButton = (target: CanvasMode, label: string, onClick: () => void) => <button key={target} className={mode === target ? 'active' : ''} aria-pressed={mode === target} onClick={onClick}>{label}</button>;
 
   return <div className="app-shell">
@@ -194,8 +206,8 @@ export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, 
       {editor.backupReminder.saveFailureShown && <section className="backup-reminder" aria-label="保存の失敗">
         <p role="alert">端末内への保存に失敗しています。「出力」から.knitのバックアップを書き出してください。</p>
       </section>}
-      {/* ドロワーや処理中の表示と重なるときは出さない。 */}
-      {!editor.backupReminder.saveFailureShown && editor.backupReminder.kind && !panel && !editor.busy && <BackupReminderBar kind={editor.backupReminder.kind}
+      {noticeRowFree && notice}
+      {noticeRowFree && !notice && editor.backupReminder.kind && <BackupReminderBar kind={editor.backupReminder.kind}
         lastBackupAt={editor.backupReminder.lastBackupAt} onBackup={() => void editor.backup(false)} onSnooze={editor.backupReminder.snooze} />}
 
       <section className="canvas-wrap">
@@ -231,7 +243,7 @@ export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, 
           onOpen={(document) => void editor.switchDocument(document)} onRename={(document) => void editor.renameChart(document)}
           onDuplicate={(document) => void editor.duplicateChart(document)} onDelete={(document) => void editor.deleteChart(document)}
           onDeleteMany={(documents) => void editor.deleteCharts(documents)} />
-        {documentsNote && <p className="documents-note">{documentsNote}</p>}
+        {documentsNote && <div className="documents-note">{documentsNote}</div>}
       </>}
       {panel === 'grid' && <GridControls board={board} backgroundColor={session.backgroundColor} onBackgroundColorChange={session.setBackgroundColor} changed={editor.changed} askText={editor.askText} askConfirm={editor.askConfirm} notify={editor.notify} />}
       {panel === 'blocks' && <>

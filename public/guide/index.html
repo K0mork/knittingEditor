@@ -58,6 +58,11 @@
         border-left: 4px solid #3d7a4a;
         background: #fffef9;
       }
+      /* App Storeのバッジ。Appleの指定どおり、高さは40px以上にし、周りにバッジの高さの1/4以上の余白を取る。 */
+      .app-store-badge { margin: 16px 0; line-height: 0; }
+      .app-store-badge a { display: inline-block; }
+      .app-store-badge img { display: block; width: auto; height: 44px; }
+      .legal { font-size: .85rem; }
       @media (prefers-color-scheme: dark) {
         :root { color: #e2e8e3; background: #171c19; }
         footer { border-top-color: #3c4741; }
@@ -115,6 +120,10 @@
       <p>「出力」のバックアップ欄で「この編み図を書き出す」を押すと、開いている編み図だけを書き出します。保存済みブロックは含まれません。「全データを書き出す」はすべての編み図と保存済みブロックをまとめて書き出します。ブロックも別の端末へ移す場合は「全データを書き出す」を選んでください。編み図を1枚ずつ書き出しても、ブロックは移せません。</p>
       <p class="note">読み込むには「出力」の「バックアップから復元」を押し、<code>.knit</code> ファイルを選びます。既存の編み図は上書きされず、名前に「（復元）」を付けた別の編み図として追加され、復元した先頭の編み図へ切り替わります。「全データを書き出す」のバックアップなら、保存済みブロックも名前に「（復元）」を付けて追加されます。</p>
 
+      <h2>iPhone・iPadのアプリ</h2>
+      <p>iPhone・iPadでは、App Storeから入手できるアプリ版も使えます。Web版で作った編み図は、「全データを書き出す」で書き出した <code>.knit</code> ファイルを、アプリの「出力」にある「バックアップから復元」で読み込むと移せます。</p>
+      <p class="app-store-badge"><a href="https://apps.apple.com/jp/app/id6829961403"><img src="/app-store-badge.svg" alt="App Storeからダウンロード" width="120" height="44" /></a></p>
+
       <h2>対応している主な機能</h2>
       <ul>
         <li>29種類の編み目記号と色指定</li>
@@ -135,6 +144,7 @@
       <p><a href="/support/">サポート・お問い合わせ</a></p>
       <p><a href="/privacy/">プライバシーポリシー</a></p>
       <p><a href="/third-party-notices/">第三者ソフトウェアのライセンス</a></p>
+      <p class="legal">Apple、Appleのロゴ、iPhone、iPadは、米国およびその他の国で登録されたApple Inc.の商標です。App Storeは、米国およびその他の国で登録されたApple Inc.のサービスマークです。</p>
     </footer>
   </body>
 </html>

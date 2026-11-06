@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { act } from 'react';
+import { act, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { Board } from '../model/Board';
@@ -53,7 +53,11 @@ async function pointer(type: 'pointerdown' | 'pointerup' | 'pointercancel', poin
   await act(async () => { window.dispatchEvent(Object.assign(new Event(type), { pointerId })); });
 }
 
-async function renderEditor(saved: boolean | undefined = undefined) {
+/**
+ * 編集画面を開く。`withHostNotice`ではホストの案内（Web版のアプリの案内に当たる）を渡し、
+ * 案内の「閉じる」で渡すのをやめる。
+ */
+async function renderEditor(saved: boolean | undefined = undefined, withHostNotice = false) {
   const platform: EditorPlatform = {
     saveFile: vi.fn(async () => saved === undefined ? SAVE_RESULT_UNKNOWN : { saved: Promise.resolve(saved) }),
   };
@@ -64,7 +68,12 @@ async function renderEditor(saved: boolean | undefined = undefined) {
       askText: async () => null,
       askConfirm: async () => false,
     });
-    return <EditorView editor={editor} renderTitle={(status) => <h1>{status}</h1>} backupNote="案内" />;
+    const [noticeShown, setNoticeShown] = useState(withHostNotice);
+    const notice = noticeShown ? <section className="backup-reminder" aria-label="ホストの案内">
+      <p>ホストからの案内</p>
+      <button onClick={() => setNoticeShown(false)}>案内を閉じる</button>
+    </section> : undefined;
+    return <EditorView editor={editor} renderTitle={(status) => <h1>{status}</h1>} backupNote="案内" notice={notice} />;
   }
   const container = document.createElement('div');
   document.body.append(container);
@@ -240,5 +249,28 @@ describe('backup reminder', () => {
       failing.mockRestore();
       vi.useRealTimers();
     }
+  });
+
+  it('gives the reminder row to the host notice first and suggests the backup once the notice is closed', async () => {
+    await openEditedChart('案内のあとに勧める編み図', 8);
+    const { container, click } = await renderEditor(undefined, true);
+    const hostNotice = () => container.querySelector('[aria-label="ホストの案内"]');
+    const backupReminder = () => container.querySelector('[aria-label="バックアップのおすすめ"]');
+    await waitUntil(() => hostNotice() !== null);
+    // 勧めの記録を読み終える時間を置いても、案内のある間は勧めを出さない。
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 100)); });
+    expect(backupReminder()).toBeNull();
+
+    // 勧めと同じく、パネルを開いている間は案内も出さない。
+    await click('出力');
+    expect(hostNotice()).toBeNull();
+    expect(backupReminder()).toBeNull();
+    await click('閉じる');
+    expect(hostNotice()).not.toBeNull();
+
+    // 案内を閉じたその場で勧めが出る。勧めの条件はそろっていて、案内に譲っていただけと分かる。
+    await click('案内を閉じる', hostNotice()!);
+    expect(hostNotice()).toBeNull();
+    expect(backupReminder()?.textContent).toContain('この編み図はまだバックアップしていません。');
   });
 });

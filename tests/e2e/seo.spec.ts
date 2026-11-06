@@ -44,8 +44,10 @@ test('serves the site description linked from the head as plain text', async ({ 
 
   const links = [...text.matchAll(/\]\((https:\/\/[^)]+)\)/g)].map((match) => new URL(match[1]));
   expect(links.length).toBeGreaterThan(0);
-  for (const link of links) {
-    expect(link.origin).toBe('https://knittingeditor.com');
+  // サイトの外へのリンクは、iPhone・iPad版アプリのApp Storeの製品ページだけ。
+  const external = links.filter((link) => link.origin !== 'https://knittingeditor.com').map((link) => link.href);
+  expect(external).toEqual(['https://apps.apple.com/jp/app/id6829961403']);
+  for (const link of links.filter((candidate) => candidate.origin === 'https://knittingeditor.com')) {
     expect((await page.request.get(link.pathname)).status()).toBe(200);
   }
 });
