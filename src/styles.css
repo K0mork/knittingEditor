@@ -21,6 +21,13 @@
   .app-document-name { font-size: .68rem; }
 }
 
+/* iPhone・iPadでだけ出すアプリの案内。段と配置は書き出しの勧め（共通CSSの`.backup-reminder`）を使う。
+   文は1文ずつまとめて折り返し、App Storeへのリンクは「書き出す」と同じ見た目のボタンにする。 */
+.app-store-notice p span { display: inline-block; }
+.app-store-notice-link { min-height: var(--compact-tap-size); display: inline-flex; align-items: center; padding: 4px 12px; border: 1px solid var(--green); border-radius: 10px; color: white; background: var(--green); text-decoration: none; white-space: nowrap; }
+.app-shell[data-large-text] .app-store-notice-link { line-height: 1.12; }
+.app-store-notice-link:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+
 /* iPhone・iPadのSafariで、生成したPNG・PDFを共有シートへ渡す確認ダイアログ。iOS版はネイティブの共有シートを直接開く。 */
 .share-dialog-backdrop { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left)); background: var(--backdrop); }
 .share-dialog { width: min(100%, 420px); padding: 20px; border: 1px solid var(--border); border-radius: 18px; background: var(--paper); box-shadow: var(--shadow); }

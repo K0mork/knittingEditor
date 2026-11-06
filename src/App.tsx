@@ -4,6 +4,7 @@ import { EditorView } from '@knitting-editor/editor-core/ui/EditorView';
 import { useEditorController } from '@knitting-editor/editor-core/ui/useEditorController';
 import { createGuideNavigation } from '@knitting-editor/editor-core/ui/guideNavigation';
 import { webAnalytics } from './analytics';
+import { APP_STORE_URL, AppStoreNotice, useAppStoreNotice } from './appStoreNotice';
 import { createWebPlatform } from './platform';
 import { useShareOffer } from './ShareFileDialog';
 import { initializeStorage } from './storage/database';
@@ -22,6 +23,7 @@ export default function App() {
   const { offerShare, dialog: shareDialog } = useShareOffer();
   const platform = useMemo(() => createWebPlatform(offerShare), [offerShare]);
   const editor = useEditorController({ initialize, platform, analytics: webAnalytics, askText, askConfirm });
+  const appStoreNotice = useAppStoreNotice();
 
   const navigateToGuide = useMemo(() => createGuideNavigation({
     save: () => editor.session.saveNow(),
@@ -46,6 +48,11 @@ export default function App() {
       <p className="app-document-name" aria-live="polite" aria-atomic="true">{documentStatus}</p>
     </div>}
     backupNote="端末内データはブラウザ操作で消える場合があります。定期的にバックアップを書き出してください。"
-    documentsNote={<a href="/privacy/">プライバシーポリシー（アクセス解析について）</a>}
+    documentsNote={<>
+      {/* 編集中のタブを残すため、App Storeは新しいタブで開く。 */}
+      <p><a href={APP_STORE_URL} target="_blank" rel="noopener">iPhone・iPad版アプリ（App Store）</a></p>
+      <p><a href="/privacy/">プライバシーポリシー（アクセス解析について）</a></p>
+    </>}
+    notice={appStoreNotice.shown ? <AppStoreNotice onDismiss={appStoreNotice.dismiss} /> : undefined}
   >{shareDialog}</EditorView>;
 }

@@ -1,5 +1,6 @@
 import { SAVE_RESULT_UNKNOWN, type EditorPlatform } from '@knitting-editor/editor-core/platform';
 import { downloadBlob } from '@knitting-editor/editor-core/export/exporters';
+import { isIPhoneOrIPad } from './appleDevice';
 
 /**
  * iPhone・iPadのSafariへ共有シートで渡すかどうか。
@@ -9,8 +10,7 @@ import { downloadBlob } from '@knitting-editor/editor-core/export/exporters';
  * iPadOSのSafariはMacの名乗りをするため、タッチ点の数で見分ける。共有APIの無いアプリ内ブラウザでは従来どおりダウンロードする。
  */
 export function prefersShareSheet(file: File, nav: Navigator = navigator): boolean {
-  const appleTouch = /iPhone|iPad|iPod/.test(nav.userAgent) || (/Macintosh/.test(nav.userAgent) && nav.maxTouchPoints > 1);
-  return appleTouch && typeof nav.canShare === 'function' && nav.canShare({ files: [file] });
+  return isIPhoneOrIPad(nav) && typeof nav.canShare === 'function' && nav.canShare({ files: [file] });
 }
 
 /**

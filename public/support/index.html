@@ -48,6 +48,11 @@
         border-left: 4px solid #3d7a4a;
         background: #fffef9;
       }
+      /* App Storeのバッジ。Appleの指定どおり、高さは40px以上にし、周りにバッジの高さの1/4以上の余白を取る。 */
+      .app-store-badge { margin: 16px 0; line-height: 0; }
+      .app-store-badge a { display: inline-block; }
+      .app-store-badge img { display: block; width: auto; height: 44px; }
+      .legal { font-size: .85rem; }
       @media (prefers-color-scheme: dark) {
         :root { color: #e2e8e3; background: #171c19; }
         footer { border-top-color: #3c4741; }
@@ -96,12 +101,17 @@
 
       <h3>消えてしまった編み図を復元できますか？</h3>
       <p>編み図は端末の中にしか無いため、開発者の側から復元することはできません。ブラウザのデータを消したときやアプリを削除したときに備えて、大切な編み図は <code>.knit</code> バックアップを書き出しておいてください。</p>
+
+      <h2>iPhone・iPadのアプリ</h2>
+      <p>iPhone・iPad版のアプリは、App Storeから入手できます。Web版の編み図は、<code>.knit</code> バックアップを書き出し、アプリの「出力」にある「バックアップから復元」で読み込むと移せます。</p>
+      <p class="app-store-badge"><a href="https://apps.apple.com/jp/app/id6829961403"><img src="/app-store-badge.svg" alt="App Storeからダウンロード" width="120" height="44" /></a></p>
     </main>
     <footer>
       <a href="/">棒針編み図エディタへ戻る</a>
       <p><a href="/guide/">使い方</a></p>
       <p><a href="/privacy/">プライバシーポリシー</a></p>
       <p><a href="/third-party-notices/">第三者ソフトウェアのライセンス</a></p>
+      <p class="legal">Apple、Appleのロゴ、iPhone、iPadは、米国およびその他の国で登録されたApple Inc.の商標です。App Storeは、米国およびその他の国で登録されたApple Inc.のサービスマークです。</p>
     </footer>
   </body>
 </html>

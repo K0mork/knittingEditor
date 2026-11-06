@@ -3,7 +3,7 @@ import { join, relative } from 'node:path';
 import { ASSET_HISTORY_FILE, assetHistoryFiles, isRetainedAsset, parseAssetHistory } from './asset-history.mjs';
 import { htmlFiles, verifyContentSecurityPolicy } from './content-security-policy.mjs';
 
-const required = ['index.html', 'robots.txt', 'sitemap.xml', 'llms.txt', 'favicon.ico', 'icon-192.png', 'apple-touch-icon.png', 'og-image.png', 'guide/index.html', 'support/index.html', 'privacy/index.html', 'privacy/app/index.html', 'third-party-notices/index.html'];
+const required = ['index.html', 'robots.txt', 'sitemap.xml', 'llms.txt', 'favicon.ico', 'icon-192.png', 'apple-touch-icon.png', 'og-image.png', 'app-store-badge.svg', 'guide/index.html', 'support/index.html', 'privacy/index.html', 'privacy/app/index.html', 'third-party-notices/index.html'];
 for (const file of required) await stat(join('dist', file));
 const assets = await readdir(join('dist', 'assets'));
 

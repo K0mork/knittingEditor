@@ -58,6 +58,11 @@
         border-left: 4px solid #3d7a4a;
         background: #fffef9;
       }
+      /* App Storeのバッジ。Appleの指定どおり、高さは40px以上にし、周りにバッジの高さの1/4以上の余白を取る。 */
+      .app-store-badge { margin: 16px 0; line-height: 0; }
+      .app-store-badge a { display: inline-block; }
+      .app-store-badge img { display: block; width: auto; height: 44px; }
+      .legal { font-size: .85rem; }
       @media (prefers-color-scheme: dark) {
         :root { color: #e2e8e3; background: #171c19; }
         footer { border-top-color: #3c4741; }
@@ -117,6 +122,7 @@
 
       <h2 id="transfer-to-app">7. iPhone・iPadアプリへ編み図を移す</h2>
       <p>iPhone・iPadには、このWeb版と同じ編み図エディタのアプリ版があります。Web版の編み図はアプリへ自動では引き継がれないため、<code>.knit</code> バックアップを使って移します。アプリは<a href="https://apps.apple.com/jp/app/id6829961403">App Store</a>から入手できます。</p>
+      <p class="app-store-badge"><a href="https://apps.apple.com/jp/app/id6829961403"><img src="/app-store-badge.svg" alt="App Storeからダウンロード" width="120" height="44" /></a></p>
       <p>移すときは、次の順に操作します。</p>
       <ol>
         <li>Web版の「出力」で書き出します。保存済みブロックも一緒に移すなら「全データを書き出す」、1枚だけなら「この編み図を書き出す」を押します。</li>
@@ -145,6 +151,7 @@
       <p><a href="/support/">サポート・お問い合わせ</a></p>
       <p><a href="/privacy/">プライバシーポリシー</a></p>
       <p><a href="/third-party-notices/">第三者ソフトウェアのライセンス</a></p>
+      <p class="legal">Apple、Appleのロゴ、iPhone、iPadは、米国およびその他の国で登録されたApple Inc.の商標です。App Storeは、米国およびその他の国で登録されたApple Inc.のサービスマークです。</p>
     </footer>
   </body>
 </html>

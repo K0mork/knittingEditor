@@ -45,6 +45,23 @@ test.each(['### Other input methods', '### 画面のボタン以外の操作'])(
   expect(check).toThrow();
 });
 
+test('rejects review notes longer than the 4000-character App Store Connect limit', () => {
+  const notes = join(directory, 'ios/docs/APP_REVIEW_NOTES.md');
+  const text = readFileSync(notes, 'utf8');
+  const pasted = text.slice(text.search(/^## English$/m)).replace(/\n+$/, '');
+  // 転記する範囲が4000文字ちょうどなら通り、1文字でも超えれば止まる。
+  writeFileSync(notes, `${text.replace(/\n+$/, '')}${'あ'.repeat(4000 - pasted.length)}\n`);
+  expect(check()).toContain('App Store documents are structurally valid');
+  writeFileSync(notes, `${text.replace(/\n+$/, '')}${'あ'.repeat(4001 - pasted.length)}\n`);
+  expect(check).toThrow(/4001\/4000/);
+});
+
+test('rejects review notes without the English section to paste', () => {
+  const notes = join(directory, 'ios/docs/APP_REVIEW_NOTES.md');
+  writeFileSync(notes, readFileSync(notes, 'utf8').replace(/^## English$/m, '## In English'));
+  expect(check).toThrow(/no ## English section/);
+});
+
 test.each(['APP_STORE_CHECKLIST', 'RELEASE_RUNBOOK'].flatMap((name) => ['iPhone Duo', 'iOS 27 SDK', '2027年4月'].map((text) => [name, text])))('rejects %s missing the April 2027 requirement %s', (name, text) => {
   const document = join(directory, `ios/docs/${name}.md`);
   writeFileSync(document, readFileSync(document, 'utf8').replaceAll(text, ''));
