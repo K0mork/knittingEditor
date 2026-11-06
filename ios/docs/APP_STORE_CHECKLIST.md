@@ -1,6 +1,6 @@
 # App Store提出チェックリスト
 
-提出・公開までの順序は、[v1.0 提出・公開の手順](RELEASE_RUNBOOK.md)を参照する。
+提出・公開までの順序は、[v1.0・v1.1 提出・公開の手順](RELEASE_RUNBOOK.md)を参照する。
 
 ## 実装・資産
 
@@ -34,7 +34,7 @@
 - [x] App Store Connectでスクリーンショットを登録するときに、次を確かめて[`SCREENSHOTS.md`](SCREENSHOTS.md)を直す（#353）。2027年4月以降に提出するときは、iPhone Duoのスクリーンショットも登録する。（2026-11-03に確かめた）
   - iPhoneで必須のmedium displayの欄を、6.9インチ（1320×2868）の画像だけで満たせるか。→ 満たせない。6.9インチの画像は大きさが無効として登録できなかったので、縮小した6.3インチ（1206×2622）の5枚を登録した。
   - iPhone Duoの外側・内側のどちらが必須か、縦と横のどちらでもよいか、何枚から登録できるか。→ 欄は1つで、外側・内側のどちらの大きさも、縦横どちらの向きも受け付け、必須の表示は無い。最大10枚。v1.0では外側の5枚を登録した。
-- 「提出ビルドで」で始まる項目と、TestFlight内部テストの項目は、審査への提出と並行して確かめ、公開の前に終える。提出の前に終えなくてよいが、v1.0は手動公開で提出する（[`RELEASE_RUNBOOK.md`](RELEASE_RUNBOOK.md)の手順7・8）。
+- 「提出ビルドで」で始まる項目と、TestFlight内部テストの項目は、審査への提出と並行して確かめ、公開の前に終える。提出の前に終えなくてよいが、v1.0・v1.1は手動公開で提出する（[`RELEASE_RUNBOOK.md`](RELEASE_RUNBOOK.md)の手順7・8）。
 - [x] 提出ビルドで実機の機内モードのP0フローを再確認する。開発ビルドではiPad Air（第5世代、2026-09-22）とiPhone 17（2026-10-09）の主要フロー、iPadの機内モード前後の通信監視（2026-10-02）は確認済み。2026-11-03に、TestFlightの提出ビルド1.0 (1)でiPhone 17とiPad Air 第5世代の両方を確かめた（[`REAL_DEVICE_RELEASE_CHECKLIST.md`](REAL_DEVICE_RELEASE_CHECKLIST.md)のM0・M6、[記録](RELEASE_VERIFICATION_RECORDS.md#2026-11-03-testflightでの提出ビルドの確認2526)）。
 - [x] 提出ビルドでFiles、AirDrop、共有先、外部`.knit`の往復と残りの異常系を実機で確認する。開発ビルドでのiPhone・iPadの保存・共有・復元は確認済みだが、2026-11-03にTestFlightの提出ビルド1.0 (1)で、両端末の往復と、キャンセル・上書き・不正形式・巨大解凍データ・オフラインのiCloud Driveでクラッシュしないことを確かめた。同日、読み込み直前のファイル削除を、提出ビルドとアプリのコードが同じ開発ビルドとLLDBで両端末で確かめ、クラッシュしなかった。オフラインのiCloud Driveの理由の表示は、利用者の判断でv1.0ではクラッシュしないことで合格とし、#387で扱う（[`REAL_DEVICE_RELEASE_CHECKLIST.md`](REAL_DEVICE_RELEASE_CHECKLIST.md)のM3）。
 - [x] 提出ビルドで、1000×1000盤面のメモリ、PNG拒否、PDF出力時間を記録する。（2026-11-03、1.0 (1)で両端末とも、PNGの上限超過で保存が押せなくなること、出力が測れないほど短いこと、メモリ不足による終了の記録が無いことを確かめた。メモリの値は測っていない）開発ビルドでの記録は[`REAL_DEVICE_RELEASE_CHECKLIST.md`](REAL_DEVICE_RELEASE_CHECKLIST.md)のM2にある。
@@ -49,7 +49,7 @@
 - [x] App Store Connectの「著作権」欄に「2026 K0mork」を入力し、販売元が加入者の法的氏名で表示されることを確かめる（[`docs/APP_STORE_METADATA.md`](APP_STORE_METADATA.md)の「販売元と著作権表記」）。（2026-11-03）
 - [x] 年齢制限の質問票に[`docs/APP_STORE_METADATA.md`](APP_STORE_METADATA.md)の「年齢制限の質問票」のとおり回答し、4+になることを確かめる。（2026-11-03、4+になった）
 - [x] App Store Connectの配信地域からEU加盟国と中国本土を外す（[`docs/APP_STORE_METADATA.md`](APP_STORE_METADATA.md)の「配信地域」）。（2026-11-03）
-- [ ] アップロードのたびに、前回より大きいビルド番号を付ける（[`docs/APP_STORE_METADATA.md`](APP_STORE_METADATA.md)の「バージョンとビルド番号」）。
+- [x] アップロードのたびに、同じバージョンの中で前回より大きいビルド番号を付ける（[`docs/APP_STORE_METADATA.md`](APP_STORE_METADATA.md)の「バージョンとビルド番号」）。（2026-11-06、1.1 (1)をアップロードして提出した）
 - [x] App名、サブタイトル、プロモーションテキスト、説明文、キーワードの文字数をApp Store Connectの画面で確かめる（[`APP_STORE_METADATA.md`](APP_STORE_METADATA.md)の「基本情報」「説明文案」）。（2026-11-03）
 - [x] [`APP_STORE_METADATA.md`](APP_STORE_METADATA.md)の「アクセシビリティの表示」の回答を実機で確かめ直してから、App Store Connectへ入力する。（2026-11-03に回答を決めた。ダーク・コントラスト・色以外でも区別・視差効果を減らすは「対応」、VoiceOver・音声コントロール・さらに大きな文字（#389）は「対応」と答えない。同日、iPhone・iPadともApp Store Connectへ入力し、下書きとして保存されたことを確かめた。公開できるのはアプリの版がリリースされたあとなので、公開は[`RELEASE_RUNBOOK.md`](RELEASE_RUNBOOK.md)の手順9で行う）
-- [ ] 提出後の承認を確認するまで、App Store配布完了とは報告しない。
+- [ ] 提出後の承認を確認するまで、App Store配布完了とは報告しない。（2026-11-06、v1.1 (1)を提出し、審査待ち）
