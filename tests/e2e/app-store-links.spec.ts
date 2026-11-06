@@ -115,7 +115,12 @@ test('links the app from the chart panel above the privacy policy', async ({ pag
   expect(privacyBox!.y - appBox!.y).toBeGreaterThanOrEqual(24);
 });
 
-for (const path of ['/guide/', '/support/']) {
+// アプリには空の状態から始まるので、バッジのそばに編み図の移し方を添える。
+// 使い方では「7. iPhone・iPadアプリへ編み図を移す」の節にバッジを置き、手順を番号付きで示す。
+for (const [path, transferNote] of [
+  ['/guide/', 'アプリの「出力」にある「バックアップから復元」を押し、届けた .knit を選びます。'],
+  ['/support/', 'アプリの「出力」にある「バックアップから復元」で読み込むと移せます。'],
+] as const) {
   test(`shows one App Store badge with Apple's trademark notice on ${path}`, async ({ page }) => {
     await page.goto(path);
     const badge = page.getByRole('link', { name: 'App Storeからダウンロード' });
@@ -128,8 +133,7 @@ for (const path of ['/guide/', '/support/']) {
     const box = (await image.boundingBox())!;
     expect(box.height).toBeGreaterThanOrEqual(40);
     expect(box.width / box.height).toBeCloseTo(108.85157 / 40, 1);
-    // アプリには空の状態から始まるので、編み図の移し方を添える。
-    await expect(page.locator('main')).toContainText('アプリの「出力」にある「バックアップから復元」で読み込むと移せます。');
+    await expect(page.locator('main')).toContainText(transferNote);
     const footer = page.locator('footer');
     await expect(footer).toContainText('Apple、Appleのロゴ、iPhone、iPadは、米国およびその他の国で登録されたApple Inc.の商標です。');
     await expect(footer).toContainText('App Storeは、米国およびその他の国で登録されたApple Inc.のサービスマークです。');
