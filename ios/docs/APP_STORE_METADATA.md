@@ -183,8 +183,8 @@ App Store Connectの年齢制限は、質問票への回答から決まる（202
 ## バージョンとビルド番号
 
 - バージョン（`MARKETING_VERSION`、App Storeに表示される`1.0`など）は、リリースごとに`project.yml`で上げる。
-- ビルド番号（`CURRENT_PROJECT_VERSION`）は`project.yml`では`1`のままにする。App Store Connectは、同じバージョンの中で前回より大きいビルド番号しか受け付けない。
-- XcodeのOrganizerからアップロードするときは、配布オプションの「Manage Version and Build Number」をオンにする。Xcodeが、App Store Connectにあるビルドより大きい番号を付けてアップロードする。
+- ビルド番号（`CURRENT_PROJECT_VERSION`）は`project.yml`では`1`のままにする。App Store Connectは、同じバージョンの中で前回より大きいビルド番号しか受け付けない。新しい版の最初のビルドは`1`でよい（2026-11-06にv1.1を`1.1 (1)`としてアップロードし、提出した。v1.0は`1.0 (1)`）。
+- XcodeのOrganizerからアップロードするときは、配布オプションの「Manage Version and Build Number」をオンにする。Xcodeが、同じバージョンのApp Store Connectにあるビルドより大きい番号を付けてアップロードする（新しい版の最初のビルドは`1`のまま）。
 - コマンドラインでArchiveするときは、`xcodebuild archive ... CURRENT_PROJECT_VERSION=<番号>`で、前回より大きい番号を指定する。
 - アップロードしたビルド番号は、[`REAL_DEVICE_RELEASE_CHECKLIST.md`](REAL_DEVICE_RELEASE_CHECKLIST.md)のM6の証跡と`docs/dev-log/`の記録に書く。
 - `project.yml`のビルド番号はアップロードしたものと一致しないため、Archiveを作ったコミットに`ios-v<バージョン>-build<ビルド番号>`のタグを付けて対応を残す（[`RELEASE_RUNBOOK.md`](RELEASE_RUNBOOK.md)の手順5の7）。
