@@ -40,10 +40,10 @@ iOS 17.0以上のSwiftUIユニバーサルアプリで、固定originのロー�
 
 記録と作業:
 
-- [GitHub Issues](https://github.com/K0mork/knittingEditor/issues): 未完了の作業と完了条件（初回リリース分はマイルストーン[iOS 1.0](https://github.com/K0mork/knittingEditor/milestone/1)）
+- [GitHub Issues](https://github.com/K0mork/knittingEditor/issues): 未完了の作業と完了条件（リリースごとの作業は版の名前の[マイルストーン](https://github.com/K0mork/knittingEditor/milestones)）
 - [../docs/dev-log/](../docs/dev-log/README.md): PRごとの変更と検証の記録
 - [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md): 統合前の変更と検証記録（凍結アーカイブ）
 
 ## 現在の状態
 
-Web編集画面、端末内保存、Files・共有シート、`.knit`入出力のネイティブ連携、iPhone／iPadのUI、自動テストとCIは実装済みです。残っている作業はマイルストーン[iOS 1.0](https://github.com/K0mork/knittingEditor/milestone/1)のIssue、実機で確認済みの範囲と残りは[`docs/REAL_DEVICE_RELEASE_CHECKLIST.md`](docs/REAL_DEVICE_RELEASE_CHECKLIST.md)、提出の準備は[`docs/APP_STORE_CHECKLIST.md`](docs/APP_STORE_CHECKLIST.md)を正とします。CIの構成は[`docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md)の「ビルドと公開」にあります。
+Web編集画面、端末内保存、Files・共有シート、`.knit`入出力のネイティブ連携、iPhone／iPadのUI、自動テストとCIは実装済みです。残っている作業は[GitHub Issues](https://github.com/K0mork/knittingEditor/issues)（リリースごとの作業は版の名前の[マイルストーン](https://github.com/K0mork/knittingEditor/milestones)）、実機で確認済みの範囲と残りは[`docs/REAL_DEVICE_RELEASE_CHECKLIST.md`](docs/REAL_DEVICE_RELEASE_CHECKLIST.md)、提出の準備は[`docs/APP_STORE_CHECKLIST.md`](docs/APP_STORE_CHECKLIST.md)を正とします。CIの構成は[`docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md)の「ビルドと公開」にあります。

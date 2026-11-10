@@ -69,7 +69,7 @@ iOS側の変更では、ルートの項目に加えて、TestFlight／App Store�
 
 ## Issue Management
 
-Issueの管理（ラベル、マイルストーン`iOS 1.0`、`Closes #番号`）はルートの[`AGENTS.md`](../AGENTS.md)の「GitHub Workflow」に従う。iOS版では加えて次を守る。
+Issueの管理（ラベル、版ごとのマイルストーン、`Closes #番号`）はルートの[`AGENTS.md`](../AGENTS.md)の「GitHub Workflow」に従う。iOS版では加えて次を守る。
 
 - `needs-device`のIssueはSimulatorの結果だけで閉じない。実機の手順は[`docs/REAL_DEVICE_RELEASE_CHECKLIST.md`](docs/REAL_DEVICE_RELEASE_CHECKLIST.md)に従う。
 - 仕様変更時は[`DEVELOPMENT.md`](DEVELOPMENT.md)、[`SPECIFICATION.md`](SPECIFICATION.md)、関係するIssueの不整合を残さない。
