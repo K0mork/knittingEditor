@@ -8,7 +8,7 @@ final class EditorCommandsTests: XCTestCase {
     func testCommandNamesMatchWebBridge() {
         XCTAssertEqual(EditorCommand.allCases.map(\.rawValue), [
             "newDocument", "restoreBackup", "exportBackup", "exportAllBackup",
-            "exportPng", "exportPdf", "undo", "redo", "openGuide", "toggleEraser", "zoomIn", "zoomOut",
+            "exportPng", "exportPdf", "undo", "redo", "eraseSelection", "openGuide", "toggleEraser", "zoomIn", "zoomOut",
         ])
     }
 
@@ -24,7 +24,7 @@ final class EditorCommandsTests: XCTestCase {
     }
 
     func testCommandsAreDisabledUntilEditorIsReady() {
-        let state = EditorCommandState(canUndo: true, canRedo: true)
+        let state = EditorCommandState(canUndo: true, canRedo: true, canEraseSelection: true)
         for command in EditorCommand.allCases {
             XCTAssertFalse(WebViewModel.canPerform(command, webContentReady: false, state: state), command.rawValue)
             XCTAssertTrue(WebViewModel.canPerform(command, webContentReady: true, state: state), command.rawValue)
@@ -53,9 +53,24 @@ final class EditorCommandsTests: XCTestCase {
         XCTAssertFalse(WebViewModel.canPerform(.redo, webContentReady: true, state: undoOnly))
     }
 
+    /// 範囲の消去は、Webが「範囲があり、入力欄の編集中でもモーダル表示中でもない」と
+    /// 報告したときだけ選べる。編集画面の準備前とネイティブ画面の表示中は、状態にかかわらず選べない。
+    func testEraseSelectionFollowsWebState() {
+        XCTAssertFalse(WebViewModel.canPerform(.eraseSelection, webContentReady: true, state: EditorCommandState()))
+
+        let canErase = EditorCommandState(canUndo: false, canRedo: false, canEraseSelection: true)
+        XCTAssertTrue(WebViewModel.canPerform(.eraseSelection, webContentReady: true, state: canErase))
+        XCTAssertFalse(WebViewModel.canPerform(.eraseSelection, webContentReady: false, state: canErase))
+        XCTAssertFalse(
+            WebViewModel.canPerform(.eraseSelection, webContentReady: true, presentingNativeUI: true, state: canErase)
+        )
+        // 範囲の消去の状態は、ほかの操作を選べるかどうかに影響しない。
+        XCTAssertTrue(WebViewModel.canPerform(.newDocument, webContentReady: true, state: EditorCommandState()))
+    }
+
     /// 保存画面・共有シート・Document Pickerを出している間は、どの項目も選べない表示にする。
     func testCommandsAreDisabledWhileNativeSheetIsPresented() {
-        let state = EditorCommandState(canUndo: true, canRedo: true)
+        let state = EditorCommandState(canUndo: true, canRedo: true, canEraseSelection: true)
         for command in EditorCommand.allCases {
             XCTAssertFalse(
                 WebViewModel.canPerform(command, webContentReady: true, presentingNativeUI: true, state: state),
@@ -85,6 +100,13 @@ final class EditorCommandsTests: XCTestCase {
 
     func testDecodeCommandState() {
         XCTAssertEqual(
+            NativeBridgeMessage.decode(body: [
+                "version": 1, "type": "commandState", "canUndo": true, "canRedo": false, "canEraseSelection": true,
+            ]),
+            .success(.commandState(EditorCommandState(canUndo: true, canRedo: false, canEraseSelection: true)))
+        )
+        // 範囲の消去を知らない古いWeb bundleの状態でも、編集履歴は使えるようにする。
+        XCTAssertEqual(
             NativeBridgeMessage.decode(body: ["version": 1, "type": "commandState", "canUndo": true, "canRedo": false]),
             .success(.commandState(EditorCommandState(canUndo: true, canRedo: false)))
         )
@@ -94,6 +116,12 @@ final class EditorCommandsTests: XCTestCase {
         )
         XCTAssertEqual(
             NativeBridgeMessage.decode(body: ["version": 1, "type": "commandState", "canUndo": "yes", "canRedo": false]),
+            .failure(.invalidEnvelope)
+        )
+        XCTAssertEqual(
+            NativeBridgeMessage.decode(body: [
+                "version": 1, "type": "commandState", "canUndo": true, "canRedo": false, "canEraseSelection": "yes",
+            ]),
             .failure(.invalidEnvelope)
         )
     }

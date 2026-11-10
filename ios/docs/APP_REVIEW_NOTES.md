@@ -41,7 +41,7 @@ The app is in Japanese only. Below, each button is written as "English (日本�
 These have no on-screen button. They are optional, do the same as existing buttons, and are explained in "Guide (使い方)".
 
 - Apple Pencil double-tap (iPad): switches between "Draw (描く)" and "Erase (消す)", following the double-tap setting in Settings > Apple Pencil.
-- Keyboard shortcuts (iPad with a keyboard): ⌘N new chart, ⌘O restore, ⌘S back up this chart, ⌥⌘S back up all data, ⇧⌘E export PNG, ⌘P export PDF, ⌘Z undo, ⇧⌘Z redo, ⌘+ / ⌘− zoom, ⇧⌘H guide. The same commands are in the menu bar.
+- Keyboard shortcuts (iPad with a keyboard): ⌘N new chart, ⌘O restore, ⌘S back up this chart, ⌥⌘S back up all data, ⇧⌘E export PNG, ⌘P export PDF, ⌘Z undo, ⇧⌘Z redo, delete erases the selected range, ⌘+ / ⌘− zoom, ⇧⌘H guide. The same commands are in the menu bar.
 - Trackpad pinch (iPad): zooms the chart.
 
 ## 日本語
@@ -79,5 +79,5 @@ These have no on-screen button. They are optional, do the same as existing butto
 次の操作には画面上のボタンがありません。どれも任意で、既存のボタンと同じ処理を行い、「使い方」で説明しています。
 
 - Apple Pencilのダブルタップ（iPad）：「描く」と「消す」を切り替えます。「設定」>「Apple Pencil」のダブルタップの設定に従います。
-- キーボードショートカット（キーボードを接続したiPad）：⌘N 新しい編み図、⌘O 復元、⌘S この編み図をバックアップ、⌥⌘S 全データをバックアップ、⇧⌘E PNGで書き出す、⌘P PDFで書き出す、⌘Z 元に戻す、⇧⌘Z やり直す、⌘＋／⌘− 拡大／縮小、⇧⌘H 使い方。同じコマンドはメニューバーにもあります。
+- キーボードショートカット（キーボードを接続したiPad）：⌘N 新しい編み図、⌘O 復元、⌘S この編み図をバックアップ、⌥⌘S 全データをバックアップ、⇧⌘E PNGで書き出す、⌘P PDFで書き出す、⌘Z 元に戻す、⇧⌘Z やり直す、delete 選んだ範囲を消去、⌘＋／⌘− 拡大／縮小、⇧⌘H 使い方。同じコマンドはメニューバーにもあります。
 - トラックパッドのピンチ（iPad）：盤面を拡大・縮小します。

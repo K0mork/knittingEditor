@@ -14,7 +14,8 @@ export type NativeCommandHandlers = Record<NativeCommand, () => void>;
 export const MENU_PDF_OPTIONS: PdfLayoutOptions = { layout: 'single', orientation: 'portrait', cellMillimeters: 5 };
 
 type CommandEditor = Pick<EditorController,
-  'session' | 'createNewDocument' | 'backup' | 'runPngExport' | 'runPdfExport' | 'undo' | 'redo' | 'mode' | 'chooseMode' | 'zoomBoard'>;
+  'session' | 'createNewDocument' | 'backup' | 'runPngExport' | 'runPdfExport' | 'undo' | 'redo' | 'eraseSelection' |
+  'mode' | 'chooseMode' | 'zoomBoard'>;
 
 /** ネイティブのメニュー項目を、画面のボタンと同じ編集画面の操作へ対応づける。 */
 export function nativeCommandHandlers(editor: CommandEditor, actions: {
@@ -37,6 +38,8 @@ export function nativeCommandHandlers(editor: CommandEditor, actions: {
     zoomOut: () => editor.zoomBoard(1 / BOARD_ZOOM_FACTOR),
     undo: editor.undo,
     redo: editor.redo,
+    // 画面の「消去」ボタンと同じ処理。1回の消去で1件だけ履歴に積む。
+    eraseSelection: editor.eraseSelection,
     openGuide: actions.openGuide,
     // Apple Pencilのダブルタップ（#269）。「消す」なら「描く」へ、それ以外（描く・範囲・貼付）なら「消す」へ。
     // 画面の「描く」「消す」ボタンと同じく、選択範囲と貼付を解除する。
@@ -53,14 +56,29 @@ export type NativeCommandOutcome = 'performed' | 'textEditing' | 'blocked';
  *   （`isEditableTarget`）にフォーカスがある間は盤面ではなく入力中の文字に効かせ、
  *   それ以外ではダイアログ・記号の一覧を開いている間は盤面の履歴を動かさない。
  *   出力や復元などの処理中でも、Web版と同じく履歴だけは操作できる。
+ * - 範囲の消去も、入力欄にフォーカスがある間は盤面ではなく入力中の文字へDeleteを送る。
+ *   メニューの有効状態が入力欄のフォーカスより遅れて届いても、盤面を書き換えない。
  * - ほかの操作は、出力や復元などの処理中と、ダイアログ・記号の一覧を開いている間は始めない。
+ *   範囲の消去は画面の「消去」ボタンと同じく処理中でも実行し、モーダル表示中だけ始めない。
  */
 export function runNativeCommand(command: NativeCommand, handlers: NativeCommandHandlers, state: { busy: boolean }, doc: Document = document): NativeCommandOutcome {
   const history = command === 'undo' || command === 'redo';
-  if (history && isEditableTarget(doc.activeElement)) {
+  const textEditing = isEditableTarget(doc.activeElement);
+  if (history && textEditing) {
     // 標準の「取り消す」をメニューで置き換えたため、入力欄の取り消しもここから行う。
     if (typeof doc.execCommand === 'function') doc.execCommand(command);
     return 'textEditing';
+  }
+  if (command === 'eraseSelection' && textEditing) {
+    // メニューが無効になる前にキーを受け取った場合の保険。入力欄の文字だけを1文字消し、盤面は触らない。
+    if (typeof doc.execCommand === 'function') doc.execCommand('delete');
+    return 'textEditing';
+  }
+  if (command === 'eraseSelection') {
+    // 画面の「消去」ボタンと同じく、出力・復元の処理中でも消せる。モーダル表示中だけ止める。
+    if (hasOpenModal(doc)) return 'blocked';
+    handlers.eraseSelection();
+    return 'performed';
   }
   if (history ? hasOpenModal(doc) : nativeInteractionBlocked(state, doc)) return 'blocked';
   handlers[command]();
@@ -76,6 +94,16 @@ export function runNativeCommand(command: NativeCommand, handlers: NativeCommand
  */
 export function nativeHistoryState(history: { canUndo: boolean; canRedo: boolean }, textEditing: boolean) {
   return { canUndo: history.canUndo || textEditing, canRedo: history.canRedo || textEditing };
+}
+
+/**
+ * メニューの「選んだ範囲を消去」を選べるか。Web版のキー操作（`useEraseShortcuts`）が効く条件に
+ * 合わせ、範囲があり、入力欄の編集中でもモーダル表示中でもないときだけ有効にする（#428）。
+ * 画面の「消去」ボタンと同じく、出力・復元の処理中でも有効にする。
+ * フォーカスとモーダルは、状態の反映が遅れても実際のDOMで判定する。
+ */
+export function nativeEraseSelectionState(hasSelection: boolean, doc: Document = document): boolean {
+  return hasSelection && !isEditableTarget(doc.activeElement) && !hasOpenModal(doc);
 }
 
 /**

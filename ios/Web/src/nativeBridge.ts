@@ -17,6 +17,8 @@ interface NativeBridgeMessage {
   dataBase64?: string;
   canUndo?: boolean;
   canRedo?: boolean;
+  /** 範囲を選んでいて、入力欄の編集中でもモーダル表示中でもないときだけ真（#428）。 */
+  canEraseSelection?: boolean;
 }
 
 /**
@@ -24,8 +26,8 @@ interface NativeBridgeMessage {
  * `App/EditorCommands.swift`と対応する。
  */
 export const NATIVE_COMMANDS = [
-  'newDocument', 'restoreBackup', 'exportBackup', 'exportAllBackup', 'exportPng', 'exportPdf', 'undo', 'redo', 'openGuide',
-  'toggleEraser', 'zoomIn', 'zoomOut',
+  'newDocument', 'restoreBackup', 'exportBackup', 'exportAllBackup', 'exportPng', 'exportPdf', 'undo', 'redo',
+  'eraseSelection', 'openGuide', 'toggleEraser', 'zoomIn', 'zoomOut',
 ] as const;
 export type NativeCommand = typeof NATIVE_COMMANDS[number];
 
@@ -163,9 +165,17 @@ export function notifyNativeReady(): boolean {
   return post({ version: 1, type: 'webReady' });
 }
 
-/** 元に戻す・やり直すをメニューで選べるかどうかをネイティブ側へ伝える。 */
-export function notifyNativeCommandState(state: { canUndo: boolean; canRedo: boolean }): boolean {
-  return post({ version: 1, type: 'commandState', canUndo: state.canUndo, canRedo: state.canRedo });
+/** 元に戻す・やり直す・選んだ範囲の消去をメニューで選べるかどうかをネイティブ側へ伝える。 */
+export function notifyNativeCommandState(
+  state: { canUndo: boolean; canRedo: boolean; canEraseSelection: boolean },
+): boolean {
+  return post({
+    version: 1,
+    type: 'commandState',
+    canUndo: state.canUndo,
+    canRedo: state.canRedo,
+    canEraseSelection: state.canEraseSelection,
+  });
 }
 
 export function listenNativeBackupSelected(listener: (detail: NativeBackupDetail) => void): () => void {

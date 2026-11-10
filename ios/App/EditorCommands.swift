@@ -15,6 +15,8 @@ enum EditorCommand: String, CaseIterable, Sendable {
     case exportPdf
     case undo
     case redo
+    /// 選択範囲の記号と線を、画面の「消去」と同じ処理で消す（#428）。
+    case eraseSelection
     case openGuide
     /// Apple Pencilのダブルタップで、描くと消すを切り替える（#269）。メニューには載せない。
     case toggleEraser
@@ -29,10 +31,12 @@ enum EditorCommand: String, CaseIterable, Sendable {
     }
 }
 
-/// Web側の編集履歴の状態。メニューの「元に戻す」「やり直す」を画面のボタンと同じ条件で選べるようにする。
+/// Web側の編集履歴と範囲消去の状態。メニューの項目を画面のボタンと同じ条件で選べるようにする。
 struct EditorCommandState: Equatable, Sendable {
     var canUndo = false
     var canRedo = false
+    /// 範囲を選んでいて、入力欄の編集中でもモーダル表示中でもないときだけ真（#428）。
+    var canEraseSelection = false
 }
 
 extension WebViewModel {
@@ -58,6 +62,7 @@ extension WebViewModel {
         switch command {
         case .undo: return state.canUndo
         case .redo: return state.canRedo
+        case .eraseSelection: return state.canEraseSelection
         default: return true
         }
     }
@@ -72,7 +77,8 @@ extension WebViewModel {
 
 /// iPadのメニューバーに載せる項目。iPadOS 26以降は、ここでショートカットも確認できる。
 ///
-/// キーの割り当ては、iPadOSの慣習（⌘N・⌘O・⌘S・⌘Z・⇧⌘Z）と、Web版のキー操作（⌘Z・⇧⌘Z）に合わせる。
+/// キーの割り当ては、iPadOSの慣習（⌘N・⌘O・⌘S・⌘Z・⇧⌘Z）と、Web版のキー操作（⌘Z・⇧⌘Z）、
+/// 範囲消去のdelete（修飾キーなし、#428）に合わせる。
 /// 復元（⌘O）はここに置かない。「ファイル」アプリから`.knit`を開けるよう`LSSupportsOpeningDocumentsInPlace`を
 /// 有効にすると、iPadOSが「ファイル」メニューの先頭に「開く…」（⌘O）と「最近使った項目を開く」を足す。
 /// 同じ⌘Oの項目を置くと、その項目を含むグループがまるごとメニューから外れ、⌘Nも効かなくなった（#149、
@@ -99,6 +105,13 @@ struct EditorCommands: Commands {
         CommandGroup(replacing: .undoRedo) {
             item("元に戻す", .undo, "z")
             item("やり直す", .redo, "z", modifiers: [.command, .shift])
+        }
+        // 範囲を選んでいる間だけ選べる（#428）。盤面にフォーカスがあるとき、WKWebViewはハードウェアの
+        // キーをページの`keydown`へ渡さないため、Deleteはこのメニュー項目で受ける。選べないときの
+        // DeleteはUIKitがそのまま入力欄へ渡し、入力中の文字が消える。
+        // 「編集」メニューの「すべてを選択」の後ろ（`.pasteboard`の後）に置く。
+        CommandGroup(after: .pasteboard) {
+            item("選んだ範囲を消去", .eraseSelection, .delete, modifiers: [])
         }
         // `.toolbar`は標準の「表示」メニュー内の配置先。盤面の倍率もここにまとめる。
         CommandGroup(after: .toolbar) {

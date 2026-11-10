@@ -32,7 +32,7 @@ final class WebViewModel {
     /// 編集画面の読み込み待ちを利用者へ伝えるかどうか。使い方ページのように
     /// `webReady`を送らない同梱ページでは表示しない。
     private(set) var isPreparingEditor = true
-    /// メニューの「元に戻す」「やり直す」を選べるか。Web側の`commandState`で更新する。
+    /// メニューの「元に戻す」「やり直す」「選んだ範囲を消去」を選べるか。Web側の`commandState`で更新する。
     var editorCommandState = EditorCommandState()
     /// 保存画面・共有シート・Document Pickerを出している間は、メニューの項目を選べなくする。
     var isPresentingNativeUI = false

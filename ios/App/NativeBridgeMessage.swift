@@ -50,7 +50,20 @@ enum NativeBridgeMessage: Equatable {
                   let canRedo = dictionary["canRedo"] as? Bool else {
                 return .failure(.invalidEnvelope)
             }
-            return .success(.commandState(EditorCommandState(canUndo: canUndo, canRedo: canRedo)))
+            // `canEraseSelection`は#428で足した。無い状態を送る古いWeb bundleでも
+            // 編集履歴は使えるよう、破壊的な範囲消去だけを選べない既定にする。
+            let canEraseSelection: Bool
+            if let value = dictionary["canEraseSelection"] {
+                guard let flag = value as? Bool else { return .failure(.invalidEnvelope) }
+                canEraseSelection = flag
+            } else {
+                canEraseSelection = false
+            }
+            return .success(.commandState(EditorCommandState(
+                canUndo: canUndo,
+                canRedo: canRedo,
+                canEraseSelection: canEraseSelection
+            )))
         case "exportFile":
             let requestID = exportRequestID(body: body)
             guard dictionary["id"] == nil || requestID != nil else {

@@ -55,6 +55,94 @@ final class KeyboardCommandUITests: XCTestCase {
         XCTAssertTrue(waitForDisappearance(of: app.staticTexts["編み目記号"], timeout: Self.timeout), app.debugDescription)
     }
 
+    /// 範囲を選んでDeleteキーを押すと、画面の「消去」と同じく選んだ範囲の記号と線が消え、
+    /// ⌘Z1回でまとめて戻る（#428）。同じキー入力で消去が2回実行されると、
+    /// 消去の通知が2回出たり、履歴が2件進んだりする。
+    func testDeleteKeyErasesSelectionAsOneHistoryStep() {
+        let app = launchEditor()
+        let canvas = createEmptyDocument(named: "Deleteキー消去", in: app)
+        placeThreeStitchesAndSelectRange(on: canvas, in: app)
+
+        // メニューの項目がWebの状態を反映するまで、キーは捨てられうる。消えるまで送り直す。
+        XCTAssertTrue(
+            typeDelete(in: app, until: NSPredicate(format: "label CONTAINS %@", "記号0個"), on: canvas),
+            "Deleteで選択範囲が消えない: \(canvas.label)"
+        )
+        waitForStitchCount(0, on: canvas, in: app)
+        // 1回目の消去のあとにもう一度実行されていれば、消すものが無いという通知が出る。
+        XCTAssertFalse(app.staticTexts["選択範囲に消すものがありません"].exists, app.debugDescription)
+
+        // 1回の⌘Zで、消した3個がまとめて戻る。
+        typeHistoryKey([.command], from: 0, to: 3, on: canvas, in: app)
+        assertStitchCountStays(3, on: canvas, in: app)
+    }
+
+    /// 範囲を選んだまま、モーダルではない入力欄（盤面パネルの「段数」）にフォーカスして
+    /// Deleteキーを押す。メニューの「選んだ範囲を消去」が入力欄でも有効なままだと、盤面の
+    /// 選択範囲が消えてしまう。入力欄の文字だけが1文字消え、盤面は変わらないことを確かめる（#428）。
+    func testDeleteKeyInNonModalTextFieldDeletesOneCharacterAndKeepsSelection() {
+        let app = launchEditor(disableAnimations: true)
+        let canvas = createEmptyDocument(named: "Deleteキー盤面設定", in: app)
+        placeThreeStitchesAndSelectRange(on: canvas, in: app)
+
+        app.buttons["盤面"].tap()
+        let rows = app.textFields["段数"]
+        XCTAssertTrue(rows.waitForExistence(timeout: Self.timeout), app.debugDescription)
+        let before = (rows.value as? String) ?? ""
+        // 末尾側を叩いて、キャレットを値の後ろへ置く（`replaceText`と同じ扱い）。
+        rows.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+
+        // 入力欄にフォーカスがあることがメニューへ届くまでの間だけ、キーを送り直す。
+        XCTAssertTrue(
+            typeDelete(in: app, until: NSPredicate(format: "value != %@", before), on: rows),
+            "Deleteで入力中の文字が消えない: \(rows.debugDescription)"
+        )
+        let after = (rows.value as? String) ?? ""
+        XCTAssertEqual(after, String(before.dropLast()), "Deleteは入力欄の文字を1文字だけ消す: \(rows.debugDescription)")
+
+        // 盤面の大きさは変えない。値を戻してから閉じ、選択範囲が消えていないことを確かめる。
+        replaceText(before, in: rows, app: app)
+        app.buttons["閉じる"].tap()
+        XCTAssertTrue(waitForDisappearance(of: rows, timeout: Self.timeout), app.debugDescription)
+        waitForStitchCount(3, on: canvas, in: app)
+        assertStitchCountStays(3, on: canvas, in: app)
+    }
+
+    /// ⌘Nのダイアログの入力欄でDeleteキーを押すと、盤面ではなく入力中の文字が1文字消える。
+    /// ダイアログは`aria-modal`で、範囲を選んでいなくてもメニューは無効になるため、ここで
+    /// 確かめるのは入力欄へのキー配送と、ダイアログ表示中に盤面を書き換えないことである
+    /// （範囲あり＋モーダルでない入力欄の危険なケースは、上のテストで確かめる）。
+    func testDeleteKeyInDialogTextFieldDeletesOnlyOneCharacter() {
+        let app = launchEditor(disableAnimations: true)
+        let canvas = createEmptyDocument(named: "Deleteキー入力欄", in: app)
+        canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        waitForStitchCount(1, on: canvas, in: app)
+
+        let field = app.textFields["入力"]
+        XCTAssertTrue(typeShortcut("n", .command, in: app, until: Self.exists, on: field), "⌘Nでダイアログが出ない: \(app.debugDescription)")
+        let initial = "新しい編み図"
+        XCTAssertTrue(waitForValue(of: field, toBe: initial, timeout: Self.timeout), app.debugDescription)
+        field.tap()
+        field.typeText("abc")
+        let entered = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value CONTAINS %@", "abc"), object: field)
+        XCTAssertEqual(XCTWaiter.wait(for: [entered], timeout: Self.timeout), .completed, "入力できない: \(field.debugDescription)")
+        let typed = (field.value as? String) ?? ""
+
+        // 入力欄にフォーカスがあることがメニューへ届くまでの間だけ、キーを送り直す。
+        XCTAssertTrue(
+            typeDelete(in: app, until: NSPredicate(format: "value != %@", typed), on: field),
+            "Deleteで入力中の文字が消えない: \(field.debugDescription)"
+        )
+        // 入力欄のどこにキャレットがあっても、Deleteは1文字だけ消す。
+        let afterDelete = (field.value as? String) ?? ""
+        XCTAssertEqual(afterDelete.count, typed.count - 1, "Deleteは1文字だけ消す: \(field.debugDescription)")
+        // ダイアログ（`aria-modal`）を開いている間は、後ろの盤面がアクセシビリティの木に出ない。
+        // 閉じてから、盤面が消えていないことを確かめる。
+        app.buttons["キャンセル"].tap()
+        XCTAssertTrue(waitForDisappearance(of: field, timeout: Self.timeout), app.debugDescription)
+        waitForStitchCount(1, on: canvas, in: app)
+    }
+
     /// 入力欄で文字を打っている間の⌘Z・⇧⌘Zは、盤面ではなく入力中の文字を取り消し・やり直す。
     /// 標準の「取り消す」をメニューで置き換えたため、盤面に戻せる編集が無いときもメニューを通す。
     func testUndoAndRedoShortcutsEditTextFieldInsteadOfBoard() {
@@ -169,6 +257,53 @@ final class KeyboardCommandUITests: XCTestCase {
         state.lifetime = .keepAlways
         add(state)
         return false
+    }
+
+    /// Deleteキーを送り、`predicate`が成り立つまで待つ。成り立たなければ送り直す。
+    ///
+    /// メニューの「選んだ範囲を消去」は、Webの`commandState`がSwiftUIのメニューへ届くまで
+    /// 選べず、その間に押したキーはWebViewへ落ちて捨てられる。XCUITestからメニューの状態は
+    /// 読めないため、期待した変化が起きないときだけ送り直す。二重に消したときは値や記号数が
+    /// 期待と変わるので、呼び出し側の確認で失敗させる。
+    private func typeDelete(in app: XCUIApplication, until predicate: NSPredicate, on object: Any, attempts: Int = 4) -> Bool {
+        for _ in 0..<attempts {
+            // Xcode 27.2の`typeKey`は`XCUIKeyboardKey.delete`（U+007F）をキーに変換できず、何も送らない
+            // （testmanagerdのログに`not in the character map`、`Generating events -- []`）。
+            // 記号の「⌫」（U+232B）ならハードウェアキーボードのDelete（HIDの0x2A）が送られる。
+            app.typeKey("\u{232B}", modifierFlags: [])
+            let reached = XCTNSPredicateExpectation(predicate: predicate, object: object)
+            if XCTWaiter.wait(for: [reached], timeout: Self.shortcutAttemptTimeout) == .completed { return true }
+        }
+        add(screenshot(named: "Deleteキー失敗"))
+        let state = XCTAttachment(string:
+            "時刻=\(Date()) key=Delete 試行=\(attempts) state=\(app.state.rawValue)\n\(app.debugDescription)"
+        )
+        state.name = "Deleteキー失敗時の状態"
+        state.lifetime = .keepAlways
+        add(state)
+        return false
+    }
+
+    /// 隣り合う3マスに記号を置き、「範囲」で囲んで選択範囲の操作帯を出す。
+    private func placeThreeStitchesAndSelectRange(on canvas: XCUIElement, in app: XCUIApplication) {
+        let cells = [
+            CGVector(dx: 0.45, dy: 0.48),
+            CGVector(dx: 0.50, dy: 0.48),
+            CGVector(dx: 0.55, dy: 0.48),
+        ]
+        for (index, cell) in cells.enumerated() {
+            canvas.coordinate(withNormalizedOffset: cell).tap()
+            waitForStitchCount(index + 1, on: canvas, in: app)
+        }
+
+        app.switches["範囲"].tap()
+        let start = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.35, dy: 0.40))
+        let end = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.68, dy: 0.60))
+        start.press(forDuration: 0.05, thenDragTo: end)
+        XCTAssertTrue(
+            app.buttons["選択範囲を消去"].waitForExistence(timeout: 10),
+            "範囲を選択できない: \(app.debugDescription)"
+        )
     }
 
     /// ⌘Nで新しい編み図を作り、空の盤面を返す。
