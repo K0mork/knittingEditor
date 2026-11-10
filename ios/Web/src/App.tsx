@@ -11,7 +11,10 @@ import { useNotifyWhenEditorShown } from './editorReady';
 import {
   listenNativeBackupSelected, listenNativeCommand, listenNativeZoom, listenNativeError, notifyNativeCommandState, notifyNativeReady, requestNativeBackupOpen,
 } from './nativeBridge';
-import { nativeCommandHandlers, nativeInteractionBlocked, nativeHistoryState, runNativeCommand, watchTextEditing } from './nativeCommands';
+import {
+  nativeCommandHandlers, nativeEraseSelectionState, nativeInteractionBlocked, nativeHistoryState,
+  runNativeCommand, watchTextEditing,
+} from './nativeCommands';
 import { nativeAutosaveDelayMs } from './nativeEditorConfiguration';
 import { iosPlatform } from './platform';
 
@@ -145,7 +148,20 @@ export default function App() {
   const [textEditing, setTextEditing] = useState(false);
   useEffect(() => watchTextEditing(setTextEditing), []);
   const { canUndo, canRedo } = nativeHistoryState(editor.session, textEditing);
-  useEffect(() => { notifyNativeCommandState({ canUndo, canRedo }); }, [canUndo, canRedo]);
+  // 範囲の消去は、モーダルの開閉のようにReactの状態だけでは追えないDOMの変化でも
+  // 有効・無効が変わる。描画のたびに、反映後のDOMを読んで変わったときだけ送る。
+  const lastCommandStateRef = useRef('');
+  useEffect(() => {
+    const state = {
+      canUndo,
+      canRedo,
+      canEraseSelection: nativeEraseSelectionState(editor.selection !== undefined),
+    };
+    const serialized = JSON.stringify(state);
+    if (lastCommandStateRef.current === serialized) return;
+    lastCommandStateRef.current = serialized;
+    notifyNativeCommandState(state);
+  });
 
   return <EditorView
     editor={editor}

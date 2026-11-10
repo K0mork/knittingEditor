@@ -3,7 +3,8 @@ import { Board } from '@knitting-editor/editor-core/model/Board';
 import { defaultPngCellSize } from '@knitting-editor/editor-core/export/exporters';
 import { isNativeCommand, listenNativeCommand, NATIVE_COMMANDS, notifyNativeCommandState } from './nativeBridge';
 import {
-  MENU_PDF_OPTIONS, nativeCommandHandlers, nativeHistoryState, runNativeCommand, watchTextEditing, type NativeCommandHandlers,
+  MENU_PDF_OPTIONS, nativeCommandHandlers, nativeEraseSelectionState,
+  nativeHistoryState, runNativeCommand, watchTextEditing, type NativeCommandHandlers,
 } from './nativeCommands';
 
 /**
@@ -56,11 +57,13 @@ describe('native menu commands', () => {
     expect(listener).toHaveBeenCalledTimes(1);
   });
 
-  it('tells the app whether undo and redo are available', () => {
+  it('tells the app whether undo, redo and erasing the selection are available', () => {
     const postMessage = vi.fn();
     window.webkit = { messageHandlers: { knittingEditor: { postMessage } } };
-    expect(notifyNativeCommandState({ canUndo: true, canRedo: false })).toBe(true);
-    expect(postMessage).toHaveBeenCalledWith({ version: 1, type: 'commandState', canUndo: true, canRedo: false });
+    expect(notifyNativeCommandState({ canUndo: true, canRedo: false, canEraseSelection: true })).toBe(true);
+    expect(postMessage).toHaveBeenCalledWith({
+      version: 1, type: 'commandState', canUndo: true, canRedo: false, canEraseSelection: true,
+    });
   });
 
   it('runs the matching editor action', () => {
@@ -71,12 +74,12 @@ describe('native menu commands', () => {
     }
   });
 
-  it('does not start another action while exporting or restoring, but undo and redo pass as with the web shortcuts', () => {
+  it('does not start another action while exporting or restoring, but undo, redo and erasing the selection pass as with the on-screen button', () => {
     const handlers = fakeHandlers();
     for (const command of NATIVE_COMMANDS) {
-      const history = command === 'undo' || command === 'redo';
-      expect(runNativeCommand(command, handlers, { busy: true })).toBe(history ? 'performed' : 'blocked');
-      expect(handlers[command]).toHaveBeenCalledTimes(history ? 1 : 0);
+      const allowedWhileBusy = command === 'undo' || command === 'redo' || command === 'eraseSelection';
+      expect(runNativeCommand(command, handlers, { busy: true })).toBe(allowedWhileBusy ? 'performed' : 'blocked');
+      expect(handlers[command]).toHaveBeenCalledTimes(allowedWhileBusy ? 1 : 0);
     }
   });
 
@@ -102,6 +105,17 @@ describe('native menu commands', () => {
     expect(execCommand).toHaveBeenNthCalledWith(2, 'redo');
     expect(handlers.undo).not.toHaveBeenCalled();
     expect(handlers.redo).not.toHaveBeenCalled();
+  });
+
+  it('deletes one character in a focused text field instead of erasing the board', () => {
+    document.body.innerHTML = '<input aria-label="入力" value="新しい編み図">';
+    document.querySelector('input')!.focus();
+    const execCommand = vi.fn(() => true);
+    Object.defineProperty(document, 'execCommand', { value: execCommand, configurable: true });
+    const handlers = fakeHandlers();
+    expect(runNativeCommand('eraseSelection', handlers, { busy: false })).toBe('textEditing');
+    expect(execCommand).toHaveBeenCalledWith('delete');
+    expect(handlers.eraseSelection).not.toHaveBeenCalled();
   });
 
   it('uses the text field instead of the board history behind a dialog too', () => {
@@ -140,6 +154,24 @@ describe('native menu commands', () => {
     expect(runNativeCommand('undo', handlers, { busy: true })).toBe('performed');
     expect(handlers.undo).toHaveBeenCalledTimes(1);
     expect(execCommand).toHaveBeenCalledTimes(2);
+  });
+
+  it('enables erasing the selection only while a range is selected and no field or modal takes the key', () => {
+    document.body.innerHTML = '<button>決定</button><input aria-label="入力"><section role="dialog" aria-modal="true"></section>';
+    const button = document.querySelector('button')!;
+    const input = document.querySelector('input')!;
+    const modal = document.querySelector('section')!;
+    button.focus();
+    expect(nativeEraseSelectionState(false)).toBe(false);
+    expect(nativeEraseSelectionState(true)).toBe(false);
+    modal.remove();
+    expect(nativeEraseSelectionState(true)).toBe(true);
+    input.focus();
+    expect(nativeEraseSelectionState(true)).toBe(false);
+    input.blur();
+    expect(nativeEraseSelectionState(true)).toBe(true);
+    // 範囲が無ければ、入力欄やモーダルの状態にかかわらず無効。
+    expect(nativeEraseSelectionState(false)).toBe(false);
   });
 
   it('keeps undo and redo selectable in the menu while a text field has focus', async () => {
@@ -227,6 +259,7 @@ describe('native menu commands', () => {
       runPdfExport: vi.fn(async () => {}),
       undo: vi.fn(),
       redo: vi.fn(),
+      eraseSelection: vi.fn(),
       zoomBoard: vi.fn(),
     };
     const requestRestore = vi.fn();
@@ -250,6 +283,8 @@ describe('native menu commands', () => {
     handlers.redo();
     expect(editor.undo).toHaveBeenCalledTimes(1);
     expect(editor.redo).toHaveBeenCalledTimes(1);
+    handlers.eraseSelection();
+    expect(editor.eraseSelection).toHaveBeenCalledTimes(1);
     handlers.restoreBackup();
     handlers.openGuide();
     expect(requestRestore).toHaveBeenCalledTimes(1);
