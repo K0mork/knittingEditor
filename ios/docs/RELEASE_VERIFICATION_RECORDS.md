@@ -430,11 +430,15 @@ v1.0の公開後、審査中に`main`へ入った変更をまとめたv1.1を提
 | 版・ビルド | 1.1 (1) |
 | アーカイブ | `~/Library/Developer/Xcode/Archives/2026-11-06/knittingEditor 1.1 1fc015f.xcarchive` |
 | タグ | `ios-v1.1-build1`（`1fc015f`） |
-| 提出 | 2026-11-06 22:23（JST）、審査待ち |
+| 提出 | 2026-11-06 22:23（JST）、手動公開 |
+| 公開 | 2026-11-07（JST）、利用者の報告 |
 
 - 提出元の`1fc015f`で、`CI and deploy Pages`のrun [42214015767](https://github.com/K0mork/knittingEditor/actions/runs/42214015767)（`ci-gate`・`deploy`・`smoke`）と、`Full iOS validation`のrun [42214015686](https://github.com/K0mork/knittingEditor/actions/runs/42214015686)（iPhone 17・iPad (A16)の全テスト、両端末のapp_update、release_archive）が成功した。
 - Xcode 27.2（`27B52`）のReleaseでアーカイブを作り、`ios/scripts/check-release-assets.sh`が成功した。アーカイブのアプリは`CFBundleShortVersionString=1.1`、`CFBundleVersion=1`、`DTSDKName=iphoneos27.2`、`DTXcodeBuild=27B52`。
 - `xcodebuild -exportArchive`でApple Distributionに再署名し、`Manage Version and Build Number`を有効にしてApp Store Connectへアップロードした。処理完了のメールを受け取り、1.1 (1)を選んで提出した。
 - 審査メモは、見出しの記号を外して箇条書き・番号・空行を保った3,810文字の文面を貼った。転記範囲の検査は3,848/4,000文字で成功した。
 - タグ`ios-v1.1-build1`を`1fc015f`に付けてpushした。
-- 残り: TestFlightで1.1 (1)をiPhone・iPadの実機で確認し、承認後に公開して、App Storeの製品ページと公開版の主要フローを確かめる。
+- 利用者の報告により、1.1 (1)は承認され、公開された。2026-11-10に、App Storeの検索APIが返す日本のストアの現在の版は`1.1`、その公開日時は2026-11-06 22:25:53 UTC（JST 2026-11-07 07:25）だった。
+- 2026-11-10に、日本のApp Storeの製品ページで、版1.1、「アップデート」の文、無料、年齢制限4+、データの収集なしを確かめた（Claude Code、アプリ内ブラウザ）。
+- 製品ページの「アクセシビリティ」には、デベロッパがまだ機能を示していないと出ていた。2026-11-03に下書き保存した回答は、まだ公開されていない（[`RELEASE_RUNBOOK.md`](RELEASE_RUNBOOK.md)の手順9）。
+- 残り: アクセシビリティの表示の公開。App Storeから入れた1.1での主要フローの確認は、公開前のTestFlightでの1.1 (1)の確認と合わせて、結果を記録していない。

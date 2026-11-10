@@ -264,7 +264,7 @@ TEST_RUNNER_KNITTING_EDITOR_MANUAL_WINDOW=1 xcodebuild test \
 - [x] TestFlightのクラッシュログ、メモリ警告、PNG/PDF出力時間を確認する。（2026-11-03、1.0 (1)。1000×1000盤面のPNG・PDF出力と再起動後の復元は、両端末ともストップウォッチで測れないほど短かった。App Store ConnectのTestFlightのクラッシュは0件で、両端末の解析データに当日の`knittingEditor`と`JetsamEvent`の記録は無かった。メモリの値は測っていない）
 - [x] 提出ビルドで、AppIcon、起動画面、iPhone縦横、iPad全画面／可変幅の画面を確かめ、提出用の最終スクリーンショット（[`SCREENSHOTS.md`](SCREENSHOTS.md)、#290とiPhone Duoの#353で用意済み）と食い違わないことを証跡に残す。（2026-11-03、1.0 (1)で両端末とも確かめ、登録したスクリーンショットと大きな食い違いが無かった）
 - [x] App Privacy回答、Privacy Policy URL、サポートURL、審査メモを登録内容と照合する。（2026-11-03、提出前に登録画面で照合した）
-- [ ] [`docs/APP_STORE_CHECKLIST.md`](APP_STORE_CHECKLIST.md)の全項目を更新し、承認前に「配布完了」と報告しない。
+- [x] [`docs/APP_STORE_CHECKLIST.md`](APP_STORE_CHECKLIST.md)の全項目を更新し、承認前に「配布完了」と報告しない。（2026-11-10、v1.0・v1.1の承認と公開を反映した。任意の実機スクリーンショットは撮っていない）
 
 証跡: Archiveのビルド番号、TestFlightテスター・実施端末、クラッシュ／メモリ結果、App Store Connectの各登録画面、最終スクリーンショット。
 
