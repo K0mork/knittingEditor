@@ -54,7 +54,7 @@ cd Web
 
 編み図はブラウザ内に保存されるため、重要なデータは「出力」メニューから定期的に`.knit`バックアップを取得してください。
 
-未完了の作業はWeb版・iOS版とも[GitHub Issues](https://github.com/K0mork/knittingEditor/issues)で管理します。iOS版のリリースごとの作業は、版の名前の[マイルストーン](https://github.com/K0mork/knittingEditor/milestones)（初回リリースは[iOS 1.0](https://github.com/K0mork/knittingEditor/milestone/1)）にまとめています。
+未完了の作業はWeb版・iOS版とも[GitHub Issues](https://github.com/K0mork/knittingEditor/issues)で管理します。iOS版のリリースごとの作業は、版の名前の[マイルストーン](https://github.com/K0mork/knittingEditor/milestones)にまとめています。
 
 ## ドキュメント
 
