@@ -47,6 +47,7 @@ window.dispatchEvent(new CustomEvent('knittingEditorNativeCommand', { detail: 'u
 | ファイル | PDFで書き出す… | ⌘P | `exportPdf` | 「PDFを保存」。全体を1ページ・A4縦（パネルの既定値） |
 | 編集 | 元に戻す | ⌘Z | `undo` | 操作メニューの「元に戻す」 |
 | 編集 | やり直す | ⇧⌘Z | `redo` | 操作メニューの「やり直す」 |
+| 編集 | 選んだ範囲を消去 | delete（⌫） | `eraseSelection` | 選択範囲の操作帯の「消去」 |
 | 表示 | 拡大 | ⌘+ | `zoomIn` | 表示中の盤面の中央を基準に1.25倍 |
 | 表示 | 縮小 | ⌘− | `zoomOut` | 同じ中央を基準に0.8倍 |
 | ヘルプ | 棒針編み図の使い方 | ⇧⌘H | `openGuide` | 「使い方」。保留中の保存を書き込んでから移る |
@@ -55,8 +56,9 @@ window.dispatchEvent(new CustomEvent('knittingEditorNativeCommand', { detail: 'u
 
 Web側は`ios/Web/src/nativeBridge.ts`の`listenNativeCommand`で受け、`NATIVE_COMMANDS`に無い値は捨てる。`nativeCommands.ts`の`runNativeCommand`は次のように扱う。
 
-- 元に戻す・やり直すは、Web版のキー操作（`useHistoryShortcuts`）と同じ扱いにする。入力欄（`packages/editor-core/ui/hooks.ts`の`isEditableTarget`。Web版と同じ判定を共有する）にフォーカスがある間は、盤面ではなく入力中の文字に効かせる（`document.execCommand('undo')`・`('redo')`）。それ以外では、出力や復元の処理中や、アプリ内ダイアログ・記号の一覧を開いている間も盤面に効かせる。
-- ほかの操作は、出力や復元の処理中（`busy`）と、アプリ内ダイアログや記号の一覧（`aria-modal="true"`）を開いている間は始めない。
+- 元に戻す・やり直すは、Web版のキー操作（`useHistoryShortcuts`）と同じ扱いにする。入力欄（`packages/editor-core/ui/hooks.ts`の`isEditableTarget`。Web版と同じ判定を共有する）にフォーカスがある間は、盤面ではなく入力中の文字に効かせる（`document.execCommand('undo')`・`('redo')`）。それ以外では、出力や復元の処理中も盤面に効かせる。アプリ内ダイアログ・記号の一覧を開いている間は盤面の履歴を動かさない。
+- 選んだ範囲の消去は、画面の「消去」と同じ`editor.eraseSelection`を実行する（1回の消去で1件の履歴）。入力欄にフォーカスがある間は、`document.execCommand('delete')`で入力中の文字を1文字消し、盤面を消さない。メニューの有効状態がフォーカスの変化より遅れて届いても、実行時に`isEditableTarget(document.activeElement)`で確かめる。
+- ほかの操作は、出力や復元の処理中（`busy`）と、アプリ内ダイアログや記号の一覧（`aria-modal="true"`）を開いている間は始めない。範囲の消去は画面の「消去」ボタンと同じく処理中でも実行し、モーダル表示中だけ始めない。
 
 ### トラックパッドのピンチ（Swift → Web）
 
@@ -85,11 +87,17 @@ Apple Pencil（ダブルタップに対応する機種）のダブルタップ�
 
 使い方のキーは、慣習の⌘?（⇧⌘/）にするとメニューには載るものの、iPadのSimulatorで押しても項目が呼ばれなかったため、⇧⌘H（Help）にした。
 
-メニューの項目は、編集画面が`webReady`を送ってから、使い方ページなどへ移るまでの間だけ選べる。元に戻す・やり直すは、Webが編集履歴の状態を次のメッセージで知らせ、画面のボタンと同じ条件で選べるようにする。
+メニューの項目は、編集画面が`webReady`を送ってから、使い方ページなどへ移るまでの間だけ選べる。元に戻す・やり直す・選んだ範囲の消去は、Webが編集履歴と範囲の状態を次のメッセージで知らせ、画面のボタンと同じ条件で選べるようにする。
 
 ```json
-{ "version": 1, "type": "commandState", "canUndo": true, "canRedo": false }
+{ "version": 1, "type": "commandState", "canUndo": true, "canRedo": false, "canEraseSelection": true }
 ```
+
+`canEraseSelection`は、範囲を選んでいて、入力欄の編集中でもモーダル表示中でもないときだけ真にする（#428）。画面の「消去」ボタンと同じく、出力や復元の処理中かどうかは含めない。`canUndo`・`canRedo`の無い状態は受け付けないが、`canEraseSelection`の無い古いWeb bundleの状態は、破壊的な操作を有効にしないよう偽として受け付ける。
+
+「選んだ範囲を消去」は「編集」メニューの「すべてを選択」の後ろ（`CommandGroup(after: .pasteboard)`）に置き、`delete`キー（修飾キーなし）を割り当てる（#428）。iPadOS 27.2のSimulatorで測ると、盤面に入力欄以外のフォーカスがあるとき、WKWebViewはハードウェアキーの押下をページの`keydown`へ渡さない（Deleteに限らず`x`も届かない）。このためページの`useEraseShortcuts`は盤面では動かず、#428はこれが原因だった。項目が選べるときはUIKitがこの項目でDeleteを受け、Webへ`eraseSelection`を送る。項目が選べないとき（入力欄にフォーカスがあるとき）は、UIKitがキーをそのまま入力欄へ渡し、入力中の文字が1文字消える。ページ側に同じキーを受ける受け口や重複排除は置かない。1回の押下がメニューとページの両方へ届くことはなく、範囲の消去は画面の「消去」と同じ`editor.eraseSelection`で1件の履歴になる。
+
+UIテストでDeleteキーを送るときは、Xcode 27.2の`XCUIApplication.typeKey`が`XCUIKeyboardKey.delete`（U+007F）をキーに変換できず何も送らないため、記号の「⌫」（U+232B）を使う（`KeyboardCommandUITests.typeDelete`）。
 
 Swiftは保存画面・共有シート・Document Pickerを表示している間（`WebViewModel.isPresentingNativeUI`）、メニューの項目をすべて選べない表示にし、操作を送らない。新しい操作のたびにWeb側で別の出力やダイアログが重なるのを防ぐためである。表示した時点で立て、キャンセル・保存の完了・共有シートの完了・下へスワイプして閉じたとき（`presentationControllerDidDismiss`）に下ろす。数え漏らしに備え、`perform`は表示中の画面があるときも送らない。
 
