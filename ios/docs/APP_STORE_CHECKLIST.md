@@ -1,6 +1,6 @@
 # App Store提出チェックリスト
 
-提出・公開までの順序は、[v1.0・v1.1 提出・公開の手順](RELEASE_RUNBOOK.md)を参照する。
+提出・公開までの順序は、[iOSの提出・公開の手順](RELEASE_RUNBOOK.md)を参照する。
 
 ## 実装・資産
 
@@ -30,11 +30,11 @@
 - [x] GitHub Actionsの文書検査、Web、Release Archive、iPhone／iPad UIテスト、iPhone／iPad app-update、集約ゲートを成功させる（統合先のrun [`35739657855`](https://github.com/K0mork/knittingEditor/actions/runs/35739657855)、失敗ジョブ再実行後に全11ジョブ成功。統合前は旧リポジトリのrun `35572127914`、全6ジョブ）。
 - [x] 提出候補のPRでci-gate、提出候補を含むmainコミットで別のFull iOS validation（iPhone／iPad全テスト、両端末のapp_update、unsigned Release Archive・オフライン資産検査）の成功を確認する。全検証は関連マージ後・夜間・手動実行で行い、Pagesのゲートには含めない。main・夜間の失敗Issueがあれば調査・修正する。（2026-11-03、`main`の`b0a7f26`で`CI and deploy Pages`のrun [`41554607495`](https://github.com/K0mork/knittingEditor/actions/runs/41554607495)の`ci-gate`と、Full iOS validationのrun [`41557279662`](https://github.com/K0mork/knittingEditor/actions/runs/41557279662)の全ジョブが成功）
 - [x] 提出用のアーカイブはXcode 27.1（iOS 27.1 SDK）以降で作る。Xcode 26.6以前で作ると、iPhone Duoを開いたときに従来のiPhoneの大きさでしか表示されない（#96）。また、2027年4月からは、App Store ConnectへアップロードするアプリをiOS 27 SDK以降でビルドすることがAppleの必須要件になる（[Appleの告知](https://developer.apple.com/news/?id=k1mtkt1k)、2026-09-09）。CIのXcodeは26.6のまま（#289）なので、手元のXcodeで作る。アップロード前に、アーカイブ内のアプリの`Info.plist`で`DTSDKName`が`iphoneos27.1`以降、`DTXcodeBuild`がXcode 27.1以降のビルド番号（27.1正式版は`27A9275`）であることを確かめる。（2026-11-03、提出用のアーカイブを手元のXcode 27.2（`27B52`）で作り、`DTSDKName`が`iphoneos27.2`であることを確かめた。[記録](RELEASE_VERIFICATION_RECORDS.md#2026-11-03-提出用アーカイブのアップロードと審査への提出)）
-  - 2026-10-21に手元のXcode 27.1で署名なしのReleaseアーカイブを試作し、SDKとXcodeの版の条件を満たすことを確かめた（[記録](RELEASE_VERIFICATION_RECORDS.md#2026-10-21-提出用アーカイブの試作手元のxcode-271)）。提出用は加入後に署名して作り直すので、この欄は未チェックのままにする。
+  - 2026-10-21に手元のXcode 27.1で署名なしのReleaseアーカイブを試作し、SDKとXcodeの版の条件を満たすことを確かめた（[記録](RELEASE_VERIFICATION_RECORDS.md#2026-10-21-提出用アーカイブの試作手元のxcode-271)）。
 - [x] App Store Connectでスクリーンショットを登録するときに、次を確かめて[`SCREENSHOTS.md`](SCREENSHOTS.md)を直す（#353）。2027年4月以降に提出するときは、iPhone Duoのスクリーンショットも登録する。（2026-11-03に確かめた）
   - iPhoneで必須のmedium displayの欄を、6.9インチ（1320×2868）の画像だけで満たせるか。→ 満たせない。6.9インチの画像は大きさが無効として登録できなかったので、縮小した6.3インチ（1206×2622）の5枚を登録した。
   - iPhone Duoの外側・内側のどちらが必須か、縦と横のどちらでもよいか、何枚から登録できるか。→ 欄は1つで、外側・内側のどちらの大きさも、縦横どちらの向きも受け付け、必須の表示は無い。最大10枚。v1.0では外側の5枚を登録した。
-- 「提出ビルドで」で始まる項目と、TestFlight内部テストの項目は、審査への提出と並行して確かめ、公開の前に終える。提出の前に終えなくてよいが、v1.0・v1.1は手動公開で提出する（[`RELEASE_RUNBOOK.md`](RELEASE_RUNBOOK.md)の手順7・8）。
+- 「提出ビルドで」で始まる項目と、TestFlight内部テストの項目は、審査への提出と並行して確かめ、公開の前に終える。提出の前に終えなくてよいが、そのときは手動公開で提出する（[`RELEASE_RUNBOOK.md`](RELEASE_RUNBOOK.md)の手順7〜9）。
 - [x] 提出ビルドで実機の機内モードのP0フローを再確認する。開発ビルドではiPad Air（第5世代、2026-09-22）とiPhone 17（2026-10-09）の主要フロー、iPadの機内モード前後の通信監視（2026-10-02）は確認済み。2026-11-03に、TestFlightの提出ビルド1.0 (1)でiPhone 17とiPad Air 第5世代の両方を確かめた（[`REAL_DEVICE_RELEASE_CHECKLIST.md`](REAL_DEVICE_RELEASE_CHECKLIST.md)のM0・M6、[記録](RELEASE_VERIFICATION_RECORDS.md#2026-11-03-testflightでの提出ビルドの確認2526)）。
 - [x] 提出ビルドでFiles、AirDrop、共有先、外部`.knit`の往復と残りの異常系を実機で確認する。開発ビルドでのiPhone・iPadの保存・共有・復元は確認済みだが、2026-11-03にTestFlightの提出ビルド1.0 (1)で、両端末の往復と、キャンセル・上書き・不正形式・巨大解凍データ・オフラインのiCloud Driveでクラッシュしないことを確かめた。同日、読み込み直前のファイル削除を、提出ビルドとアプリのコードが同じ開発ビルドとLLDBで両端末で確かめ、クラッシュしなかった。オフラインのiCloud Driveの理由の表示は、利用者の判断でv1.0ではクラッシュしないことで合格とし、#387で扱う（[`REAL_DEVICE_RELEASE_CHECKLIST.md`](REAL_DEVICE_RELEASE_CHECKLIST.md)のM3）。
 - [x] 提出ビルドで、1000×1000盤面のメモリ、PNG拒否、PDF出力時間を記録する。（2026-11-03、1.0 (1)で両端末とも、PNGの上限超過で保存が押せなくなること、出力が測れないほど短いこと、メモリ不足による終了の記録が無いことを確かめた。メモリの値は測っていない）開発ビルドでの記録は[`REAL_DEVICE_RELEASE_CHECKLIST.md`](REAL_DEVICE_RELEASE_CHECKLIST.md)のM2にある。
