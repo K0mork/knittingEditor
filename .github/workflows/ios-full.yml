@@ -129,11 +129,14 @@ jobs:
     # `ios`ジョブと同じXcodeに固定する。
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
-    # 実作業は8〜10分。ランナーの後片付けが5分以上かかって20分を超え、
-    # 検証が全部成功しているのにcancelled扱いになったことがある。
-    timeout-minutes: 30
+    # 前のリリースのアプリも作るため、実作業は15分ほど。ランナーの後片付けが5分以上
+    # かかって、検証が全部成功しているのにcancelled扱いになったことがある。
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        # 更新前のアプリを、HEADから辿れる最新のリリースのタグから作るため、履歴とタグを取る。
+        with:
+          fetch-depth: 0
       # `ios_full`ジョブと同じ理由で、`.node-version`の版のNodeを使う。
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
@@ -153,13 +156,17 @@ jobs:
         run: ios/scripts/install-xcodegen.sh "$RUNNER_TEMP/xcodegen"
       - name: Generate Xcode project
         run: xcodegen generate --spec ios/project.yml
-      - name: Simulate app update and restore IndexedDB
+      - name: Simulate app update from the previous release and restore IndexedDB
         env:
           SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}
+        # macOSの/bin/bash 3.2は、EXITのtrapがあると未定義の変数で止まっても0で終わり、
+        # 途中で止まったのに成功になったことがある。最後の成功の行が出たときだけ成功にする。
         run: |
           ios/scripts/simulate-app-update.sh \
             '${{ matrix.device }}' \
-            'platform=iOS Simulator,name=${{ matrix.device }},OS=latest'
+            'platform=iOS Simulator,name=${{ matrix.device }},OS=latest' \
+            2>&1 | tee "$RUNNER_TEMP/app-update.log"
+          grep -qF 'アプリ更新シミュレーション成功' "$RUNNER_TEMP/app-update.log"
 
   release_archive:
     runs-on: macos-26
