@@ -71,7 +71,7 @@ iOS側の変更では、ルートの項目に加えて、TestFlight／App Store�
 
 Issueの管理（ラベル、版ごとのマイルストーン、`Closes #番号`）はルートの[`AGENTS.md`](../AGENTS.md)の「GitHub Workflow」に従う。iOS版では加えて次を守る。
 
-- `needs-device`のIssueはSimulatorの結果だけで閉じない。実機の手順は[`docs/REAL_DEVICE_RELEASE_CHECKLIST.md`](docs/REAL_DEVICE_RELEASE_CHECKLIST.md)に従う。
+- `needs-device`のIssueはSimulatorの結果だけで閉じない。実機の確認は、直した版の提出前に[`docs/DEVICE_TESTING.md`](docs/DEVICE_TESTING.md)のとおりに行う。
 - 仕様変更時は[`DEVELOPMENT.md`](DEVELOPMENT.md)、[`SPECIFICATION.md`](SPECIFICATION.md)、関係するIssueの不整合を残さない。
 
 ## Testing Requirements
@@ -84,7 +84,7 @@ Issueの管理（ラベル、版ごとのマイルストーン、`Closes #番号
 - UI変更: iPhone狭幅、iPad全画面、iPad可変幅の目視確認
 - 記号変更: 全記号の画面、PNG、PDF回帰確認
 - データ形式変更: Web→アプリ、アプリ→Webの`.knit`往復試験
-- リリース候補: 機内モードでP0フローを通すオフライン試験
+- リリース候補: 機内モードでP0フローを通すオフライン試験（[`docs/DEVICE_TESTING.md`](docs/DEVICE_TESTING.md)の公開前）
 
 CIの構成、PR・マージ後に確かめるジョブ、ローカルで行う検査は、ルートの[`AGENTS.md`](../AGENTS.md)の「Change-specific Test Requirements」と[`docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md)の「ビルドと公開」を正とする。具体的なコマンドと端末は両ワークフローを正とする。
 
