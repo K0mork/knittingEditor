@@ -42,14 +42,12 @@
   .features { margin-top: 70px; font-size: 68px; font-weight: 500; opacity: .9; white-space: nowrap; }
   .device { position: absolute; background: #111; box-shadow: 0 40px 110px rgba(0,0,0,.45); overflow: hidden; }
   .screen { overflow: hidden; }
-  .screen img { display: block; }
-  /* 提出用スクリーンショットから、説明文の帯を除いた画面の部分だけを切り出す。 */
+  .screen img { display: block; width: 100%; }
+  /* 画面は ios/design/app-store-screenshots/screens/ の画像を、加工せずに縮小して入れる。 */
   .ipad { left: 3040px; top: 760px; width: 900px; padding: 24px; border-radius: 64px; }
-  .ipad .screen { width: 900px; height: calc(2286px * 900 / 1713); border-radius: 40px; }
-  .ipad img { width: calc(2064px * 900 / 1713); margin: calc(-466px * 900 / 1713) 0 0 calc(-175px * 900 / 1713); }
+  .ipad .screen { width: 900px; height: calc(2285px * 900 / 1713); border-radius: 40px; }
   .iphone { left: 2830px; top: 1180px; width: 380px; padding: 17px; border-radius: 70px; }
   .iphone .screen { width: 380px; height: calc(2381px * 380 / 1095); border-radius: 54px; }
-  .iphone img { width: calc(1320px * 380 / 1095); margin: calc(-487px * 380 / 1095) 0 0 calc(-112px * 380 / 1095); }
   /* ?safe で開いたときだけ、プレビューのスクリーンショットから読み取った範囲と、縦横比から計算した範囲を重ねる（2026-11-03、目安）。 */
   .area { display: none; position: absolute; outline: 10px dashed; }
   body.safe-area .area { display: block; }
@@ -68,8 +66,8 @@
     <h1>棒針の<em>編み図</em>を、<br>iPhoneとiPadで。</h1>
     <div class="features">29種類の記号・自動保存・PNG／PDF</div>
   </div>
-  <div class="device ipad"><div class="screen"><img src="../../docs/screenshots/app-store-ipad-13-01-editor.png" alt=""></div></div>
-  <div class="device iphone"><div class="screen"><img src="../../docs/screenshots/app-store-iphone-6.9-01-editor.png" alt=""></div></div>
+  <div class="device ipad"><div class="screen"><img src="../app-store-screenshots/screens/ipad-13-01-editor.png" alt=""></div></div>
+  <div class="device iphone"><div class="screen"><img src="../app-store-screenshots/screens/iphone-6.9-01-editor.png" alt=""></div></div>
   <div class="area wide"></div>
   <div class="area search"></div>
   <div class="area phone"></div>
