@@ -18,6 +18,8 @@ work_dir="${TMPDIR:-/tmp}/knitting-editor-app-update-${simulator_name//[^[:alnum
 base_root="$work_dir/base"
 base_derived_data="$work_dir/base-derived-data"
 updated_derived_data="$work_dir/updated-derived-data"
+# テストの結果（画面写真・要素の一覧を含む）。CIは失敗したときにartifactへ残す。
+results_dir="${APP_UPDATE_RESULTS_DIR:-$work_dir/results}"
 probe_marker="/tmp/knitting-editor-app-update-probe"
 
 simulator_udid="${SIMULATOR_UDID:-}"
@@ -30,10 +32,6 @@ fi
 # 可能性があるため、検出済みUDIDへ正規化する。
 destination="platform=iOS Simulator,id=${simulator_udid}"
 
-# 1テストあたりの実行時間上限は、遅いランナーでの実測に合わせる。fixture作成は
-# ダイアログ入力と自動保存待ちを含み、GitHubのmacOSランナーで178秒かかって
-# 既定の2分を超えたことがある（テスト自体は成功していたのに`Failing tests:`へ載る）。
-# 本当のハングはジョブの`timeout-minutes`が捕まえる。
 base_ref="${APP_UPDATE_BASE_REF:-}"
 if [[ -z "$base_ref" ]]; then
   # `head`で読むのをやめるとgitがSIGPIPEで終わり、pipefailで止まるため、awkで全部読む。
@@ -44,8 +42,10 @@ if [[ -z "$base_ref" ]] || ! git -C "$repo_root" rev-parse --verify --quiet "${b
   exit 1
 fi
 
-rm -rf "$work_dir"
-mkdir -p "$work_dir" "$base_root"
+rm -rf "$work_dir" "$results_dir/seed.xcresult" "$results_dir/restore.xcresult"
+mkdir -p "$work_dir" "$base_root" "$results_dir"
+# 相対パスで指定されても、テストを流すディレクトリによらず同じ場所に書き出すよう絶対パスにする。
+results_dir="$(cd "$results_dir" && pwd)"
 touch "$probe_marker"
 trap 'rm -f "$probe_marker"' EXIT
 
@@ -65,6 +65,11 @@ if command -v xcodegen >/dev/null 2>&1; then
   xcodegen generate --spec "$base_root/ios/project.yml" --quiet
 fi
 
+# 1テストあたりの実行時間上限。fixture作成はダイアログ入力と自動保存待ちを含み、遅いランナーでは
+# 成功しても209.8秒かかった（#441）。上限を超えると`-retry-tests-on-failure`の2回目が
+# 0件で終わり、ジョブが失敗するので、最大の240秒にする。本当のハングはジョブの`timeout-minutes`が捕まえる。
+test_time_allowance=240
+
 echo "[3/5] 前のリリースのアプリでfixtureを保存"
 (
   cd "$base_root/ios"
@@ -73,11 +78,12 @@ echo "[3/5] 前のリリースのアプリでfixtureを保存"
     -scheme knittingEditor \
     -destination "$destination" \
     -derivedDataPath "$base_derived_data" \
+    -resultBundlePath "$results_dir/seed.xcresult" \
     -retry-tests-on-failure \
     -test-iterations 2 \
     -test-timeouts-enabled YES \
-    -default-test-execution-time-allowance 180 \
-    -maximum-test-execution-time-allowance 240 \
+    -default-test-execution-time-allowance "$test_time_allowance" \
+    -maximum-test-execution-time-allowance "$test_time_allowance" \
     -only-testing:knittingEditorUITests/KnittingEditorUITests/testSeedDocumentForAppUpdateProbe \
     CODE_SIGNING_ALLOWED=NO
 )
@@ -110,11 +116,12 @@ echo "[5/5] 今のコミットのアプリでfixtureが復元されることを�
   xcodebuild test-without-building \
     -xctestrun "$updated_xctestrun" \
     -destination "$destination" \
+    -resultBundlePath "$results_dir/restore.xcresult" \
     -retry-tests-on-failure \
     -test-iterations 2 \
     -test-timeouts-enabled YES \
-    -default-test-execution-time-allowance 180 \
-    -maximum-test-execution-time-allowance 240 \
+    -default-test-execution-time-allowance "$test_time_allowance" \
+    -maximum-test-execution-time-allowance "$test_time_allowance" \
     -only-testing:knittingEditorUITests/KnittingEditorUITests/testUpdatedAppRestoresSeedDocument \
     CODE_SIGNING_ALLOWED=NO
 )
