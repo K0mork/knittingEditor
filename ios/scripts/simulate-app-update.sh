@@ -58,7 +58,7 @@ xcrun simctl bootstatus "$simulator_udid" -b
 echo "[1/5] 専用Simulatorの既存アプリデータを消去: $simulator_udid"
 xcrun simctl uninstall "$simulator_udid" "$bundle_id" >/dev/null 2>&1 || true
 
-echo "[2/5] 前のリリース（$base_ref）のソースを取り出す"
+echo "[2/5] 前のリリース（${base_ref}）のソースを取り出す"
 git -C "$repo_root" archive "$base_ref" | tar -x -C "$base_root"
 # タグのproject.ymlからXcodeプロジェクトを作り直す。XcodeGenが無ければ、タグにコミットされたものを使う。
 if command -v xcodegen >/dev/null 2>&1; then
@@ -119,4 +119,4 @@ echo "[5/5] 今のコミットのアプリでfixtureが復元されることを�
     CODE_SIGNING_ALLOWED=NO
 )
 
-echo "アプリ更新シミュレーション成功（$base_ref から）: $simulator_name"
+echo "アプリ更新シミュレーション成功（${base_ref} から）: $simulator_name"

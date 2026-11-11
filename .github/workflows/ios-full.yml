@@ -159,10 +159,14 @@ jobs:
       - name: Simulate app update from the previous release and restore IndexedDB
         env:
           SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}
+        # macOSの/bin/bash 3.2は、EXITのtrapがあると未定義の変数で止まっても0で終わり、
+        # 途中で止まったのに成功になったことがある。最後の成功の行が出たときだけ成功にする。
         run: |
           ios/scripts/simulate-app-update.sh \
             '${{ matrix.device }}' \
-            'platform=iOS Simulator,name=${{ matrix.device }},OS=latest'
+            'platform=iOS Simulator,name=${{ matrix.device }},OS=latest' \
+            2>&1 | tee "$RUNNER_TEMP/app-update.log"
+          grep -qF 'アプリ更新シミュレーション成功' "$RUNNER_TEMP/app-update.log"
 
   release_archive:
     runs-on: macos-26
