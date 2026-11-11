@@ -2,7 +2,7 @@
 
 ## 目的と範囲
 
-試し操作、制作の進行、別日の継続制作、編集後の出力を区別し、改善の判断材料とする。対象はWeb本番版の編集画面だけである。送信実装は`src/analytics.ts`、イベントの呼び出し元は`packages/editor-core/ui/useEditorController.ts`、制作量の判定は`packages/editor-core/chartProgress.ts`に置く。iOS版は`NO_ANALYTICS`を使い、イベントを送らず、計測用の端末内状態も持たない。
+試し操作、制作の進行、別日の継続制作、編集後の出力を区別し、改善の判断材料とする。対象はWeb本番版の編集画面と、`/guide/`・`/support/`・`/privacy/`の静的なページである。編集画面の送信実装は`src/analytics.ts`、イベントの呼び出し元は`packages/editor-core/ui/useEditorController.ts`、制作量の判定は`packages/editor-core/chartProgress.ts`に置く。静的なページの送信実装は`public/analytics.js`に置く。iOS版は`NO_ANALYTICS`を使い、イベントを送らず、計測用の端末内状態も持たない。
 
 開発ビルド、`navigator.webdriver`が有効な自動テスト、User-Agentに`Claude/`を含むアプリ内ブラウザ、オプトアウト中は計測を動かさず、計測キーを読み書きしない。オプトアウトの場合だけは既存の計測キーを可能な範囲で削除する。一般のアプリ内ブラウザすべてを除外するわけではない。
 
@@ -28,6 +28,19 @@
 | `operation_failed` | 初期化、管理操作、出力、復元の失敗時 | `operation_name`: `editor_init`, `block_save`, `block_delete`, `chart_create`, `chart_rename`, `chart_duplicate`, `chart_delete`, `png_export`, `pdf_export`, `backup_export`, `backup_restore`; `failure_reason`: 下記 |
 
 `failure_reason`は`site_updated`, `worker_start`, `worker_error`, `storage_quota`, `storage`, `invalid_backup`, `backup_limit`, `png_canvas`, `unknown`だけを使う。`png_canvas`は、PNGの描画面を端末のメモリ不足で確保できなかったとき（読み戻した画素や書き出した画像の寸法が合わないとき）に使う。任意の例外メッセージを値にしない。
+
+### 静的なページのイベント
+
+`/guide/`・`/support/`・`/privacy/`は、編集画面と同じGA4の測定IDへ、ページの閲覧（GA4の`page_view`）と、`data-analytics`を付けたリンクのクリックだけを送る。CSPがインラインのスクリプトを止めるため、`public/analytics.js`を外部スクリプトとして読み込む。
+
+| イベント | 送るとき | パラメータと値 |
+|---|---|---|
+| `link_clicked` | `data-analytics`を付けたリンクを押したとき | `link_name`: `editor`（編集画面へ進む）、`app_store`（App Storeの製品ページへ進む） |
+
+- 送るのは本番のドメイン`knittingeditor.com`のページだけである。開発サーバーとプレビューでは送らない。
+- 除外の条件は編集画面と同じ（`navigator.webdriver`、User-Agentの`Claude/`、`knitting-editor:analytics-opt-out`）。
+- 静的なページのイベントには`app_build`を付けない。ページは版ごとに変わらず、公開の版を識別する必要がないためである。
+- GA4が自動で収集するイベントは、プロパティの設定に従う。この実装からは送らない。
 
 ### 制作量に関する4イベント
 
