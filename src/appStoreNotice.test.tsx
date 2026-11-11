@@ -8,6 +8,8 @@ import {
 import iosProject from '../ios/project.yml?raw';
 
 const settings = vi.hoisted(() => ({ values: new Map<string, unknown>(), failReads: false }));
+const analytics = vi.hoisted(() => ({ trackLinkClick: vi.fn() }));
+vi.mock('./analytics', () => analytics);
 vi.mock('@knitting-editor/editor-core/storage/database', () => ({
   getSetting: vi.fn(async (key: string) => {
     if (settings.failReads) throw new Error('blocked');
@@ -74,6 +76,7 @@ describe('useAppStoreNotice', () => {
   beforeEach(() => {
     settings.values.clear();
     settings.failReads = false;
+    analytics.trackLinkClick.mockReset();
     vi.mocked(getSetting).mockClear();
     container = document.createElement('div');
     document.body.append(container);
@@ -129,11 +132,18 @@ describe('useAppStoreNotice', () => {
     expect(notice()).toBeNull();
   });
 
-  it('records the notice as seen when the App Store is opened from it', async () => {
+  it('records the notice as seen and the link click when the App Store is opened from it', async () => {
     await render(device(IPAD_SAFARI_17));
     await act(async () => control('App Storeで見る').click());
     expect(notice()).toBeNull();
     expect(settings.values.has(APP_STORE_NOTICE_DISMISSED_KEY)).toBe(true);
+    expect(analytics.trackLinkClick).toHaveBeenCalledWith('app_store');
+  });
+
+  it('does not record a link click when the notice is only closed', async () => {
+    await render(device(IPAD_SAFARI_17));
+    await act(async () => control('閉じる').click());
+    expect(analytics.trackLinkClick).not.toHaveBeenCalled();
   });
 
   it('does not read the record on devices that cannot install the app', async () => {

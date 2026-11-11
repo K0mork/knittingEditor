@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { getSetting, setSetting } from '@knitting-editor/editor-core/storage/database';
 import { isIPhoneOrIPad } from './appleDevice';
+import { trackLinkClick } from './analytics';
 
 /**
  * iPhone・iPad版アプリのApp Storeの製品ページ。
@@ -68,7 +69,7 @@ export function AppStoreNotice({ onDismiss }: { onDismiss: () => void }) {
   return <section className="backup-reminder app-store-notice" aria-label="アプリの案内">
     <p><span>iPhone・iPad版のアプリがあります。</span><span>Web版の編み図は.knitバックアップで移せます。</span></p>
     <div className="backup-reminder-actions">
-      <a className="app-store-notice-link" href={APP_STORE_URL} target="_blank" rel="noopener" onClick={onDismiss}>App Storeで見る</a>
+      <a className="app-store-notice-link" href={APP_STORE_URL} target="_blank" rel="noopener" onClick={() => { trackLinkClick('app_store'); onDismiss(); }}>App Storeで見る</a>
       <button type="button" onClick={onDismiss}>閉じる</button>
     </div>
   </section>;

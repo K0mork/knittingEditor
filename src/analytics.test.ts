@@ -95,6 +95,16 @@ describe('analytics', () => {
     expect(queuedCommand(1)).toEqual(['config', 'G-VVE0G4ZFL4']);
   });
 
+  it('queues a link click with the link name', async () => {
+    const { initializeAnalytics, trackLinkClick } = await loadAnalytics();
+    initializeAnalytics(true);
+    trackLinkClick('app_store');
+
+    expect(window.dataLayer?.slice(2).map((command) => Array.from(command))).toEqual([
+      ['event', 'link_clicked', { link_name: 'app_store', app_build: __APP_BUILD__ }],
+    ]);
+  });
+
   it('queues product events and records the first edit once', async () => {
     const { initializeAnalytics, trackAnalyticsEvent, trackFirstEdit } = await loadAnalytics();
     initializeAnalytics(true);
