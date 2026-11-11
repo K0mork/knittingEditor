@@ -74,17 +74,12 @@ const TEMPLATES = [
     },
   },
   {
-    slug: 'lace',
-    name: '透かし（穴あき）',
-    summary: 'かけ目と2目一度を組み合わせた、小さな穴の並ぶ編み地です。段の途中で目数を変えずに模様を入れられます。',
-    symbols: '表目・かけ目・右上2目一度',
+    slug: 'twist',
+    name: 'ねじり目の列',
+    summary: '表目の列をねじって編む、縦に筋の出る編み地です。ねじり目の記号の置き方を確かめられます。',
+    symbols: '表目・ねじり目',
     defaultKey: 'knit',
-    plan: (row) => row % 4 === 0
-      ? [
-        { col: 6, key: 'yo' }, { col: 7, key: 'right_up_two_one' },
-        { col: 14, key: 'yo' }, { col: 15, key: 'right_up_two_one' },
-      ]
-      : [],
+    plan: () => [6, 14].map((col) => ({ col, key: 'twist_stitch' })),
   },
   {
     slug: 'nordic',

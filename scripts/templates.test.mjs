@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { cellColor, cellStitchId } from '../packages/editor-core/model/Board.ts';
 import { decodeBackup } from '../packages/editor-core/storage/backupCodec.ts';
+import { STITCH_BY_ID } from '../packages/editor-core/stitches/catalog.ts';
 
 const root = new URL('../', import.meta.url);
 const read = (path) => readFileSync(new URL(path, root));
@@ -15,12 +16,12 @@ const TEMPLATES = [
   { slug: 'rib-1x1', name: '1目ゴム編み' },
   { slug: 'rib-2x2', name: '2目ゴム編み' },
   { slug: 'cable-2x2', name: '2/2ケーブル' },
-  { slug: 'lace', name: '透かし（穴あき）' },
+  { slug: 'twist', name: 'ねじり目の列' },
   { slug: 'nordic', name: '北欧の小モチーフ' },
   { slug: 'checker', name: '市松（配色）' },
 ];
 
-const STITCH = { knit: 1, purl: 2, yo: 3, rightUpTwoOne: 4, rightUpTwoCross: 18, leftUpTwoCross: 19 };
+const STITCH = { knit: 1, purl: 2, twist: 23, rightUpTwoCross: 18, leftUpTwoCross: 19 };
 const COLORS = { garnet: 0xa63b32, sand: 0xe3d3ac, forest: 0x2f5d46 };
 
 function cellsOf(slug) {
@@ -40,6 +41,24 @@ describe('配布するテンプレートの.knit', () => {
   it.each(TEMPLATES)('$slug is a 20x20 chart that opens as a restored copy', ({ slug, name }) => {
     const { document } = cellsOf(slug);
     expect(document.name).toBe(`${name}（復元）`);
+  });
+
+  it.each(TEMPLATES)('$slug は、どの段も20目を使い、20目を作る', ({ slug }) => {
+    // 段の途中で目数が変わると、次の段の目数と合わなくなる。かけ目や増し目を使う模様は、
+    // この幅のままでは置けないため、テンプレートには入れない。
+    const { cells } = cellsOf(slug);
+    for (let row = 0; row < 20; row++) {
+      let consumes = 0;
+      let produces = 0;
+      for (let col = 0; col < 20; col++) {
+        const value = at(cells, row, col);
+        if (!value) continue;
+        const definition = STITCH_BY_ID.get(cellStitchId(value));
+        consumes += definition.consumes;
+        produces += definition.produces;
+      }
+      expect({ row: row + 1, consumes, produces }).toEqual({ row: row + 1, consumes: 20, produces: 20 });
+    }
   });
 
   it('メリヤス編みはすべて表目、鹿の子編みは表目と裏目を市松に置く', () => {
@@ -70,12 +89,11 @@ describe('配布するテンプレートの.knit', () => {
     expect(stitchAt(cells, 11, 8)).toBe(STITCH.leftUpTwoCross);
   });
 
-  it('透かしはかけ目と2目一度を置く', () => {
-    const { cells } = cellsOf('lace');
-    expect(stitchAt(cells, 0, 6)).toBe(STITCH.yo);
-    expect(stitchAt(cells, 0, 7)).toBe(STITCH.rightUpTwoOne);
-    // 2目一度が覆うマスは空にしておく。
-    expect(at(cells, 0, 8)).toBe(0);
+  it('ねじり目は決まった列に置く', () => {
+    const { cells } = cellsOf('twist');
+    expect(stitchAt(cells, 0, 6)).toBe(STITCH.twist);
+    expect(stitchAt(cells, 10, 14)).toBe(STITCH.twist);
+    expect(stitchAt(cells, 0, 7)).toBe(STITCH.knit);
   });
 
   it('配色のテンプレートは色を変えて置く', () => {

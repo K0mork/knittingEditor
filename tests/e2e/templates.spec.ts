@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import { expect, test } from './fixtures';
 
-const TEMPLATES = ['seed', 'stockinette', 'rib-1x1', 'rib-2x2', 'cable-2x2', 'lace', 'nordic', 'checker'];
+const TEMPLATES = ['seed', 'stockinette', 'rib-1x1', 'rib-2x2', 'cable-2x2', 'twist', 'nordic', 'checker'];
 
 test('lists every template with a preview and a download link', async ({ page }) => {
   await page.goto('/templates/');
