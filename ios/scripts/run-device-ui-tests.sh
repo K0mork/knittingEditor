@@ -10,6 +10,7 @@
 #
 # 検証用の端末で使う。端末内のこのアプリの編み図はすべて消える。
 # 端末はケーブルでつなぎ、ロックを解除し、「設定 > デベロッパ > UIオートメーション」をオンにしておく。
+# iPadはアプリをフルスクリーンで開く設定にしておく（ios/docs/DEVICE_TESTING.md）。
 set -eu
 
 if [ $# -lt 1 ]; then
@@ -84,11 +85,12 @@ echo '[3/4] UIテストを実行'
 # 一覧の1行が1つのテスト。名前に空白は無いので、ここでは語の分割をそのまま使う。
 only=$(grep -v -e '^[[:space:]]*#' -e '^[[:space:]]*$' "$LIST" | sed 's|^|-only-testing:knittingEditorUITests/|')
 status=0
-# 再試行と時間の上限は、CIの`ios`ジョブと同じにする。
+# 再試行と時間の上限は、CIの`ios`ジョブと同じにする。失敗したときに端末の診断情報
+# （sysdiagnose相当）を集めると数分かかり、端末全体の情報が結果に入るため、集めない。
 # shellcheck disable=SC2086
 xcodebuild test-without-building -project "$PROJECT" -scheme knittingEditor \
   -destination "platform=iOS,id=$DEVICE" -derivedDataPath "$DERIVED" -resultBundlePath "$RESULT" \
-  -allowProvisioningUpdates DEVELOPMENT_TEAM="$TEAM" \
+  -allowProvisioningUpdates DEVELOPMENT_TEAM="$TEAM" -collect-test-diagnostics never \
   -retry-tests-on-failure -test-iterations 2 -test-timeouts-enabled YES \
   -default-test-execution-time-allowance 150 -maximum-test-execution-time-allowance 240 \
   $only > "$OUT/test.log" 2>&1 || status=$?

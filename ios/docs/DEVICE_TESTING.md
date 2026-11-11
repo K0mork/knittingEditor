@@ -21,7 +21,7 @@ iOS版の版ごとに行う実機の確認の、時期と手順。提出・公�
 
 端末1台ずつ、iPhone 17、iPad Air 第5世代の順に行う。
 
-1. 端末をケーブルでMacにつなぎ、ロックを解除する。「設定 > デベロッパ > UIオートメーション」をオンにしておく。
+1. 端末をケーブルでMacにつなぎ、ロックを解除する。「設定 > デベロッパ > UIオートメーション」をオンにしておく。iPadは「設定 > マルチタスクとジェスチャ」で、アプリをフルスクリーンで開く設定にしておく。ウインドウで開くと、回転しても横向きの配置にならず、`testPrimaryControlsRemainUsableInPortraitAndLandscape`が失敗する。
 2. 提出するコミットで次を実行する。UDIDは`xcrun devicectl list devices`で調べる。Team IDは[実施前の固定情報](REAL_DEVICE_RELEASE_CHECKLIST.md#実施前の固定情報)のとおり、そのターミナルでだけ指定する。
 
    ```sh
