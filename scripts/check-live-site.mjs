@@ -15,6 +15,7 @@ const MAX_INTERVAL_MS = 2 ** 31 - 1;
 export const LIVE_SITE_FILES = [
   { path: '/', type: 'text/html', distFile: 'index.html' },
   { path: '/guide/', type: 'text/html', distFile: 'guide/index.html' },
+  { path: '/templates/', type: 'text/html', distFile: 'templates/index.html' },
   { path: '/support/', type: 'text/html', distFile: 'support/index.html' },
   { path: '/privacy/', type: 'text/html', distFile: 'privacy/index.html' },
   { path: '/privacy/app/', type: 'text/html', distFile: 'privacy/app/index.html' },

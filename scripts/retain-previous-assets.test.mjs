@@ -184,6 +184,7 @@ describe('retainPreviousAssets', () => {
         headers: { 'last-modified': 'Mon, 26 Oct 2026 02:54:44 GMT' },
       }),
       '/guide/': '<link rel="stylesheet" href="/assets/index-old.css">',
+      '/templates/': '',
       '/support/': '',
       '/privacy/': '',
       '/privacy/app/': '',
