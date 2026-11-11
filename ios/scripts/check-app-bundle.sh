@@ -146,4 +146,23 @@ if [ -n "$network_matches" ]; then
   exit 1
 fi
 
+# アプリアイコンは`App/AppIcon.icon`からactoolが作る。iOS 26以降で使うLiquid Glassの層（通常・ダーク・色付き）と、
+# それより前のiOS向けに1枚にまとめた画像の両方が入っていることを確かめる。
+icon_name=$(plutil -extract CFBundleIcons.CFBundlePrimaryIcon.CFBundleIconName raw -o - "$APP_PATH/Info.plist" 2>/dev/null || true)
+[ "$icon_name" = "AppIcon" ] || {
+  echo "unexpected primary app icon name: ${icon_name:-<missing>}" >&2
+  exit 1
+}
+[ -f "$APP_PATH/AppIcon60x60@2x.png" ] || {
+  echo "missing app icon image for iOS versions before 26" >&2
+  exit 1
+}
+icon_appearances=$(xcrun assetutil --info "$APP_PATH/Assets.car" | jq -r '
+  [.[] | select(.AssetType? == "IconImageStack" and .Name == "AppIcon") | .Appearance] | sort | join(",")
+')
+[ "$icon_appearances" = "ISAppearanceTintable,UIAppearanceDark,UIAppearanceLight" ] || {
+  echo "app icon must have Liquid Glass layers for light, dark and tinted appearances: ${icon_appearances:-<none>}" >&2
+  exit 1
+}
+
 echo "app bundle assets and offline references are valid"

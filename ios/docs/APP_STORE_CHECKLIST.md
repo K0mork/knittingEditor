@@ -5,8 +5,8 @@
 ## 実装・資産
 
 - [x] Apple Developer Team、Bundle ID、署名証明書、Provisioning Profileを確定する。Teamは個人で加入したApple Developer Programのもの（方針は2026-10-02に決定）。署名はAutomaticを続ける。手順は[RELEASE_RUNBOOK.md](RELEASE_RUNBOOK.md)の手順2・3。（2026-11-02、加入が有効になり、有料のTeamのAutomatic署名で`com.k0mork.knittingEditor`のApple Development証明書とProvisioning Profileが解決し、iPhone・iPadへ入れて起動できた（#17、[記録](RELEASE_VERIFICATION_RECORDS.md#2026-11-02-有料teamでの署名と実機導入iphone-17--ios-272ipad-air-第5世代--ipados-272有線)）。提出用の配布証明書は、手順5でArchiveをアップロードするときにXcodeが作る）
-- [x] AppIconのAny・Dark・Tintedを1024×1024で登録する（小サイズはXcodeが生成）。素材・再生成手順は`../design/app-icon/README.md`。
-- [x] iPhone・iPadのホーム画面でライト・ダーク・色合いを切り替えて確認した（iOS 18.2）。小サイズは設定のアプリ一覧（iPhone、iOS 27.0）とSpotlight（iPhone・iPad、iOS 18.2）で確認した（#78、PR #94の比較画像）。
+- [x] アプリアイコンを、Icon Composerの`App/AppIcon.icon`（Liquid Glassの層、通常・ダーク・モノの色）で登録する。大きさごとの画像とiOS 26より前に使う画像はXcodeが作る。構成と確かめ方は`../design/app-icon/README.md`。
+- [ ] iPhone・iPadのホーム画面で、通常・ダーク・クリア・色付きを切り替えて確かめる。iOS 26以降はLiquid Glassの層、それより前のiOSはXcodeが作った画像が出る。小さいサイズは設定のアプリ一覧とSpotlightで確かめる。`AppIcon.icon`は1.2のTestFlightで確かめる（#439）。前のアイコンは#78・PR #94で確認済み。
 - [x] 起動画面を確認する。（2026-10-21、Xcode 27.1のReleaseビルドをiOS 27.0 Simulatorのライト・ダークで録画し、白や黒の全面表示が出ないことを確認。[記録](RELEASE_VERIFICATION_RECORDS.md#2026-10-21-起動画面の確認simulator)。提出ビルドでの最終確認は実機リリースゲートのM6で行う）
 - [x] iPhone 6.9インチ（1320×2868）とiPad 13インチ（2064×2752）の、説明文入りの最終スクリーンショットを各5枚、`docs/screenshots/app-store-*.png`へ保存する（2026-10-20、#290。画面・順・文面は[`SCREENSHOTS.md`](SCREENSHOTS.md)）。App Store ConnectのiPhoneの欄はmedium display（1179×2556または1206×2622）の大きさしか受け付けないので、6.9インチから縮小した6.3インチ（1206×2622）の5枚も保存する（2026-11-03、#353）。
 - [x] iPhone Duoの外側（1398×2034）と内側（2007×2853）の、説明文入りのスクリーンショットを各5枚、同じ画面・順・文面で保存する（2026-10-29、#353。[`SCREENSHOTS.md`](SCREENSHOTS.md#iphone-duo)）。2027年4月から、iOS 27.1 SDK以降でビルドしたアプリの提出に必要になる。App Store Connectの欄は外側・内側のどちらも受け付けるので、片方の5枚を登録する（2026-11-03に確かめた）。
