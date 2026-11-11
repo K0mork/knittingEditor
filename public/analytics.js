@@ -55,9 +55,12 @@ export function start(environment = {}) {
   })) return false;
 
   const dataLayer = window.dataLayer ?? (window.dataLayer = []);
-  /** gtag.jsの読み込みを待たずに命令を並べる。 */
-  function gtag(...args) {
-    dataLayer.push(args);
+  /**
+   * gtag.jsの読み込みを待たずに命令を並べる。gtag.jsは`arguments`オブジェクトだけを命令として扱い、
+   * 配列を積んでも何も送らない。残余引数（`...args`）には書き換えない。
+   */
+  function gtag() {
+    dataLayer.push(arguments);
   }
   window.gtag = gtag;
 

@@ -40,7 +40,12 @@ describe('静的ページの計測', () => {
 
     document.querySelector('a')!.addEventListener('click', (event) => event.preventDefault());
     document.querySelector('a')!.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-    const commands = (window.dataLayer ?? []).map((command) => Array.from(command as ArrayLike<unknown>));
+    const dataLayer = window.dataLayer ?? [];
+    // gtag.jsは`arguments`オブジェクトだけを命令として扱う。配列を積むと何も送られない。
+    expect(dataLayer.map((command) => Object.prototype.toString.call(command))).toEqual(
+      dataLayer.map(() => '[object Arguments]'),
+    );
+    const commands = dataLayer.map((command) => Array.from(command as ArrayLike<unknown>));
     expect(commands).toContainEqual(['config', MEASUREMENT_ID]);
     expect(commands).toContainEqual(['event', 'link_clicked', { link_name: 'app_store' }]);
   });
