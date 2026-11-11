@@ -23,23 +23,25 @@ export function swiftTestMethods(source) {
   return tests;
 }
 
-export function validateSmokeList(text, methods) {
+export function validateSmokeList(text, methods, label = 'PR smoke UI test') {
   const entries = text.split(/\r?\n/)
     .filter((line) => line.trim() && !line.trimStart().startsWith('#'));
-  if (entries.length === 0) throw new Error('Empty PR smoke UI test list');
+  if (entries.length === 0) throw new Error(`Empty ${label} list`);
   const seen = new Set();
   for (const entry of entries) {
     if (!/^[A-Za-z_][A-Za-z0-9_]*\/test[A-Za-z0-9_]+$/.test(entry)) {
-      throw new Error(`Invalid PR smoke UI test: ${entry}`);
+      throw new Error(`Invalid ${label}: ${entry}`);
     }
-    if (seen.has(entry)) throw new Error(`Duplicate PR smoke UI test: ${entry}`);
-    if (!methods.has(entry)) throw new Error(`Unknown PR smoke UI test: ${entry}`);
+    if (seen.has(entry)) throw new Error(`Duplicate ${label}: ${entry}`);
+    if (!methods.has(entry)) throw new Error(`Unknown ${label}: ${entry}`);
     seen.add(entry);
   }
   return entries;
 }
 
-export function checkPrSmokeUiTests(root = fileURLToPath(new URL('../', import.meta.url))) {
+const defaultRoot = () => fileURLToPath(new URL('../', import.meta.url));
+
+function uiTestMethods(root) {
   const methods = new Set();
   function visit(directory) {
     for (const entry of readdirSync(directory, { withFileTypes: true })) {
@@ -51,12 +53,22 @@ export function checkPrSmokeUiTests(root = fileURLToPath(new URL('../', import.m
     }
   }
   visit(join(root, 'ios/UITests/KnittingEditorUITests'));
-  return validateSmokeList(readFileSync(join(root, 'ios/UITests/pr-smoke-ui-tests.txt'), 'utf8'), methods);
+  return methods;
+}
+
+export function checkPrSmokeUiTests(root = defaultRoot()) {
+  return validateSmokeList(readFileSync(join(root, 'ios/UITests/pr-smoke-ui-tests.txt'), 'utf8'), uiTestMethods(root));
+}
+
+/** 実機で流すUIテストの一覧（`ios/docs/DEVICE_TESTING.md`）。書式と検査はPRスモークと同じ。 */
+export function checkDeviceUiTests(root = defaultRoot()) {
+  return validateSmokeList(readFileSync(join(root, 'ios/UITests/device-ui-tests.txt'), 'utf8'), uiTestMethods(root), 'device UI test');
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     console.log(`PR smoke UI test list: ${checkPrSmokeUiTests().length} existing tests`);
+    console.log(`Device UI test list: ${checkDeviceUiTests().length} existing tests`);
   } catch (error) {
     console.error(error.message);
     process.exitCode = 1;

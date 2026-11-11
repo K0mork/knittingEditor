@@ -2370,10 +2370,12 @@ final class KnittingEditorUITests: XCTestCase {
     }
 
     /// WebViewのページを上へ送り、要素が押せる位置に来るまで待つ。
+    /// 実機のiPhoneは1回のスワイプで600pt前後しか送らず、高さ約9,800ptの使い方ページの
+    /// 末尾まで14回では届かなかった。押せる位置に来たら止まるので、上限は多めにする。
     private func scrollWebViewUntilHittable(
         _ element: XCUIElement,
         in app: XCUIApplication,
-        maximumSwipes: Int = 14
+        maximumSwipes: Int = 30
     ) {
         let webView = app.webViews.firstMatch
         var swipes = 0

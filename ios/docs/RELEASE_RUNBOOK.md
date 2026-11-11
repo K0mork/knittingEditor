@@ -1,6 +1,6 @@
 # v1.0・v1.1 提出・公開の手順
 
-v1.0をApp Storeへ提出・公開するまでと、v1.1以降の更新版を提出するための手順。Apple Developer Programへの個人での加入と有料のTeamでの署名（手順1〜3）は2026-11-02に、App Store Connectでのアプリの登録から審査への提出まで（手順4〜7）は2026-11-03に済んだ。v1.0は2026-11-05にガイドライン5.2.5で却下され、サブタイトルを直して同日に再提出し、2026-11-06に公開された（利用者の報告）。[手順8](#8-審査と並行してtestflightで提出ビルドを実機で確かめる)の提出ビルドの実機確認も2026-11-03に済んだ。v1.1は2026-11-06 22:23（JST）に1.1 (1)を提出し、2026-11-07に公開された（利用者の報告。[手順7](#7-審査に提出する)、[手順10](#10-更新版を提出する)）。全項目の管理は[提出チェックリスト](APP_STORE_CHECKLIST.md)、入力値の正本は[メタデータ](APP_STORE_METADATA.md)、実機の手順と証跡は[実機リリースゲート](REAL_DEVICE_RELEASE_CHECKLIST.md)を使う。v1.1以降の更新版は[手順10](#10-更新版を提出する)を加えて進める。
+v1.0をApp Storeへ提出・公開するまでと、v1.1以降の更新版を提出するための手順。Apple Developer Programへの個人での加入と有料のTeamでの署名（手順1〜3）は2026-11-02に、App Store Connectでのアプリの登録から審査への提出まで（手順4〜7）は2026-11-03に済んだ。v1.0は2026-11-05にガイドライン5.2.5で却下され、サブタイトルを直して同日に再提出し、2026-11-06に公開された（利用者の報告）。[手順8](#8-審査と並行してtestflightで提出ビルドを実機で確かめる)の提出ビルドの実機確認も2026-11-03に済んだ。v1.1は2026-11-06 22:23（JST）に1.1 (1)を提出し、2026-11-07に公開された（利用者の報告。[手順7](#7-審査に提出する)、[手順10](#10-更新版を提出する)）。全項目の管理は[提出チェックリスト](APP_STORE_CHECKLIST.md)、入力値の正本は[メタデータ](APP_STORE_METADATA.md)、版ごとの実機確認は[実機確認の標準手順](DEVICE_TESTING.md)に従う。v1.1以降の更新版は[手順10](#10-更新版を提出する)を加えて進める。
 
 個人情報・Team ID・App Store ConnectのApp ID・登録画面の無加工画像を、公開リポジトリやGitHubへ載せない。非公開の入力値はメインチェックアウトのルートの `private/APP_STORE_CONNECT.md` を参照する。worktreeに別の `private/` は作らない。
 
@@ -60,7 +60,7 @@ SKUは製品管理用の一意な文字列を利用者が決め、登録値は�
 更新版や作り直しのときは、次のとおりにする。
 
 
-1. 提出するソースのコミットを固定する。[検証・配布](APP_STORE_CHECKLIST.md#検証配布)に従い、提出候補PRの `ci-gate` と、その候補を含むmainコミットの `Full iOS validation`（iPhone・iPad全テスト、両端末のapp_update、unsigned Release Archive・資産検査）の成功を確認する。失敗Issueがあれば調査・修正する。
+1. 提出するソースのコミットを固定する。[検証・配布](APP_STORE_CHECKLIST.md#検証配布)に従い、提出候補PRの `ci-gate` と、その候補を含むmainコミットの `Full iOS validation`（iPhone・iPad全テスト、両端末のapp_update、unsigned Release Archive・資産検査）の成功を確認する。失敗Issueがあれば調査・修正する。そのコミットで[実機確認の標準手順の提出前](DEVICE_TESTING.md#提出前)の確認を行う。
 2. **手元のXcode 27.1（iOS 27.1 SDK）以降**を使う。Xcode 26.6固定のCIアーカイブは提出に使わない。iPhone Duoでの全画面表示（#96）に加え、2027年4月からはiOS 27 SDK以降でのビルドがAppleの必須要件になる。版の根拠と検査条件は提出チェックリストの「提出用のアーカイブ」、CIとの違いは[#289](https://github.com/K0mork/knittingEditor/issues/289)を参照する。
 3. Xcodeでscheme `knittingEditor`、実機向けの汎用destination（Simulatorではない）を選び、Archiveの構成がReleaseであることを確認して、Product > Archiveを実行する。構成・destination・検査の参照元は[`release_archive`ジョブ](../../.github/workflows/ios-full.yml)とする。ただし、ローカルの提出用署名を有効にし、CIの `CODE_SIGNING_ALLOWED=NO`／`CODE_SIGNING_REQUIRED=NO` は付けない。
 4. Organizerで対象ArchiveをFinderに表示し、リポジトリルートから次を実行する。パスは実際のArchiveへ置き換える。
@@ -135,19 +135,16 @@ MacとApple Vision Proは[#86の決定コメント](https://github.com/K0mork/kn
 
 ## 8. 審査と並行して、TestFlightで提出ビルドを実機で確かめる
 
-2026-11-03に、TestFlightの1.0 (1)をiPhone 17とiPad Air 第5世代へ入れ、下の2〜5を確かめた。公開を止める問題は無かった（[記録](RELEASE_VERIFICATION_RECORDS.md#2026-11-03-testflightでの提出ビルドの確認2526)）。オフラインのiCloud Driveの`.knit`で理由の分かる表示にならないことは、v1.0では合格とし#387で扱う。同日、TestFlightのビルドでは確かめられない読み込み直前のファイル削除（M3）を、アプリのコードが同じ開発ビルドで両端末で確かめた（[記録](RELEASE_VERIFICATION_RECORDS.md#2026-11-03-読み込み直前のファイル削除の確認m3)）。
+2026-11-03に、TestFlightの1.0 (1)をiPhone 17とiPad Air 第5世代へ入れ、機内モードの主要フロー、Files・共有、1000×1000盤面、最終画面を確かめた。公開を止める問題は無かった（[記録](RELEASE_VERIFICATION_RECORDS.md#2026-11-03-testflightでの提出ビルドの確認2526)）。オフラインのiCloud Driveの`.knit`で理由の分かる表示にならないことは、v1.0では合格とし#387で扱う。同日、TestFlightのビルドでは確かめられない読み込み直前のファイル削除（M3）を、アプリのコードが同じ開発ビルドで両端末で確かめた（[記録](RELEASE_VERIFICATION_RECORDS.md#2026-11-03-読み込み直前のファイル削除の確認m3)）。
 
 手順7で提出したら、審査の結果を待たずに始める。提出ビルドの実機確認は、提出の条件ではなく公開の条件とする（2026-11-02の決定。提出を早めるため）。Appleは提出の前にTestFlightを通すことを求めていない。手順5でアップロードしたビルドはそのままTestFlightにも出るので、確認のために別のビルドを作らない。
 
-1. 処理済みビルドを内部テストグループへ追加し、iPhone・iPadへTestFlightからインストールする（#25）。以降は**審査に出したのと同じビルド番号**で確認する。
-2. [M0](REAL_DEVICE_RELEASE_CHECKLIST.md#m0-オフライン起動とweb-api-poc)・[M6](REAL_DEVICE_RELEASE_CHECKLIST.md#m6-testflightapp-store)に従い、機内モードでホーム画面から起動し、編集、自動保存、再起動後の復元、PNG／PDF、`.knit`保存・復元、ヘルプを確認する。開発ビルドのチェック済み実績で提出ビルドの確認を省略しない。
-3. [M3: Files・共有・外部バックアップ](REAL_DEVICE_RELEASE_CHECKLIST.md#m3-files共有外部バックアップ)の往復・異常系を両端末で確認する。機内モードのローカル保存を先に行い、AirDrop等は必要な通信を戻して確認する。存在しないファイル等の未確認項目は、未確認のまま記録し、完了扱いにしない。
-4. #26として、[M2の測定手順と判定](REAL_DEVICE_RELEASE_CHECKLIST.md#m2-保存復元大規模盤面)を参照して1000×1000盤面、PNG上限超過の拒否、PNG／PDF出力時間、クラッシュログ・メモリ警告を提出ビルドで確認する。開発ビルドを再インストールする測定スクリプトの結果を、TestFlightビルドの結果として扱わない。
-5. [M4](REAL_DEVICE_RELEASE_CHECKLIST.md#m4-画面入力アクセシビリティ)・M6の最終画面（AppIcon、起動画面、iPhone縦横、iPad全画面・可変幅）を確認して証跡を残す。製品ページへ登録する画像は[最終版スクリーンショット](SCREENSHOTS.md#app-store-connect提出用最終版)を使い、実際の提出ビルドとの一致を確かめる。
-6. 問題が見つかったら公開しない。審査中なら審査から取り下げ、承認後の公開待ちならそのビルドを却下して、直した新しいビルド番号で手順5からやり直す。
+1. 処理済みビルドを内部テストグループへ追加し、TestFlightから入れられるようにする（#25）。以降は**審査に出したのと同じビルド番号**で確認する。
+2. [実機確認の標準手順の公開前](DEVICE_TESTING.md#公開前)の確認を行う。
+3. 問題が見つかったら公開しない。審査中なら審査から取り下げ、承認後の公開待ちならそのビルドを却下して、直した新しいビルド番号で手順5からやり直す。
 
-- **完了の目安:** 両端末で提出ビルドの確認が完了し、ビルド番号・コミット・端末／OS・結果・未実施項目とM6の証跡がそろった。これがそろうまで手順9の公開操作をしない。問題を直して再アップロードした場合は、手順5から戻り、新しいビルドで再提出し、必要な確認をやり直す。
-- **関係するIssue／項目:** [#25](https://github.com/K0mork/knittingEditor/issues/25)、[#26](https://github.com/K0mork/knittingEditor/issues/26)、提出チェックリストの機内モード・Files／AirDrop・大規模盤面・クラッシュ、実機ゲートM0・M2・M3・M4・M6と[記録ルール](REAL_DEVICE_RELEASE_CHECKLIST.md#記録ルール)。
+- **完了の目安:** 標準手順の公開前の確認を終え、結果を記録した。これが済むまで手順9の公開操作をしない。
+- **関係するIssue／項目:** [#25](https://github.com/K0mork/knittingEditor/issues/25)、[実機確認の標準手順](DEVICE_TESTING.md)。
 
 ## 9. 承認後に公開し、確認と記録を残す
 
@@ -155,14 +152,12 @@ MacとApple Vision Proは[#86の決定コメント](https://github.com/K0mork/kn
 
 アクセシビリティの表示は、版がリリースされるまで下書きのまま公開できない。v1.0では2026-11-03に下書きとして入力済みなので、リリースされたら「アプリのアクセシビリティ」で公開する。2026-11-10の時点では、製品ページの「アクセシビリティ」に、デベロッパがまだ機能を示していないと出ており、公開されていない。
 
-公開操作・自動公開の後、ストアへの反映を待つ。Appleの案内では表示まで最大24時間かかる場合がある。対象地域の製品ページで説明・画像・無料表示・リンクを確認し、App StoreからインストールしたiPhone・iPadで起動、保存・復元、PNG／PDF・`.knit`の主要フローを確認する。承認前に「App Store配布完了」と報告しない。承認後も、公開待ち・反映待ち・公開確認済みを区別して記録する。
+公開操作・自動公開の後、ストアへの反映を待つ。Appleの案内では表示まで最大24時間かかる場合がある。反映されたら、[実機確認の標準手順の公開後](DEVICE_TESTING.md#公開後)の確認を行う。承認前に「App Store配布完了」と報告しない。承認後も、公開待ち・反映待ち・公開確認済みを区別して記録する。
 
-[実機ゲートの記録ルール](REAL_DEVICE_RELEASE_CHECKLIST.md#記録ルール)と[開発ログの書式](../../docs/dev-log/README.md)に従い、実施日、コミット、提出・公開したビルド番号、端末／OS、結果、残件、配布影響、証跡の場所を残す。提出チェックリストとM6を実施結果に合わせて更新する。個人情報・テスターの識別情報・登録画面等の非公開証跡は公開せず、ルートの `private/` 内の保管場所だけを記す。
+記録は[実機確認の標準手順の記録](DEVICE_TESTING.md#記録)に従う。個人情報・テスターの識別情報・登録画面等の非公開証跡は公開せず、ルートの `private/` 内の保管場所だけを記す。
 
-変更・確認の記録は該当PRの `docs/dev-log/` に含め、マージ後に行った確認はそのPRへのコメントで残す。結果の追記だけのPRは作らない。Issueの古い本文が凍結済みの [`DEVELOPMENT_LOG.md`](../DEVELOPMENT_LOG.md) を指していても、新しい記録は `docs/dev-log/` を使う。完了条件を満たしたIssueだけを、完了するPRの `Closes #番号` で閉じる。
-
-- **完了の目安:** 承認とストア公開を確認し、公開版の主要フローとチェックリストの証跡・記録がそろった。未実施項目は明示されている。
-- **関係するIssue／項目:** [#25](https://github.com/K0mork/knittingEditor/issues/25)・[#26](https://github.com/K0mork/knittingEditor/issues/26)・[#27](https://github.com/K0mork/knittingEditor/issues/27)、提出チェックリスト末尾の承認確認、実機ゲートM6・記録ルール。
+- **完了の目安:** 承認とストア公開を確認し、標準手順の公開後の確認を終え、記録のPRがマージされた。
+- **関係するIssue／項目:** [#25](https://github.com/K0mork/knittingEditor/issues/25)・[#26](https://github.com/K0mork/knittingEditor/issues/26)・[#27](https://github.com/K0mork/knittingEditor/issues/27)、提出チェックリスト末尾の承認確認、[実機確認の標準手順](DEVICE_TESTING.md)。
 
 ## 10. 更新版を提出する
 

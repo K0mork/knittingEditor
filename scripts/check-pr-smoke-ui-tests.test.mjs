@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { checkPrSmokeUiTests, swiftTestMethods, validateSmokeList } from './check-pr-smoke-ui-tests.mjs';
+import { checkDeviceUiTests, checkPrSmokeUiTests, swiftTestMethods, validateSmokeList } from './check-pr-smoke-ui-tests.mjs';
 
 const source = `
 final class First: XCTestCase {
@@ -48,7 +48,13 @@ describe('PR smoke UI test list', () => {
     expect(validateSmokeList('First/testOne', swiftTestMethods(source + '\nclass NewTests: XCTestCase { func testNewLayout() {} }'))).toEqual(['First/testOne']);
   });
 
-  it('validates the actual repository list', () => {
+  it('names the list in errors', () => {
+    expect(() => validateSmokeList('First/testRenamed', swiftTestMethods(source), 'device UI test'))
+      .toThrow('Unknown device UI test: First/testRenamed');
+  });
+
+  it('validates the actual repository lists', () => {
     expect(checkPrSmokeUiTests().length).toBeGreaterThan(0);
+    expect(checkDeviceUiTests().length).toBeGreaterThan(0);
   });
 });

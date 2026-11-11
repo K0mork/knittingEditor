@@ -203,7 +203,7 @@ runが現れない場合は、`gh pr view --json url,headRefOid,state`でPRがop
 
 ## 10. 現在の実装状況
 
-ローカルWebView、共通編集基盤、永続保存、scene phase、Files、UTType、共有、PNG/PDF、`.knit`、iPhone／iPad UI、自動テスト、unsigned Release Archive、プライバシー文書は実装済みです。未完了の実機検証、署名、TestFlight、App Store提出準備はGitHub Issues（リリースごとの作業は版の名前の[マイルストーン](https://github.com/K0mork/knittingEditor/milestones)）で管理し、実機での手順と証跡は[`docs/REAL_DEVICE_RELEASE_CHECKLIST.md`](docs/REAL_DEVICE_RELEASE_CHECKLIST.md)に従います。
+ローカルWebView、共通編集基盤、永続保存、scene phase、Files、UTType、共有、PNG/PDF、`.knit`、iPhone／iPad UI、自動テスト、unsigned Release Archive、プライバシー文書は実装済みです。未完了の実機検証、署名、TestFlight、App Store提出準備はGitHub Issues（リリースごとの作業は版の名前の[マイルストーン](https://github.com/K0mork/knittingEditor/milestones)）で管理し、版ごとの実機確認は[`docs/DEVICE_TESTING.md`](docs/DEVICE_TESTING.md)に従います。
 
 ## 11. リリース判定
 
