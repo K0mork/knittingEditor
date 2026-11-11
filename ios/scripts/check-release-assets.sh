@@ -14,7 +14,7 @@ REPO_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
 "$SCRIPT_DIR/check-app-store-docs.sh"
 
 INFO_PLIST="$APP_PATH/Info.plist"
-ICON_PATH="$REPO_ROOT/App/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png"
+ICON_PATH="$REPO_ROOT/App/AppIcon.icon/icon.json"
 LAUNCH_COLORSET_PATH="$REPO_ROOT/App/Assets.xcassets/LaunchBackground.colorset/Contents.json"
 
 for required in "$INFO_PLIST" "$ICON_PATH" \

@@ -9,9 +9,9 @@
 -->
 <style>
   :root {
-    --green: #1a4a2e;
+    --green: #18482b;
     --green-2: #245c3a;
-    --cream: #f7eedb;
+    --cream: #f8eed8;
   }
   html, body { margin: 0; width: 5244px; height: 2950px; overflow: hidden; }
   body {
@@ -33,7 +33,9 @@
   .glow { position: absolute; inset: 0; background: radial-gradient(ellipse 1900px 1500px at 3200px 1300px, var(--green-2), transparent 70%); }
   .text { position: absolute; left: 1480px; top: 820px; }
   .brand { display: flex; align-items: center; gap: 40px; }
-  .brand img { width: 190px; height: 190px; border-radius: 43px; box-shadow: 0 0 0 4px rgba(247,238,219,.25); }
+  /* アプリアイコンは ios/App/AppIcon.icon の層を、アイコンと同じ背景色の上に重ねる。 */
+  .brand .icon { position: relative; width: 190px; height: 190px; border-radius: 43px; background: var(--green); box-shadow: 0 0 0 4px rgba(248,238,216,.25); overflow: hidden; flex: none; }
+  .brand .icon img { position: absolute; inset: 0; width: 100%; height: 100%; }
   .brand span { font-size: 86px; font-weight: 600; letter-spacing: .02em; }
   h1 { margin: 90px 0 0; font-size: 130px; line-height: 1.38; white-space: nowrap; font-weight: 800; letter-spacing: .01em; }
   h1 em { font-style: normal; color: #f2b48f; }
@@ -62,7 +64,7 @@
   <div class="glow"></div>
   <div class="chart"></div>
   <div class="text">
-    <div class="brand"><img src="../../App/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png" alt=""><span>棒針編み図エディタ</span></div>
+    <div class="brand"><div class="icon"><img src="../../App/AppIcon.icon/Assets/needles.svg" alt=""><img src="../../App/AppIcon.icon/Assets/yarn.svg" alt=""></div><span>棒針編み図エディタ</span></div>
     <h1>棒針の<em>編み図</em>を、<br>iPhoneとiPadで。</h1>
     <div class="features">29種類の記号・自動保存・PNG／PDF</div>
   </div>

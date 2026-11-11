@@ -1,0 +1,75 @@
+{
+  "fill-specializations": [
+    {
+      "value": {
+        "automatic-gradient": "srgb:0.09412,0.28235,0.16863,1.00000"
+      }
+    },
+    {
+      "appearance": "dark",
+      "value": {
+        "automatic-gradient": "srgb:0.05490,0.14902,0.09412,1.00000"
+      }
+    }
+  ],
+  "groups": [
+    {
+      "layers": [
+        {
+          "fill-specializations": [
+            {
+              "appearance": "dark",
+              "value": {
+                "solid": "srgb:0.85098,0.46667,0.29412,1.00000"
+              }
+            },
+            {
+              "appearance": "tinted",
+              "value": {
+                "solid": "extended-gray:0.55000,1.00000"
+              }
+            }
+          ],
+          "glass": true,
+          "image-name": "yarn.svg",
+          "name": "yarn"
+        },
+        {
+          "fill-specializations": [
+            {
+              "appearance": "dark",
+              "value": {
+                "solid": "srgb:0.92549,0.88235,0.78431,1.00000"
+              }
+            },
+            {
+              "appearance": "tinted",
+              "value": {
+                "solid": "extended-gray:1.00000,1.00000"
+              }
+            }
+          ],
+          "glass": true,
+          "image-name": "needles.svg",
+          "name": "needles"
+        }
+      ],
+      "lighting": "individual",
+      "name": "knitting",
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.5
+      },
+      "specular": true,
+      "translucency": {
+        "enabled": true,
+        "value": 0.2
+      }
+    }
+  ],
+  "supported-platforms": {
+    "squares": [
+      "iOS"
+    ]
+  }
+}

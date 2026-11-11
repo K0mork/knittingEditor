@@ -1,65 +1,53 @@
-import { readFileSync } from 'node:fs';
-import { inflateSync } from 'node:zlib';
+// アプリアイコン（Icon Composerの`App/AppIcon.icon`）が、Liquid Glassの層と外観の決まりを満たすか確かめる。
+//   node ios/scripts/check-app-icons.mjs
+import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 
-export function checkIcon(png, appearance) {
-  if (!png.subarray(0, 8).equals(Buffer.from('89504e470d0a1a0a', 'hex'))) throw new Error('Invalid PNG');
-  if (png.readUInt32BE(16) !== 1024 || png.readUInt32BE(20) !== 1024) throw new Error('AppIcon must be 1024x1024');
-  const channels = png[25] === 2 ? 3 : png[25] === 6 ? 4 : 0;
-  if (!channels || png[24] !== 8 || png[28] !== 0) throw new Error('Expected non-interlaced 8-bit RGB/RGBA');
-  if (appearance !== 'dark' && channels !== 3) throw new Error('Any/Tinted must have no alpha channel');
-  if (appearance === 'dark' && channels !== 4) throw new Error('Dark must have an alpha channel');
-  const data = [];
-  for (let offset = 8; offset < png.length;) {
-    const length = png.readUInt32BE(offset);
-    if (png.toString('ascii', offset + 4, offset + 8) === 'IDAT') data.push(png.subarray(offset + 8, offset + 8 + length));
-    offset += length + 12;
-  }
-  const raw = inflateSync(Buffer.concat(data));
-  const stride = 1024 * channels;
-  if (raw.length !== 1024 * (stride + 1)) throw new Error('Unexpected PNG pixel length');
-  let previous = Buffer.alloc(stride);
-  let transparent = 0;
-  let visible = 0;
-  for (let y = 0; y < 1024; y++) {
-    const filter = raw[y * (stride + 1)];
-    if (filter > 4) throw new Error('Invalid PNG filter');
-    const row = Buffer.from(raw.subarray(y * (stride + 1) + 1, (y + 1) * (stride + 1)));
-    for (let i = 0; i < stride; i++) {
-      const a = i >= channels ? row[i - channels] : 0;
-      const b = previous[i];
-      const c = i >= channels ? previous[i - channels] : 0;
-      const p = a + b - c;
-      const pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c);
-      const predictor = filter === 1 ? a : filter === 2 ? b : filter === 3 ? Math.floor((a + b) / 2) : filter === 4 ? (pa <= pb && pa <= pc ? a : pb <= pc ? b : c) : 0;
-      row[i] = (row[i] + predictor) & 255;
-    }
-    for (let i = 0; i < stride; i += channels) {
-      if (appearance === 'tinted' && (row[i] !== row[i + 1] || row[i] !== row[i + 2])) throw new Error('Tinted must be grayscale');
-      if (channels === 4) {
-        if (row[i + 3] === 0) transparent++;
-        if (row[i + 3] > 0) visible++;
-      }
-    }
-    previous = row;
-  }
-  if (appearance === 'dark' && (!transparent || !visible)) throw new Error('Dark must contain transparent background and visible foreground');
+// 色を指定する外観。モノ（クリア・色付き）は`tinted`。
+const APPEARANCES = ['dark', 'tinted'];
+
+export function checkLayerSvg(svg, name) {
+  if (!/<svg\b[^>]*\bviewBox="0 0 1024 1024"/.test(svg)) throw new Error(`${name} must use the 1024x1024 canvas`);
+  // 文字・画像・効果は層に入れず、輪郭にした図形だけにする（効果はLiquid Glassに任せる）。
+  if (/<(text|image|mask|filter|foreignObject|linearGradient|radialGradient)\b/.test(svg)) throw new Error(`${name} must contain only outlined vector shapes`);
 }
 
-export function checkCatalog(directory) {
-  const catalog = JSON.parse(readFileSync(resolve(directory, 'Contents.json'), 'utf8'));
-  if (catalog.images.length !== 3) throw new Error('Expected Any, Dark and Tinted entries');
-  for (const appearance of ['any', 'dark', 'tinted']) {
-    const entries = catalog.images.filter(image => appearance === 'any' ? !image.appearances?.length : image.appearances?.length === 1 && image.appearances[0].appearance === 'luminosity' && image.appearances[0].value === appearance);
-    if (entries.length !== 1) throw new Error(`Missing or duplicate ${appearance} icon`);
-    const entry = entries[0];
-    if (entry.idiom !== 'universal' || entry.platform !== 'ios' || entry.size !== '1024x1024' || !entry.filename || resolve(directory, entry.filename) !== resolve(directory, entry.filename.split('/').pop())) throw new Error('Invalid icon catalog entry');
-    checkIcon(readFileSync(resolve(directory, entry.filename)), appearance);
+export function checkIconDocument(directory) {
+  const document = JSON.parse(readFileSync(resolve(directory, 'icon.json'), 'utf8'));
+  const fills = document['fill-specializations'] ?? [];
+  if (!fills.some(entry => !entry.appearance && typeof entry.value === 'object')) throw new Error('Missing background fill');
+  if (!fills.some(entry => entry.appearance === 'dark' && typeof entry.value === 'object')) throw new Error('Missing dark background fill');
+  const squares = document['supported-platforms']?.squares;
+  if (squares !== 'shared' && !(Array.isArray(squares) && squares.includes('iOS'))) throw new Error('The icon must support iOS');
+  const groups = document.groups ?? [];
+  if (groups.length < 1 || groups.length > 4) throw new Error('Expected one to four layer groups');
+  for (const group of groups) {
+    if (!group.layers?.length) throw new Error(`Group ${group.name} has no layers`);
+    for (const layer of group.layers) {
+      const image = layer['image-name'];
+      if (!image?.endsWith('.svg')) throw new Error(`${layer.name} must use an SVG layer`);
+      if (layer.glass !== true) throw new Error(`${layer.name} must use Liquid Glass`);
+      for (const appearance of APPEARANCES) {
+        if (!layer['fill-specializations']?.some(entry => entry.appearance === appearance)) throw new Error(`${layer.name} is missing a ${appearance} fill`);
+      }
+      const path = resolve(directory, 'Assets', image);
+      if (!existsSync(path)) throw new Error(`Missing layer image ${image}`);
+      checkLayerSvg(readFileSync(path, 'utf8'), image);
+    }
   }
+}
+
+export function checkProject(iosRoot) {
+  // Icon Composerのファイルがあると、XcodeはAppIconのアセットカタログを使わない。残すと取り違えるので置かない。
+  if (existsSync(resolve(iosRoot, 'App/Assets.xcassets/AppIcon.appiconset'))) throw new Error('Remove AppIcon.appiconset; App/AppIcon.icon replaces it');
+  const project = readFileSync(resolve(iosRoot, 'knittingEditor.xcodeproj/project.pbxproj'), 'utf8');
+  if (!project.includes('/* AppIcon.icon in Resources */')) throw new Error('AppIcon.icon is not in the app resources; run xcodegen generate');
+  if (!project.includes('ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;')) throw new Error('The app icon name must be AppIcon');
+  checkIconDocument(resolve(iosRoot, 'App/AppIcon.icon'));
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  checkCatalog(fileURLToPath(new URL('../App/Assets.xcassets/AppIcon.appiconset/', import.meta.url)));
-  console.log('AppIcon Any / Dark / Tinted assets are valid');
+  checkProject(fileURLToPath(new URL('..', import.meta.url)));
+  console.log('AppIcon.icon has Liquid Glass layers with dark and tinted appearances');
 }
