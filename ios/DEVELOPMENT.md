@@ -61,7 +61,7 @@ ios/scripts/build-web.sh
 (cd ios/Web && ../../node_modules/.bin/vitest run --config vite.config.ts)
 ios/scripts/check-app-bundle.sh /path/to/knittingEditor.app
 
-# 同一Bundle IDの更新ビルドでIndexedDBが復元されることを確認する
+# 最新のリリースのタグのアプリが保存したIndexedDBが、今のコミットへの更新後に復元されることを確認する
 SIMULATOR_UDID=<booted-simulator-udid> ios/scripts/simulate-app-update.sh "iPhone 17"
 ```
 

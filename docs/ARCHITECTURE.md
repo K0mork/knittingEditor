@@ -39,7 +39,7 @@
 `.github/workflows/ios-full.yml`は、関連する`main`へのマージ後、毎晩（18:23 UTC）、手動実行時に、Pagesのゲートとは別に実行する。
 
 - `ios_full`: iPhone 17・iPad (A16)の全単体／UIテストとDebug bundle検査。iPadのUI除外一覧は使わない。
-- `app_update`: 両端末で更新後の復元を確認する。
+- `app_update`: 両端末で、最新のリリースのタグから作ったアプリが保存した編み図を、今のコミットのアプリへ更新したあとに読めることを確認する。
 - `release_archive`: unsigned Release Archiveを作り、同梱資産を検査する。
 
 `.github/workflows/ios-full-failure.yml`は、Full iOS validationが`main`（push・夜間・手動実行）で失敗して終わったときに動く。判断は`scripts/ios-full-failure.mjs`が行う。

@@ -1,11 +1,22 @@
 #!/usr/bin/env bash
+# 前のリリースのアプリが保存した編み図が、今のコミットのアプリへ更新したあとも残ることを確かめる。
+#
+#   SIMULATOR_UDID=<UDID> ios/scripts/simulate-app-update.sh "iPhone 17"
+#
+# 更新前のアプリとfixtureを作るテストは、今のコミットから辿れる最新のリリースのタグ
+# （`ios-v<版>-build<番号>`、RELEASE_RUNBOOK.mdの手順5の7）から作る。別のコミットや
+# タグから始めるときは`APP_UPDATE_BASE_REF`に指定する。更新後に読むテストは今のコミットのもので、
+# 前のリリースのfixture（編み図「アプリ更新復元fixture」と記号1個）を読めなければならない。
 set -euo pipefail
 
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+repo_root="$(cd "$project_root/.." && pwd)"
 simulator_name="${1:-iPhone 17}"
 destination="${2:-platform=iOS Simulator,name=${simulator_name},OS=latest}"
 bundle_id="com.k0mork.knittingEditor"
 work_dir="${TMPDIR:-/tmp}/knitting-editor-app-update-${simulator_name//[^[:alnum:]]/-}"
+base_root="$work_dir/base"
+base_derived_data="$work_dir/base-derived-data"
 updated_derived_data="$work_dir/updated-derived-data"
 probe_marker="/tmp/knitting-editor-app-update-probe"
 
@@ -23,8 +34,18 @@ destination="platform=iOS Simulator,id=${simulator_udid}"
 # ダイアログ入力と自動保存待ちを含み、GitHubのmacOSランナーで178秒かかって
 # 既定の2分を超えたことがある（テスト自体は成功していたのに`Failing tests:`へ載る）。
 # 本当のハングはジョブの`timeout-minutes`が捕まえる。
+base_ref="${APP_UPDATE_BASE_REF:-}"
+if [[ -z "$base_ref" ]]; then
+  # `head`で読むのをやめるとgitがSIGPIPEで終わり、pipefailで止まるため、awkで全部読む。
+  base_ref="$(git -C "$repo_root" tag --merged HEAD --list 'ios-v*' --sort=-v:refname | awk 'NR == 1')"
+fi
+if [[ -z "$base_ref" ]] || ! git -C "$repo_root" rev-parse --verify --quiet "${base_ref}^{commit}" >/dev/null; then
+  echo "前のリリースのタグが見つかりません。履歴とタグを取得する（CIではcheckoutのfetch-depth: 0）か、APP_UPDATE_BASE_REFを指定してください。" >&2
+  exit 1
+fi
+
 rm -rf "$work_dir"
-mkdir -p "$work_dir"
+mkdir -p "$work_dir" "$base_root"
 touch "$probe_marker"
 trap 'rm -f "$probe_marker"' EXIT
 
@@ -34,16 +55,24 @@ trap 'rm -f "$probe_marker"' EXIT
 xcrun simctl boot "$simulator_udid" >/dev/null 2>&1 || true
 xcrun simctl bootstatus "$simulator_udid" -b
 
-echo "[1/4] 専用Simulatorの既存アプリデータを消去: $simulator_udid"
+echo "[1/5] 専用Simulatorの既存アプリデータを消去: $simulator_udid"
 xcrun simctl uninstall "$simulator_udid" "$bundle_id" >/dev/null 2>&1 || true
 
-echo "[2/4] version 1でfixtureを保存"
+echo "[2/5] 前のリリース（$base_ref）のソースを取り出す"
+git -C "$repo_root" archive "$base_ref" | tar -x -C "$base_root"
+# タグのproject.ymlからXcodeプロジェクトを作り直す。XcodeGenが無ければ、タグにコミットされたものを使う。
+if command -v xcodegen >/dev/null 2>&1; then
+  xcodegen generate --spec "$base_root/ios/project.yml" --quiet
+fi
+
+echo "[3/5] 前のリリースのアプリでfixtureを保存"
 (
-  cd "$project_root"
+  cd "$base_root/ios"
   xcodebuild test \
     -project knittingEditor.xcodeproj \
     -scheme knittingEditor \
     -destination "$destination" \
+    -derivedDataPath "$base_derived_data" \
     -retry-tests-on-failure \
     -test-iterations 2 \
     -test-timeouts-enabled YES \
@@ -53,7 +82,7 @@ echo "[2/4] version 1でfixtureを保存"
     CODE_SIGNING_ALLOWED=NO
 )
 
-echo "[3/4] version 2を同一Bundle IDでビルドして上書きインストール"
+echo "[4/5] 今のコミットのアプリを同一Bundle IDでビルドして上書きインストール"
 (
   cd "$project_root"
 xcodebuild build-for-testing \
@@ -75,7 +104,7 @@ if [[ -z "$updated_xctestrun" ]]; then
   exit 1
 fi
 
-echo "[4/4] version 2でfixtureが復元されることを確認"
+echo "[5/5] 今のコミットのアプリでfixtureが復元されることを確認"
 (
   cd "$project_root"
   xcodebuild test-without-building \
@@ -90,4 +119,4 @@ echo "[4/4] version 2でfixtureが復元されることを確認"
     CODE_SIGNING_ALLOWED=NO
 )
 
-echo "アプリ更新シミュレーション成功: $simulator_name"
+echo "アプリ更新シミュレーション成功（$base_ref から）: $simulator_name"
