@@ -82,7 +82,7 @@ export type SurfaceKind = 'screen' | 'png' | 'pdf';
 const LINE_AMOUNTS: Record<SurfaceKind, { minor: number; major: number }> = {
   screen: { minor: 0.24, major: 0.58 },
   png: { minor: 0.267, major: 0.6 },
-  pdf: { minor: 0.22, major: 0.6 },
+  pdf: { minor: 0.267, major: 0.6 },
 };
 
 /** 地の色から縞と罫線の色を作る。明るい地では地を暗い色へ、暗い地では白へ寄せる。 */

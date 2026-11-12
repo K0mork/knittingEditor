@@ -108,8 +108,22 @@ function tileLabels(tile: PdfTile, request: PdfRequest, originX: number, originY
 }
 
 /** 通常の罫線と、10目・10段ごとの太線の太さ（pt）。色は地の色から作る（`boardSurface`）。 */
-const PDF_MINOR_GRID_WIDTH = 0.35;
-const PDF_MAJOR_GRID_MAX_WIDTH = 0.9;
+/**
+ * PNGの既定の1セル24pxでは、通常の線が1px、10目・10段ごとの太線が2pxになる。
+ * PDFも同じ見え方にするため、1マスの大きさに対する割合で線の太さを決める。
+ * 極端に小さいマスでも線が消えないよう、下限だけを置く。
+ */
+const PNG_GRID_CELL = 24;
+const PDF_MINOR_GRID_MIN_WIDTH = 0.12;
+const PDF_MAJOR_GRID_MIN_WIDTH = 0.24;
+
+export function pdfMinorGridWidth(cellSize: number): number {
+  return Math.max(PDF_MINOR_GRID_MIN_WIDTH, cellSize / PNG_GRID_CELL);
+}
+
+export function pdfMajorGridWidth(cellSize: number): number {
+  return Math.max(PDF_MAJOR_GRID_MIN_WIDTH, cellSize * 2 / PNG_GRID_CELL);
+}
 
 /** `#rrggbb`をPDFの色の値（0〜1を3つ）にする。 */
 function pdfRgb(color: string): string {
@@ -117,18 +131,29 @@ function pdfRgb(color: string): string {
   return [16, 8, 0].map((shift) => (((value >> shift) & 255) / 255).toFixed(3)).join(' ');
 }
 
-/** 太線の太さ。盤面を1ページに縮めてセルが小さいときは、記号を潰さないよう細くする。 */
-export function pdfMajorGridWidth(cellSize: number): number {
-  return Math.min(PDF_MAJOR_GRID_MAX_WIDTH, Math.max(0.35, cellSize * 0.07));
-}
-
 /**
- * 盤面のマスへ地の色を塗る。白い紙と同じ白い地では塗らない。段・目番号の帯は紙のままにする。
+ * 盤面のマスへ地の色と1段おきの縞を塗る。白い紙と同じ白い地では、地は塗らず縞だけを塗る。
+ * 縞は盤面全体の段で数えるので、分割したページが変わっても縞の位置はずれない。
+ * 段・目番号の帯は紙のままにする。
  */
-function tileBackground(tile: PdfTile, request: PdfRequest, originX: number, originY: number, cellSize: number): string {
+function tileSurface(tile: PdfTile, request: PdfRequest, originX: number, originY: number, cellSize: number): string {
   const background = request.background ?? DEFAULT_BACKGROUND_COLOR;
-  if (parseColor(background) === 0xff_ffff) return '';
-  return `${pdfRgb(background)} rg ${originX.toFixed(3)} ${originY.toFixed(3)} ${(tile.cols * cellSize).toFixed(3)} ${(tile.rows * cellSize).toFixed(3)} re f\n`;
+  const surface = boardSurface(background, 'pdf');
+  const width = (tile.cols * cellSize).toFixed(3);
+  let commands = '';
+  if (parseColor(background) !== 0xff_ffff) {
+    commands += `${pdfRgb(surface.background)} rg ${originX.toFixed(3)} ${originY.toFixed(3)} ${width} ${(tile.rows * cellSize).toFixed(3)} re f\n`;
+  }
+  if (surface.stripe !== surface.background) {
+    let stripes = '';
+    for (let localRow = 0; localRow < tile.rows; localRow++) {
+      if ((tile.row + localRow) % 2 !== 0) continue;
+      const y = originY + (tile.rows - localRow - 1) * cellSize;
+      stripes += `${originX.toFixed(3)} ${y.toFixed(3)} ${width} ${cellSize.toFixed(3)} re `;
+    }
+    if (stripes) commands += `${pdfRgb(surface.stripe)} rg ${stripes}f\n`;
+  }
+  return commands;
 }
 
 /**
@@ -146,7 +171,7 @@ function tileGrid(tile: PdfTile, request: PdfRequest, originX: number, originY: 
   const rowLine = (line: number) => { const y = (originY + (tile.rows - line) * cellSize).toFixed(3); return `${left} ${y} m ${right} ${y} l `; };
   const colLine = (line: number) => { const x = (originX + line * cellSize).toFixed(3); return `${x} ${bottom} m ${x} ${top} l `; };
   const surface = boardSurface(request.background ?? DEFAULT_BACKGROUND_COLOR, 'pdf');
-  let minor = `${PDF_MINOR_GRID_WIDTH} w ${pdfRgb(surface.minorLine)} RG `;
+  let minor = `${pdfMinorGridWidth(cellSize).toFixed(3)} w ${pdfRgb(surface.minorLine)} RG `;
   for (let line = 0; line <= tile.rows; line++) if (!majorRows.has(line)) minor += rowLine(line);
   for (let line = 0; line <= tile.cols; line++) if (!majorCols.has(line)) minor += colLine(line);
   let commands = `${minor}S\n`;
@@ -256,7 +281,7 @@ export function buildPdf(request: PdfRequest): Uint8Array<ArrayBuffer> {
     const originX = margin + rowLabelWidth;
     const originY = pageHeight - margin - titleHeight - colLabelHeight - tile.rows * cellSize;
     function* pageCommands(): Generator<string> {
-      yield tileBackground(tile, request, originX, originY, cellSize);
+      yield tileSurface(tile, request, originX, originY, cellSize);
       yield tileGrid(tile, request, originX, originY, cellSize);
       yield tileLabels(tile, request, originX, originY, cellSize);
       yield `q ${originX.toFixed(3)} ${originY.toFixed(3)} ${(tile.cols * cellSize).toFixed(3)} ${(tile.rows * cellSize).toFixed(3)} re W n\n`;
