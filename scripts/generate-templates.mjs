@@ -108,7 +108,15 @@ const TEMPLATES = [
 const ROWS = 20;
 const COLS = 20;
 
-/** 記号の配置から、セルの並び（1段目の左端から）を作る。覆われたマスは0のままにする。 */
+/**
+ * 記号の配置から盤面のセルの並びを作る。覆われたマスは0のままにする。
+ *
+ * テンプレートの定義は作者の数え方で、段0が1段目（編み始め）である。エディタの盤面は
+ * 段0が一番上で、番号は`ROWS - 段`なので、1段目は最後の段（`ROWS - 1`）になる。
+ * 定義の段`row`を盤面の段`ROWS - 1 - row`へ置き、模様の上下をエディタに合わせる。
+ * 複数段を使う記号は、定義の段`row`から`height`段分（模様では上へ、盤面では下へ）を占めるので、
+ * 盤面の起点はその範囲の一番上、`ROWS - row - height`になる。
+ */
 function packTemplate(template, stitches, packCell) {
   const values = new Uint32Array(ROWS * COLS);
   const covered = new Uint8Array(ROWS * COLS);
@@ -119,11 +127,12 @@ function packTemplate(template, stitches, packCell) {
       if (placement.col < 0 || placement.col + definition.width > COLS || row + definition.height > ROWS) {
         throw new Error(`${template.slug}: ${row + 1}段${placement.col + 1}目が盤面からはみ出します`);
       }
-      const index = row * COLS + placement.col;
+      const boardRow = ROWS - row - definition.height;
+      const index = boardRow * COLS + placement.col;
       if (covered[index]) throw new Error(`${template.slug}: ${row + 1}段${placement.col + 1}目が重なっています`);
       values[index] = packCell(definition.id, placement.color ?? 0);
       for (let y = 0; y < definition.height; y++) {
-        for (let x = 0; x < definition.width; x++) covered[(row + y) * COLS + placement.col + x] = 1;
+        for (let x = 0; x < definition.width; x++) covered[(boardRow + y) * COLS + placement.col + x] = 1;
       }
     }
   }
@@ -144,11 +153,18 @@ function glyphParts(svg) {
 
 /**
  * 盤面をプレビュー用のSVGにする。記号は使う種類だけ`symbol`にして、マスごとに`use`で置く。
- * 1段目が下になるよう、段は下から上へ並べる。
+ * エディタと同じく、盤面の段`row`を`y = row * CELL`に置く（段0が一番上）。
+ * `use`の並びは今のSVGと変えないため、下の段から書く。
  */
 function previewSvg(values, stitchesById, cellStitchId, cellColor) {
   const used = new Set();
-  for (const value of values) if (value) used.add(cellStitchId(value));
+  // `symbol`の並びも今のSVGと変えないため、下の段から記号を集める。
+  for (let row = ROWS - 1; row >= 0; row--) {
+    for (let col = 0; col < COLS; col++) {
+      const value = values[row * COLS + col];
+      if (value) used.add(cellStitchId(value));
+    }
+  }
 
   const symbols = [...used].map((id) => {
     const definition = stitchesById.get(id);
@@ -159,13 +175,13 @@ function previewSvg(values, stitchesById, cellStitchId, cellColor) {
   const width = COLS * CELL;
   const height = ROWS * CELL;
   const uses = [];
-  for (let row = 0; row < ROWS; row++) {
+  for (let row = ROWS - 1; row >= 0; row--) {
     for (let col = 0; col < COLS; col++) {
       const value = values[row * COLS + col];
       if (!value) continue;
       const definition = stitchesById.get(cellStitchId(value));
       const color = cellColor(value);
-      uses.push(`<use href="#s${definition.id}" x="${col * CELL}" y="${(ROWS - 1 - row) * CELL}" width="${definition.width * CELL}" height="${definition.height * CELL}" color="${color ? `#${color.toString(16).padStart(6, '0')}` : INK}"/>`);
+      uses.push(`<use href="#s${definition.id}" x="${col * CELL}" y="${row * CELL}" width="${definition.width * CELL}" height="${definition.height * CELL}" color="${color ? `#${color.toString(16).padStart(6, '0')}` : INK}"/>`);
     }
   }
 
