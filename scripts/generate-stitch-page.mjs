@@ -427,7 +427,7 @@ function pageHtml(stitches, labels, order) {
       <h2>記号を使って編み図を描く</h2>
       <p>編み図エディタでは、このページの記号を選んで盤面に置くだけで編み図を描けます。PNGやPDFで保存でき、iPhone・iPadのアプリでも同じ編み図を使えます。</p>
       <p><a class="cta" href="/" data-analytics="editor">編み図エディタを開く</a></p>
-      <p>編み図の作り方は<a href="/guide/">使い方</a>、すぐに使える模様は<a href="/templates/">テンプレート</a>にまとめています。</p>
+      <p>編み図の作り方は<a href="/chart-basics/">編み図の作り方</a>、操作の手順は<a href="/guide/">使い方</a>、すぐに使える模様は<a href="/templates/">テンプレート</a>にまとめています。</p>
     </main>
     <footer>
       <a href="/">棒針編み図エディタへ戻る</a>

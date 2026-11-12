@@ -17,6 +17,7 @@ export const LIVE_SITE_FILES = [
   { path: '/guide/', type: 'text/html', distFile: 'guide/index.html' },
   { path: '/templates/', type: 'text/html', distFile: 'templates/index.html' },
   { path: '/stitches/', type: 'text/html', distFile: 'stitches/index.html' },
+  { path: '/chart-basics/', type: 'text/html', distFile: 'chart-basics/index.html' },
   { path: '/support/', type: 'text/html', distFile: 'support/index.html' },
   { path: '/privacy/', type: 'text/html', distFile: 'privacy/index.html' },
   { path: '/privacy/app/', type: 'text/html', distFile: 'privacy/app/index.html' },
