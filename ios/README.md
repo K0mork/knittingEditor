@@ -30,9 +30,10 @@ iOS 17.0以上のSwiftUIユニバーサルアプリで、固定originのロー�
 
 リリース:
 
-- [docs/RELEASE_RUNBOOK.md](docs/RELEASE_RUNBOOK.md): v1.0の提出・公開までの手順（Apple Developer Programへの加入は済み）
+- [docs/RELEASE_RUNBOOK.md](docs/RELEASE_RUNBOOK.md): 提出・公開の手順（初回だけの加入・署名・アプリの登録は済み。更新版は手順5〜10）
 - [docs/APP_STORE_CHECKLIST.md](docs/APP_STORE_CHECKLIST.md): 提出前に確かめる項目
-- [docs/REAL_DEVICE_RELEASE_CHECKLIST.md](docs/REAL_DEVICE_RELEASE_CHECKLIST.md): 実機・TestFlightで確かめる項目と手順
+- [docs/DEVICE_TESTING.md](docs/DEVICE_TESTING.md): 版ごとに行う実機確認の時期と手順
+- [docs/REAL_DEVICE_RELEASE_CHECKLIST.md](docs/REAL_DEVICE_RELEASE_CHECKLIST.md): v1.0の公開までに行った実機・TestFlightの確認の記録と、個別の測定手順
 - [docs/RELEASE_VERIFICATION_RECORDS.md](docs/RELEASE_VERIFICATION_RECORDS.md): 実機などで確かめた日ごとの環境と結果
 - [docs/APP_STORE_METADATA.md](docs/APP_STORE_METADATA.md)・[docs/APP_REVIEW_NOTES.md](docs/APP_REVIEW_NOTES.md)・[docs/SCREENSHOTS.md](docs/SCREENSHOTS.md)・[docs/PRIVACY_POLICY.md](docs/PRIVACY_POLICY.md): App Store Connectへ入力する値、審査メモ、スクリーンショット、プライバシーポリシーの正本の場所
 - [docs/SIMULATOR_PERFORMANCE_BASELINE.md](docs/SIMULATOR_PERFORMANCE_BASELINE.md): 統合前に観測したSimulator／Webの基準値
@@ -46,4 +47,8 @@ iOS 17.0以上のSwiftUIユニバーサルアプリで、固定originのロー�
 
 ## 現在の状態
 
-Web編集画面、端末内保存、Files・共有シート、`.knit`入出力のネイティブ連携、iPhone／iPadのUI、自動テストとCIは実装済みです。残っている作業は[GitHub Issues](https://github.com/K0mork/knittingEditor/issues)（リリースごとの作業は版の名前の[マイルストーン](https://github.com/K0mork/knittingEditor/milestones)）、実機で確認済みの範囲と残りは[`docs/REAL_DEVICE_RELEASE_CHECKLIST.md`](docs/REAL_DEVICE_RELEASE_CHECKLIST.md)、提出の準備は[`docs/APP_STORE_CHECKLIST.md`](docs/APP_STORE_CHECKLIST.md)を正とします。CIの構成は[`docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md)の「ビルドと公開」にあります。
+Web編集画面、端末内保存、Files・共有シート、`.knit`入出力のネイティブ連携、iPhone／iPadのUI、自動テストとCIは実装済みです。
+
+App Storeではv1.0（2026-11-06）とv1.1（2026-11-07）を公開しています。Apple Developer Programへの加入、署名、App Store Connectへのアプリの登録は初回の提出で済んでおり、更新版は[`docs/RELEASE_RUNBOOK.md`](docs/RELEASE_RUNBOOK.md)の手順5〜10で提出・公開します。1.1の公開後の確認は[#438](https://github.com/K0mork/knittingEditor/issues/438)、次の版の提出・公開は[#439](https://github.com/K0mork/knittingEditor/issues/439)で扱います。
+
+残っている作業は[GitHub Issues](https://github.com/K0mork/knittingEditor/issues)（リリースごとの作業は版の名前の[マイルストーン](https://github.com/K0mork/knittingEditor/milestones)）、版ごとの実機確認の手順は[`docs/DEVICE_TESTING.md`](docs/DEVICE_TESTING.md)、v1.0の公開までに実機で確かめた範囲と例外は[`docs/REAL_DEVICE_RELEASE_CHECKLIST.md`](docs/REAL_DEVICE_RELEASE_CHECKLIST.md)、提出の準備は[`docs/APP_STORE_CHECKLIST.md`](docs/APP_STORE_CHECKLIST.md)を正とします。CIの構成は[`docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md)の「ビルドと公開」にあります。
