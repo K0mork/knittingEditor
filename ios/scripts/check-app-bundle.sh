@@ -15,7 +15,7 @@ for required in index.html assets guide/index.html third-party-notices/index.htm
   fi
 done
 
-for package in fflate idb react react-dom scheduler; do
+for package in fflate idb react react-dom scheduler uqr; do
   if ! grep -q "<h2>$package " "$WEB_ROOT/third-party-notices/index.html"; then
     echo "missing third-party license notice: $package" >&2
     exit 1

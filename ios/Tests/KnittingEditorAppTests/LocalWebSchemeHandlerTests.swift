@@ -244,7 +244,7 @@ final class LocalWebSchemeHandlerTests: XCTestCase {
         let packages = try await webView.evaluateJavaScript(
             "[...document.querySelectorAll('h2')].map((heading) => heading.textContent.split(' ')[0]).join(',')"
         )
-        XCTAssertEqual(packages as? String, "fflate,idb,react,react-dom,scheduler")
+        XCTAssertEqual(packages as? String, "fflate,idb,react,react-dom,scheduler,uqr")
     }
 
     /// 読み込みの通知が来ないとき、テストの実行時間上限を待たずに失敗として返すことを確認する。
