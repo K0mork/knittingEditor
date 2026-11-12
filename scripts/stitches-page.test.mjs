@@ -54,6 +54,36 @@ describe('編み目記号の一覧ページ', () => {
     })).toEqual(STITCH_CATEGORY_ORDER.map(() => true));
   });
 
+  it('各記号の記事を、カタログの区分のsectionに置く', () => {
+    const sections = [...page.matchAll(/<section class="category" id="[a-z]+" data-category="([a-z]+)">([\s\S]*?)<\/section>/g)]
+      .map((match) => ({ category: match[1], body: match[2] }));
+    const placed = sections.flatMap((section) => [...section.body.matchAll(/data-stitch="([a-z_]+)"/g)]
+      .map((match) => ({ key: match[1], category: section.category })));
+
+    for (const stitch of STITCHES) {
+      expect(placed.filter((entry) => entry.key === stitch.key), stitch.key)
+        .toEqual([{ key: stitch.key, category: stitch.category }]);
+    }
+
+    // 見出しの件数は、そのsectionにある記事の数と一致する。
+    for (const section of sections) {
+      const headingCount = Number(/<h2>[^<]*（(\d+)）<\/h2>/.exec(section.body)?.[1]);
+      const articleCount = (section.body.match(/<article class="stitch"/g) ?? []).length;
+      expect(headingCount, section.category).toBe(articleCount);
+    }
+  });
+
+  it('減目の傾きと、すべり目・浮き目の糸の向きを正しく書く', () => {
+    for (const key of ['right_up_two_one', 'purl_right_up_two_one', 'right_up_three_one']) {
+      expect(articleOf(key), key).toContain('左に傾きます');
+    }
+    for (const key of ['left_up_two_one', 'purl_left_up_two_one', 'left_up_three_one']) {
+      expect(articleOf(key), key).toContain('右に傾きます');
+    }
+    expect(articleOf('float_stitch')).toContain('表側に渡す');
+    expect(articleOf('slip_stitch')).toContain('裏側に渡す');
+  });
+
   it('すべての記号に、意味・使いどころ・置き方を書く', () => {
     for (const stitch of STITCHES) {
       const article = articleOf(stitch.key);
