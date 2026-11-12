@@ -127,7 +127,7 @@ GA4が自動で集める`page_view`、`session_start`、`first_visit`、`user_en
 | 地域 | `country`、`region`、`city` |
 | 流入 | `sessionSource`、`sessionMedium`、`sessionDefaultChannelGroup`、`firstUserSource`、`landingPage` |
 | 利用者 | `newVsReturning`、`firstSessionDate` |
-| ページ | `pagePath`、`pageTitle`（計測は編集画面だけで動くので、通常は`/`） |
+| ページ | `pagePath`、`pageTitle`（編集画面と静的なページで計測する） |
 | 指標 | `eventCount`、`eventCountPerUser`、`activeUsers`、`totalUsers`、`newUsers`、`sessions`、`engagedSessions`、`engagementRate`、`userEngagementDuration`、`screenPageViews` |
 
 使えるディメンションと指標の全体は、Data APIの[API Dimensions & Metrics](https://developers.google.com/analytics/devguides/reporting/data/v1/api-schema)にある。リアルタイムレポートで使えるものは、それより少ない。
@@ -137,7 +137,6 @@ GA4が自動で集める`page_view`、`session_start`、`first_visit`、`user_en
 - 正確なマス数、制作時間、出力までの日数。区分だけを送っているためである。
 - 端末やブラウザをまたいだ同じ編み図の追跡、作品の完成率、端末への保存の成否、計測を入れる前の制作量（ANALYTICS.mdの「指標の読み方」）。
 - iOS版の利用。
-- `/guide/`、`/privacy/`などの静的なページの閲覧。GA4のタグを読み込まないためである。
 - 開発ビルド、自動テスト、`Claude/`を含むアプリ内ブラウザ、オプトアウトした端末の操作。送らないためである。
 - 利用者を個人として特定する情報。編み図ID、名前、座標、ハッシュは送っていない。
 
@@ -200,7 +199,7 @@ GA4が自動で集める`page_view`、`session_start`、`first_visit`、`user_en
 
 ### 流入と環境
 
-`activeUsers`や`sessions`を、`sessionDefaultChannelGroup`、`sessionSource`、`landingPage`、`country`、`deviceCategory`ごとに見る。GA4のタグは、編集画面（`src/analytics.ts`）と、`/guide/`・`/support/`・`/privacy/`の静的なページ（`public/analytics.js`）で読み込む。`landingPage`を見ると、検索などから静的なページに着地した人の流れも分かる。静的なページからは`link_clicked`（`link_name`）だけを送る。
+`activeUsers`や`sessions`を、`sessionDefaultChannelGroup`、`sessionSource`、`landingPage`、`country`、`deviceCategory`ごとに見る。GA4のタグは、編集画面（`src/analytics.ts`）と、`/guide/`・`/templates/`・`/support/`・`/privacy/`の静的なページ（`public/analytics.js`）で読み込む。`landingPage`を見ると、検索などから静的なページに着地した人の流れも分かる。静的なページからは`link_clicked`（`link_name`）だけを送る。
 
 ### UTMの付け方
 
