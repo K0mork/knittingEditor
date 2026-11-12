@@ -361,8 +361,8 @@ test('draws the ten-stitch major lines in the PNG at the numbered tens', async (
   await page.getByRole('button', { name: '閉じる' }).click();
 
   await page.getByRole('button', { name: '出力' }).click();
-  // 25段×23目は既定の1セル24pxで、四辺の番号の帯も24px。クレジットの帯（幅600pxで108px）が下に付く。
-  await expect(page.getByText('600×756px')).toBeVisible();
+  // 25段×23目は既定の1セル24pxで、四辺の番号の帯も24px。クレジットの帯（幅600pxで119px）が下に付く。
+  await expect(page.getByText('600×767px')).toBeVisible();
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'PNGを保存' }).click();
   const png = readFileSync((await (await download).path())!);
@@ -1078,8 +1078,8 @@ test('exports an exactly fitting tiled PDF as one estimated and actual page', as
   await downloadInsteadOfShare(page);
   await page.reload();
   await page.getByRole('button', { name: '盤面', exact: true }).click();
-  // クレジットのフッターを入れた状態で、A4分割の1ページにちょうど収まる段数・列数。
-  await page.getByLabel('段数').fill('50');
+  // クレジットのフッター（70pt）を入れた状態で、A4分割の1ページにちょうど収まる段数・列数。
+  await page.getByLabel('段数').fill('49');
   await page.getByLabel('列数').fill('37');
   await page.getByRole('button', { name: '変更', exact: true }).click();
   await page.getByRole('button', { name: '閉じる', exact: true }).click();

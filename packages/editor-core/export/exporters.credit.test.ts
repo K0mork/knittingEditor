@@ -41,13 +41,25 @@ describe('PNGのクレジット', () => {
       // 白い帯と、上端の区切り線。
       expect(fills).toContainEqual({ color: '#fff', rect: [0, top, size.width, layout.height] });
       expect(fills).toContainEqual({ color: '#d5dbd3', rect: [0, top, size.width, 1] });
-      // QRの黒モジュールは右端のQRの範囲にだけ描く。
+      // QRの黒モジュールは右端のQRの範囲にだけ、整数ピクセルの大きさで描く。
       const black = fills.filter((fill) => fill.color === '#000');
+      const module = layout.qr / creditQr().size;
+      const qrLeft = size.width - layout.gap - layout.qr;
       expect(black.length).toBeGreaterThan(creditQr().size);
+      expect(Number.isInteger(module)).toBe(true);
       for (const { rect } of black) {
-        expect(rect[0]).toBeGreaterThanOrEqual(size.width - layout.gap - layout.qr);
+        expect(rect).toHaveLength(4);
+        expect(rect.every((value) => Number.isInteger(value))).toBe(true);
+        expect(rect[2]).toBe(module);
+        expect(rect[3]).toBe(module);
+        expect(rect[0]).toBeGreaterThanOrEqual(qrLeft);
+        expect(rect[0] + rect[2]).toBeLessThanOrEqual(qrLeft + layout.qr);
         expect(rect[1]).toBeGreaterThanOrEqual(top + layout.gap);
+        expect(rect[1] + rect[3]).toBeLessThanOrEqual(top + layout.gap + layout.qr);
       }
+      // QRの白い帯は画像の下端いっぱいにあり、QRはその中の右下に収まる。
+      expect(qrLeft).toBeGreaterThan(size.width / 2);
+      expect(top + layout.gap + layout.qr).toBe(size.height - layout.gap);
       // サイト名とURLは左に描く。
       const creditTexts = texts.filter((item) => item.text === '棒針編み図エディタ' || item.text === 'https://knittingeditor.com/');
       expect(creditTexts).toHaveLength(2);
@@ -62,6 +74,7 @@ describe('PNGのクレジット', () => {
     const size = validatePngSize(board, 2, { includeCredit: true });
     expect(size.width).toBe(PNG_CREDIT_MIN_WIDTH);
     const layout = pngCreditLayout(size.width);
+    expect(layout.qr % creditQr().size).toBe(0);
     expect(size.width - layout.qr - layout.gap * 4).toBeGreaterThan(120);
   });
 

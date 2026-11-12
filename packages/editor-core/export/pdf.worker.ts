@@ -8,7 +8,7 @@ import { STITCH_BY_ID, STITCHES } from '../stitches/catalog';
 import { GLYPH_CELL, glyphPdfCommands } from '../stitches/glyphs';
 import { cellColor, cellStitchId, parseColor } from '../model/Board';
 import { boardSurface, DEFAULT_BACKGROUND_COLOR } from '../model/boardColors';
-import { PDF_LEGEND_CELL_SIZE, PDF_LEGEND_ROW_PADDING, pdfLegendColumns, pdfLegendRows, type PdfLegendRow, PDF_LABEL_FONT_SIZE, PDF_LABEL_GAP, pdfLabelWidth, pdfPageLayout, type PdfLayoutOptions, type PdfTile } from './pdfLayout';
+import { PDF_CREDIT_QR, PDF_LEGEND_CELL_SIZE, PDF_LEGEND_ROW_PADDING, pdfLegendColumns, pdfLegendRows, type PdfLegendRow, PDF_LABEL_FONT_SIZE, PDF_LABEL_GAP, pdfLabelWidth, pdfPageLayout, type PdfLayoutOptions, type PdfTile } from './pdfLayout';
 import { errorMessage } from '../util/errors';
 import type { WorkerReadyMessage } from '../util/workerStarter';
 import { labelStride, showsLabel } from './labels';
@@ -187,12 +187,13 @@ export function tileGuideLines(tile: PdfTile, request: PdfRequest, x: number, y:
 
 /**
  * ページの下端にサイト名・URL・QRコードを描く。QRは矩形だけで描き、画像は埋め込まない。
+ * QRの下端・右端を`margin`（ページ余白）に合わせ、サイト名とURLもその内側に置く。
  * PDFの座標は下が0なので、QRの1行目（上端）は`bottom + (size - 1) * module`になる。
  */
 export function pdfCreditCommands(pageWidth: number, margin: number): string {
   const { size, modules } = creditQr();
-  const qr = 46;
-  const bottom = 6;
+  const qr = PDF_CREDIT_QR;
+  const bottom = margin;
   const module = qr / size;
   const left = pageWidth - margin - qr;
   let commands = `0 g `;
@@ -205,8 +206,8 @@ export function pdfCreditCommands(pageWidth: number, margin: number): string {
     }
   }
   commands += 'f\n';
-  commands += pdfJapaneseText(CREDIT_NAME, margin, 36, 8);
-  commands += `0.4 g BT /F1 7 Tf ${margin.toFixed(3)} 24 Td (${CREDIT_URL}) Tj ET\n`;
+  commands += pdfJapaneseText(CREDIT_NAME, margin, margin + 36, 8);
+  commands += `0.4 g BT /F1 7 Tf ${margin.toFixed(3)} ${(margin + 18).toFixed(3)} Td (${CREDIT_URL}) Tj ET\n`;
   return commands;
 }
 
@@ -332,6 +333,7 @@ export function buildPdf(request: PdfRequest): Uint8Array<ArrayBuffer> {
     function* commands(): Generator<string> {
       yield titleCommands(false);
       yield* legendCommands(rows, legendPageTop);
+      if (request.includeCredit) yield pdfCreditCommands(pageWidth, margin);
       yield pdfJapaneseText(`${tiles.length + index + 1}/${pageCount}ページ`, margin, 10);
     }
     addPage(commands());

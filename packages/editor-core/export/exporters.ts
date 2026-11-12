@@ -24,11 +24,12 @@ export const PNG_PREFERRED_CELL_SIZE = 24;
  *
  * 盤面が大きいと`PNG_PREFERRED_CELL_SIZE`では上限を超えるため、
  * その盤面で有効な最大値まで落とす。20×20なら24pxで528×528pxになる。
+ * 出力パネルのクレジットは既定でオンなので、クレジットの帯も含めて有効な最大値を選ぶ。
  */
-export function defaultPngCellSize(board: Board, preferred: number = PNG_PREFERRED_CELL_SIZE): number {
+export function defaultPngCellSize(board: Board, preferred: number = PNG_PREFERRED_CELL_SIZE, options: ExportAnnotations = { includeCredit: true }): number {
   const start = Math.min(Math.max(preferred, PNG_CELL_SIZE_RANGE.min), PNG_CELL_SIZE_RANGE.max);
   for (let size = start; size > PNG_CELL_SIZE_RANGE.min; size -= 1) {
-    if (validatePngSize(board, size).valid) return size;
+    if (validatePngSize(board, size, options).valid) return size;
   }
   return PNG_CELL_SIZE_RANGE.min;
 }
@@ -75,16 +76,22 @@ export interface PngCreditLayout {
 
 /**
  * PNGの右下に入れるクレジットの寸法。画像の幅に対する割合で決め、解像度が上がってもQRが小さくならないようにする。
- * 幅528pxの20×20では約79px、幅1440pxでは200pxになる。
+ * QRはモジュールを整数ピクセルで描けるよう、一辺をモジュール数の倍数に丸める。
+ * 幅528pxの20×20では99px、幅1440pxでは231pxになる。
  */
 export function pngCreditLayout(width: number): PngCreditLayout {
-  const qr = Math.min(200, Math.max(72, Math.round(width * 0.15)));
+  const { size } = creditQr();
+  const target = Math.min(200, Math.max(72, Math.round(width * 0.15)));
+  const qr = Math.ceil(target / size) * size;
   const gap = Math.max(8, Math.round(qr * 0.1));
   return { qr, gap, height: qr + gap * 2, fontSize: Math.min(22, Math.max(11, Math.round(qr * 0.2))) };
 }
 
-/** クレジットを入れるときに確保する最小の幅。小さい画像でもサイト名とQRが収まるようにする。 */
-export const PNG_CREDIT_MIN_WIDTH = 280;
+/**
+ * クレジットを入れるときに確保する最小の幅。QRを整数モジュールで描くと最小でも99pxになるため、
+ * サイト名とURLがQRの左に収まる幅まで広げる。
+ */
+export const PNG_CREDIT_MIN_WIDTH = 384;
 
 /** クレジットの帯を描く。QRは白い地に黒で描き、読み取りやすくする。 */
 function drawCredit(context: CanvasRenderingContext2D, width: number, height: number, layout: PngCreditLayout): void {
@@ -94,6 +101,7 @@ function drawCredit(context: CanvasRenderingContext2D, width: number, height: nu
   context.fillStyle = '#d5dbd3';
   context.fillRect(0, top, width, 1);
   const { size, modules } = creditQr();
+  // `pngCreditLayout`がQRの一辺をモジュール数の倍数にするので、各モジュールは整数ピクセルになる。
   const module = layout.qr / size;
   const qrLeft = width - layout.gap - layout.qr;
   const qrTop = top + layout.gap;
@@ -101,7 +109,7 @@ function drawCredit(context: CanvasRenderingContext2D, width: number, height: nu
   for (let row = 0; row < size; row++) {
     for (let col = 0; col < size; col++) {
       if (!modules[row][col]) continue;
-      context.fillRect(qrLeft + col * module, qrTop + row * module, Math.ceil(module), Math.ceil(module));
+      context.fillRect(qrLeft + col * module, qrTop + row * module, module, module);
     }
   }
   const x = layout.gap * 2;

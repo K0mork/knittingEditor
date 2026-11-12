@@ -128,8 +128,11 @@ if [ -n "$other_lprojs" ]; then
 fi
 
 # 「使い方」のサポートページ、アプリのプライバシーポリシーとサポートのメールアドレスは、利用者が選んだときだけSafariとメールアプリで開くリンクなので除く。
+# 出力に入れるクレジットのサイトURLは、表示とQRのためだけの文字列で、引用符で囲まれた完全なURLのときだけ除く。
+# パス付きのURL（/guide/など）は残すので、外部ページへの参照を足したときは今までどおり止まる。
 external_matches=$(find "$WEB_ROOT" -type f -exec perl -ne '
   s{https://knittingeditor\.com/(?:support/|privacy/app/)|support\@knittingeditor\.com}{}g;
+  s{https://knittingeditor\.com/(?=[\x60"'\''\s)])}{}g;
   print "$ARGV:$.:$_" if /googletagmanager|G-VVE0G4ZFL4|knittingeditor\.com/;
   close ARGV if eof;
 ' {} + || true)

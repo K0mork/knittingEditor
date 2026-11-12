@@ -9,8 +9,8 @@ describe('creditQr', () => {
     expect(size).toBeGreaterThanOrEqual(25);
     expect(modules).toHaveLength(size);
     expect(modules.every((row) => row.length === size)).toBe(true);
-    // 周囲2モジュールは白い余白。
-    for (let index = 0; index < 2; index++) {
+    // 周囲4モジュールは白い余白（ISO/IEC 18004）。
+    for (let index = 0; index < 4; index++) {
       expect(modules[index].every((dark) => !dark)).toBe(true);
       expect(modules[size - 1 - index].every((dark) => !dark)).toBe(true);
       expect(modules.every((row) => !row[index] && !row[size - 1 - index])).toBe(true);
@@ -31,9 +31,9 @@ describe('creditQr', () => {
       }
       expect(modules[top + 1][left + 1]).toBe(false);
     };
-    marker(2, 2);
-    marker(2, size - 9);
-    marker(size - 9, 2);
+    marker(4, 4);
+    marker(4, size - 11);
+    marker(size - 11, 4);
   });
 
   it('returns the same code every time', () => {

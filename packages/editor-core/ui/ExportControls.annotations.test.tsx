@@ -34,7 +34,7 @@ it('defaults the shared PNG/PDF annotation choice to off and passes it to both e
     await click('PDFを保存');
     expect(onPng).toHaveBeenLastCalledWith(24, { includeTitleAndLegend: true, includeCredit: true, legendCount: 1, legendHeights: [1] });
     expect(onPdf.mock.lastCall![0]).toMatchObject({ includeTitleAndLegend: true, includeCredit: true, legendCount: 1, legendHeights: [1] });
-    expect(container.textContent).toContain('760×794px');
+    expect(container.textContent).toContain('760×816px');
   } finally {
     await act(async () => root.unmount());
     container.remove();
