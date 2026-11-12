@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Board, parseColor } from '../model/Board';
 import { BoardHistory } from '../model/BoardHistory';
-import { defaultPngCellSize, PNG_CELL_SIZE_RANGE, PNG_PREFERRED_CELL_SIZE, minimumPngBytes, pngDimensions, pngGridStyles, pngLabelLayout, renderPdf, renderPng, validatePngSize } from './exporters';
+import { defaultPngCellSize, PNG_CELL_SIZE_RANGE, PNG_PREFERRED_CELL_SIZE, minimumPngBytes, pngCreditLayout, pngDimensions, pngGridStyles, pngLabelLayout, renderPdf, renderPng, validatePngSize } from './exporters';
 import { pngHeader, whitePixel } from './pngCanvas.test-helper';
 import { PngCanvasError } from './pngErrors';
 
@@ -9,16 +9,24 @@ describe('defaultPngCellSize', () => {
   it('uses the preferred cell size for ordinary boards', () => {
     const board = new Board(20, 20);
     expect(defaultPngCellSize(board)).toBe(PNG_PREFERRED_CELL_SIZE);
-    const size = validatePngSize(board, defaultPngCellSize(board));
-    expect([size.width, size.height]).toEqual([528, 528]);
+    const size = validatePngSize(board, defaultPngCellSize(board), { includeCredit: true });
+    expect(size.width).toBe(528);
+    expect(size.height).toBe(528 + pngCreditLayout(size.width).height);
   });
 
-  it('falls back to the largest size that stays within the safe limits', () => {
+  it('falls back to the largest size that stays within the safe limits with the credit on', () => {
     const board = new Board(1000, 1000);
     const size = defaultPngCellSize(board);
     expect(size).toBeLessThan(PNG_PREFERRED_CELL_SIZE);
-    expect(validatePngSize(board, size).valid).toBe(true);
-    expect(validatePngSize(board, size + 1).valid).toBe(false);
+    expect(validatePngSize(board, size, { includeCredit: true }).valid).toBe(true);
+    expect(validatePngSize(board, size + 1, { includeCredit: true }).valid).toBe(false);
+  });
+
+  it('picks a valid default with the credit for a wide board whose PNG used to be disabled (700×100)', () => {
+    const board = new Board(700, 100);
+    const size = defaultPngCellSize(board);
+    expect(validatePngSize(board, size, { includeCredit: true }).valid).toBe(true);
+    expect(validatePngSize(board, size + 1, { includeCredit: true }).valid).toBe(false);
   });
 
   it('never returns a value outside the slider range', () => {

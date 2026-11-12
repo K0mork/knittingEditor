@@ -176,7 +176,7 @@ App Store Connectの年齢制限は、質問票への回答から決まる（202
 
 ## 第三者ソフトウェアのライセンス表記
 
-- アプリにはReact、react-dom、scheduler、fflate（MIT）とidb（ISC）が入る。これらのライセンスは、配布物に著作権表示とライセンス文を含めることを条件にしている。
+- アプリにはReact、react-dom、scheduler、fflate、uqr（MIT）とidb（ISC）が入る。これらのライセンスは、配布物に著作権表示とライセンス文を含めることを条件にしている。
 - ビルド時にリポジトリのルートの`scripts/third-party-notices.mjs`が、バンドルに実際に入ったパッケージのライセンス文から`/third-party-notices/`のページを作る。アプリ内の「使い方」の「ライセンス」から開ける。ライセンス文の無いパッケージが入るとビルドが失敗する。
 - `scripts/check-app-bundle.sh`が、ページの同梱と主要なパッケージの記載を検査する。
 

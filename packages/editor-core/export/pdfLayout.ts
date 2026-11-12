@@ -45,6 +45,14 @@ export interface PdfPageLayout {
   legendPages: PdfLegendRow[][];
 }
 
+const PAGE_MARGIN = 24;
+/** クレジットのQRコードの一辺（pt）。約16mmで、A4に印刷して読み取れる大きさ。 */
+export const PDF_CREDIT_QR = 46;
+/**
+ * クレジット（サイト名・URL・QRコード）を入れるときのフッターの高さ（pt）。
+ * QRの下端を下余白に合わせ、盤面・段目番号との間にも同じ余白を残す。
+ */
+export const PDF_CREDIT_FOOTER = PDF_CREDIT_QR + PAGE_MARGIN;
 export const PDF_LEGEND_CELL_SIZE = 12;
 /** 一覧の1行で、記号の高さに足す余白（pt）。 */
 export const PDF_LEGEND_ROW_PADDING = 8;
@@ -75,8 +83,8 @@ function pdfLegendPages(options: PdfLayoutOptions, pageWidth: number, pageHeight
   const rows = pdfLegendRows(options, pageWidth);
   if (rows.length === 0) return [];
   const pages: PdfLegendRow[][] = [[]];
-  // 一覧は題名の下から下余白までに並べる。
-  const capacity = pdfLegendPageTop(pageHeight) - PAGE_MARGIN;
+  // 一覧は題名の下からクレジットのフッターの上までに並べる。
+  const capacity = pdfLegendPageTop(pageHeight) - PAGE_MARGIN - (options.includeCredit ? PDF_CREDIT_FOOTER : 0);
   let remaining = capacity;
   for (const row of rows) {
     if (row.height > remaining) {
@@ -95,7 +103,6 @@ function pdfLegendPageTop(pageHeight: number): number {
 
 const A4_LONG_SIDE = 841.89;
 const A4_SHORT_SIDE = 595.28;
-const PAGE_MARGIN = 24;
 const TILED_FOOTER = 18;
 const POINTS_PER_MILLIMETER = 72 / 25.4;
 /** 段・目番号の文字の大きさ（pt）。印刷して読める大きさで固定し、混み合うときは間引く。 */
@@ -131,7 +138,7 @@ function pdfGrid(rows: number, cols: number, options: PdfLayoutOptions): PdfGrid
   const tiled = options.layout === 'tiled';
   const pageWidth = portrait ? A4_SHORT_SIDE : A4_LONG_SIDE;
   const pageHeight = portrait ? A4_LONG_SIDE : A4_SHORT_SIDE;
-  const footer = tiled ? TILED_FOOTER : 0;
+  const footer = options.includeCredit ? PDF_CREDIT_FOOTER : tiled ? TILED_FOOTER : 0;
   // 段番号は最大の桁数ぶん、目番号は1行ぶんの帯を盤面の外側に取る。
   const rowLabelWidth = pdfLabelWidth(String(rows).length) + PDF_LABEL_GAP * 2;
   const colLabelHeight = PDF_LABEL_FONT_SIZE + PDF_LABEL_GAP * 2;

@@ -29,12 +29,12 @@ it('warns above 100 tiled pages, passes A4 landscape options, and clears the war
     expect(container.textContent).toContain(warning);
     expect(orientation.querySelector('option[value="landscape"]')!.textContent).toBe('A4横');
     await select(orientation, 'landscape');
-    const pages = pdfPageCount(1000, 1000, { layout: 'tiled', orientation: 'landscape', cellMillimeters: 5 });
+    const pages = pdfPageCount(1000, 1000, { layout: 'tiled', orientation: 'landscape', cellMillimeters: 5, includeCredit: true });
     expect(pages).toBeGreaterThan(100);
     expect(container.textContent).toContain(`推定 ${pages}ページ`);
     await act(async () => [...container.querySelectorAll('button')].find((button) => button.textContent === 'PDFを保存')!.click());
     expect(onPdf).toHaveBeenCalledExactlyOnceWith({ layout: 'tiled', orientation: 'landscape', cellMillimeters: 5,
-      includeTitleAndLegend: false, legendCount: 0, legendHeights: [] });
+      includeTitleAndLegend: false, includeCredit: true, legendCount: 0, legendHeights: [] });
     await select(layout, 'single');
     expect(container.textContent).toContain('推定 1ページ');
     expect(container.textContent).not.toContain(warning);

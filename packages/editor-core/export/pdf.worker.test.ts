@@ -3,7 +3,7 @@ import { Board, packCell } from '../model/Board';
 import { boardSurface } from '../model/boardColors';
 import { STITCHES, STITCH_BY_KEY } from '../stitches/catalog';
 import { buildPdf, pdfGuideLine, pdfMajorGridWidth, pdfMinorGridWidth, type PdfRequest } from './pdf.worker';
-import { pdfPageLayout } from './pdfLayout';
+import { PDF_CREDIT_FOOTER, PDF_CREDIT_QR, pdfPageLayout } from './pdfLayout';
 import { pdfStreams as decodedStreams } from './pdfStreams.test-helper';
 
 function request(rows: number, cols: number, dense: boolean): PdfRequest {
@@ -42,6 +42,37 @@ function fills(page: string): Array<{ color: string; rects: Array<{ x: number; y
 const pdfColor = (hex: string) => [1, 3, 5].map((index) => (parseInt(hex.slice(index, index + 2), 16) / 255).toFixed(3)).join(' ');
 
 const gridPages = (pdf: Uint8Array) => decodedStreams(pdf).filter((stream) => stream.includes(' re W n'));
+
+/** クレジットのQRを構成する黒い矩形。 */
+function creditRects(page: string): number[][] {
+  const segment = /0 g ((?:[\d.]+ [\d.]+ [\d.]+ [\d.]+ re )+)f\n/.exec(page);
+  expect(segment, 'QRの矩形').not.toBeNull();
+  return [...segment![1].matchAll(/([\d.]+) ([\d.]+) ([\d.]+) ([\d.]+) re /g)].map(([, x, y, width, height]) => [Number(x), Number(y), Number(width), Number(height)]);
+}
+
+/** クレジットのQRの外接矩形と、サイト名・URLがページ内にあることを確かめる。 */
+function expectCreditInsideMargins(page: string, layout: ReturnType<typeof pdfPageLayout>): void {
+  const { pageWidth, pageHeight, margin, footer } = layout;
+  expect(page).toContain('(https://knittingeditor.com/) Tj');
+  const name = Array.from('棒針編み図エディタ').map((character) => character.charCodeAt(0).toString(16).padStart(4, '0')).join('');
+  expect(page).toContain(`<${name}> Tj`);
+  const rects = creditRects(page);
+  const left = Math.min(...rects.map((rect) => rect[0]));
+  const right = Math.max(...rects.map((rect) => rect[0] + rect[2]));
+  const bottom = Math.min(...rects.map((rect) => rect[1]));
+  const top = Math.max(...rects.map((rect) => rect[1] + rect[3]));
+  expect(rects.length).toBeGreaterThan(100);
+  // QRは右下の余白内にあり、図の領域より下にある。
+  expect(left).toBeGreaterThanOrEqual(pageWidth - margin - PDF_CREDIT_QR - 0.01);
+  expect(right).toBeLessThanOrEqual(pageWidth - margin + 0.01);
+  expect(bottom).toBeGreaterThanOrEqual(margin - 0.01);
+  expect(top).toBeLessThanOrEqual(margin + footer + 0.01);
+  expect(left).toBeGreaterThan(pageWidth / 2);
+  expect(top).toBeLessThan(pageHeight / 2);
+  // 46pt角のQRのデータ部分（4モジュールの余白を除く）に収まる。
+  expect(right - left).toBeLessThanOrEqual(PDF_CREDIT_QR);
+  expect(top - bottom).toBeLessThanOrEqual(PDF_CREDIT_QR);
+}
 
 describe('PDF worker', () => {
   it.each(STITCHES.filter((stitch) => stitch.width > 1 || stitch.height > 1).flatMap((stitch) =>
@@ -84,6 +115,51 @@ describe('PDF worker', () => {
     expect(pdf.byteLength).toBeLessThan(20_000_000);
     expect(performance.now() - started).toBeLessThan(15_000);
   }, 20_000);
+
+  it('draws the credit inside the bottom and right margins of a single-page PDF', () => {
+    const input: PdfRequest = { ...request(10, 10, false), includeCredit: true };
+    const layout = pdfPageLayout(10, 10, input);
+    expect(layout.footer).toBe(PDF_CREDIT_FOOTER);
+    const pages = decodedStreams(buildPdf(input)).filter((stream) => stream.includes('BT'));
+    expect(pages).toHaveLength(1);
+    expectCreditInsideMargins(pages[0], layout);
+    // QRは矩形だけで描き、画像は埋め込まない。
+    expect(pages[0]).not.toContain('/Image');
+  });
+
+  it('draws the credit on every tiled page, including legend-only pages', () => {
+    const glyphs = STITCHES.filter((stitch) => stitch.renderKind === 'glyph');
+    const cols = glyphs.reduce((sum, stitch) => sum + stitch.width, 0) + 1;
+    const board = new Board(2, cols);
+    let col = 0;
+    for (const stitch of glyphs) {
+      expect(board.place(0, col, stitch.key, '#111111', false), stitch.key).toBe(true);
+      col += stitch.width;
+    }
+    const legend = { legendCount: glyphs.length, legendHeights: glyphs.map((stitch) => stitch.height) };
+    const input: PdfRequest = { rows: board.rows, cols: board.cols, cells: board.cells.buffer as ArrayBuffer, layout: 'tiled', orientation: 'portrait', cellMillimeters: 5, includeTitleAndLegend: true, includeCredit: true, ...legend };
+    const layout = pdfPageLayout(board.rows, board.cols, input);
+    expect(layout.legendPages.length).toBeGreaterThan(0);
+    const pages = decodedStreams(buildPdf(input)).filter((stream) => stream.includes('BT'));
+    expect(pages).toHaveLength(layout.pageCount);
+    // URLとQRは、図のページにも一覧だけのページにも入る。
+    for (const page of pages) expectCreditInsideMargins(page, layout);
+    const legendOnly = pages.slice(layout.tiles.length);
+    expect(legendOnly).toHaveLength(layout.legendPages.length);
+    for (const page of legendOnly) {
+      expect(page).toContain('(https://knittingeditor.com/) Tj');
+      expect(creditRects(page).length).toBeGreaterThan(100);
+      // 一覧だけのページには盤面のクリップがない。
+      expect(page).not.toContain(' re W n');
+    }
+  });
+
+  it('leaves the credit out when the option is off', () => {
+    const page = decodedStreams(buildPdf(request(10, 10, false))).find((stream) => stream.includes(' re W n'))!;
+    expect(pdfPageLayout(10, 10, request(10, 10, false)).footer).toBe(0);
+    expect(page).not.toContain('/F2');
+    expect(page).not.toContain('(https://knittingeditor.com/) Tj');
+  });
 
   it('paints the white-out symbol in PDF instead of dropping it', () => {
     const input = request(1, 1, false);

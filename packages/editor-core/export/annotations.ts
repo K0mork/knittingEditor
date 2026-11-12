@@ -3,6 +3,8 @@ import { STITCHES, type StitchDefinition } from '../stitches/catalog';
 
 export interface ExportAnnotations {
   includeTitleAndLegend?: boolean;
+  /** 出力の右下に、サイト名・URL・QRコードを入れる。 */
+  includeCredit?: boolean;
   title?: string;
   legendCount?: number;
   legendHeights?: number[];
