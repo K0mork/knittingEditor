@@ -30,7 +30,7 @@
 - `scripts/check-dist.mjs`: `required`の配信物と、OG画像・アイコンを確認するページの一覧。
 - `scripts/check-live-site.mjs`: 本番で確認する`LIVE_SITE_FILES`。`smoke`は`/`・`/guide/`・`/third-party-notices/`が配信物と一致するまで待ち、そのうえで一覧のすべてを確認する。
 - 計測するページ: `public/analytics.js`を外部スクリプトとして読み込み、`data-analytics`を付けたリンクを置く。`scripts/static-page-analytics.test.mjs`の`STATIC_PAGES`・`PAGE_NAMES`と、`public/privacy/index.html`の計測対象の文・`link_clicked`の文に足す。
-- ブラウザで確認するページ: `tests/e2e/csp.spec.ts`の`PAGES`と、`tests/e2e/contrast.spec.ts`のページ一覧。
+- ブラウザで確認するページ: `tests/e2e/csp.spec.ts`の`PAGES`と、`tests/e2e/contrast.spec.ts`のページ一覧、`tests/e2e/seo.spec.ts`のサイトマップの確認。
 - 既存ページからの内部リンク。
 
 追加したら、直接アクセスと再読み込みを確かめ、[`AGENTS.md`](../AGENTS.md)の必須検証と「Deployment Procedure」の公開後の確認に従う。CSPの付与・検査がすべてのHTMLを対象にすることは、固定リストへの登録漏れを自動で見つけることとは別である。
