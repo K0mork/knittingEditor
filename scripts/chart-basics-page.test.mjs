@@ -2,6 +2,7 @@
 // 編み図の作り方のページが、検索から来た人に必要な内容と導線を持つかを確かめる。
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { pdfPageRange } from '../packages/editor-core/export/pdf.worker.ts';
 
 const root = new URL('../', import.meta.url);
 const read = (path) => readFileSync(new URL(path, root), 'utf8');
@@ -10,6 +11,10 @@ const page = read('public/chart-basics/index.html');
 describe('編み図の作り方のページ', () => {
   it('検索と共有のための情報を持つ', () => {
     expect(page).toContain('<title>編み図の作り方｜描く手段の選び方とA4印刷｜棒針編み図エディタ</title>');
+    // og:titleは`<title>`と同じ文字列にする。
+    const title = page.match(/<title>([^<]+)<\/title>/)?.[1];
+    expect(title).toBeDefined();
+    expect(page).toContain(`<meta property="og:title" content="${title}" />`);
     expect(page).toContain('<link rel="canonical" href="https://knittingeditor.com/chart-basics/" />');
     expect(page).toContain('<meta property="og:url" content="https://knittingeditor.com/chart-basics/" />');
     expect(page).toContain('<meta property="og:image" content="https://knittingeditor.com/og-image.png" />');
@@ -30,6 +35,15 @@ describe('編み図の作り方のページ', () => {
     expect(page).toContain('28×30÷10=84段');
     expect(page).toContain('読みやすく分割');
     expect(page).toContain('セル寸法');
+    // ページ下端の目印は、PDF Workerの`pdfPageRange`が作る全角スペース区切りの例と同じにする。
+    const range = pdfPageRange(
+      { rows: 40, cols: 30, cells: new ArrayBuffer(0) },
+      { row: 0, col: 0, rows: 20, cols: 30 },
+      1,
+      6,
+    );
+    expect(range).toBe('2/6ページ　段21〜40　目1〜30');
+    expect(page).toContain(`「${range}」`);
   });
 
   it('使い方・記号の一覧・テンプレートと相互にリンクする', () => {
@@ -39,6 +53,7 @@ describe('編み図の作り方のページ', () => {
     // 使い方からも、このページへのリンクがある。
     expect(read('public/guide/index.html')).toContain('href="/chart-basics/"');
     expect(read('public/stitches/index.html')).toContain('href="/chart-basics/"');
+    expect(read('public/templates/index.html')).toContain('href="/chart-basics/"');
   });
 
   it('サイトマップとllms.txtから辿れる', () => {
