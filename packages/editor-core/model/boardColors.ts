@@ -76,13 +76,13 @@ const STRIPE_AMOUNT = 0.054;
 export type SurfaceKind = 'screen' | 'png' | 'pdf';
 
 /**
- * 罫線を地からどれだけ寄せるか。白い地で、画面は従来の`#c9cec7`・`#7d8a83`、PNGは`#bbbbbb`・
- * `#666666`、PDFは0.78・0.4の灰色に合う割合にしてある。
+ * 罫線を地からどれだけ寄せるか。白い地で、画面は従来の`#c9cec7`・`#7d8a83`、PNGとPDFは0.267
+ * （通常、`#bbbbbb`）・0.6（太線、`#666666`）の灰色に合う割合にしてある。
  */
 const LINE_AMOUNTS: Record<SurfaceKind, { minor: number; major: number }> = {
   screen: { minor: 0.24, major: 0.58 },
   png: { minor: 0.267, major: 0.6 },
-  pdf: { minor: 0.22, major: 0.6 },
+  pdf: { minor: 0.267, major: 0.6 },
 };
 
 /** 地の色から縞と罫線の色を作る。明るい地では地を暗い色へ、暗い地では白へ寄せる。 */
