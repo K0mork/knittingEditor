@@ -7,5 +7,6 @@
   - `npm run typecheck`、`npm test`（1117件成功）、`npm run build`、`npm run check:dist`が成功した。
   - `npm run test:e2e`は654件成功、37件スキップ、2件失敗した。失敗はどちらも`tests/e2e/layout-focus-and-hover.spec.ts`の1280×1024・48pxで、#425で知られている操作メニューの位置のずれである。この変更は編集画面の配置に触れていない。失敗したファイルの再実行では、3つの構成の39件とも成功した。
   - 390×844と1280×900でページを表示し、プレビュー・カードの並び・ダークの配色を目で確かめた。
+  - 2026-11-12: 編み物に詳しい人に8種類の図を見てもらい、模様として問題ないとの回答を得た。実際に編んだ編み地の確認ではない。
   - テンプレートの再生成は`node scripts/generate-templates.mjs`。CIでは実行しない。
 - デプロイ影響: あり（Pagesへ配信される）。配信後に`https://knittingeditor.com/templates/`を開き、8種類のプレビューが出ること、`.knit`をダウンロードして「バックアップから復元」で開けることを確かめる。`smoke`が`/templates/`のHTMLを確認する。
