@@ -5,6 +5,7 @@
 - テスト: `src/analytics.test.ts`に、`link_clicked`が`link_name`と`app_build`付きで並ぶことを確かめるテストを足した。`src/appStoreNotice.test.tsx`に、App Storeを開いたときに`trackLinkClick('app_store')`が呼ばれ、閉じただけでは呼ばれないことを確かめるテストを足した。`scripts/privacy-analytics-events.test.mjs`に、`docs/ANALYTICS.md`の「既存イベント」の表のイベント名がすべてプライバシーポリシーの「製品イベント」の表に載ることを確かめるテストを足した（`link_clicked`の行を消すと落ちることを確認した）。
 - 検証:
   - `npm ci`、`npm run typecheck`、`npx vitest run scripts/privacy-analytics-events.test.mjs src/analytics.test.ts src/appStoreNotice.test.tsx`（45件成功）、`npm test`（1105件成功）、`npm run build`、`npm run check:dist`、`git diff --check`が成功した。
-  - `npm run test:e2e`は647件成功、37件スキップ、失敗0件だった（レビュー修正前）。レビュー修正はドキュメントとテストだけで、E2Eは再実行していない。
+  - `npm run test:e2e`は647件成功、37件スキップ、失敗0件だった（レビュー修正前）。
+  - レビュー修正後（`main`を取り込んだ後）に、`npm run typecheck`、`npm test`（1105件成功）、`npm run build`、`npm run check:dist`、`npm run test:e2e`を流した。E2Eは645件成功、37件スキップ、2件失敗した。失敗はどちらも#425で知られている`tests/e2e/layout-focus-and-hover.spec.ts`で、そのファイルの再実行では1回目に別の1件が失敗し、2回目に39件とも成功した。
   - UTM付きのリンクからの流入の確認は、実際にUTM付きのURLをどこかに置いてからでないとできない。配信後に確かめる（#466の完了条件）。
 - デプロイ影響: あり（Pagesへ配信される）。配信後、編集画面のApp Storeのリンクを押し、`link_clicked`がGA4 Realtimeに届くことを確かめる。UTMの規則は、次にSNSや記事へリンクを置くときに使い、`sessionSource`でUTMなしと区別できることを確かめる。
