@@ -203,7 +203,7 @@ runが現れない場合は、`gh pr view --json url,headRefOid,state`でPRがop
 
 ## 10. 現在の実装状況
 
-ローカルWebView、共通編集基盤、永続保存、scene phase、Files、UTType、共有、PNG/PDF、`.knit`、iPhone／iPad UI、自動テスト、unsigned Release Archive、プライバシー文書は実装済みです。未完了の実機検証、署名、TestFlight、App Store提出準備はGitHub Issues（リリースごとの作業は版の名前の[マイルストーン](https://github.com/K0mork/knittingEditor/milestones)）で管理し、版ごとの実機確認は[`docs/DEVICE_TESTING.md`](docs/DEVICE_TESTING.md)に従います。
+ローカルWebView、共通編集基盤、永続保存、scene phase、Files、UTType、共有、PNG/PDF、`.knit`、iPhone／iPad UI、自動テスト、unsigned Release Archive、プライバシー文書は実装済みです。App Storeではv1.0（2026-11-06）とv1.1（2026-11-07）を公開しました。加入・署名・App Store Connectへのアプリの登録は初回の提出で済んでいます。更新版の提出・公開は[`docs/RELEASE_RUNBOOK.md`](docs/RELEASE_RUNBOOK.md)の手順5〜10、版ごとの実機確認は[`docs/DEVICE_TESTING.md`](docs/DEVICE_TESTING.md)に従います。残っている実機確認や版ごとの作業はGitHub Issues（リリースごとの作業は版の名前の[マイルストーン](https://github.com/K0mork/knittingEditor/milestones)）で管理します。
 
 ## 11. リリース判定
 

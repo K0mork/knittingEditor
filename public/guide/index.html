@@ -78,7 +78,7 @@
     <main>
       <h1>ブラウザで棒針編み図を作る方法</h1>
       <p class="lead">棒針編み図エディタは、スマートフォンやPCのブラウザから無料で利用できる編み図作成ツールです。アカウント登録やアプリのインストールは不要です。</p>
-      <a class="cta" href="/">編み図を作成する</a>
+      <a class="cta" href="/" data-analytics="editor">編み図を作成する</a>
 
       <h2>編み図を作る前に：表側から見た記号と読み方</h2>
       <p>盤面には、編み地を表側から見た記号を置きます。右下が1段め・1目めで、段は下から上へ、目は右から左へ数えます。画面とPNG・PDFの番号も同じ向きです。</p>
@@ -121,8 +121,8 @@
       <p class="note">読み込むには「出力」の「バックアップから復元」を押し、<code>.knit</code> ファイルを選びます。既存の編み図は上書きされず、名前に「（復元）」を付けた別の編み図として追加され、復元した先頭の編み図へ切り替わります。「全データを書き出す」のバックアップなら、保存済みブロックも名前に「（復元）」を付けて追加されます。</p>
 
       <h2 id="transfer-to-app">7. iPhone・iPadアプリへ編み図を移す</h2>
-      <p>iPhone・iPadには、このWeb版と同じ編み図エディタのアプリ版があります。Web版の編み図はアプリへ自動では引き継がれないため、<code>.knit</code> バックアップを使って移します。アプリは<a href="https://apps.apple.com/jp/app/id6829961403">App Store</a>から入手できます。</p>
-      <p class="app-store-badge"><a href="https://apps.apple.com/jp/app/id6829961403"><img src="/app-store-badge.svg" alt="App Storeからダウンロード" width="120" height="44" /></a></p>
+      <p>iPhone・iPadには、このWeb版と同じ編み図エディタのアプリ版があります。Web版の編み図はアプリへ自動では引き継がれないため、<code>.knit</code> バックアップを使って移します。アプリは<a href="https://apps.apple.com/jp/app/id6829961403" data-analytics="app_store">App Store</a>から入手できます。</p>
+      <p class="app-store-badge"><a href="https://apps.apple.com/jp/app/id6829961403" data-analytics="app_store"><img src="/app-store-badge.svg" alt="App Storeからダウンロード" width="120" height="44" /></a></p>
       <p>移すときは、次の順に操作します。</p>
       <ol>
         <li>Web版の「出力」で書き出します。保存済みブロックも一緒に移すなら「全データを書き出す」、1枚だけなら「この編み図を書き出す」を押します。</li>
@@ -144,7 +144,7 @@
         <li><code>.knit</code> バックアップの書き出しと復元</li>
       </ul>
 
-      <a class="cta" href="/">棒針編み図エディタを開く</a>
+      <a class="cta" href="/" data-analytics="editor">棒針編み図エディタを開く</a>
     </main>
     <footer>
       <a href="/">棒針編み図エディタへ戻る</a>
@@ -153,5 +153,6 @@
       <p><a href="/third-party-notices/">第三者ソフトウェアのライセンス</a></p>
       <p class="legal">Apple、Appleのロゴ、iPhone、iPadは、米国およびその他の国で登録されたApple Inc.の商標です。App Storeは、米国およびその他の国で登録されたApple Inc.のサービスマークです。</p>
     </footer>
+    <script type="module" src="/analytics.js" data-analytics-entry></script>
   </body>
 </html>

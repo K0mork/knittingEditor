@@ -1,8 +1,8 @@
 import { CHART_PROGRESS_KEY } from '@knitting-editor/editor-core/chartProgress';
 import type { AnalyticsParameters, EditorAnalytics } from '@knitting-editor/editor-core/analytics';
 
-const MEASUREMENT_ID = 'G-VVE0G4ZFL4';
-const ANALYTICS_OPT_OUT_KEY = 'knitting-editor:analytics-opt-out';
+export const MEASUREMENT_ID = 'G-VVE0G4ZFL4';
+export const ANALYTICS_OPT_OUT_KEY = 'knitting-editor:analytics-opt-out';
 
 interface AnalyticsEnvironment {
   prod: boolean;

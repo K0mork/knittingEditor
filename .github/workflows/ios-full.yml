@@ -159,6 +159,7 @@ jobs:
       - name: Simulate app update from the previous release and restore IndexedDB
         env:
           SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}
+          APP_UPDATE_RESULTS_DIR: ${{ runner.temp }}/app-update-results
         # macOSの/bin/bash 3.2は、EXITのtrapがあると未定義の変数で止まっても0で終わり、
         # 途中で止まったのに成功になったことがある。最後の成功の行が出たときだけ成功にする。
         run: |
@@ -167,6 +168,30 @@ jobs:
             'platform=iOS Simulator,name=${{ matrix.device }},OS=latest' \
             2>&1 | tee "$RUNNER_TEMP/app-update.log"
           grep -qF 'アプリ更新シミュレーション成功' "$RUNNER_TEMP/app-update.log"
+      # `ios_full`ジョブと同じく、再試行で通ったテストの1回目の失敗も画面写真で調べられるようにする（#441）。
+      - name: Find failed app update tests
+        id: test_failures
+        if: ${{ !cancelled() }}
+        env:
+          DEVICE: ${{ matrix.device }}
+        run: |
+          if grep -Eq "Test Case '.*' failed \(" "$RUNNER_TEMP/app-update.log"; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          fi
+          device="$(printf '%s' "$DEVICE" | tr -cs 'A-Za-z0-9_-' '-')"
+          echo "device=$device" >> "$GITHUB_OUTPUT"
+      - name: Upload failed app update test results
+        if: ${{ failure() || steps.test_failures.outputs.found == 'true' }}
+        # 調査用の保存に失敗しても、テストの結果は変えない。
+        continue-on-error: true
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: app-update-${{ steps.test_failures.outputs.device }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/app-update-results
+            ${{ runner.temp }}/app-update.log
+          retention-days: 7
+          if-no-files-found: ignore
 
   release_archive:
     runs-on: macos-26
