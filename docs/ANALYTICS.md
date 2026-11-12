@@ -2,13 +2,13 @@
 
 ## 目的と範囲
 
-試し操作、制作の進行、別日の継続制作、編集後の出力を区別し、改善の判断材料とする。対象はWeb本番版の編集画面と、`/guide/`・`/templates/`・`/support/`・`/privacy/`の静的なページである。編集画面の送信実装は`src/analytics.ts`、イベントの呼び出し元は`packages/editor-core/ui/useEditorController.ts`、制作量の判定は`packages/editor-core/chartProgress.ts`に置く。静的なページの送信実装は`public/analytics.js`に置く。iOS版は`NO_ANALYTICS`を使い、イベントを送らず、計測用の端末内状態も持たない。
+試し操作、制作の進行、別日の継続制作、編集後の出力を区別し、改善の判断材料とする。対象はWeb本番版の編集画面と、`/guide/`・`/templates/`・`/stitches/`・`/chart-basics/`・`/support/`・`/privacy/`の静的なページである。編集画面の送信実装は`src/analytics.ts`、イベントの呼び出し元は`packages/editor-core/ui/useEditorController.ts`、制作量の判定は`packages/editor-core/chartProgress.ts`に置く。静的なページの送信実装は`public/analytics.js`に置く。iOS版は`NO_ANALYTICS`を使い、イベントを送らず、計測用の端末内状態も持たない。
 
 開発ビルド、`navigator.webdriver`が有効な自動テスト、User-Agentに`Claude/`を含むアプリ内ブラウザ、オプトアウト中は計測を動かさず、計測キーを読み書きしない。オプトアウトの場合だけは既存の計測キーを可能な範囲で削除する。一般のアプリ内ブラウザすべてを除外するわけではない。
 
 ## イベント
 
-以下は製品イベントである。GA4の自動収集イベントとは分ける。全製品イベントに公開版の短いコミット識別子`app_build`を付ける。編み図ID、内容、名前、ファイル名、座標、ハッシュ、生のエラー文は送らない。編み図と編集・出力の関係はブラウザ内で決める。
+以下は製品イベントである。GA4の自動収集イベントとは分ける。全製品イベントに、公開版の短いコミット識別子（7文字）の先頭に`g`を付けた`app_build`（例: `g8e13233`）を付ける。`g`は、数字だけや指数表記に見える識別子をGA4が数値として記録するのを避けるためである。編み図ID、内容、名前、ファイル名、座標、ハッシュ、生のエラー文は送らない。編み図と編集・出力の関係はブラウザ内で決める。
 
 ### 既存イベント
 
@@ -32,7 +32,7 @@
 
 ### 静的なページのイベント
 
-`/guide/`・`/templates/`・`/support/`・`/privacy/`は、編集画面と同じGA4の測定IDへ、ページの閲覧（GA4の`page_view`）と、`data-analytics`を付けたリンクのクリックだけを送る。CSPがインラインのスクリプトを止めるため、`public/analytics.js`を外部スクリプトとして読み込む。
+`/guide/`・`/templates/`・`/stitches/`・`/chart-basics/`・`/support/`・`/privacy/`は、編集画面と同じGA4の測定IDへ、ページの閲覧（GA4の`page_view`）と、`data-analytics`を付けたリンクのクリックだけを送る。CSPがインラインのスクリプトを止めるため、`public/analytics.js`を外部スクリプトとして読み込む。
 
 | イベント | 送るとき | パラメータと値 |
 |---|---|---|

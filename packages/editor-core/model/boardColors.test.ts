@@ -53,7 +53,8 @@ describe('mixColor', () => {
 describe('boardSurface', () => {
   it('keeps the previous look on the default white ground', () => {
     expect(boardSurface('#ffffff', 'png')).toEqual({ background: '#ffffff', stripe: '#f3f4f3', minorLine: '#bbbbbb', majorLine: '#666666' });
-    expect(boardSurface('#ffffff', 'pdf')).toMatchObject({ minorLine: '#c7c7c7', majorLine: '#666666' });
+    // PDFもPNGと同じ罫線の色にする。
+    expect(boardSurface('#ffffff', 'pdf')).toMatchObject({ minorLine: '#bbbbbb', majorLine: '#666666' });
     // 以前の画面の罫線は#c9cec7・#7d8a83。
     expect(boardSurface('#ffffff', 'screen')).toMatchObject({ minorLine: '#c9cecb', majorLine: '#7d8982' });
   });

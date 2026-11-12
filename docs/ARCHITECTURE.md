@@ -20,6 +20,21 @@
 
 入力ダイアログ（`askText`・`askConfirm`）と分析（`EditorAnalytics`）も`useEditorController`の引数として各ビルドが渡す。制作量の判定は共通の`packages/editor-core/chartProgress.ts`に置くが、Web版で解析が有効なときだけ動かし、iOS版では計測状態の作成・保存も行わない。分析の送信実装はWeb版の`src/analytics.ts`だけが持ち、iOS版は何も渡さないので共通の`NO_ANALYTICS`のまま一切送らない。ネイティブのバックアップ読込み、保留保存のflush、使い方ページ遷移前の保存はiOS版の`App.tsx`が扱い、実行時の外部依存・通信APIをアプリbundleへ含めない。利用者が選んだときだけ外部を開くリンクの例外は[`ios/SPECIFICATION.md`](../ios/SPECIFICATION.md)の「3. オフライン・ネットワーク仕様」を正とし、`ios/scripts/check-app-bundle.sh`が同梱資産を検査する。編集・保存・ヘルプの閲覧はオフラインで完結する。
 
+## 公開ページを追加するとき
+
+`public/<name>/index.html`に置いたHTMLは、`vite build`がそのまま`dist/<name>/index.html`へ含める。CSPのmetaは`scripts/content-security-policy.mjs`が`dist/`のすべてのHTMLへ付けるため、ページごとの登録は要らない。開発中の`public-directory-index`も、`public/`にあるディレクトリの`index.html`を一般的に扱う。
+
+一方で、次の一覧は手で足す。足し忘れてもビルドは通るので、新しいページを作ったときにまとめて確認する。
+
+- `public/sitemap.xml`と`public/llms.txt`: 公開URL。`llms.txt`に載せた内部リンクは`tests/e2e/seo.spec.ts`が200を返すことを確かめる。
+- `scripts/check-dist.mjs`: `required`の配信物と、OG画像・アイコンを確認するページの一覧。
+- `scripts/check-live-site.mjs`: 本番で確認する`LIVE_SITE_FILES`。`smoke`は`/`・`/guide/`・`/third-party-notices/`が配信物と一致するまで待ち、そのうえで一覧のすべてを確認する。
+- 計測するページ: `public/analytics.js`を外部スクリプトとして読み込み、`data-analytics`を付けたリンクを置く。`scripts/static-page-analytics.test.mjs`の`STATIC_PAGES`・`PAGE_NAMES`と、`public/privacy/index.html`の計測対象の文・`link_clicked`の文に足す。
+- ブラウザで確認するページ: `tests/e2e/csp.spec.ts`の`PAGES`と、`tests/e2e/contrast.spec.ts`のページ一覧、`tests/e2e/seo.spec.ts`のサイトマップの確認。
+- 既存ページからの内部リンク。
+
+追加したら、直接アクセスと再読み込みを確かめ、[`AGENTS.md`](../AGENTS.md)の必須検証と「Deployment Procedure」の公開後の確認に従う。CSPの付与・検査がすべてのHTMLを対象にすることは、固定リストへの登録漏れを自動で見つけることとは別である。
+
 ## ビルドと公開
 
 この節は実際のCIジョブ構成の正本で、各ジョブが何を実行し、`ci-gate`がどのジョブを必須にするかを書く。マージと公開の手順、完了確認の条件はルートの[`AGENTS.md`](../AGENTS.md)の「Deployment Procedure」を正とする。

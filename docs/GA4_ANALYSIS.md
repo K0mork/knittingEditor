@@ -94,7 +94,7 @@ GA4が自動で集める`page_view`、`session_start`、`first_visit`、`user_en
 
 | API名 | 主に付くイベント | 分かること |
 |---|---|---|
-| `customEvent:app_build` | すべての製品イベント | 公開版の短いコミット識別子。リリースの前後を比べる |
+| `customEvent:app_build` | すべての製品イベント | 公開版の短いコミット識別子の先頭に`g`を付けたもの（例: `g8e13233`）。リリースの前後を比べる |
 | `customEvent:document_count_bucket` | `editor_ready`、`backup_restored` | 端末内の編み図の数の区分 |
 | `customEvent:feature_name` | `feature_opened` | 開いたパネル（`documents`、`grid`、`blocks`、`export`） |
 | `customEvent:stitch_key` | `stitch_selected` | 選んだ記号 |
@@ -199,7 +199,7 @@ GA4が自動で集める`page_view`、`session_start`、`first_visit`、`user_en
 
 ### 流入と環境
 
-`activeUsers`や`sessions`を、`sessionDefaultChannelGroup`、`sessionSource`、`landingPage`、`country`、`deviceCategory`ごとに見る。GA4のタグは、編集画面（`src/analytics.ts`）と、`/guide/`・`/templates/`・`/support/`・`/privacy/`の静的なページ（`public/analytics.js`）で読み込む。`landingPage`を見ると、検索などから静的なページに着地した人の流れも分かる。静的なページからは`link_clicked`（`link_name`）だけを送る。
+`activeUsers`や`sessions`を、`sessionDefaultChannelGroup`、`sessionSource`、`landingPage`、`country`、`deviceCategory`ごとに見る。GA4のタグは、編集画面（`src/analytics.ts`）と、`/guide/`・`/templates/`・`/stitches/`・`/chart-basics/`・`/support/`・`/privacy/`の静的なページ（`public/analytics.js`）で読み込む。`landingPage`を見ると、検索などから静的なページに着地した人の流れも分かる。静的なページからは`link_clicked`（`link_name`）だけを送る。
 
 ### UTMの付け方
 
@@ -256,6 +256,7 @@ SNSや記事から来た人を、GA4の流入レポートで見分けられる�
 - GA4の`date`はプロパティのタイムゾーン、`cohort_week`と日数の区分は端末のローカル日付である。期間の端に余裕を持たせる。
 - イベント数と利用者数を混ぜない。製品イベントの多くは操作の回数、制作量のイベントは編み図ごと、閾値ごとの件数である。
 - オプトアウトや広告ブロッカーなどで届かないイベントがある。送信は再送しない。
+- `app_build`に`g`を付ける前の値は7文字の識別子だけで、指数表記に見えた`8e13233`と`250e612`の版は、どちらも`inf`と記録されている。
 - Data APIには[プロパティごとの割り当て](https://developers.google.com/analytics/devguides/reporting/data/v1/quotas)がある。同じ問い合わせを繰り返すときは`return_property_quota`で残りを確かめる。
 
 ## GA4の画面を使う場合

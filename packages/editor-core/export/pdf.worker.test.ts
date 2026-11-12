@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { Board, packCell } from '../model/Board';
+import { boardSurface } from '../model/boardColors';
 import { STITCHES, STITCH_BY_KEY } from '../stitches/catalog';
-import { buildPdf, pdfGuideLine, type PdfRequest } from './pdf.worker';
+import { buildPdf, pdfGuideLine, pdfMajorGridWidth, pdfMinorGridWidth, type PdfRequest } from './pdf.worker';
 import { PDF_CREDIT_FOOTER, PDF_CREDIT_QR, pdfPageLayout } from './pdfLayout';
 import { pdfStreams as decodedStreams } from './pdfStreams.test-helper';
 
@@ -27,7 +28,21 @@ function majorGrid(page: string): { width: number; horizontal: number[]; vertica
   return { width: Number(match[1]), horizontal, vertical };
 }
 
-const gridPages = (pdf: Uint8Array) => decodedStreams(pdf).filter((stream) => stream.includes('0.35 w 0.780 0.780 0.780 RG'));
+/** ページの塗りつぶしを、色ごとにまとめた矩形として取り出す。 */
+function fills(page: string): Array<{ color: string; rects: Array<{ x: number; y: number; width: number; height: number }> }> {
+  return [...page.matchAll(/([\d.]+) ([\d.]+) ([\d.]+) rg ((?:[\d.]+ [\d.]+ [\d.]+ [\d.]+ re )+)f/g)].map((match) => ({
+    color: [match[1], match[2], match[3]].join(' '),
+    rects: [...match[4].matchAll(/([\d.]+) ([\d.]+) ([\d.]+) ([\d.]+) re /g)].map((rect) => ({
+      x: Number(rect[1]), y: Number(rect[2]), width: Number(rect[3]), height: Number(rect[4]),
+    })),
+  }));
+}
+
+/** `#rrggbb`を、PDFの塗りと同じ0〜1の3つの値にする。 */
+const pdfColor = (hex: string) => [1, 3, 5].map((index) => (parseInt(hex.slice(index, index + 2), 16) / 255).toFixed(3)).join(' ');
+
+const gridPages = (pdf: Uint8Array) => decodedStreams(pdf).filter((stream) => stream.includes(' re W n'));
+
 /** クレジットのQRを構成する黒い矩形。 */
 function creditRects(page: string): number[][] {
   const segment = /0 g ((?:[\d.]+ [\d.]+ [\d.]+ [\d.]+ re )+)f\n/.exec(page);
@@ -197,24 +212,89 @@ describe('PDF worker', () => {
     expect(commands).not.toContain('(49) Tj');
   });
 
-  it('leaves the page white on the default ground and fills the board on a chosen ground', () => {
-    const fill = /^([\d.]+ [\d.]+ [\d.]+) rg ([\d.]+) ([\d.]+) ([\d.]+) ([\d.]+) re f$/m;
+  it('paints the chosen ground and 1-row stripes, and leaves a white ground to the paper', () => {
     const [white] = gridPages(buildPdf(request(3, 4, false)));
-    expect(white).not.toMatch(fill);
+    const { cellSize } = pdfPageLayout(3, 4, request(3, 4, false));
+    const whiteFills = fills(white);
+    // 白い地は紙のままにし、1段おきの縞（3段なら2段分）だけを塗る。
+    expect(whiteFills).toHaveLength(1);
+    expect(whiteFills[0].color).toBe(pdfColor(boardSurface('#ffffff', 'pdf').stripe));
+    expect(whiteFills[0].rects).toHaveLength(2);
+    expect(whiteFills[0].rects.every((rect) => rect.width === 4 * cellSize && rect.height === cellSize)).toBe(true);
 
     const input = { ...request(3, 4, false), background: '#1e1e1e' };
-    const { pageHeight, margin, rowLabelWidth, colLabelHeight, cellSize } = pdfPageLayout(3, 4, input);
-    const page = decodedStreams(buildPdf(input)).find((stream) => stream.includes(' RG ') && stream.includes(' re f'))!;
-    const match = page.match(fill)!;
-    expect(match[1]).toBe('0.118 0.118 0.118');
-    expect(Number(match[2])).toBeCloseTo(margin + rowLabelWidth, 2);
-    expect(Number(match[3])).toBeCloseTo(pageHeight - margin - colLabelHeight - 3 * cellSize, 2);
-    expect(Number(match[4])).toBeCloseTo(4 * cellSize, 2);
-    expect(Number(match[5])).toBeCloseTo(3 * cellSize, 2);
-    // 地を塗ってから罫線を引き、罫線は暗い地より明るくする。
-    expect(page.indexOf(match[0])).toBeLessThan(page.indexOf(' RG '));
-    const lineGray = Number(page.match(/0\.35 w ([\d.]+) [\d.]+ [\d.]+ RG/)![1]);
-    expect(lineGray).toBeGreaterThan(0.118);
+    const { pageHeight, margin, rowLabelWidth, colLabelHeight, cellSize: darkCell } = pdfPageLayout(3, 4, input);
+    const page = decodedStreams(buildPdf(input)).find((stream) => stream.includes(' re W n'))!;
+    const [ground, stripes] = fills(page);
+    expect(ground.color).toBe(pdfColor(boardSurface('#1e1e1e', 'pdf').background));
+    expect(ground.rects).toHaveLength(1);
+    expect(ground.rects[0].x).toBeCloseTo(margin + rowLabelWidth, 2);
+    expect(ground.rects[0].y).toBeCloseTo(pageHeight - margin - colLabelHeight - 3 * darkCell, 2);
+    expect(ground.rects[0].width).toBeCloseTo(4 * darkCell, 2);
+    expect(ground.rects[0].height).toBeCloseTo(3 * darkCell, 2);
+    // 地の色より、縞と罫線のほうが明るい。
+    expect(stripes.color).toBe(pdfColor(boardSurface('#1e1e1e', 'pdf').stripe));
+    const lineGray = Number(page.match(new RegExp(`${pdfMinorGridWidth(darkCell).toFixed(3)} w ([\\d.]+) [\\d.]+ [\\d.]+ RG`))![1]);
+    expect(lineGray).toBeGreaterThan(Number(stripes.color.split(' ')[0]));
+  });
+
+  it.each(['#ffffff', '#808080', '#000000'])('uses the PNG stripe and grid look on the %s ground', (background) => {
+    const input = { ...request(12, 11, false), background };
+    const { cellSize } = pdfPageLayout(12, 11, input);
+    const page = decodedStreams(buildPdf(input)).find((stream) => stream.includes(' re W n'))!;
+    const png = boardSurface(background, 'png');
+    expect(fills(page).map((fill) => fill.color)).toContain(pdfColor(png.stripe));
+    expect(page).toContain(`${pdfMinorGridWidth(cellSize).toFixed(3)} w ${pdfColor(png.minorLine)} RG`);
+    expect(page).toContain(`${pdfMajorGridWidth(cellSize).toFixed(3)} w ${pdfColor(png.majorLine)} RG`);
+  });
+
+  it('writes the grid widths from the cell size as literal PDF operators', () => {
+    // 72pt（25.4mm）のマスでは、通常の線が3pt、太線が6ptになる。
+    const large: PdfRequest = { ...request(12, 12, false), layout: 'tiled', cellMillimeters: 25.4 };
+    expect(pdfPageLayout(12, 12, large).cellSize).toBeCloseTo(72, 6);
+    const [largePage] = gridPages(buildPdf(large));
+    expect(largePage).toContain('3.000 w');
+    expect(largePage).toContain('6.000 w');
+
+    // 0.5mmのマスでは、計算値が下限を下回るので0.12pt・0.24ptを書く。
+    const small: PdfRequest = { ...request(12, 12, false), layout: 'tiled', cellMillimeters: 0.5 };
+    expect(pdfPageLayout(12, 12, small).cellSize).toBeLessThan(2.88);
+    const [smallPage] = gridPages(buildPdf(small));
+    expect(smallPage).toContain('0.120 w');
+    expect(smallPage).toContain('0.240 w');
+  });
+
+  it('keeps the 1-row stripes on the same board rows from page to page', () => {
+    const input: PdfRequest = { ...request(60, 40, false), layout: 'tiled' };
+    const layout = pdfPageLayout(60, 40, input);
+    const pages = gridPages(buildPdf(input));
+    layout.tiles.forEach((tile, index) => {
+      const stripes = fills(pages[index]).find((fill) => fill.rects.every((rect) => Math.abs(rect.height - layout.cellSize) < 0.01))!;
+      const originY = layout.pageHeight - layout.margin - layout.colLabelHeight - tile.rows * layout.cellSize;
+      const rows = stripes.rects.map((rect) => tile.row + tile.rows - 1 - Math.round((rect.y - originY) / layout.cellSize));
+      const expected = Array.from({ length: tile.rows }, (_, localRow) => tile.row + localRow).filter((row) => row % 2 === 0);
+      expect(rows).toEqual(expected);
+    });
+  });
+
+  it('counts the 1-row stripes on the whole board when a page starts on an odd row', () => {
+    // 6mmのA4縦分割では1ページ44段。60段なので2ページ目は段43（0始まりの奇数）から始まる。
+    const input: PdfRequest = { ...request(60, 30, false), layout: 'tiled', cellMillimeters: 6 };
+    const layout = pdfPageLayout(60, 30, input);
+    expect(layout.tiles).toHaveLength(2);
+    expect(layout.tiles[1].row).toBe(43);
+    expect(layout.tiles[1].row % 2).toBe(1);
+    const pages = gridPages(buildPdf(input));
+    layout.tiles.forEach((tile, index) => {
+      const stripes = fills(pages[index]).find((fill) => fill.rects.every((rect) => Math.abs(rect.height - layout.cellSize) < 0.01))!;
+      const originY = layout.pageHeight - layout.margin - layout.colLabelHeight - tile.rows * layout.cellSize;
+      const rows = stripes.rects.map((rect) => tile.row + tile.rows - 1 - Math.round((rect.y - originY) / layout.cellSize));
+      // 縞はページごとではなく、上から数えた盤面全体の段の偶奇で決まる。
+      const expected = Array.from({ length: tile.rows }, (_, localRow) => tile.row + localRow).filter((row) => row % 2 === 0);
+      expect(rows, `page ${index + 1}`).toEqual(expected);
+      // 2ページ目の先頭は奇数段なので、ページ内の1行目には縞を置かない。
+      if (index === 1) expect(rows).not.toContain(tile.row);
+    });
   });
 
   it('draws major lines at the numbered tens of a single-page chart', () => {
@@ -224,7 +304,7 @@ describe('PDF worker', () => {
     const originX = margin + rowLabelWidth;
     const originY = pageHeight - margin - colLabelHeight - 25 * cellSize;
     const major = majorGrid(page);
-    expect(major.width).toBeGreaterThan(0.35);
+    expect(major.width).toBeCloseTo(cellSize * 2 / 24, 3);
     // PDFの座標は下が0なので、段番号nの上の線は下端からnセル上、目番号nの左の線は右端からnセル左にある。
     expect(major.horizontal.map((y) => Math.round((y - originY) / cellSize))).toEqual([20, 10]);
     expect(major.vertical.map((x) => 23 - Math.round((x - originX) / cellSize))).toEqual([20, 10]);

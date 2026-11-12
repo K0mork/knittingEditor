@@ -6,13 +6,15 @@ const root = new URL('../', import.meta.url);
 const read = (path) => readFileSync(new URL(path, root), 'utf8');
 
 /** 計測する静的ページ。編集画面は`src/analytics.ts`が計測する。 */
-const STATIC_PAGES = ['public/guide/index.html', 'public/templates/index.html', 'public/support/index.html', 'public/privacy/index.html'];
+const STATIC_PAGES = ['public/guide/index.html', 'public/templates/index.html', 'public/stitches/index.html', 'public/chart-basics/index.html', 'public/support/index.html', 'public/privacy/index.html'];
 const SCRIPT_TAG = '<script type="module" src="/analytics.js" data-analytics-entry></script>';
 
 /** 計測する静的ページと、プライバシーポリシーで使うページ名。 */
 const PAGE_NAMES = {
   'public/guide/index.html': '使い方',
   'public/templates/index.html': 'テンプレート',
+  'public/stitches/index.html': '編み目記号の一覧',
+  'public/chart-basics/index.html': '編み図の作り方',
   'public/support/index.html': 'サポート',
   'public/privacy/index.html': 'このページ',
 };

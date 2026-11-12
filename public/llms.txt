@@ -18,6 +18,8 @@
 - [棒針編み図エディタ](https://knittingeditor.com/): 編み図を作成・編集するWebアプリ。
 - [使い方](https://knittingeditor.com/guide/): 記号入力、スマートフォン操作、範囲コピー、PNG・PDF出力、バックアップの操作手順。
 - [編み図のテンプレート](https://knittingeditor.com/templates/): 鹿の子編み、メリヤス編み、ゴム編み、ケーブル、ねじり目、配色の8種類の編み図を`.knit`で配布しています。ダウンロードして「バックアップから復元」で開けます。
+- [編み目記号の一覧](https://knittingeditor.com/stitches/): 29種類の編み目記号の意味、使いどころ、編み図での置き方。記号の絵はアプリと同じです。
+- [編み図の作り方](https://knittingeditor.com/chart-basics/): 方眼紙・Excel・手書きとの違い、ゲージからの段数と目数の決め方、A4に分割して印刷する方法、よくあるつまずき。
 - [サポート](https://knittingeditor.com/support/): 問い合わせ方法と、不具合報告時に必要な情報。
 - [プライバシーポリシー](https://knittingeditor.com/privacy/): 端末内保存とアクセス解析に関する説明。
 
