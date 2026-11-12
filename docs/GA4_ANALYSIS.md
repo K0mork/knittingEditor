@@ -199,7 +199,7 @@ GA4が自動で集める`page_view`、`session_start`、`first_visit`、`user_en
 
 ### 流入と環境
 
-`activeUsers`や`sessions`を、`sessionDefaultChannelGroup`、`sessionSource`、`landingPage`、`country`、`deviceCategory`ごとに見る。GA4のタグは、編集画面（`src/analytics.ts`）と、`/guide/`・`/templates/`・`/stitches/`・`/support/`・`/privacy/`の静的なページ（`public/analytics.js`）で読み込む。`landingPage`を見ると、検索などから静的なページに着地した人の流れも分かる。静的なページからは`link_clicked`（`link_name`）だけを送る。
+`activeUsers`や`sessions`を、`sessionDefaultChannelGroup`、`sessionSource`、`landingPage`、`country`、`deviceCategory`ごとに見る。GA4のタグは、編集画面（`src/analytics.ts`）と、`/guide/`・`/templates/`・`/stitches/`・`/chart-basics/`・`/support/`・`/privacy/`の静的なページ（`public/analytics.js`）で読み込む。`landingPage`を見ると、検索などから静的なページに着地した人の流れも分かる。静的なページからは`link_clicked`（`link_name`）だけを送る。
 
 ### UTMの付け方
 

@@ -221,6 +221,7 @@ test('publishes the guide, the support page and the privacy policy in the sitema
   expect(xml).toContain('<loc>https://knittingeditor.com/</loc>');
   expect(xml).toContain('<loc>https://knittingeditor.com/guide/</loc>');
   expect(xml).toContain('<loc>https://knittingeditor.com/stitches/</loc>');
+  expect(xml).toContain('<loc>https://knittingeditor.com/chart-basics/</loc>');
   expect(xml).toContain('<loc>https://knittingeditor.com/support/</loc>');
   expect(xml).toContain('<loc>https://knittingeditor.com/privacy/</loc>');
   expect(xml).toContain('<loc>https://knittingeditor.com/privacy/app/</loc>');
