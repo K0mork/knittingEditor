@@ -1,0 +1,13 @@
+# 2026-11-12 — PNG・PDFにサイト名・URL・QRコードのクレジットを入れる
+
+- 影響: 出力したPNGとPDFに、サイト名「棒針編み図エディタ」・URL `https://knittingeditor.com/`・そのURLのQRコードを、控えめに入れるようにした。出力パネルに「クレジットを入れる（サイト名・URL・QRコード）」の切り替えを足し、既定で入れる。外すとこれまでと同じ出力になる。PNGは下端に白い帯を作り、左にサイト名とURL、右にQRを置く。QRの大きさは画像の幅の15%（72〜200px）で、解像度が上がっても小さくならない。小さい画像でもサイト名とQRが収まるよう、クレジットを入れるときは画像の幅を最低280pxにする。PDFは下端のフッターに同じ内容を入れ、1ページ版とA4分割版のどちらにも入れる。分割版では、ページ範囲の表示と並べて置く。フッターの高さは54pt、QRは46pt（約16mm）で、A4に印刷して読み取れる大きさにした。QRは端末内で作る（`uqr` 0.1.3、MIT。外部の生成サービスへURLを送らない）。PDFは矩形だけで描き、画像は埋め込まない。クレジットを入れると、PNGは帯のぶん画像が縦に伸び、PDFは盤面が少し小さくなる。編み図の内容は変えない。
+- 主なファイル: `packages/editor-core/export/credit.ts`（新規）、`packages/editor-core/export/exporters.ts`、`packages/editor-core/export/pdfLayout.ts`、`packages/editor-core/export/pdf.worker.ts`、`packages/editor-core/export/annotations.ts`、`packages/editor-core/ui/ExportControls.tsx`、`package.json`・`package-lock.json`（`uqr`）、`public/guide/index.html`・`ios/Web/public/guide/index.html`（同じ段落）、`public/llms.txt`、`scripts/check-dist.mjs`（第三者表記に`uqr`を追加）
+- テスト: `credit.test.ts`で、URLとサイト名、QRの大きさ・余白・位置検出パターン・再現性を確かめる。`exporters.credit.test.ts`で、クレジットの有無によるPNGの高さの差、白い帯と区切り線、QRが右端の範囲にだけ描かれること、サイト名とURLの位置、オフのときに出ないことを確かめる。`pdf.worker.test.ts`で、フッターの高さ、サイト名（日本語フォント）・URL・QRの矩形、画像を埋め込まないこと、オフのときに出ないことを確かめる。`pdfLayout.test.ts`で、クレジットのぶん1ページに入る段数が減ることを確かめる。`ExportControls`のテストを、切り替えが2つになったことと、既定で`includeCredit: true`が両方の出力へ渡ることに合わせた。既存のE2Eは、クレジットのフッターで1ページに収まる段数が変わったため、`editor.spec.ts`の「ちょうど1ページに収まる」盤面を53段から50段へ直し、太線を確かめるテストのPNGの寸法を帯のぶん（600×648px→600×756px）に直した。`tests/e2e/export-credit.spec.ts`で、既定で入っていること、外すとPNGが低くなること、表示の寸法が実際のPNGと一致することを確かめる。
+- 検証:
+  - `npm run typecheck`、`npm test`（1147件成功）、`npm run build`、`npm run check:dist`が成功した。`dist/third-party-notices/index.html`に`uqr 0.1.3`が入ることを確かめた。
+  - `npx playwright test tests/e2e/export-credit.spec.ts tests/e2e/export-title-and-legend.spec.ts tests/e2e/pdf-export-snapshot.spec.ts`（14件成功、1件スキップ）が成功した。
+  - 実際のエディタからPNGとPDFを書き出し、クレジットの帯（サイト名・URL・QR）を目で確かめた。PDFの内容ストリームに、サイト名・URLとQRの矩形（46pt、1モジュール約1.59pt）が入っていることを確かめた。確認画像は`/tmp/credit-*.png`に保存した。
+  - QRをスマートフォンで読み取り、`https://knittingeditor.com/`が開くことは、実機で確認する（この環境では確認していない）。
+  - iOS Webは`ios/Web`で`../../node_modules/.bin/tsc -p tsconfig.app.json --noEmit`と`../../node_modules/.bin/vitest run --config vite.config.ts`（158件成功）を実行した。クレジットはWeb版・iOS版で共通の出力処理に入る。
+  - `npm run test:e2e`は662件成功、37件スキップ、失敗なしだった。
+- デプロイ影響: あり（Pagesへ配信される）。配信後にPNGとPDFを書き出し、クレジットが入ること、QRを読み取ると`https://knittingeditor.com/`が開くこと、外すと以前と同じ出力になることを確かめる。iOS版は次回のリリースで同じ出力になる。
