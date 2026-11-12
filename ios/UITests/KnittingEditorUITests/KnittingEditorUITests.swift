@@ -2068,6 +2068,12 @@ final class KnittingEditorUITests: XCTestCase {
     /// 開かなかったときは、各タップの時刻とその前後のパネルの有無、画面写真を残す。
     /// 「編み図」の`aria-expanded`はXCUITestの`value`に出ないため、パネルの有無は
     /// 「閉じる」で判断する。
+    ///
+    /// アプリ更新テストでは、起動直後の1回目のタップが約半数で効かなかった（#441）。
+    /// 準備中の表示（`editorLoadingOverlay`）が覆っている間も、下の「編み図」は見えるので、
+    /// 文字サイズのテストと同じく表示が消えるのを待ってから押す。原因を確かめるため、各タップの前の
+    /// 準備中の表示の有無と押せるかを残す。1回目で開かなかったときと準備中の表示が消えなかったときは、
+    /// 経過をジョブログにも出す。
     @discardableResult
     private func openDocumentsPanel(
         in app: XCUIApplication,
@@ -2076,24 +2082,40 @@ final class KnittingEditorUITests: XCTestCase {
         let documents = app.buttons["編み図"]
         let newDocument = app.buttons["新しい編み図"]
         let close = app.buttons["閉じる"]
+        let loadingOverlay = app.descendants(matching: .any)["editorLoadingOverlay"]
         XCTAssertTrue(documents.waitForExistence(timeout: timeout), app.debugDescription)
         let started = Date()
         var events: [String] = []
         func record(_ event: String) {
             events.append(String(format: "%.1f秒 ", Date().timeIntervalSince(started)) + event)
         }
+        func tapDocuments(_ action: String) {
+            let state = "準備中=\(loadingOverlay.exists)、押せる=\(documents.exists && isHittableWithoutFailing(documents))"
+            documents.tap()
+            record("「編み図」を\(action)（押す前: \(state)）")
+        }
 
-        documents.tap()
-        record("「編み図」をタップ")
+        if !waitForDisappearance(of: loadingOverlay, timeout: timeout) {
+            record("\(Int(timeout))秒待っても準備中の表示が消えない")
+        }
+        tapDocuments("タップ")
         if !newDocument.waitForExistence(timeout: 10) {
             let panelShown = close.exists
             record("10秒待っても「新しい編み図」が無い（閉じる=\(panelShown)）")
             if !panelShown {
-                documents.tap()
-                record("「編み図」を押し直した（直後の閉じる=\(close.exists)）")
+                add(screenshotAttachment(named: "「編み図」が効かず押し直す"))
+                tapDocuments("押し直した")
+                record("押し直した直後の閉じる=\(close.exists)")
             }
         }
-        if newDocument.waitForExistence(timeout: timeout) {
+        let opened = newDocument.waitForExistence(timeout: timeout)
+        if events.count > 1 {
+            let summary = "TAPRETRY 編み図 " + events.joined(separator: " → ")
+                + (opened ? " → パネルが開いた" : "")
+            print(summary)
+            XCTContext.runActivity(named: summary) { _ in }
+        }
+        if opened {
             return newDocument
         }
         record("最後の待機でも「新しい編み図」が無い（閉じる=\(close.exists)）")
