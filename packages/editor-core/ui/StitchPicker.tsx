@@ -1,8 +1,6 @@
-import { STITCHES, STITCH_CATEGORY_LABELS, type StitchCategory } from '../stitches/catalog';
+import { STITCHES, STITCH_CATEGORY_LABELS, STITCH_CATEGORY_ORDER } from '../stitches/catalog';
 import { useModalFocus } from './hooks';
 import { useInputEnvironment } from './inputEnvironment';
-
-export const STITCH_CATEGORY_ORDER: StitchCategory[] = ['basic', 'decrease', 'cable', 'twist', 'utility'];
 
 export interface StitchPickerProps {
   selectedStitch: string;
