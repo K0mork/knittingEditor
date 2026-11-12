@@ -66,6 +66,9 @@ export const STITCH_CATEGORY_LABELS: Record<StitchCategory, string> = {
   basic: '基本', decrease: '減目', cable: '交差', twist: 'ねじり目', utility: '補助',
 };
 
+/** 記号を並べる区分の順。アプリの記号一覧と、公開ページの並びで同じ順を使う。 */
+export const STITCH_CATEGORY_ORDER: StitchCategory[] = ['basic', 'decrease', 'cable', 'twist', 'utility'];
+
 export const STITCHES: StitchDefinition[] = definitions.map((item) => ({
   ...item,
   renderKind: item.renderKind ?? 'glyph',

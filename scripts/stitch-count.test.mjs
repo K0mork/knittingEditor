@@ -17,7 +17,7 @@ const stitchKinds = /(\d+)種類の編み目記号/g;
 const checks = [
   { file: 'README.md', pattern: stitchKinds },
   { file: 'index.html', pattern: stitchKinds },
-  { file: 'public/llms.txt', pattern: /(\d+)種類の選択肢/g },
+  { file: 'public/llms.txt', pattern: /(\d+)種類の(?:選択肢|編み目記号)/g },
   { file: 'public/guide/index.html', pattern: stitchKinds },
   { file: 'ios/Web/public/guide/index.html', pattern: stitchKinds },
   { file: 'ios/SPECIFICATION.md', pattern: /(?:カタログv\d+の|全)(\d+)記号/g },
