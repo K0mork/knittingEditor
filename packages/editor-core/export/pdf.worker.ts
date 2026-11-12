@@ -2,6 +2,7 @@ import { normalizeGuideLines, type GuideLine } from '../model/guideLines';
 import { GUIDE_LINE_SHAPE, guideLineColor } from '../canvas/guideLines';
 /// <reference lib="webworker" />
 import { exportLegend } from './annotations';
+import { CREDIT_NAME, CREDIT_URL, creditQr } from './credit';
 import { Zlib, strToU8, zlibSync } from 'fflate';
 import { STITCH_BY_ID, STITCHES } from '../stitches/catalog';
 import { GLYPH_CELL, glyphPdfCommands } from '../stitches/glyphs';
@@ -184,6 +185,31 @@ export function tileGuideLines(tile: PdfTile, request: PdfRequest, x: number, y:
   return commands;
 }
 
+/**
+ * ページの下端にサイト名・URL・QRコードを描く。QRは矩形だけで描き、画像は埋め込まない。
+ * PDFの座標は下が0なので、QRの1行目（上端）は`bottom + (size - 1) * module`になる。
+ */
+export function pdfCreditCommands(pageWidth: number, margin: number): string {
+  const { size, modules } = creditQr();
+  const qr = 46;
+  const bottom = 6;
+  const module = qr / size;
+  const left = pageWidth - margin - qr;
+  let commands = `0 g `;
+  for (let row = 0; row < size; row++) {
+    for (let col = 0; col < size; col++) {
+      if (!modules[row][col]) continue;
+      const x = left + col * module;
+      const y = bottom + (size - 1 - row) * module;
+      commands += `${x.toFixed(3)} ${y.toFixed(3)} ${module.toFixed(3)} ${module.toFixed(3)} re `;
+    }
+  }
+  commands += 'f\n';
+  commands += pdfJapaneseText(CREDIT_NAME, margin, 36, 8);
+  commands += `0.4 g BT /F1 7 Tf ${margin.toFixed(3)} 24 Td (${CREDIT_URL}) Tj ET\n`;
+  return commands;
+}
+
 export function buildPdf(request: PdfRequest): Uint8Array<ArrayBuffer> {
   const cells = new Uint32Array(request.cells);
   const lines = normalizeGuideLines(request.lines, request.rows, request.cols);
@@ -196,7 +222,7 @@ export function buildPdf(request: PdfRequest): Uint8Array<ArrayBuffer> {
   objects.push(new Uint8Array());
   objects.push(ascii('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'));
   let japaneseFontRef = 0;
-  if (request.includeTitleAndLegend || request.layout === 'tiled') {
+  if (request.includeTitleAndLegend || request.layout === 'tiled' || request.includeCredit) {
     japaneseFontRef = objects.length + 1;
     objects.push(ascii(`<< /Type /Font /Subtype /Type0 /BaseFont /HeiseiKakuGo-W5 /Encoding /UniJIS-UCS2-HW-H /DescendantFonts [${japaneseFontRef + 1} 0 R] >>`));
     objects.push(ascii(`<< /Type /Font /Subtype /CIDFontType0 /BaseFont /HeiseiKakuGo-W5 /CIDSystemInfo << /Registry (Adobe) /Ordering (Japan1) /Supplement 6 >> /FontDescriptor ${japaneseFontRef + 2} 0 R /DW 1000 /W [231 325 500] >>`));
@@ -295,6 +321,7 @@ export function buildPdf(request: PdfRequest): Uint8Array<ArrayBuffer> {
         yield titleCommands(request.layout === 'tiled');
         if (request.layout === 'single') yield* legendCommands(pdfLegendRows(options, pageWidth), originY - colLabelHeight - 8);
       }
+      if (request.includeCredit) yield pdfCreditCommands(pageWidth, margin);
       if (request.layout === 'tiled') {
         yield pdfJapaneseText(pdfPageRange(request, tile, pageIndex, pageCount), margin, 10);
       }

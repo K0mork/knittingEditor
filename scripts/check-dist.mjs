@@ -30,7 +30,7 @@ for (const page of ['index.html', 'guide/index.html', 'support/index.html', 'pri
   }
 }
 const notices = await readFile(join('dist', 'third-party-notices', 'index.html'), 'utf8');
-for (const name of ['fflate', 'idb', 'react', 'react-dom', 'scheduler']) {
+for (const name of ['fflate', 'idb', 'react', 'react-dom', 'scheduler', 'uqr']) {
   if (!new RegExp(`<h2>${name} [^<]+</h2>`).test(notices)) throw new Error(`third-party-notices/index.html に ${name} のライセンス表記がありません`);
 }
 // 後から足したページも含め、配信するすべてのHTMLにCSPのmetaがあることを確かめる。

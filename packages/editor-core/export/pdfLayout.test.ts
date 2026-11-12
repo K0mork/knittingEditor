@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildPdf } from './pdf.worker';
-import { PDF_LEGEND_CELL_SIZE, PDF_LEGEND_ROW_PADDING, pdfLegendRows, pdfPageCount, pdfPageLayout, type PdfLayoutOptions } from './pdfLayout';
+import { PDF_CREDIT_FOOTER, PDF_LEGEND_CELL_SIZE, PDF_LEGEND_ROW_PADDING, pdfLegendRows, pdfPageCount, pdfPageLayout, type PdfLayoutOptions } from './pdfLayout';
 
 function pagesInPdf(rows: number, cols: number, options: PdfLayoutOptions): number {
   const pdf = buildPdf({ rows, cols, cells: new Uint32Array(rows * cols).buffer, ...options });
@@ -47,6 +47,15 @@ describe('PDF page layout', () => {
     expect(layout.stepCols).toBe(layout.tileCols - 1);
     expect(layout.stepRows).toBe(layout.tileRows - 1);
     expect(layout.pageCount).toBe(layout.pageRows * layout.pageCols);
+  });
+
+  it('reserves room for the credit footer and shrinks the chart area', () => {
+    const options: PdfLayoutOptions = { layout: 'tiled', orientation: 'portrait', cellMillimeters: 5 };
+    const without = pdfPageLayout(100, 20, options);
+    const withCredit = pdfPageLayout(100, 20, { ...options, includeCredit: true });
+    expect(without.footer).toBe(18);
+    expect(withCredit.footer).toBe(PDF_CREDIT_FOOTER);
+    expect(withCredit.tileRows).toBeLessThan(without.tileRows);
   });
 
   it('fits the whole board on a single page without a footer', () => {

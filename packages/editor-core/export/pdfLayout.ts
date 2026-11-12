@@ -46,6 +46,8 @@ export interface PdfPageLayout {
 }
 
 export const PDF_LEGEND_CELL_SIZE = 12;
+/** クレジット（サイト名・URL・QRコード）を入れるときのフッターの高さ（pt）。A4に印刷してQRを読み取れる大きさ。 */
+export const PDF_CREDIT_FOOTER = 54;
 /** 一覧の1行で、記号の高さに足す余白（pt）。 */
 export const PDF_LEGEND_ROW_PADDING = 8;
 /** 題名に取る高さ（pt）。1ページ版の盤面の上と、一覧だけのページの上端に取る。 */
@@ -131,7 +133,7 @@ function pdfGrid(rows: number, cols: number, options: PdfLayoutOptions): PdfGrid
   const tiled = options.layout === 'tiled';
   const pageWidth = portrait ? A4_SHORT_SIDE : A4_LONG_SIDE;
   const pageHeight = portrait ? A4_LONG_SIDE : A4_SHORT_SIDE;
-  const footer = tiled ? TILED_FOOTER : 0;
+  const footer = options.includeCredit ? PDF_CREDIT_FOOTER : tiled ? TILED_FOOTER : 0;
   // 段番号は最大の桁数ぶん、目番号は1行ぶんの帯を盤面の外側に取る。
   const rowLabelWidth = pdfLabelWidth(String(rows).length) + PDF_LABEL_GAP * 2;
   const colLabelHeight = PDF_LABEL_FONT_SIZE + PDF_LABEL_GAP * 2;

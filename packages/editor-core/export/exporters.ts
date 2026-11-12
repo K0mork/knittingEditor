@@ -10,6 +10,7 @@ import type { PdfLayoutOptions } from './pdfLayout';
 import type { PdfRequest, PdfResponse } from './pdf.worker';
 import { labelStride, showsLabel } from './labels';
 import { PngCanvasError } from './pngErrors';
+import { CREDIT_NAME, CREDIT_URL, creditQr } from './credit';
 
 const PNG_MAX_SIDE = 16_384;
 const PNG_MAX_PIXELS = 64_000_000;
@@ -63,11 +64,66 @@ export function pngLabelLayout(board: Board, cellSize: number): PngLabelLayout {
 
 const pngLegendRowHeight = (cellSize: number) => Math.max(20, cellSize) * 2 + 12;
 
+export interface PngCreditLayout {
+  /** QRコードの一辺（px）。 */
+  qr: number;
+  /** クレジットの帯の高さ（px）。 */
+  height: number;
+  gap: number;
+  fontSize: number;
+}
+
+/**
+ * PNGの右下に入れるクレジットの寸法。画像の幅に対する割合で決め、解像度が上がってもQRが小さくならないようにする。
+ * 幅528pxの20×20では約79px、幅1440pxでは200pxになる。
+ */
+export function pngCreditLayout(width: number): PngCreditLayout {
+  const qr = Math.min(200, Math.max(72, Math.round(width * 0.15)));
+  const gap = Math.max(8, Math.round(qr * 0.1));
+  return { qr, gap, height: qr + gap * 2, fontSize: Math.min(22, Math.max(11, Math.round(qr * 0.2))) };
+}
+
+/** クレジットを入れるときに確保する最小の幅。小さい画像でもサイト名とQRが収まるようにする。 */
+export const PNG_CREDIT_MIN_WIDTH = 280;
+
+/** クレジットの帯を描く。QRは白い地に黒で描き、読み取りやすくする。 */
+function drawCredit(context: CanvasRenderingContext2D, width: number, height: number, layout: PngCreditLayout): void {
+  const top = height - layout.height;
+  context.fillStyle = '#fff';
+  context.fillRect(0, top, width, layout.height);
+  context.fillStyle = '#d5dbd3';
+  context.fillRect(0, top, width, 1);
+  const { size, modules } = creditQr();
+  const module = layout.qr / size;
+  const qrLeft = width - layout.gap - layout.qr;
+  const qrTop = top + layout.gap;
+  context.fillStyle = '#000';
+  for (let row = 0; row < size; row++) {
+    for (let col = 0; col < size; col++) {
+      if (!modules[row][col]) continue;
+      context.fillRect(qrLeft + col * module, qrTop + row * module, Math.ceil(module), Math.ceil(module));
+    }
+  }
+  const x = layout.gap * 2;
+  const maxWidth = qrLeft - layout.gap - x;
+  const textTop = top + Math.max(layout.gap, (layout.height - (layout.fontSize * 2 + 4)) / 2);
+  context.textAlign = 'left';
+  context.textBaseline = 'alphabetic';
+  context.fillStyle = '#26322c';
+  context.font = `700 ${layout.fontSize}px system-ui`;
+  context.fillText(CREDIT_NAME, x, textTop + layout.fontSize, maxWidth);
+  context.fillStyle = '#52625a';
+  context.font = `${Math.max(9, layout.fontSize - 2)}px system-ui`;
+  context.fillText(CREDIT_URL, x, textTop + layout.fontSize * 2 + 4, maxWidth);
+}
+
 export function validatePngSize(board: Board, cellSize: number, options: ExportAnnotations = {}): { width: number; height: number; valid: boolean; reason?: string } {
   const { rowLabelWidth, colLabelHeight } = pngLabelLayout(board, cellSize);
   const { titleHeight, legendHeight } = annotationHeights({ ...options, legendCount: options.includeTitleAndLegend ? (options.legendCount ?? exportLegend(board.cells, board.lines.length > 0).length) : 0 }, 40, pngLegendRowHeight(cellSize));
-  const width = Math.max(board.cols * cellSize + rowLabelWidth * 2, options.includeTitleAndLegend ? Math.max(560, (Math.max(20, cellSize) * 6 + 200 + 36) * 2) : 0);
-  const height = board.rows * cellSize + colLabelHeight * 2 + titleHeight + legendHeight;
+  let width = Math.max(board.cols * cellSize + rowLabelWidth * 2, options.includeTitleAndLegend ? Math.max(560, (Math.max(20, cellSize) * 6 + 200 + 36) * 2) : 0);
+  if (options.includeCredit) width = Math.max(width, PNG_CREDIT_MIN_WIDTH);
+  const creditHeight = options.includeCredit ? pngCreditLayout(width).height : 0;
+  const height = board.rows * cellSize + colLabelHeight * 2 + titleHeight + legendHeight + creditHeight;
   if (width > PNG_MAX_SIDE || height > PNG_MAX_SIDE) return { width, height, valid: false, reason: `一辺が上限${PNG_MAX_SIDE}pxを超えます` };
   if (width * height > PNG_MAX_PIXELS) return { width, height, valid: false, reason: '画像のメモリ使用量が上限を超えます' };
   return { width, height, valid: true };
@@ -185,6 +241,7 @@ async function paintPng(canvas: HTMLCanvasElement, size: { width: number; height
       context.fillText(stitch.name, nameX, centerY, canvas.width / 2 - legendCell * 6 - 36);
     });
   }
+  if (options.includeCredit) drawCredit(context, canvas.width, canvas.height, pngCreditLayout(canvas.width));
   // 左上の角は番号の帯の白い紙で、題名もここには掛からない。確保に失敗した描画面は描いても透明のまま読める。
   const corner = context.getImageData(0, 0, 1, 1).data;
   if (corner[0] < PNG_PAPER_MIN_RGB || corner[1] < PNG_PAPER_MIN_RGB || corner[2] < PNG_PAPER_MIN_RGB || corner[3] < PNG_PAPER_MIN_ALPHA) throw new PngCanvasError();

@@ -23,18 +23,18 @@ it('defaults the shared PNG/PDF annotation choice to off and passes it to both e
       const button = [...container.querySelectorAll('button')].find((item) => item.textContent === text)!;
       await act(async () => button.click());
     };
-    expect(container.querySelectorAll('input[type="checkbox"]')).toHaveLength(1);
+    expect(container.querySelectorAll('input[type="checkbox"]')).toHaveLength(2);
     expect(checkbox.checked).toBe(false);
     await click('PNGを保存');
     await click('PDFを保存');
-    expect(onPng).toHaveBeenLastCalledWith(24, { includeTitleAndLegend: false, legendCount: 0, legendHeights: [] });
-    expect(onPdf.mock.lastCall![0]).toMatchObject({ includeTitleAndLegend: false, legendCount: 0, legendHeights: [] });
+    expect(onPng).toHaveBeenLastCalledWith(24, { includeTitleAndLegend: false, includeCredit: true, legendCount: 0, legendHeights: [] });
+    expect(onPdf.mock.lastCall![0]).toMatchObject({ includeTitleAndLegend: false, includeCredit: true, legendCount: 0, legendHeights: [] });
     await act(async () => checkbox.click());
     await click('PNGを保存');
     await click('PDFを保存');
-    expect(onPng).toHaveBeenLastCalledWith(24, { includeTitleAndLegend: true, legendCount: 1, legendHeights: [1] });
-    expect(onPdf.mock.lastCall![0]).toMatchObject({ includeTitleAndLegend: true, legendCount: 1, legendHeights: [1] });
-    expect(container.textContent).toContain('760×658px');
+    expect(onPng).toHaveBeenLastCalledWith(24, { includeTitleAndLegend: true, includeCredit: true, legendCount: 1, legendHeights: [1] });
+    expect(onPdf.mock.lastCall![0]).toMatchObject({ includeTitleAndLegend: true, includeCredit: true, legendCount: 1, legendHeights: [1] });
+    expect(container.textContent).toContain('760×794px');
   } finally {
     await act(async () => root.unmount());
     container.remove();
@@ -62,7 +62,7 @@ it('recounts the legend of a 1000x1000 board only after edits settle, and from t
   const cellSize = () => Number(container.querySelector<HTMLInputElement>('input[type="range"]')!.value);
   // 件数を渡さないと`validatePngSize`自身が一覧を数えるので、期待値は件数を指定して求める。
   const sizeWith = (legendCount: number) => {
-    const size = validatePngSize(board, cellSize(), { includeTitleAndLegend: true, legendCount });
+    const size = validatePngSize(board, cellSize(), { includeTitleAndLegend: true, includeCredit: true, legendCount });
     return `${size.width}×${size.height}px`;
   };
   try {
@@ -89,7 +89,7 @@ it('recounts the legend of a 1000x1000 board only after edits settle, and from t
     // 表示が追いつく前に押しても、出力には押した時点の盤面の一覧を渡す。
     await click('PNGを保存');
     await click('PDFを保存');
-    const live = { includeTitleAndLegend: true, legendCount: 3, legendHeights: [1, 1, 1] };
+    const live = { includeTitleAndLegend: true, includeCredit: true, legendCount: 3, legendHeights: [1, 1, 1] };
     expect(onPng).toHaveBeenLastCalledWith(cellSize(), live);
     expect(onPdf.mock.lastCall![0]).toMatchObject(live);
     expect(scans).toHaveBeenCalledTimes(3);

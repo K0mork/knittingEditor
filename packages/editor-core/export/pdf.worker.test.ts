@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Board, packCell } from '../model/Board';
 import { STITCHES, STITCH_BY_KEY } from '../stitches/catalog';
 import { buildPdf, pdfGuideLine, type PdfRequest } from './pdf.worker';
-import { pdfPageLayout } from './pdfLayout';
+import { PDF_CREDIT_FOOTER, pdfPageLayout } from './pdfLayout';
 import { pdfStreams as decodedStreams } from './pdfStreams.test-helper';
 
 function request(rows: number, cols: number, dense: boolean): PdfRequest {
@@ -70,6 +70,27 @@ describe('PDF worker', () => {
     expect(pdf.byteLength).toBeLessThan(20_000_000);
     expect(performance.now() - started).toBeLessThan(15_000);
   }, 20_000);
+
+  it('draws the credit footer with the site name, URL and QR when asked', () => {
+    const input: PdfRequest = { ...request(10, 10, false), includeCredit: true };
+    const { footer } = pdfPageLayout(10, 10, input);
+    expect(footer).toBe(PDF_CREDIT_FOOTER);
+    const page = decodedStreams(buildPdf(input)).find((stream) => stream.includes(' re W n'))!;
+    const name = Array.from('棒針編み図エディタ').map((character) => character.charCodeAt(0).toString(16).padStart(4, '0')).join('');
+    expect(page).toContain(`/F2 8 Tf`);
+    expect(page).toContain(`<${name}> Tj`);
+    expect(page).toContain('(https://knittingeditor.com/) Tj');
+    // QRは矩形だけで描き、画像は埋め込まない。
+    expect(page).not.toContain('/Image');
+    expect((page.match(/[\d.]+ [\d.]+ [\d.]+ [\d.]+ re /g) ?? []).length).toBeGreaterThan(100);
+  });
+
+  it('leaves the credit out when the option is off', () => {
+    const page = decodedStreams(buildPdf(request(10, 10, false))).find((stream) => stream.includes(' re W n'))!;
+    expect(pdfPageLayout(10, 10, request(10, 10, false)).footer).toBe(0);
+    expect(page).not.toContain('/F2');
+    expect(page).not.toContain('(https://knittingeditor.com/) Tj');
+  });
 
   it('paints the white-out symbol in PDF instead of dropping it', () => {
     const input = request(1, 1, false);

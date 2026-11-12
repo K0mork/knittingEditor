@@ -22,9 +22,9 @@ export interface ExportControlsProps {
 export const LEGEND_SETTLE_MS = 300;
 
 /** 記号の一覧は盤面全体を走査して作るので、必要なときだけ呼ぶ。 */
-function exportAnnotations(board: Board, includeTitleAndLegend: boolean): ExportAnnotations {
+function exportAnnotations(board: Board, includeTitleAndLegend: boolean, includeCredit: boolean): ExportAnnotations {
   const legend = includeTitleAndLegend ? exportLegend(board.cells, board.lines.length > 0) : [];
-  return { includeTitleAndLegend, legendCount: legend.length, legendHeights: legend.map((stitch) => stitch.height) };
+  return { includeTitleAndLegend, includeCredit, legendCount: legend.length, legendHeights: legend.map((stitch) => stitch.height) };
 }
 
 /** `value`が`delay`ミリ秒変わらなくなってから、その値に追いつく。 */
@@ -45,10 +45,12 @@ export function ExportControls({ board, revision, onPng, onPdf, onBackup, onRest
   const [orientation, setOrientation] = useState<PdfLayoutOptions['orientation']>('portrait');
   const [millimeters, setMillimeters] = useState(5);
   const [includeTitleAndLegend, setIncludeTitleAndLegend] = useState(false);
+  // 出力物からサイトへたどれるように、クレジットは既定で入れる。
+  const [includeCredit, setIncludeCredit] = useState(true);
   // マウスやペンでなぞる間は、マスが変わるたびに版が進む。表示する寸法とページ数のための一覧は、
   // 変更が止まってから数え直す。出力のボタンでは、押した時点の盤面で数え直したものを渡す。
   const settledRevision = useSettledValue(revision, LEGEND_SETTLE_MS);
-  const annotations = useMemo(() => exportAnnotations(board, includeTitleAndLegend), [board, settledRevision, includeTitleAndLegend]);
+  const annotations = useMemo(() => exportAnnotations(board, includeTitleAndLegend, includeCredit), [board, settledRevision, includeTitleAndLegend, includeCredit]);
   const png = validatePngSize(board, pngSize, annotations);
   // 推定ページ数はPDF Workerと同じ計算を使う。用紙の有効寸法をここに書き写すと、
   // 余白や分割規則を変えたときに表示と実際の出力がずれる。
@@ -56,8 +58,9 @@ export function ExportControls({ board, revision, onPng, onPdf, onBackup, onRest
   const pages = pdfPageCount(board.rows, board.cols, pdfOptions);
   return <div className="export-controls">
     <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}><input type="checkbox" checked={includeTitleAndLegend} onChange={(event) => setIncludeTitleAndLegend(event.target.checked)} />編み図名と記号の一覧を入れる</label>
-    <h3>PNG</h3><label>1セルの画素数<input type="range" min={PNG_CELL_SIZE_RANGE.min} max={PNG_CELL_SIZE_RANGE.max} value={pngSize} onChange={(event) => setPngSize(Number(event.target.value))} /><output>{pngSize}px</output></label><p>{png.width}×{png.height}px {!png.valid && `— ${png.reason}`}</p><button disabled={!png.valid} onClick={() => onPng(pngSize, exportAnnotations(board, includeTitleAndLegend))}>PNGを保存</button>{!png.valid && <p className="recommend">この盤面はPDF保存をおすすめします。</p>}
-    <h3>PDF</h3><label>構成<select value={layout} onChange={(event) => setLayout(event.target.value as PdfLayoutOptions['layout'])}><option value="single">全体を1ページ</option><option value="tiled">読みやすく分割</option></select></label><label>用紙<select value={orientation} onChange={(event) => setOrientation(event.target.value as PdfLayoutOptions['orientation'])}><option value="portrait">A4縦</option><option value="landscape">A4横</option></select></label>{layout === 'tiled' && <label>セル寸法<input type="range" min="2" max="10" value={millimeters} onChange={(event) => setMillimeters(Number(event.target.value))} /><output>{millimeters}mm</output></label>}<p>推定 {pages}ページ{pages > 100 && ' — ページ数が多いため1ページ版もご検討ください'}</p><button onClick={() => onPdf({ ...pdfOptions, ...exportAnnotations(board, includeTitleAndLegend) })}>PDFを保存</button>
+    <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}><input type="checkbox" checked={includeCredit} onChange={(event) => setIncludeCredit(event.target.checked)} />クレジットを入れる（サイト名・URL・QRコード）</label>
+    <h3>PNG</h3><label>1セルの画素数<input type="range" min={PNG_CELL_SIZE_RANGE.min} max={PNG_CELL_SIZE_RANGE.max} value={pngSize} onChange={(event) => setPngSize(Number(event.target.value))} /><output>{pngSize}px</output></label><p>{png.width}×{png.height}px {!png.valid && `— ${png.reason}`}</p><button disabled={!png.valid} onClick={() => onPng(pngSize, exportAnnotations(board, includeTitleAndLegend, includeCredit))}>PNGを保存</button>{!png.valid && <p className="recommend">この盤面はPDF保存をおすすめします。</p>}
+    <h3>PDF</h3><label>構成<select value={layout} onChange={(event) => setLayout(event.target.value as PdfLayoutOptions['layout'])}><option value="single">全体を1ページ</option><option value="tiled">読みやすく分割</option></select></label><label>用紙<select value={orientation} onChange={(event) => setOrientation(event.target.value as PdfLayoutOptions['orientation'])}><option value="portrait">A4縦</option><option value="landscape">A4横</option></select></label>{layout === 'tiled' && <label>セル寸法<input type="range" min="2" max="10" value={millimeters} onChange={(event) => setMillimeters(Number(event.target.value))} /><output>{millimeters}mm</output></label>}<p>推定 {pages}ページ{pages > 100 && ' — ページ数が多いため1ページ版もご検討ください'}</p><button onClick={() => onPdf({ ...pdfOptions, ...exportAnnotations(board, includeTitleAndLegend, includeCredit) })}>PDFを保存</button>
     <h3>バックアップ</h3>{backupStatus && <p>{backupStatus}</p>}<div className="button-grid"><button onClick={() => onBackup(false)}>この編み図を書き出す</button><button onClick={() => onBackup(true)}>全データを書き出す</button><button onClick={onRestore}>バックアップから復元</button></div><p>{backupNote}</p>
   </div>;
 }
