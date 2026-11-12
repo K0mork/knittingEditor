@@ -172,6 +172,22 @@ describe('PDF worker', () => {
     expect(page).toContain(`${pdfMajorGridWidth(cellSize).toFixed(3)} w ${pdfColor(png.majorLine)} RG`);
   });
 
+  it('writes the grid widths from the cell size as literal PDF operators', () => {
+    // 72pt（25.4mm）のマスでは、通常の線が3pt、太線が6ptになる。
+    const large: PdfRequest = { ...request(12, 12, false), layout: 'tiled', cellMillimeters: 25.4 };
+    expect(pdfPageLayout(12, 12, large).cellSize).toBeCloseTo(72, 6);
+    const [largePage] = gridPages(buildPdf(large));
+    expect(largePage).toContain('3.000 w');
+    expect(largePage).toContain('6.000 w');
+
+    // 0.5mmのマスでは、計算値が下限を下回るので0.12pt・0.24ptを書く。
+    const small: PdfRequest = { ...request(12, 12, false), layout: 'tiled', cellMillimeters: 0.5 };
+    expect(pdfPageLayout(12, 12, small).cellSize).toBeLessThan(2.88);
+    const [smallPage] = gridPages(buildPdf(small));
+    expect(smallPage).toContain('0.120 w');
+    expect(smallPage).toContain('0.240 w');
+  });
+
   it('keeps the 1-row stripes on the same board rows from page to page', () => {
     const input: PdfRequest = { ...request(60, 40, false), layout: 'tiled' };
     const layout = pdfPageLayout(60, 40, input);
@@ -182,6 +198,26 @@ describe('PDF worker', () => {
       const rows = stripes.rects.map((rect) => tile.row + tile.rows - 1 - Math.round((rect.y - originY) / layout.cellSize));
       const expected = Array.from({ length: tile.rows }, (_, localRow) => tile.row + localRow).filter((row) => row % 2 === 0);
       expect(rows).toEqual(expected);
+    });
+  });
+
+  it('counts the 1-row stripes on the whole board when a page starts on an odd row', () => {
+    // 6mmのA4縦分割では1ページ44段。60段なので2ページ目は段43（0始まりの奇数）から始まる。
+    const input: PdfRequest = { ...request(60, 30, false), layout: 'tiled', cellMillimeters: 6 };
+    const layout = pdfPageLayout(60, 30, input);
+    expect(layout.tiles).toHaveLength(2);
+    expect(layout.tiles[1].row).toBe(43);
+    expect(layout.tiles[1].row % 2).toBe(1);
+    const pages = gridPages(buildPdf(input));
+    layout.tiles.forEach((tile, index) => {
+      const stripes = fills(pages[index]).find((fill) => fill.rects.every((rect) => Math.abs(rect.height - layout.cellSize) < 0.01))!;
+      const originY = layout.pageHeight - layout.margin - layout.colLabelHeight - tile.rows * layout.cellSize;
+      const rows = stripes.rects.map((rect) => tile.row + tile.rows - 1 - Math.round((rect.y - originY) / layout.cellSize));
+      // 縞はページごとではなく、上から数えた盤面全体の段の偶奇で決まる。
+      const expected = Array.from({ length: tile.rows }, (_, localRow) => tile.row + localRow).filter((row) => row % 2 === 0);
+      expect(rows, `page ${index + 1}`).toEqual(expected);
+      // 2ページ目の先頭は奇数段なので、ページ内の1行目には縞を置かない。
+      if (index === 1) expect(rows).not.toContain(tile.row);
     });
   });
 
