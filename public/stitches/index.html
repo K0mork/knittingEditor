@@ -1,0 +1,761 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#3d7a4a" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1f4228" media="(prefers-color-scheme: dark)" />
+    <meta name="description" content="棒針編みの編み目記号29種類の一覧です。表目、裏目、かけ目、増し目、減目、交差、ねじり目、すべり目の意味と使いどころ、編み図での置き方をまとめました。記号の絵はアプリと同じです。" />
+    <meta property="og:title" content="編み目記号の一覧｜棒針編み図エディタ" />
+    <meta property="og:description" content="棒針編みの編み目記号29種類の一覧です。表目、裏目、かけ目、増し目、減目、交差、ねじり目、すべり目の意味と使いどころ、編み図での置き方をまとめました。記号の絵はアプリと同じです。" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://knittingeditor.com/stitches/" />
+    <meta property="og:locale" content="ja_JP" />
+    <meta property="og:site_name" content="棒針編み図エディタ" />
+    <meta property="og:image" content="https://knittingeditor.com/og-image.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="棒針の編み図 無料・登録不要" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="canonical" href="https://knittingeditor.com/stitches/" />
+    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
+    <link rel="icon" href="/icon-192.png" type="image/png" sizes="192x192" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <title>編み目記号の一覧｜棒針編み図エディタ</title>
+    <style>
+      :root {
+        --ink: #26322c;
+        --paper: #fffdf7;
+        --page: #f3f0e8;
+        --line: #d5dbd3;
+        --muted: #52625a;
+        --accent: #3d7a4a;
+        --accent-text: #285d35;
+        --tag: #e8efe6;
+        --tag-text: #33503b;
+        --used: #eef3ea;
+        --grid: #e6e1d4;
+        font-family: Inter, "Hiragino Sans", "Yu Gothic", system-ui, sans-serif;
+        color: var(--ink);
+        background: var(--page);
+        line-height: 1.8;
+        color-scheme: light dark;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; overflow-wrap: anywhere; }
+      header, main, footer { width: min(960px, calc(100% - 32px)); margin-inline: auto; }
+      header { padding: 28px 0 12px; }
+      main { padding: 8px 0 48px; }
+      footer { padding: 20px 0 40px; border-top: 1px solid var(--line); }
+      h1 { font-size: clamp(1.7rem, 5vw, 2.5rem); line-height: 1.35; }
+      h2 { margin-top: 2.2em; line-height: 1.45; }
+      p, li { max-width: 72ch; }
+      a { color: var(--accent-text); }
+      .lead { font-size: 1.08rem; }
+      .cta {
+        display: inline-block;
+        margin-top: 12px;
+        padding: 10px 16px;
+        border-radius: 10px;
+        background: var(--accent);
+        color: white;
+        font-weight: 700;
+        text-decoration: none;
+      }
+      .note {
+        padding: 14px 16px;
+        border-left: 4px solid var(--accent);
+        background: var(--paper);
+      }
+      .toc { display: flex; flex-wrap: wrap; gap: 8px; margin: 20px 0 8px; padding: 0; list-style: none; }
+      .toc a {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 6px;
+        padding: 5px 12px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        text-decoration: none;
+      }
+      .toc span { color: var(--muted); font-size: .85rem; }
+      .stitches { display: grid; gap: 14px; margin-top: 20px; }
+      .stitch {
+        display: grid;
+        grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+        grid-template-areas: "symbol head" "text text" "figure figure";
+        gap: 8px 16px;
+        padding: 16px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: var(--paper);
+      }
+      .symbol {
+        grid-area: symbol;
+        align-self: start;
+        width: min(calc(var(--cols) * 54px), 40vw, 216px);
+        aspect-ratio: var(--cols) / var(--rows);
+        color: var(--ink);
+      }
+      .symbol svg { display: block; }
+      .head { grid-area: head; }
+      .text { grid-area: text; }
+      .stitch h3 { margin: 0; font-size: 1.12rem; line-height: 1.5; }
+      .meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 2px 0 0; font-size: .82rem; color: var(--muted); }
+      .tag { padding: 1px 9px; border-radius: 999px; background: var(--tag); color: var(--tag-text); font-size: .72rem; font-weight: 700; }
+      .stitch p { margin: 0 0 8px; }
+      .stitch dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 12px; margin: 0; font-size: .92rem; }
+      .stitch dt { color: var(--muted); white-space: nowrap; }
+      .stitch dd { margin: 0; }
+      .tip { display: block; margin-top: 2px; color: var(--muted); }
+      .footprint { grid-area: figure; margin: 10px 0 0; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+      .footprint-svg { display: block; width: auto; height: auto; max-width: 100%; color: var(--ink); }
+      .footprint-svg .paper { fill: var(--paper); }
+      .footprint-svg .used { fill: var(--used); }
+      .footprint-svg .grid { stroke: var(--grid); }
+      .footprint figcaption { font-size: .8rem; color: var(--muted); }
+      .legal { font-size: .85rem; }
+      .faq dt { margin-top: 1em; font-weight: 700; }
+      .faq dd { margin: 0; max-width: 72ch; }
+      @media (max-width: 759px) {
+        .stitch dl { grid-template-columns: minmax(0, 1fr); }
+        .stitch dt { margin-top: 10px; }
+        .stitch dt:first-child { margin-top: 0; }
+      }
+      @media (min-width: 760px) {
+        .stitch {
+          grid-template-columns: minmax(0, auto) minmax(0, 1fr) 190px;
+          grid-template-areas: "symbol head figure" "symbol text figure";
+          align-items: start;
+        }
+        .symbol { width: min(calc(var(--cols) * 54px), 240px); }
+        .footprint { margin: 0; }
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --ink: #e2e8e3;
+          --paper: #1e2420;
+          --page: #171c19;
+          --line: #3c4741;
+          --muted: #a5b2aa;
+          --accent-text: #8fcb9b;
+          --tag: #2b3a31;
+          --tag-text: #b6d8bd;
+          --used: #2a342d;
+          --grid: #39443d;
+        }
+        .cta { color: white; }
+        .footprint-svg { color: #e2e8e3; }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <a href="/">棒針編み図エディタ</a>
+    </header>
+    <main>
+      <h1>編み目記号の一覧</h1>
+      <p class="lead">棒針編みの編み図で使う29種類の記号を、意味・使いどころ・編み図での置き方とともにまとめました。記号の絵は、このサイトの編み図エディタで使っているものと同じです。</p>
+      <p class="note">記号の名前と並びは、アプリの編み目記号の一覧とそろえています。「1段×2目」の表示は、その記号が編み図で使うマスの大きさです。</p>
+      <p><a class="cta" href="/" data-analytics="editor">編み図エディタを開く</a></p>
+      <nav class="toc" aria-label="記号の分類">
+        <a href="#basic">基本<span>7</span></a>
+        <a href="#decrease">減目<span>7</span></a>
+        <a href="#cable">交差<span>12</span></a>
+        <a href="#twist">ねじり目<span>2</span></a>
+        <a href="#utility">補助<span>1</span></a>
+      </nav>
+
+      <h2>編み図の記号の読み方</h2>
+      <ul>
+        <li>編み図は1マスが1目、横1列が1段です。段は下から上へ、目は右から左へ読みます。</li>
+        <li>記号は、編み地を表側から見た形で表します。</li>
+        <li>「右上」「左上」は、編み目がどちらへ傾くか、どの目が手前（上）になるかを表します。</li>
+        <li>幅が2目以上の記号は、その幅のマスを使います。縦2段にまたがる記号もあります。</li>
+      </ul>
+      <p>往復編みでは、偶数段は裏側を見て編むため、記号を読み替えます。読み替え方と編み図の描き方は<a href="/guide/">使い方</a>にまとめています。</p>
+
+      <section class="category" id="basic" data-category="basic">
+        <h2>基本の記号（7）</h2>
+        <p>編み地のいちばん基本になる記号です。表目と裏目を組み合わせると、メリヤス編みやゴム編みになります。</p>
+        <div class="stitches">
+        <article class="stitch" id="knit" data-stitch="knit">
+          <div class="symbol" style="--cols:1;--rows:1" aria-hidden="true"><svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><line x1="50" y1="12" x2="50" y2="88"/></svg></div>
+          <div class="head">
+            <h3>表目</h3>
+            <p class="meta"><span class="tag">JIS</span><span>1段×1目</span></p>
+          </div>
+          <div class="text">
+            <p>編み地の表側にV字の目が出る、いちばん基本の編み目です。棒針を手前から入れて糸を掛け、引き出して編みます。</p>
+            <dl>
+              <dt>使いどころ</dt><dd>メリヤス編みの表側や、模様の地、配色のマスに使います。</dd>
+              <dt>編み図での置き方</dt><dd>1目分のマスを使います。その段の目数は変わりません。</dd>
+            </dl>
+          </div>
+          <figure class="footprint">
+            <svg class="footprint-svg" viewBox="0 0 88 22" role="img" aria-label="表目が使うマス"><rect class="paper" width="88" height="22"/><rect class="used" x="22" width="22" height="22"/><g class="grid" fill="none" stroke-width="1"><path d="M 22 0 V 22"/><path d="M 44 0 V 22"/><path d="M 66 0 V 22"/></g><g transform="translate(22 0) scale(0.22)" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"><line x1="50" y1="12" x2="50" y2="88"/></g></svg>
+            <figcaption>使うマス：1目×1段</figcaption>
+          </figure>
+        </article>
+        <article class="stitch" id="purl" data-stitch="purl">
+          <div class="symbol" style="--cols:1;--rows:1" aria-hidden="true"><svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><line x1="12" y1="50" x2="88" y2="50"/></svg></div>
+          <div class="head">
+            <h3>裏目</h3>
+            <p class="meta"><span class="tag">JIS</span><span>1段×1目</span></p>
+          </div>
+          <div class="text">
+            <p>編み地の表側に横の線が出る編み目です。棒針を奥から入れて糸を掛け、引き出して編みます。</p>
+            <dl>
+              <dt>使いどころ</dt><dd>ゴム編みや鹿の子編み、ケーブル編みの地に使います。</dd>
+              <dt>編み図での置き方</dt><dd>1目分のマスを使います。その段の目数は変わりません。</dd>
+            </dl>
+          </div>
+          <figure class="footprint">
+            <svg class="footprint-svg" viewBox="0 0 88 22" role="img" aria-label="裏目が使うマス"><rect class="paper" width="88" height="22"/><rect class="used" x="22" width="22" height="22"/><g class="grid" fill="none" stroke-width="1"><path d="M 22 0 V 22"/><path d="M 44 0 V 22"/><path d="M 66 0 V 22"/></g><g transform="translate(22 0) scale(0.22)" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="50" x2="88" y2="50"/></g></svg>
+            <figcaption>使うマス：1目×1段</figcaption>
+          </figure>
+        </article>
+        <article class="stitch" id="yo" data-stitch="yo">
+          <div class="symbol" style="--cols:1;--rows:1" aria-hidden="true"><svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><ellipse cx="50" cy="50" rx="35" ry="35"/></svg></div>
+          <div class="head">
+            <h3>かけ目</h3>
+            <p class="meta"><span class="tag">JIS</span><span>1段×1目</span></p>
+          </div>
+          <div class="text">
+            <p>糸を針に掛けて、新しい目を作る記号です。編み地に小さな穴が開きます。</p>
+            <dl>
+              <dt>使いどころ</dt><dd>透かし模様や増し目、ボタンホールに使います。</dd>
+              <dt>編み図での置き方</dt><dd>1目分のマスを使います。その段で1目増えます。<span class="tip">増えた目は、次の段で編み入れます。目数を変えずに穴だけを開けたいときは、同じ段の減目と組み合わせます。</span></dd>
+            </dl>
+          </div>
+          <figure class="footprint">
+            <svg class="footprint-svg" viewBox="0 0 88 22" role="img" aria-label="かけ目が使うマス"><rect class="paper" width="88" height="22"/><rect class="used" x="22" width="22" height="22"/><g class="grid" fill="none" stroke-width="1"><path d="M 22 0 V 22"/><path d="M 44 0 V 22"/><path d="M 66 0 V 22"/></g><g transform="translate(22 0) scale(0.22)" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="50" cy="50" rx="35" ry="35"/></g></svg>
+            <figcaption>使うマス：1目×1段</figcaption>
+          </figure>
+        </article>
+        <article class="stitch" id="right_increase" data-stitch="right_increase">
+          <div class="symbol" style="--cols:1;--rows:1" aria-hidden="true"><svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><line x1="28" y1="12" x2="28" y2="88"/><line x1="28" y1="50" x2="78" y2="16"/></svg></div>
+          <div class="head">
+            <h3>右増し目</h3>
+            <p class="meta"><span class="tag">JIS</span><span>1段×1目</span></p>
+          </div>
+          <div class="text">
+            <p>1目から2目を作る増し目で、増えた目が右へ傾きます。</p>
+            <dl>
+              <dt>使いどころ</dt><dd>袖や身頃の端を広げるとき、右端の増し目に使います。</dd>
+              <dt>編み図での置き方</dt><dd>1目分のマスを使います。その段で1目増えます。</dd>
+            </dl>
+          </div>
+          <figure class="footprint">
+            <svg class="footprint-svg" viewBox="0 0 88 22" role="img" aria-label="右増し目が使うマス"><rect class="paper" width="88" height="22"/><rect class="used" x="22" width="22" height="22"/><g class="grid" fill="none" stroke-width="1"><path d="M 22 0 V 22"/><path d="M 44 0 V 22"/><path d="M 66 0 V 22"/></g><g transform="translate(22 0) scale(0.22)" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"><line x1="28" y1="12" x2="28" y2="88"/><line x1="28" y1="50" x2="78" y2="16"/></g></svg>
+            <figcaption>使うマス：1目×1段</figcaption>
+          </figure>
+        </article>
+        <article class="stitch" id="left_increase" data-stitch="left_increase">
+          <div class="symbol" style="--cols:1;--rows:1" aria-hidden="true"><svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><line x1="72" y1="12" x2="72" y2="88"/><line x1="72" y1="50" x2="22" y2="16"/></svg></div>
+          <div class="head">
+            <h3>左増し目</h3>
+            <p class="meta"><span class="tag">JIS</span><span>1段×1目</span></p>
+          </div>
+          <div class="text">
+            <p>1目から2目を作る増し目で、増えた目が左へ傾きます。</p>
+            <dl>
+              <dt>使いどころ</dt><dd>袖や身頃の端を広げるとき、左端の増し目に使います。</dd>
+              <dt>編み図での置き方</dt><dd>1目分のマスを使います。その段で1目増えます。</dd>
+            </dl>
+          </div>
+          <figure class="footprint">
+            <svg class="footprint-svg" viewBox="0 0 88 22" role="img" aria-label="左増し目が使うマス"><rect class="paper" width="88" height="22"/><rect class="used" x="22" width="22" height="22"/><g class="grid" fill="none" stroke-width="1"><path d="M 22 0 V 22"/><path d="M 44 0 V 22"/><path d="M 66 0 V 22"/></g><g transform="translate(22 0) scale(0.22)" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"><line x1="72" y1="12" x2="72" y2="88"/><line x1="72" y1="50" x2="22" y2="16"/></g></svg>
+            <figcaption>使うマス：1目×1段</figcaption>
+          </figure>
+        </article>
+        <article class="stitch" id="slip_stitch" data-stitch="slip_stitch">
+          <div class="symbol" style="--cols:1;--rows:2" aria-hidden="true"><svg viewBox="0 0 100 200" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><polyline points="16,32 50,176 84,32"/></svg></div>
+          <div class="head">
+            <h3>すべり目</h3>
+            <p class="meta"><span class="tag">JIS</span><span>2段×1目</span></p>
+          </div>
+          <div class="text">
+            <p>目を編まずに、そのまま針へ移す記号です。編み図では縦2段にまたがります。</p>
+            <dl>
+              <dt>使いどころ</dt><dd>衿や裾の端、模様の区切りに使います。</dd>
+              <dt>編み図での置き方</dt><dd>1目分の幅で、縦2段のマスを使います。その段の目数は変わりません。<span class="tip">盤面では、記号の上側のマスを押すと、その下の段まで2段分が入ります。</span></dd>
+            </dl>
+          </div>
+          <figure class="footprint">
+            <svg class="footprint-svg" viewBox="0 0 88 44" role="img" aria-label="すべり目が使うマス"><rect class="paper" width="88" height="44"/><rect class="used" x="22" width="22" height="44"/><g class="grid" fill="none" stroke-width="1"><path d="M 22 0 V 44"/><path d="M 44 0 V 44"/><path d="M 66 0 V 44"/><path d="M 0 22 H 88"/></g><g transform="translate(22 0) scale(0.22)" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"><polyline points="16,32 50,176 84,32"/></g></svg>
+            <figcaption>使うマス：1目×2段</figcaption>
+          </figure>
+        </article>
+        <article class="stitch" id="float_stitch" data-stitch="float_stitch">
+          <div class="symbol" style="--cols:1;--rows:2" aria-hidden="true"><svg viewBox="0 0 100 200" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><polyline points="16,32 50,176 84,32"/><line x1="8" y1="80" x2="92" y2="80"/></svg></div>
+          <div class="head">
+            <h3>浮き目</h3>
+            <p class="meta"><span class="tag">JIS</span><span>2段×1目</span></p>
+          </div>
+          <div class="text">
+            <p>編まない目を休ませ、糸を編み地の裏で渡す記号です。縦2段にまたがり、渡した糸が横線で表されます。</p>
+            <dl>
+              <dt>使いどころ</dt><dd>配色の切り替えで、使わない色の糸を渡すときに使います。</dd>
+              <dt>編み図での置き方</dt><dd>1目分の幅で、縦2段のマスを使います。その段の目数は変わりません。<span class="tip">盤面では、記号の上側のマスを押すと、その下の段まで2段分が入ります。</span></dd>
+            </dl>
+          </div>
+          <figure class="footprint">
+            <svg class="footprint-svg" viewBox="0 0 88 44" role="img" aria-label="浮き目が使うマス"><rect class="paper" width="88" height="44"/><rect class="used" x="22" width="22" height="44"/><g class="grid" fill="none" stroke-width="1"><path d="M 22 0 V 44"/><path d="M 44 0 V 44"/><path d="M 66 0 V 44"/><path d="M 0 22 H 88"/></g><g transform="translate(22 0) scale(0.22)" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"><polyline points="16,32 50,176 84,32"/><line x1="8" y1="80" x2="92" y2="80"/></g></svg>
+            <figcaption>使うマス：1目×2段</figcaption>
+          </figure>
+        </article>
+        </div>
+      </section>
+
+      <section class="category" id="decrease" data-category="decrease">
+        <h2>減目の記号（7）</h2>
+        <p>目数を減らす記号です。減らす位置と向きで、編み地の傾きが変わります。</p>
+        <div class="stitches">
+        <article class="stitch" id="right_up_two_one" data-stitch="right_up_two_one">
+          <div class="symbol" style="--cols:2;--rows:1" aria-hidden="true"><svg viewBox="0 0 200 100" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><polyline points="36,84 104,50 48,14"/><line x1="104" y1="50" x2="160" y2="86"/></svg></div>
+          <div class="head">
+            <h3>右上2目一度</h3>
+            <p class="meta"><span class="tag">JIS</span><span>1段×2目</span></p>
+          </div>
+          <div class="text">
+            <p>2目をまとめて1目に減らす記号です。表から見て、編み目が右に傾きます。</p>
+            <dl>
+              <dt>使いどころ</dt><dd>袖ぐりや衿ぐりなど、目数を減らすところに使います。</dd>
+              <dt>編み図での置き方</dt><dd>2目分のマスを使います。その段で1目減ります。</dd>
+            </dl>
+          </div>
+          <figure class="footprint">
+            <svg class="footprint-svg" viewBox="0 0 88 22" role="img" aria-label="右上2目一度が使うマス"><rect class="paper" width="88" height="22"/><rect class="used" x="22" width="44" height="22"/><g class="grid" fill="none" stroke-width="1"><path d="M 22 0 V 22"/><path d="M 44 0 V 22"/><path d="M 66 0 V 22"/></g><g transform="translate(22 0) scale(0.22)" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"><polyline points="36,84 104,50 48,14"/><line x1="104" y1="50" x2="160" y2="86"/></g></svg>
+            <figcaption>使うマス：2目×1段</figcaption>
+          </figure>
+        </article>
+        <article class="stitch" id="left_up_two_one" data-stitch="left_up_two_one">
+          <div class="symbol" style="--cols:2;--rows:1" aria-hidden="true"><svg viewBox="0 0 200 100" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><polyline points="164,84 96,50 152,14"/><line x1="96" y1="50" x2="40" y2="86"/></svg></div>
+          <div class="head">
+            <h3>左上2目一度</h3>
+            <p class="meta"><span class="tag">JIS</span><span>1段×2目</span></p>
+          </div>
+          <div class="text">
+            <p>2目をまとめて1目に減らす記号です。表から見て、編み目が左に傾きます。</p>
+            <dl>
+              <dt>使いどころ</dt><dd>左右対称に減らしたいとき、右上2目一度と組み合わせます。</dd>
+              <dt>編み図での置き方</dt><dd>2目分のマスを使います。その段で1目減ります。</dd>
+            </dl>
+          </div>
+          <figure class="footprint">
+            <svg class="footprint-svg" viewBox="0 0 88 22" role="img" aria-label="左上2目一度が使うマス"><rect class="paper" width="88" height="22"/><rect class="used" x="22" width="44" height="22"/><g class="grid" fill="none" stroke-width="1"><path d="M 22 0 V 22"/><path d="M 44 0 V 22"/><path d="M 66 0 V 22"/></g><g transform="translate(22 0) scale(0.22)" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"><polyline points="164,84 96,50 152,14"/><line x1="96" y1="50" x2="40" y2="86"/></g></svg>
+            <figcaption>使うマス：2目×1段</figcaption>
+          </figure>
+        </article>
+        <article class="stitch" id="purl_right_up_two_one" data-stitch="purl_right_up_two_one">
+          <div class="symbol" style="--cols:2;--rows:1" aria-hidden="true"><svg viewBox="0 0 200 100" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><polyline points="36,84 104,50 48,14"/><line x1="104" y1="50" x2="160" y2="86"/><line x1="70" y1="82" x2="130" y2="82"/></svg></div>
+          <div class="head">
+            <h3>裏目の右上2目一度</h3>
+            <p class="meta"><span class="tag">JIS派生</span><span>1段×2目</span></p>
+          </div>
+          <div class="text">
+            <p>裏目で2目を1目に減らす記号です。表から見て、編み目が右に傾きます。</p>
+            <dl>
+              <dt>使いどころ</dt><dd>裏メリヤスやゴム編みの中で、目数を減らすときに使います。</dd>
+              <dt>編み図での置き方</dt><dd>2目分のマスを使います。その段で1目減ります。</dd>
+            </dl>
+          </div>
+          <figure class="footprint">
+            <svg class="footprint-svg" viewBox="0 0 88 22" role="img" aria-label="裏目の右上2目一度が使うマス"><rect class="paper" width="88" height="22"/><rect class="used" x="22" width="44" height="22"/><g class="grid" fill="none" stroke-width="1"><path d="M 22 0 V 22"/><path d="M 44 0 V 22"/><path d="M 66 0 V 22"/></g><g transform="translate(22 0) scale(0.22)" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"><polyline points="36,84 104,50 48,14"/><line x1="104" y1="50" x2="160" y2="86"/><line x1="70" y1="82" x2="130" y2="82"/></g></svg>
+            <figcaption>使うマス：2目×1段</figcaption>
+          </figure>
+        </article>
+        <article class="stitch" id="purl_left_up_two_one" data-stitch="purl_left_up_two_one">
+          <div class="symbol" style="--cols:2;--rows:1" aria-hidden="true"><svg viewBox="0 0 200 100" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><polyline points="164,84 96,50 152,14"/><line x1="96" y1="50" x2="40" y2="86"/><line x1="70" y1="82" x2="130" y2="82"/></svg></div>
+          <div class="head">
+            <h3>裏目の左上2目一度</h3>
+            <p class="meta"><span class="tag">JIS派生</span><span>1段×2目</span></p>
+          </div>
+          <div class="text">
+            <p>裏目で2目を1目に減らす記号です。表から見て、編み目が左に傾きます。</p>
+            <dl>
+              <dt>使いどころ</dt><dd>裏メリヤスやゴム編みの中で、左右対称に減らすときに使います。</dd>
+              <dt>編み図での置き方</dt><dd>2目分のマスを使います。その段で1目減ります。</dd>
+            </dl>
+          </div>
+          <figure class="footprint">
+            <svg class="footprint-svg" viewBox="0 0 88 22" role="img" aria-label="裏目の左上2目一度が使うマス"><rect class="paper" width="88" height="22"/><rect class="used" x="22" width="44" height="22"/><g class="grid" fill="none" stroke-width="1"><path d="M 22 0 V 22"/><path d="M 44 0 V 22"/><path d="M 66 0 V 22"/></g><g transform="translate(22 0) scale(0.22)" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"><polyline points="164,84 96,50 152,14"/><line x1="96" y1="50" x2="40" y2="86"/><line x1="70" y1="82" x2="130" y2="82"/></g></svg>
+            <figcaption>使うマス：2目×1段</figcaption>
+          </figure>
+        </article>
+        <article class="stitch" id="middle_up_three_one" data-stitch="middle_up_three_one">
+          <div class="symbol" style="--cols:3;--rows:1" aria-hidden="true"><svg viewBox="0 0 300 100" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><line x1="150" y1="12" x2="150" y2="88"/><line x1="48" y1="82" x2="150" y2="50"/><line x1="252" y1="82" x2="150" y2="50"/></svg></div>
+          <div class="head">
+            <h3>中上3目一度</h3>
+            <p class="meta"><span class="tag">JIS</span><span>1段×3目</span></p>
+          </div>
+          <div class="text">
+            <p>3目の真ん中の目を上にして、1目に減らす記号です。編み目は左右どちらにも傾きません。</p>
+            <dl>
+              <dt>使いどころ</dt><dd>模様の中心で減らすときや、中央をそろえたいときに使います。</dd>
+              <dt>編み図での置き方</dt><dd>3目分のマスを使います。その段で2目減ります。</dd>
+            </dl>
+          </div>
+          <figure class="footprint">
+            <svg class="footprint-svg" viewBox="0 0 110 22" role="img" aria-label="中上3目一度が使うマス"><rect class="paper" width="110" height="22"/><rect class="used" x="22" width="66" height="22"/><g class="grid" fill="none" stroke-width="1"><path d="M 22 0 V 22"/><path d="M 44 0 V 22"/><path d="M 66 0 V 22"/><path d="M 88 0 V 22"/></g><g transform="translate(22 0) scale(0.22)" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"><line x1="150" y1="12" x2="150" y2="88"/><line x1="48" y1="82" x2="150" y2="50"/><line x1="252" y1="82" x2="150" y2="50"/></g></svg>
+            <figcaption>使うマス：3目×1段</figcaption>
+          </figure>
+        </article>
+        <article class="stitch" id="right_up_three_one" data-stitch="right_up_three_one">
+          <div class="symbol" style="--cols:3;--rows:1" aria-hidden="true"><svg viewBox="0 0 300 100" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><line x1="150" y1="88" x2="150" y2="50"/><polyline points="48,82 150,50 60,14"/><line x1="150" y1="50" x2="240" y2="86"/></svg></div>
+          <div class="head">
+            <h3>右上3目一度</h3>
+            <p class="meta"><span class="tag">JIS</span><span>1段×3目</span></p>
+          </div>
+          <div class="text">
+            <p>3目をまとめて1目に減らす記号です。表から見て、編み目が右に傾きます。</p>
+            <dl>
+              <dt>使いどころ</dt><dd>一度に大きく減らしたいとき、袖ぐりや肩の線に使います。</dd>
+              <dt>編み図での置き方</dt><dd>3目分のマスを使います。その段で2目減ります。</dd>
+            </dl>
+          </div>
+          <figure class="footprint">
+            <svg class="footprint-svg" viewBox="0 0 110 22" role="img" aria-label="右上3目一度が使うマス"><rect class="paper" width="110" height="22"/><rect class="used" x="22" width="66" height="22"/><g class="grid" fill="none" stroke-width="1"><path d="M 22 0 V 22"/><path d="M 44 0 V 22"/><path d="M 66 0 V 22"/><path d="M 88 0 V 22"/></g><g transform="translate(22 0) scale(0.22)" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"><line x1="150" y1="88" x2="150" y2="50"/><polyline points="48,82 150,50 60,14"/><line x1="150" y1="50" x2="240" y2="86"/></g></svg>
+            <figcaption>使うマス：3目×1段</figcaption>
+          </figure>
+        </article>
+        <article class="stitch" id="left_up_three_one" data-stitch="left_up_three_one">
+          <div class="symbol" style="--cols:3;--rows:1" aria-hidden="true"><svg viewBox="0 0 300 100" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><line x1="150" y1="88" x2="150" y2="50"/><polyline points="252,82 150,50 240,14"/><line x1="150" y1="50" x2="60" y2="86"/></svg></div>
+          <div class="head">
+            <h3>左上3目一度</h3>
+            <p class="meta"><span class="tag">JIS</span><span>1段×3目</span></p>
+          </div>
+          <div class="text">
+            <p>3目をまとめて1目に減らす記号です。表から見て、編み目が左に傾きます。</p>
+            <dl>
+              <dt>使いどころ</dt><dd>一度に大きく減らしたいとき、右の減目と組み合わせて左右対称にします。</dd>
+              <dt>編み図での置き方</dt><dd>3目分のマスを使います。その段で2目減ります。</dd>
+            </dl>
+          </div>
+          <figure class="footprint">
+            <svg class="footprint-svg" viewBox="0 0 110 22" role="img" aria-label="左上3目一度が使うマス"><rect class="paper" width="110" height="22"/><rect class="used" x="22" width="66" height="22"/><g class="grid" fill="none" stroke-width="1"><path d="M 22 0 V 22"/><path d="M 44 0 V 22"/><path d="M 66 0 V 22"/><path d="M 88 0 V 22"/></g><g transform="translate(22 0) scale(0.22)" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"><line x1="150" y1="88" x2="150" y2="50"/><polyline points="252,82 150,50 240,14"/><line x1="150" y1="50" x2="60" y2="86"/></g></svg>
+            <figcaption>使うマス：3目×1段</figcaption>
+          </figure>
+        </article>
+        </div>
+      </section>
+
+      <section class="category" id="cable" data-category="cable">
+        <h2>交差の記号（12）</h2>
+        <p>目を交差させる記号です。ケーブル編みの縄を作るときに使います。</p>
+        <div class="stitches">
+        <article class="stitch" id="right_cross" data-stitch="right_cross">
+          <div class="symbol" style="--cols:2;--rows:1" aria-hidden="true"><svg viewBox="0 0 200 100" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><line x1="22" y1="84" x2="89.08" y2="54.76"/><line x1="110.92" y1="45.24" x2="178" y2="16"/><line x1="178" y1="84" x2="22" y2="16"/></svg></div>
+          <div class="head">
+            <h3>右上交差</h3>
+            <p class="meta"><span class="tag">JIS</span><span>1段×2目</span></p>
+          </div>
+          <div class="text">
+            <p>2目を交差させる記号です。右の目が手前（上）になるように交差します。</p>
+            <dl>
+              <dt>使いどころ</dt><dd>ケーブル編みの基本になる交差です。</dd>
+              <dt>編み図での置き方</dt><dd>2目分のマスを使います。その段の目数は変わりません。<span class="tip">交差させる段だけこの記号を置き、間の段は表目や裏目で編みます。</span></dd>
+            </dl>
+          </div>
+          <figure class="footprint">
+            <svg class="footprint-svg" viewBox="0 0 88 22" role="img" aria-label="右上交差が使うマス"><rect class="paper" width="88" height="22"/><rect class="used" x="22" width="44" height="22"/><g class="grid" fill="none" stroke-width="1"><path d="M 22 0 V 22"/><path d="M 44 0 V 22"/><path d="M 66 0 V 22"/></g><g transform="translate(22 0) scale(0.22)" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="84" x2="89.08" y2="54.76"/><line x1="110.92" y1="45.24" x2="178" y2="16"/><line x1="178" y1="84" x2="22" y2="16"/></g></svg>
+            <figcaption>使うマス：2目×1段</figcaption>
+          </figure>
+        </article>
+        <article class="stitch" id="left_cross" data-stitch="left_cross">
+          <div class="symbol" style="--cols:2;--rows:1" aria-hidden="true"><svg viewBox="0 0 200 100" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><line x1="178" y1="84" x2="110.92" y2="54.76"/><line x1="89.08" y1="45.24" x2="22" y2="16"/><line x1="22" y1="84" x2="178" y2="16"/></svg></div>
+          <div class="head">
+            <h3>左上交差</h3>
+            <p class="meta"><span class="tag">JIS</span><span>1段×2目</span></p>
+          </div>
+          <div class="text">
+            <p>2目を交差させる記号です。左の目が手前（上）になるように交差します。</p>
+            <dl>
+              <dt>使いどころ</dt><dd>ケーブル編みで、右上交差と組み合わせて縄の向きを変えるときに使います。</dd>
+              <dt>編み図での置き方</dt><dd>2目分のマスを使います。その段の目数は変わりません。</dd>
+            </dl>
+          </div>
+          <figure class="footprint">
+            <svg class="footprint-svg" viewBox="0 0 88 22" role="img" aria-label="左上交差が使うマス"><rect class="paper" width="88" height="22"/><rect class="used" x="22" width="44" height="22"/><g class="grid" fill="none" stroke-width="1"><path d="M 22 0 V 22"/><path d="M 44 0 V 22"/><path d="M 66 0 V 22"/></g><g transform="translate(22 0) scale(0.22)" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"><line x1="178" y1="84" x2="110.92" y2="54.76"/><line x1="89.08" y1="45.24" x2="22" y2="16"/><line x1="22" y1="84" x2="178" y2="16"/></g></svg>
+            <figcaption>使うマス：2目×1段</figcaption>
+          </figure>
+        </article>
+        <article class="stitch" id="purl_right_cross" data-stitch="purl_right_cross">
+          <div class="symbol" style="--cols:2;--rows:1" aria-hidden="true"><svg viewBox="0 0 200 100" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><line x1="22" y1="84" x2="89.08" y2="54.76"/><line x1="110.92" y1="45.24" x2="178" y2="16"/><line x1="178" y1="84" x2="22" y2="16"/><line x1="161" y1="16" x2="195" y2="16"/></svg></div>
+          <div class="head">
+            <h3>裏目右上交差</h3>
+            <p class="meta"><span class="tag">JIS派生</span><span>1段×2目</span></p>
+          </div>
+          <div class="text">
+            <p>交差する目に裏目が入る記号です。裏目で編む線の端には、短い横線が付きます。</p>
+            <dl>
+              <dt>使いどころ</dt><dd>表目と裏目を混ぜた交差で、ケーブルの地を裏目にしたときなどに使います。</dd>
+              <dt>編み図での置き方</dt><dd>2目分のマスを使います。その段の目数は変わりません。</dd>
+            </dl>
+          </div>
+          <figure class="footprint">
+            <svg class="footprint-svg" viewBox="0 0 88 22" role="img" aria-label="裏目右上交差が使うマス"><rect class="paper" width="88" height="22"/><rect class="used" x="22" width="44" height="22"/><g class="grid" fill="none" stroke-width="1"><path d="M 22 0 V 22"/><path d="M 44 0 V 22"/><path d="M 66 0 V 22"/></g><g transform="translate(22 0) scale(0.22)" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="84" x2="89.08" y2="54.76"/><line x1="110.92" y1="45.24" x2="178" y2="16"/><line x1="178" y1="84" x2="22" y2="16"/><line x1="161" y1="16" x2="195" y2="16"/></g></svg>
+            <figcaption>使うマス：2目×1段</figcaption>
+          </figure>
+        </article>
+        <article class="stitch" id="purl_left_cross" data-stitch="purl_left_cross">
+          <div class="symbol" style="--cols:2;--rows:1" aria-hidden="true"><svg viewBox="0 0 200 100" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><line x1="178" y1="84" x2="110.92" y2="54.76"/><line x1="89.08" y1="45.24" x2="22" y2="16"/><line x1="22" y1="84" x2="178" y2="16"/><line x1="5" y1="16" x2="39" y2="16"/></svg></div>
+          <div class="head">
+            <h3>裏目左上交差</h3>
+            <p class="meta"><span class="tag">JIS派生</span><span>1段×2目</span></p>
+          </div>
+          <div class="text">
+            <p>交差する目に裏目が入る記号です。裏目で編む線の端には、短い横線が付きます。</p>
+            <dl>
+              <dt>使いどころ</dt><dd>表目と裏目を混ぜた交差を、左右対称にしたいときに使います。</dd>
+              <dt>編み図での置き方</dt><dd>2目分のマスを使います。その段の目数は変わりません。</dd>
+            </dl>
+          </div>
+          <figure class="footprint">
+            <svg class="footprint-svg" viewBox="0 0 88 22" role="img" aria-label="裏目左上交差が使うマス"><rect class="paper" width="88" height="22"/><rect class="used" x="22" width="44" height="22"/><g class="grid" fill="none" stroke-width="1"><path d="M 22 0 V 22"/><path d="M 44 0 V 22"/><path d="M 66 0 V 22"/></g><g transform="translate(22 0) scale(0.22)" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"><line x1="178" y1="84" x2="110.92" y2="54.76"/><line x1="89.08" y1="45.24" x2="22" y2="16"/><line x1="22" y1="84" x2="178" y2="16"/><line x1="5" y1="16" x2="39" y2="16"/></g></svg>
+            <figcaption>使うマス：2目×1段</figcaption>
+          </figure>
+        </article>
+        <article class="stitch" id="purl_right_up_two_cross" data-stitch="purl_right_up_two_cross">
+          <div class="symbol" style="--cols:3;--rows:1" aria-hidden="true"><svg viewBox="0 0 300 100" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><line x1="22" y1="84" x2="132.08" y2="54.76"/><line x1="167.92" y1="45.24" x2="278" y2="16"/><line x1="276.331" y1="90.282" x2="20.331" y2="22.282"/><line x1="279.669" y1="77.718" x2="23.669" y2="9.718"/><line x1="261" y1="16" x2="295" y2="16"/></svg></div>
+          <div class="head">
+            <h3>裏目右上2×1交差</h3>
+            <p class="meta"><span class="tag">拡張</span><span>1段×3目</span></p>
+          </div>
+          <div class="text">
+            <p>2目の束と1目の束を交差させる記号です。右の束が手前（上）になります。</p>
+            <dl>
+              <dt>使いどころ</dt><dd>太さの違う束を交差させた、変化のあるケーブルに使います。</dd>
+              <dt>編み図での置き方</dt><dd>3目分のマスを使います。その段の目数は変わりません。</dd>
+            </dl>
+          </div>
+          <figure class="footprint">
+            <svg class="footprint-svg" viewBox="0 0 110 22" role="img" aria-label="裏目右上2×1交差が使うマス"><rect class="paper" width="110" height="22"/><rect class="used" x="22" width="66" height="22"/><g class="grid" fill="none" stroke-width="1"><path d="M 22 0 V 22"/><path d="M 44 0 V 22"/><path d="M 66 0 V 22"/><path d="M 88 0 V 22"/></g><g transform="translate(22 0) scale(0.22)" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="84" x2="132.08" y2="54.76"/><line x1="167.92" y1="45.24" x2="278" y2="16"/><line x1="276.331" y1="90.282" x2="20.331" y2="22.282"/><line x1="279.669" y1="77.718" x2="23.669" y2="9.718"/><line x1="261" y1="16" x2="295" y2="16"/></g></svg>
+            <figcaption>使うマス：3目×1段</figcaption>
+          </figure>
+        </article>
+        <article class="stitch" id="purl_left_up_two_cross" data-stitch="purl_left_up_two_cross">
+          <div class="symbol" style="--cols:3;--rows:1" aria-hidden="true"><svg viewBox="0 0 300 100" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><line x1="278" y1="84" x2="167.92" y2="54.76"/><line x1="132.08" y1="45.24" x2="22" y2="16"/><line x1="20.331" y1="77.718" x2="276.331" y2="9.718"/><line x1="23.669" y1="90.282" x2="279.669" y2="22.282"/><line x1="5" y1="16" x2="39" y2="16"/></svg></div>
+          <div class="head">
+            <h3>裏目左上2×1交差</h3>
+            <p class="meta"><span class="tag">拡張</span><span>1段×3目</span></p>
+          </div>
+          <div class="text">
+            <p>2目の束と1目の束を交差させる記号です。左の束が手前（上）になります。</p>
+            <dl>
+              <dt>使いどころ</dt><dd>太さの違う束の交差を、左右対称にしたいときに使います。</dd>
+              <dt>編み図での置き方</dt><dd>3目分のマスを使います。その段の目数は変わりません。</dd>
+            </dl>
+          </div>
+          <figure class="footprint">
+            <svg class="footprint-svg" viewBox="0 0 110 22" role="img" aria-label="裏目左上2×1交差が使うマス"><rect class="paper" width="110" height="22"/><rect class="used" x="22" width="66" height="22"/><g class="grid" fill="none" stroke-width="1"><path d="M 22 0 V 22"/><path d="M 44 0 V 22"/><path d="M 66 0 V 22"/><path d="M 88 0 V 22"/></g><g transform="translate(22 0) scale(0.22)" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"><line x1="278" y1="84" x2="167.92" y2="54.76"/><line x1="132.08" y1="45.24" x2="22" y2="16"/><line x1="20.331" y1="77.718" x2="276.331" y2="9.718"/><line x1="23.669" y1="90.282" x2="279.669" y2="22.282"/><line x1="5" y1="16" x2="39" y2="16"/></g></svg>
+            <figcaption>使うマス：3目×1段</figcaption>
+          </figure>
+        </article>
+        <article class="stitch" id="purl_right_cross_twist_stitch" data-stitch="purl_right_cross_twist_stitch">
+          <div class="symbol" style="--cols:2;--rows:1" aria-hidden="true"><svg viewBox="0 0 200 100" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><line x1="176" y1="16" x2="123" y2="40"/><line x1="72" y1="61" x2="24" y2="84"/><line x1="90" y1="84" x2="56" y2="84"/><path d="M 162,79 C 136,85 20,34 45,16 C 72,4 139,58 122,88"/></svg></div>
+          <div class="head">
+            <h3>裏目右上ねじり目交差</h3>
+            <p class="meta"><span class="tag">拡張</span><span>1段×2目</span></p>
+          </div>
+          <div class="text">
+            <p>交差する目がねじり目になる記号です。右の目が手前（上）になり、下の線に裏目の横線が付きます。</p>
+            <dl>
+              <dt>使いどころ</dt><dd>ねじり目を混ぜたケーブルで、細かい陰影を付けたいときに使います。</dd>
+              <dt>編み図での置き方</dt><dd>2目分のマスを使います。その段の目数は変わりません。</dd>
+            </dl>
+          </div>
+          <figure class="footprint">
+            <svg class="footprint-svg" viewBox="0 0 88 22" role="img" aria-label="裏目右上ねじり目交差が使うマス"><rect class="paper" width="88" height="22"/><rect class="used" x="22" width="44" height="22"/><g class="grid" fill="none" stroke-width="1"><path d="M 22 0 V 22"/><path d="M 44 0 V 22"/><path d="M 66 0 V 22"/></g><g transform="translate(22 0) scale(0.22)" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"><line x1="176" y1="16" x2="123" y2="40"/><line x1="72" y1="61" x2="24" y2="84"/><line x1="90" y1="84" x2="56" y2="84"/><path d="M 162,79 C 136,85 20,34 45,16 C 72,4 139,58 122,88"/></g></svg>
+            <figcaption>使うマス：2目×1段</figcaption>
+          </figure>
+        </article>
+        <article class="stitch" id="purl_left_cross_twist_stitch" data-stitch="purl_left_cross_twist_stitch">
+          <div class="symbol" style="--cols:2;--rows:1" aria-hidden="true"><svg viewBox="0 0 200 100" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><line x1="24" y1="16" x2="77" y2="40"/><line x1="128" y1="61" x2="176" y2="84"/><line x1="110" y1="84" x2="144" y2="84"/><path d="M 38,79 C 64,85 180,34 155,16 C 128,4 61,58 78,88"/></svg></div>
+          <div class="head">
+            <h3>裏目左上ねじり目交差</h3>
+            <p class="meta"><span class="tag">拡張</span><span>1段×2目</span></p>
+          </div>
+          <div class="text">
+            <p>交差する目がねじり目になる記号です。左の目が手前（上）になり、下の線に裏目の横線が付きます。</p>
+            <dl>
+              <dt>使いどころ</dt><dd>ねじり目を混ぜた交差を、左右対称にしたいときに使います。</dd>
+              <dt>編み図での置き方</dt><dd>2目分のマスを使います。その段の目数は変わりません。</dd>
+            </dl>
+          </div>
+          <figure class="footprint">
+            <svg class="footprint-svg" viewBox="0 0 88 22" role="img" aria-label="裏目左上ねじり目交差が使うマス"><rect class="paper" width="88" height="22"/><rect class="used" x="22" width="44" height="22"/><g class="grid" fill="none" stroke-width="1"><path d="M 22 0 V 22"/><path d="M 44 0 V 22"/><path d="M 66 0 V 22"/></g><g transform="translate(22 0) scale(0.22)" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"><line x1="24" y1="16" x2="77" y2="40"/><line x1="128" y1="61" x2="176" y2="84"/><line x1="110" y1="84" x2="144" y2="84"/><path d="M 38,79 C 64,85 180,34 155,16 C 128,4 61,58 78,88"/></g></svg>
+            <figcaption>使うマス：2目×1段</figcaption>
+          </figure>
+        </article>
+        <article class="stitch" id="right_up_two_cross" data-stitch="right_up_two_cross">
+          <div class="symbol" style="--cols:4;--rows:1" aria-hidden="true"><svg viewBox="0 0 400 100" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><line x1="20.78" y1="77.615" x2="173.86" y2="48.375"/><line x1="223.7" y1="38.855" x2="376.78" y2="9.615"/><line x1="23.22" y1="90.385" x2="176.3" y2="61.145"/><line x1="226.14" y1="51.625" x2="379.22" y2="22.385"/><line x1="376.78" y1="90.385" x2="20.78" y2="22.385"/><line x1="379.22" y1="77.615" x2="23.22" y2="9.615"/></svg></div>
+          <div class="head">
+            <h3>右上2目交差</h3>
+            <p class="meta"><span class="tag">拡張</span><span>1段×4目</span></p>
+          </div>
+          <div class="text">
+            <p>2目ずつの束を交差させる記号です。右の束が手前（上）になります。</p>
+            <dl>
+              <dt>使いどころ</dt><dd>2/2ケーブルなど、太い縄編みに使います。</dd>
+              <dt>編み図での置き方</dt><dd>4目分のマスを使います。その段の目数は変わりません。<span class="tip">交差させる段だけこの記号を置き、間の段は表目や裏目で編みます。</span></dd>
+            </dl>
+          </div>
+          <figure class="footprint">
+            <svg class="footprint-svg" viewBox="0 0 132 22" role="img" aria-label="右上2目交差が使うマス"><rect class="paper" width="132" height="22"/><rect class="used" x="22" width="88" height="22"/><g class="grid" fill="none" stroke-width="1"><path d="M 22 0 V 22"/><path d="M 44 0 V 22"/><path d="M 66 0 V 22"/><path d="M 88 0 V 22"/><path d="M 110 0 V 22"/></g><g transform="translate(22 0) scale(0.22)" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"><line x1="20.78" y1="77.615" x2="173.86" y2="48.375"/><line x1="223.7" y1="38.855" x2="376.78" y2="9.615"/><line x1="23.22" y1="90.385" x2="176.3" y2="61.145"/><line x1="226.14" y1="51.625" x2="379.22" y2="22.385"/><line x1="376.78" y1="90.385" x2="20.78" y2="22.385"/><line x1="379.22" y1="77.615" x2="23.22" y2="9.615"/></g></svg>
+            <figcaption>使うマス：4目×1段</figcaption>
+          </figure>
+        </article>
+        <article class="stitch" id="left_up_two_cross" data-stitch="left_up_two_cross">
+          <div class="symbol" style="--cols:4;--rows:1" aria-hidden="true"><svg viewBox="0 0 400 100" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><line x1="376.78" y1="90.385" x2="223.7" y2="61.145"/><line x1="173.86" y1="51.625" x2="20.78" y2="22.385"/><line x1="379.22" y1="77.615" x2="226.14" y2="48.375"/><line x1="176.3" y1="38.855" x2="23.22" y2="9.615"/><line x1="20.78" y1="77.615" x2="376.78" y2="9.615"/><line x1="23.22" y1="90.385" x2="379.22" y2="22.385"/></svg></div>
+          <div class="head">
+            <h3>左上2目交差</h3>
+            <p class="meta"><span class="tag">拡張</span><span>1段×4目</span></p>
+          </div>
+          <div class="text">
+            <p>2目ずつの束を交差させる記号です。左の束が手前（上）になります。</p>
+            <dl>
+              <dt>使いどころ</dt><dd>2/2ケーブルで、右の交差と組み合わせて縄の向きを変えるときに使います。</dd>
+              <dt>編み図での置き方</dt><dd>4目分のマスを使います。その段の目数は変わりません。</dd>
+            </dl>
+          </div>
+          <figure class="footprint">
+            <svg class="footprint-svg" viewBox="0 0 132 22" role="img" aria-label="左上2目交差が使うマス"><rect class="paper" width="132" height="22"/><rect class="used" x="22" width="88" height="22"/><g class="grid" fill="none" stroke-width="1"><path d="M 22 0 V 22"/><path d="M 44 0 V 22"/><path d="M 66 0 V 22"/><path d="M 88 0 V 22"/><path d="M 110 0 V 22"/></g><g transform="translate(22 0) scale(0.22)" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"><line x1="376.78" y1="90.385" x2="223.7" y2="61.145"/><line x1="173.86" y1="51.625" x2="20.78" y2="22.385"/><line x1="379.22" y1="77.615" x2="226.14" y2="48.375"/><line x1="176.3" y1="38.855" x2="23.22" y2="9.615"/><line x1="20.78" y1="77.615" x2="376.78" y2="9.615"/><line x1="23.22" y1="90.385" x2="379.22" y2="22.385"/></g></svg>
+            <figcaption>使うマス：4目×1段</figcaption>
+          </figure>
+        </article>
+        <article class="stitch" id="right_up_three_cross" data-stitch="right_up_three_cross">
+          <div class="symbol" style="--cols:6;--rows:1" aria-hidden="true"><svg viewBox="0 0 600 100" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><line x1="20.786" y1="74.074" x2="259.866" y2="44.834"/><line x1="337.706" y1="35.314" x2="576.786" y2="6.074"/><line x1="22" y1="84" x2="261.08" y2="54.76"/><line x1="338.92" y1="45.24" x2="578" y2="16"/><line x1="23.214" y1="93.926" x2="262.294" y2="64.686"/><line x1="340.134" y1="55.166" x2="579.214" y2="25.926"/><line x1="576.786" y1="93.926" x2="20.786" y2="25.926"/><line x1="578" y1="84" x2="22" y2="16"/><line x1="579.214" y1="74.074" x2="23.214" y2="6.074"/></svg></div>
+          <div class="head">
+            <h3>右上3目交差</h3>
+            <p class="meta"><span class="tag">拡張</span><span>1段×6目</span></p>
+          </div>
+          <div class="text">
+            <p>3目ずつの束を交差させる記号です。右の束が手前（上）になります。</p>
+            <dl>
+              <dt>使いどころ</dt><dd>3/3ケーブルなど、幅の広い縄編みに使います。</dd>
+              <dt>編み図での置き方</dt><dd>6目分のマスを使います。その段の目数は変わりません。</dd>
+            </dl>
+          </div>
+          <figure class="footprint">
+            <svg class="footprint-svg" viewBox="0 0 176 22" role="img" aria-label="右上3目交差が使うマス"><rect class="paper" width="176" height="22"/><rect class="used" x="22" width="132" height="22"/><g class="grid" fill="none" stroke-width="1"><path d="M 22 0 V 22"/><path d="M 44 0 V 22"/><path d="M 66 0 V 22"/><path d="M 88 0 V 22"/><path d="M 110 0 V 22"/><path d="M 132 0 V 22"/><path d="M 154 0 V 22"/></g><g transform="translate(22 0) scale(0.22)" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"><line x1="20.786" y1="74.074" x2="259.866" y2="44.834"/><line x1="337.706" y1="35.314" x2="576.786" y2="6.074"/><line x1="22" y1="84" x2="261.08" y2="54.76"/><line x1="338.92" y1="45.24" x2="578" y2="16"/><line x1="23.214" y1="93.926" x2="262.294" y2="64.686"/><line x1="340.134" y1="55.166" x2="579.214" y2="25.926"/><line x1="576.786" y1="93.926" x2="20.786" y2="25.926"/><line x1="578" y1="84" x2="22" y2="16"/><line x1="579.214" y1="74.074" x2="23.214" y2="6.074"/></g></svg>
+            <figcaption>使うマス：6目×1段</figcaption>
+          </figure>
+        </article>
+        <article class="stitch" id="left_up_three_cross" data-stitch="left_up_three_cross">
+          <div class="symbol" style="--cols:6;--rows:1" aria-hidden="true"><svg viewBox="0 0 600 100" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><line x1="576.786" y1="93.926" x2="337.706" y2="64.686"/><line x1="259.866" y1="55.166" x2="20.786" y2="25.926"/><line x1="578" y1="84" x2="338.92" y2="54.76"/><line x1="261.08" y1="45.24" x2="22" y2="16"/><line x1="579.214" y1="74.074" x2="340.134" y2="44.834"/><line x1="262.294" y1="35.314" x2="23.214" y2="6.074"/><line x1="20.786" y1="74.074" x2="576.786" y2="6.074"/><line x1="22" y1="84" x2="578" y2="16"/><line x1="23.214" y1="93.926" x2="579.214" y2="25.926"/></svg></div>
+          <div class="head">
+            <h3>左上3目交差</h3>
+            <p class="meta"><span class="tag">拡張</span><span>1段×6目</span></p>
+          </div>
+          <div class="text">
+            <p>3目ずつの束を交差させる記号です。左の束が手前（上）になります。</p>
+            <dl>
+              <dt>使いどころ</dt><dd>3/3ケーブルで、右の交差と組み合わせて縄の向きを変えるときに使います。</dd>
+              <dt>編み図での置き方</dt><dd>6目分のマスを使います。その段の目数は変わりません。</dd>
+            </dl>
+          </div>
+          <figure class="footprint">
+            <svg class="footprint-svg" viewBox="0 0 176 22" role="img" aria-label="左上3目交差が使うマス"><rect class="paper" width="176" height="22"/><rect class="used" x="22" width="132" height="22"/><g class="grid" fill="none" stroke-width="1"><path d="M 22 0 V 22"/><path d="M 44 0 V 22"/><path d="M 66 0 V 22"/><path d="M 88 0 V 22"/><path d="M 110 0 V 22"/><path d="M 132 0 V 22"/><path d="M 154 0 V 22"/></g><g transform="translate(22 0) scale(0.22)" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"><line x1="576.786" y1="93.926" x2="337.706" y2="64.686"/><line x1="259.866" y1="55.166" x2="20.786" y2="25.926"/><line x1="578" y1="84" x2="338.92" y2="54.76"/><line x1="261.08" y1="45.24" x2="22" y2="16"/><line x1="579.214" y1="74.074" x2="340.134" y2="44.834"/><line x1="262.294" y1="35.314" x2="23.214" y2="6.074"/><line x1="20.786" y1="74.074" x2="576.786" y2="6.074"/><line x1="22" y1="84" x2="578" y2="16"/><line x1="23.214" y1="93.926" x2="579.214" y2="25.926"/></g></svg>
+            <figcaption>使うマス：6目×1段</figcaption>
+          </figure>
+        </article>
+        </div>
+      </section>
+
+      <section class="category" id="twist" data-category="twist">
+        <h2>ねじり目の記号（2）</h2>
+        <p>目をねじって編む記号です。縦に筋の出る編み地になります。</p>
+        <div class="stitches">
+        <article class="stitch" id="twist_stitch" data-stitch="twist_stitch">
+          <div class="symbol" style="--cols:1;--rows:1" aria-hidden="true"><svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><path d="M 17,82 C 30,83 43,77 58,64 C 75,49 71,16 51,14 C 31,12 25,44 40,63 C 50,76 65,82 83,82"/></svg></div>
+          <div class="head">
+            <h3>ねじり目</h3>
+            <p class="meta"><span class="tag">JIS</span><span>1段×1目</span></p>
+          </div>
+          <div class="text">
+            <p>目をねじって編む記号です。編み目が縦に引き締まり、筋が出ます。</p>
+            <dl>
+              <dt>使いどころ</dt><dd>靴下の踵や袖口など、目を詰めたいところに使います。</dd>
+              <dt>編み図での置き方</dt><dd>1目分のマスを使います。その段の目数は変わりません。</dd>
+            </dl>
+          </div>
+          <figure class="footprint">
+            <svg class="footprint-svg" viewBox="0 0 88 22" role="img" aria-label="ねじり目が使うマス"><rect class="paper" width="88" height="22"/><rect class="used" x="22" width="22" height="22"/><g class="grid" fill="none" stroke-width="1"><path d="M 22 0 V 22"/><path d="M 44 0 V 22"/><path d="M 66 0 V 22"/></g><g transform="translate(22 0) scale(0.22)" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"><path d="M 17,82 C 30,83 43,77 58,64 C 75,49 71,16 51,14 C 31,12 25,44 40,63 C 50,76 65,82 83,82"/></g></svg>
+            <figcaption>使うマス：1目×1段</figcaption>
+          </figure>
+        </article>
+        <article class="stitch" id="purl_twist_stitch" data-stitch="purl_twist_stitch">
+          <div class="symbol" style="--cols:1;--rows:1" aria-hidden="true"><svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><path d="M 17,82 C 30,83 43,77 58,64 C 75,49 71,16 51,14 C 31,12 25,44 40,63 C 50,76 65,82 83,82"/><line x1="30" y1="94" x2="70" y2="94"/></svg></div>
+          <div class="head">
+            <h3>ねじり裏目</h3>
+            <p class="meta"><span class="tag">JIS派生</span><span>1段×1目</span></p>
+          </div>
+          <div class="text">
+            <p>裏目をねじって編む記号です。表から見ると、横の線が引き締まった目になります。</p>
+            <dl>
+              <dt>使いどころ</dt><dd>裏目を使うゴム編みで、目を詰めたいときに使います。</dd>
+              <dt>編み図での置き方</dt><dd>1目分のマスを使います。その段の目数は変わりません。</dd>
+            </dl>
+          </div>
+          <figure class="footprint">
+            <svg class="footprint-svg" viewBox="0 0 88 22" role="img" aria-label="ねじり裏目が使うマス"><rect class="paper" width="88" height="22"/><rect class="used" x="22" width="22" height="22"/><g class="grid" fill="none" stroke-width="1"><path d="M 22 0 V 22"/><path d="M 44 0 V 22"/><path d="M 66 0 V 22"/></g><g transform="translate(22 0) scale(0.22)" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"><path d="M 17,82 C 30,83 43,77 58,64 C 75,49 71,16 51,14 C 31,12 25,44 40,63 C 50,76 65,82 83,82"/><line x1="30" y1="94" x2="70" y2="94"/></g></svg>
+            <figcaption>使うマス：1目×1段</figcaption>
+          </figure>
+        </article>
+        </div>
+      </section>
+
+      <section class="category" id="utility" data-category="utility">
+        <h2>補助の記号（1）</h2>
+        <p>編み図を描くための補助の記号です。編み目ではありません。</p>
+        <div class="stitches">
+        <article class="stitch" id="erase" data-stitch="erase">
+          <div class="symbol" style="--cols:1;--rows:1" aria-hidden="true"><svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%" xmlns="http://www.w3.org/2000/svg"><rect x="12" y="12" width="76" height="76" fill="#fff" stroke="currentColor" stroke-width="6"/></svg></div>
+          <div class="head">
+            <h3>白くする</h3>
+            <p class="meta"><span class="tag">補助・JIS外</span><span>1段×1目</span></p>
+          </div>
+          <div class="text">
+            <p>編み図のマスを白く塗る、このアプリ独自の補助記号です。編み目ではありません。</p>
+            <dl>
+              <dt>使いどころ</dt><dd>模様の区切りや余白を白く見せたいときに使います。</dd>
+              <dt>編み図での置き方</dt><dd>1目分のマスを白く塗ります。編み目ではないので、その段の目数は変わりません。<span class="tip">色を選んでいても白く描かれます。背景色に戻したいときは「消す」を使います。</span></dd>
+            </dl>
+          </div>
+          <figure class="footprint">
+            <svg class="footprint-svg" viewBox="0 0 88 22" role="img" aria-label="白くするが使うマス"><rect class="paper" width="88" height="22"/><rect class="used" x="22" width="22" height="22"/><g class="grid" fill="none" stroke-width="1"><path d="M 22 0 V 22"/><path d="M 44 0 V 22"/><path d="M 66 0 V 22"/></g><g transform="translate(22 0) scale(0.22)" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"><rect x="12" y="12" width="76" height="76" fill="#fff" stroke="currentColor" stroke-width="6"/></g></svg>
+            <figcaption>使うマス：1目×1段</figcaption>
+          </figure>
+        </article>
+        </div>
+      </section>
+
+      <h2>よくある質問</h2>
+      <dl class="faq">
+        <dt>記号はJISに基づいていますか？</dt>
+        <dd>基本の記号は、JIS L 0201の編み目記号に基づいています。JISにない組み合わせ（裏目の交差、2目と1目の交差、ねじり目との組み合わせ）は、JISの記号を組み合わせて表しています。各記号の「JIS」「JIS派生」「拡張」がその目安です。</dd>
+        <dt>記号が使うマスの大きさはどう見ますか？</dt>
+        <dd>各記号の「1段×2目」のような表示と、そばにある図で、編み図で使うマスを示しています。幅が2目以上の記号は、その幅のマスをまとめて使います。</dd>
+        <dt>裏側から編む段の記号はどう読みますか？</dt>
+        <dd>往復編みでは、偶数段は裏側を見て編むため、表目と裏目を読み替えます。輪編みでは、すべての段を表側から読みます。詳しくは<a href="/guide/">使い方</a>にまとめています。</dd>
+      </dl>
+
+      <h2>記号を使って編み図を描く</h2>
+      <p>編み図エディタでは、このページの記号を選んで盤面に置くだけで編み図を描けます。PNGやPDFで保存でき、iPhone・iPadのアプリでも同じ編み図を使えます。</p>
+      <p><a class="cta" href="/" data-analytics="editor">編み図エディタを開く</a></p>
+      <p>編み図の作り方は<a href="/guide/">使い方</a>、すぐに使える模様は<a href="/templates/">テンプレート</a>にまとめています。</p>
+    </main>
+    <footer>
+      <a href="/">棒針編み図エディタへ戻る</a>
+      <p><a href="/guide/">使い方</a></p>
+      <p><a href="/templates/">編み図のテンプレート</a></p>
+      <p><a href="/support/">サポート・お問い合わせ</a></p>
+      <p><a href="/privacy/">プライバシーポリシー</a></p>
+      <p><a href="/third-party-notices/">第三者ソフトウェアのライセンス</a></p>
+      <p class="legal">Apple、Appleのロゴ、iPhone、iPadは、米国およびその他の国で登録されたApple Inc.の商標です。App Storeは、米国およびその他の国で登録されたApple Inc.のサービスマークです。</p>
+    </footer>
+    <script type="module" src="/analytics.js" data-analytics-entry></script>
+  </body>
+</html>

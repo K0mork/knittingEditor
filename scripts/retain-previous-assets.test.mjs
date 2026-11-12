@@ -185,6 +185,7 @@ describe('retainPreviousAssets', () => {
       }),
       '/guide/': '<link rel="stylesheet" href="/assets/index-old.css">',
       '/templates/': '',
+      '/stitches/': '',
       '/support/': '',
       '/privacy/': '',
       '/privacy/app/': '',
