@@ -3,7 +3,7 @@ import { listBlocks } from '@knitting-editor/editor-core/storage/database';
 import { EditorView } from '@knitting-editor/editor-core/ui/EditorView';
 import { useEditorController } from '@knitting-editor/editor-core/ui/useEditorController';
 import { createGuideNavigation } from '@knitting-editor/editor-core/ui/guideNavigation';
-import { webAnalytics } from './analytics';
+import { trackLinkClick, webAnalytics } from './analytics';
 import { APP_STORE_URL, AppStoreNotice, useAppStoreNotice } from './appStoreNotice';
 import { createWebPlatform } from './platform';
 import { useShareOffer } from './ShareFileDialog';
@@ -50,7 +50,7 @@ export default function App() {
     backupNote="端末内データはブラウザ操作で消える場合があります。定期的にバックアップを書き出してください。"
     documentsNote={<>
       {/* 編集中のタブを残すため、App Storeは新しいタブで開く。 */}
-      <p><a href={APP_STORE_URL} target="_blank" rel="noopener">iPhone・iPad版アプリ（App Store）</a></p>
+      <p><a href={APP_STORE_URL} target="_blank" rel="noopener" onClick={() => trackLinkClick('app_store')}>iPhone・iPad版アプリ（App Store）</a></p>
       <p><a href="/privacy/">プライバシーポリシー（アクセス解析について）</a></p>
     </>}
     notice={appStoreNotice.shown ? <AppStoreNotice onDismiss={appStoreNotice.dismiss} /> : undefined}

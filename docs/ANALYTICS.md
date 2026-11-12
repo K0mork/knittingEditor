@@ -26,6 +26,7 @@
 | `backup_restored` | バックアップ復元成功時 | `document_count_bucket`: `1`, `2-3`, `4-9`, `10+` |
 | `save_failed` | 保存失敗時（次の保存成功まで重複させない） | `save_trigger`: `autosave`, `manual`, `background`; `failure_reason`: 下記 |
 | `operation_failed` | 初期化、管理操作、出力、復元の失敗時 | `operation_name`: `editor_init`, `block_save`, `block_delete`, `chart_create`, `chart_rename`, `chart_duplicate`, `chart_delete`, `png_export`, `pdf_export`, `backup_export`, `backup_restore`; `failure_reason`: 下記 |
+| `link_clicked` | 編集画面からApp Storeの製品ページを開いたとき | `link_name`: `app_store` |
 
 `failure_reason`は`site_updated`, `worker_start`, `worker_error`, `storage_quota`, `storage`, `invalid_backup`, `backup_limit`, `png_canvas`, `unknown`だけを使う。`png_canvas`は、PNGの描画面を端末のメモリ不足で確保できなかったとき（読み戻した画素や書き出した画像の寸法が合わないとき）に使う。任意の例外メッセージを値にしない。
 

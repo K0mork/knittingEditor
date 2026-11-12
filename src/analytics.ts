@@ -71,6 +71,11 @@ export function trackFirstEdit(): void {
   trackAnalyticsEvent('first_edit');
 }
 
+/** 編集画面から外へ出るリンクのクリック。静的なページが送る`link_clicked`と同じ名前と値を使う。 */
+export function trackLinkClick(linkName: 'app_store'): void {
+  trackAnalyticsEvent('link_clicked', { link_name: linkName });
+}
+
 /** 共通の編集画面へ渡すGA4送信。 */
 export const webAnalytics: EditorAnalytics = {
   track: trackAnalyticsEvent,

@@ -202,6 +202,44 @@ GA4が自動で集める`page_view`、`session_start`、`first_visit`、`user_en
 
 `activeUsers`や`sessions`を、`sessionDefaultChannelGroup`、`sessionSource`、`landingPage`、`country`、`deviceCategory`ごとに見る。GA4のタグは、編集画面（`src/analytics.ts`）と、`/guide/`・`/support/`・`/privacy/`の静的なページ（`public/analytics.js`）で読み込む。`landingPage`を見ると、検索などから静的なページに着地した人の流れも分かる。静的なページからは`link_clicked`（`link_name`）だけを送る。
 
+### UTMの付け方
+
+SNSや記事から来た人を、GA4の流入レポートで見分けられるように、外部に貼るURLへUTMを付ける。
+
+| パラメータ | 値 | 例 |
+|---|---|---|
+| `utm_source` | リンクを置いた場所。小文字の英数字とハイフン | `x`、`instagram`、`note`、`youtube` |
+| `utm_medium` | リンクの種類 | `social`、`referral`、`email` |
+| `utm_campaign` | 何のためのリンクかが分かる短い名前 | `templates`、`guide` |
+| `utm_content` | 同じ場所で複数のリンクを比べるときだけ | `profile`、`post` |
+
+- サイト内のリンクには付けない。付けると1回の訪問が別のセッションに分かれる。
+- 付けるのは`https://knittingeditor.com/`から始まるURLだけにする。
+- App Storeの製品ページのURLは変えない。参照元はApp Store Connectの集計で別に見る。
+- 付けたURLと、置いた場所は`private/`に残す。
+
+### 獲得の指標
+
+獲得がうまくいっているかは、次の1つで見る。
+
+**直近7日間に、初めて来た利用者が編み図に記号を置き、PNGかPDFを出力した人数**
+
+- 探索のファネルで、`first_visit`、`first_edit`、`chart_exported`を利用者単位で並べる。週に1回、直近7日間で見る。
+- `chart_created`は使わない。最初の編み図は自動で作られ、そのとき`chart_created`を送らないためである。
+- 内訳に`sessionDefaultChannelGroup`を入れると、検索・SNS・参照のどこから来た人が進んだかが分かる。`landingPage`を足すと、どのページに着地した人が進んだかも分かる。
+- `chart_exported`は、PNG/PDFの生成後にブラウザへ保存・共有を求めた時点である。端末への保存の完了や、作品の完成ではない。
+- これは編集画面の製品イベントを使った目安である。端末内の編み図ごとの記録（`chart_progress`など）とは別に数え、同じ人が複数の端末やブラウザを使うと別に数えうる。
+- 人数と率は`private/`に残し、公開の場には書かない。
+
+### Search Consoleのクエリ
+
+記事やページの題材は、推測ではなくSearch Consoleの「検索パフォーマンス」で決める。
+
+- 期間を直近28日、検索タイプを「ウェブ」にする。
+- 「クエリ」で、表示回数が多くクリック率が低い語を見る。受け皿のページが無い語や、順位が低い語が、記事を足す候補になる。
+- 「ページ」で、既にあるページ（`/guide/`など）が拾っている語を見る。拾えている語は、新しい記事にしない。
+- クエリ、ページ、順位は月に1回`private/`へ写す。公開の場には書かない。
+
 ## 注釈
 
 `create_property_annotation`は、レポートの読み方が変わる日を残すときだけ使う。
