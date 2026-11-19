@@ -164,7 +164,7 @@ XCUITestは起動前に`app.launchEnvironment["KNITTING_EDITOR_AUTOSAVE_DELAY_MS
 
 ### UIテスト用のDEBUG設定：アプリ更新確認のfixture（#446）
 
-`testSeedDocumentForAppUpdateProbe`は起動前に`app.launchEnvironment["KNITTING_EDITOR_APP_UPDATE_FIXTURE"] = "1"`を設定できる。DEBUGネイティブがこの値を`appUpdateFixture: true`としてWebViewへ渡し、iOS Webは初期化より前に`seedAppUpdateFixture()`でfixtureをIndexedDBへ書き込む。fixtureは編み図2つ（色・幅2目の記号・点線・背景色を含む「アプリ更新復元fixture」と、目印かつ幅2目の記号1個の「アプリ更新復元fixture2」）と保存済みブロック1つで、内容は`packages/editor-core/storage/appUpdateFixtureData.ts`が1つの関数で作る。書き込みは自動保存と同じレコードを通る。既存文書があるときは何も書かないため、テストの再試行でも追記しない。Releaseにはこの経路が入らない（`DebugEditorConfiguration`と動的importが`#if DEBUG`・DEBUG bundleだけになる）。更新後のテストは目印の編み図でfixtureの版を区別し、前のリリースが保存した最小fixture（記号1個）も引き続き読めることを確かめる。
+`testSeedDocumentForAppUpdateProbe`は起動前に`app.launchEnvironment["KNITTING_EDITOR_APP_UPDATE_FIXTURE"] = "1"`を設定できる。DEBUGネイティブがこの値を`appUpdateFixture: true`としてWebViewへ渡し、iOS Webは初期化より前に`seedAppUpdateFixture()`でfixtureをIndexedDBへ書き込む。fixtureは編み図2つ（色・幅2目の記号・点線・背景色を含む「アプリ更新復元fixture」と、目印かつ幅2目の記号1個の「アプリ更新復元fixture2」）と保存済みブロック1つで、内容は`packages/editor-core/storage/appUpdateFixtureData.ts`が1つの関数で作る。書き込みは、利用者が編み図を作って保存するときと同じ保存の公開API（`createDocument`・`saveDocument`・`saveBlock`・`activeDocumentId`の設定）を通る。保存の記録を手作りしないので、本物の保存経路へ将来の項目が加わってもfixtureは同じ形になる。既存文書があるときは何も書かないため、テストの再試行でも追記しない。Releaseにはこの経路が入らない（`DebugEditorConfiguration`と動的importが`#if DEBUG`・DEBUG bundleだけになる）。更新後のテストは目印の編み図でfixtureの版を区別し、前のリリースが保存した最小fixture（記号1個）も引き続き読めることを確かめる。
 
 ### CIの結果の確かめ方
 
