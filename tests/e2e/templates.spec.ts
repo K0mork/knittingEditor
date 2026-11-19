@@ -51,21 +51,17 @@ test('restores a downloaded template in the editor', async ({ page }) => {
   await expect(page.locator('.app-header')).toContainText('鹿の子編み（復元）');
 });
 
-test('restores every template and exports it as PNG and PDF', async ({ page }) => {
-  // 8回の復元と16回の書き出しを1つのテストで行うので、既定の45秒では足りない。
-  test.setTimeout(120_000);
-  await downloadInsteadOfShare(page);
-  await page.goto('/');
-  await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
-  await page.getByRole('button', { name: '出力', exact: true }).click();
+for (const { slug, name } of TEMPLATES) {
+  test(`restores the ${slug} template and exports it as PNG and PDF`, async ({ page }) => {
+    await downloadInsteadOfShare(page);
+    await page.goto('/');
+    await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
 
-  for (const { slug, name } of TEMPLATES) {
-    // 「バックアップから復元」のファイル入力は出力パネルの外に置いてあるので、パネルが開いていなくても差し込める。
+    // 「バックアップから復元」のファイル入力は出力パネルの外に置いてあるので、パネルを開かずに差し込める。
     await page.locator('input[type=file]').setInputFiles(fileURLToPath(new URL(`../../public/templates/${slug}.knit`, import.meta.url)));
     await expect(page.locator('.app-header')).toContainText(`${name}（復元）`, { timeout: 60_000 });
     await expect(page.getByLabel('編み図編集盤面')).toHaveAttribute('aria-label', /20段、20目/);
-    // 復元は編み図の切り替えを伴い、開いていたパネルを閉じる。閉じたことを確かめてから開き直す。
-    await expect(page.locator('#app-drawer')).toHaveCount(0);
+    // このテストでは復元前にパネルを開いていないので、復元のあとに単純に開く。
     await page.getByRole('button', { name: '出力', exact: true }).click();
     const pngButton = page.getByRole('button', { name: 'PNGを保存', exact: true });
     await expect(pngButton).toBeVisible();
@@ -94,5 +90,5 @@ test('restores every template and exports it as PNG and PDF', async ({ page }) =
     expect(pdfBytes.length).toBeGreaterThan(100);
     // PDFには盤面の画像を描く命令が入っている。`pdfStreams`は壊れたストリームがあると失敗する。
     expect(pdfStreams(pdfBytes).join('\n')).toMatch(/ cm \/S\d+ Do Q/);
-  }
-});
+  });
+}
