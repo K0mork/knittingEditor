@@ -6,6 +6,7 @@ import { createGuideNavigation } from '@knitting-editor/editor-core/ui/guideNavi
 import { trackLinkClick, webAnalytics } from './analytics';
 import { APP_STORE_URL, AppStoreNotice, useAppStoreNotice } from './appStoreNotice';
 import { createWebPlatform } from './platform';
+import { requestPersistentStorageOnce } from './persistentStorage';
 import { useShareOffer } from './ShareFileDialog';
 import { initializeStorage } from './storage/database';
 
@@ -22,7 +23,7 @@ async function initialize() {
 export default function App() {
   const { offerShare, dialog: shareDialog } = useShareOffer();
   const platform = useMemo(() => createWebPlatform(offerShare), [offerShare]);
-  const editor = useEditorController({ initialize, platform, analytics: webAnalytics, askText, askConfirm });
+  const editor = useEditorController({ initialize, platform, analytics: webAnalytics, askText, askConfirm, onSaveSuccess: requestPersistentStorageOnce });
   const appStoreNotice = useAppStoreNotice();
 
   const navigateToGuide = useMemo(() => createGuideNavigation({

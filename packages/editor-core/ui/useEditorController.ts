@@ -54,6 +54,8 @@ export interface EditorControllerOptions {
   /** 名前や位置の入力。Web版は`window.prompt`、iOS版はアプリ内ダイアログを渡す。 */
   askText: (title: string, defaultValue?: string) => Promise<string | null>;
   askConfirm: (title: string, options?: ConfirmOptions) => Promise<boolean>;
+  /** 編み図の保存が成功するたびに呼ぶ。Web版は最初の保存後に端末内データの永続化を求める。省略時は何もしない。 */
+  onSaveSuccess?: () => void;
 }
 
 /**
@@ -120,7 +122,7 @@ export function useEditorController(options: EditorControllerOptions) {
       }
       notify(saveErrorMessage(trigger));
     },
-    onSaveSuccess: () => { saveFailureTrackedRef.current = false; },
+    onSaveSuccess: () => { saveFailureTrackedRef.current = false; options.onSaveSuccess?.(); },
     onSaveConflict: (saved) => notify(`別のタブで変更されたため、この編集を「${saved.name}」として保存しました。`),
   });
   const {

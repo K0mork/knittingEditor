@@ -147,6 +147,19 @@ describe('checkLiveSite', () => {
     expect(lines.sleeps).toEqual([1000]);
   });
 
+  it('reports a manifest served with a wrong content type and an icon that is gone', async () => {
+    const site = fakeSite({
+      overrides: {
+        '/manifest.webmanifest': () => new Response('{}', { headers: { 'content-type': 'text/plain' } }),
+        '/icon-512-maskable.png': () => new Response('gone', { status: 404 }),
+      },
+    });
+    const { lines, deps } = recorder();
+    await expect(checkLiveSite({ origin: ORIGIN, attempts: 1, intervalMs: 0 }, { ...deps, fetch: site.fetch })).resolves.toBe(false);
+    expect(lines.log[0]).toContain('/manifest.webmanifest: content-type text/plain');
+    expect(lines.log[0]).toContain('/icon-512-maskable.png: HTTP 404');
+  });
+
   it('reports a file of the listed versions that the site no longer returns', async () => {
     const site = fakeSite({ overrides: { '/assets/index-old.js': () => new Response('gone', { status: 404 }) } });
     const { lines, deps } = recorder();
