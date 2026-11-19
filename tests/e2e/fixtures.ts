@@ -42,21 +42,26 @@ export async function downloadInsteadOfShare(page: Page) {
   await page.addInitScript(() => Object.defineProperty(Navigator.prototype, 'canShare', { value: undefined, configurable: true }));
 }
 
-/** 共有シートの模擬が記録したこと。`files`は共有1回ごとの`[ファイル名, MIMEタイプ]`。 */
-interface ShareSheetState { files: Array<Array<[string, string]>>; cancelNext: boolean }
+/** 共有シートの模擬が記録したこと。`files`は共有1回ごとの`[ファイル名, MIMEタイプ]`、`credits`は同じ回数の文面。 */
+interface ShareSheetState { files: Array<Array<[string, string]>>; credits: Array<Pick<ShareData, 'title' | 'text'>>; cancelNext: boolean }
 type ShareSheetWindow = Window & { shareSheet: ShareSheetState };
 
 /**
  * iPhone Safariの共有シートを模擬する。Playwrightのブラウザには共有APIが無いので差し替える。
  * 共有シートを使うのはiPhone相当のプロジェクトだけなので、ほかのプロジェクトではテストを飛ばす。
+ * `acceptCreditText`が偽のときは、文面を一緒に渡せないブラウザとして`canShare`が偽を返す。
  * 初期化スクリプトなので、このあと読み込む（または読み込み直す）ページから効く。
  */
-export async function stubShareSheet(page: Page, testInfo: TestInfo) {
+export async function stubShareSheet(page: Page, testInfo: TestInfo, acceptCreditText = true) {
   test.skip(testInfo.project.name !== SHARE_SHEET_PROJECT, 'iPhone Safariだけの保存導線');
-  await page.addInitScript(() => {
-    const state: ShareSheetState = { files: [], cancelNext: false };
+  await page.addInitScript((acceptCreditText) => {
+    const state: ShareSheetState = { files: [], credits: [], cancelNext: false };
     Object.assign(window, { shareSheet: state });
-    Object.defineProperty(navigator, 'canShare', { value: (data: ShareData) => (data.files?.length ?? 0) > 0, configurable: true });
+    Object.defineProperty(navigator, 'canShare', {
+      configurable: true,
+      value: (data: ShareData) => (data.files?.length ?? 0) > 0
+        && (acceptCreditText || (data.title === undefined && data.text === undefined)),
+    });
     Object.defineProperty(navigator, 'share', {
       configurable: true,
       value: async (data: ShareData) => {
@@ -65,14 +70,17 @@ export async function stubShareSheet(page: Page, testInfo: TestInfo) {
           throw new DOMException('cancelled', 'AbortError');
         }
         state.files.push((data.files ?? []).map((file) => [file.name, file.type]));
+        state.credits.push({ title: data.title, text: data.text });
       },
     });
-  });
+  }, acceptCreditText);
   return {
     /** 共有1回ごとに渡したファイルの`[ファイル名, MIMEタイプ]`。 */
     sharedFiles: () => page.evaluate(() => (window as unknown as ShareSheetWindow).shareSheet.files),
     /** これまでに共有したファイル名を順に並べたもの。 */
     sharedNames: () => page.evaluate(() => (window as unknown as ShareSheetWindow).shareSheet.files.flat().map(([name]) => name)),
+    /** 共有1回ごとに渡した文面。文面を渡さない共有では`title`・`text`とも`undefined`。 */
+    sharedCredits: () => page.evaluate(() => (window as unknown as ShareSheetWindow).shareSheet.credits),
     /** 次の共有を、利用者が共有シートを閉じたときと同じ`AbortError`で終わらせる。 */
     cancelNext: () => page.evaluate(() => { (window as unknown as ShareSheetWindow).shareSheet.cancelNext = true; }),
   };

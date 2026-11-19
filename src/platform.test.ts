@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createWebPlatform, prefersShareSheet } from './platform';
+import { createWebPlatform, prefersShareSheet, SHARE_CREDIT, shareData } from './platform';
 
 const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
 const IPAD_DESKTOP_MODE = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15';
@@ -28,6 +28,30 @@ describe('prefersShareSheet', () => {
     expect(prefersShareSheet(pdf, fakeNavigator(ANDROID, 5, () => true))).toBe(false);
     expect(prefersShareSheet(pdf, fakeNavigator(IPHONE, 5))).toBe(false);
     expect(prefersShareSheet(pdf, fakeNavigator(IPHONE, 5, () => false))).toBe(false);
+  });
+});
+
+describe('shareData', () => {
+  it('adds the site name and URL to the file share payload', () => {
+    // 文面は受け取った人がサイトへたどれるためのもので、編み図の内容やファイル名は含まない。
+    const canShare = vi.fn(() => true);
+    expect(shareData(pdf, fakeNavigator(IPHONE, 5, canShare))).toEqual({ files: [pdf], ...SHARE_CREDIT });
+    // canShareは渡す内容そのもので確かめる。
+    expect(canShare).toHaveBeenCalledWith({ files: [pdf], ...SHARE_CREDIT });
+    expect(SHARE_CREDIT.title).toBe('棒針編み図エディタ');
+    expect(SHARE_CREDIT.text).toBe('棒針編み図エディタで作成 https://knittingeditor.com/');
+  });
+
+  it('falls back to the file alone when the browser rejects text alongside files', () => {
+    // 文面付きで共有できないと共有自体が失敗するので、そのときは従来どおりファイルだけを渡す。
+    const canShare = vi.fn((data: ShareData) => data.title === undefined && data.text === undefined);
+    const nav = fakeNavigator(IPHONE, 5, canShare);
+    expect(shareData(pdf, nav)).toEqual({ files: [pdf] });
+    // ファイルだけなら共有できるので、共有シートの導線は保つ。
+    expect(prefersShareSheet(pdf, nav)).toBe(true);
+    // canShareは渡す内容そのもので確かめる。文面付きは拒否され、最後はファイルだけの内容を確かめる。
+    expect(canShare).toHaveBeenCalledWith({ files: [pdf], ...SHARE_CREDIT });
+    expect(canShare).toHaveBeenLastCalledWith({ files: [pdf] });
   });
 });
 

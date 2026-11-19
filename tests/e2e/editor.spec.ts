@@ -414,7 +414,7 @@ test('explains a PNG that the browser could not allocate instead of saving it', 
 
 test('hands PNG and PDF to the share sheet on iPhone Safari without leaving the editor', async ({ page }, testInfo) => {
   // iOSのSafariは<a download>のPDFで編集中のタブを置き換えるため、共有シートで渡す。
-  const { sharedFiles } = await stubShareSheet(page, testInfo);
+  const { sharedFiles, sharedCredits } = await stubShareSheet(page, testInfo);
   await page.reload();
   await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
   const editorUrl = page.url();
@@ -427,10 +427,13 @@ test('hands PNG and PDF to the share sheet on iPhone Safari without leaving the 
   await dialog.getByRole('button', { name: '共有・保存' }).click();
   await expect(dialog).toBeHidden();
   expect(await sharedFiles()).toEqual([[['新しい編み図.png', 'image/png']]]);
+  // 文面にはサイト名とURLを添える。編み図の内容やファイル名は入れない（#474）。
+  expect(await sharedCredits()).toEqual([{ title: '棒針編み図エディタ', text: '棒針編み図エディタで作成 https://knittingeditor.com/' }]);
 
   await page.getByRole('button', { name: 'PDFを保存' }).click();
   await page.getByRole('dialog', { name: '「新しい編み図.pdf」の準備ができました' }).getByRole('button', { name: '共有・保存' }).click();
   await expect.poll(sharedFiles).toEqual([[['新しい編み図.png', 'image/png']], [['新しい編み図.pdf', 'application/pdf']]]);
+  expect(await sharedCredits()).toHaveLength(2);
 
   // 閉じるだけなら共有しない。どの操作でも編集画面のまま残る。
   await page.getByRole('button', { name: 'PDFを保存' }).click();
@@ -439,6 +442,22 @@ test('hands PNG and PDF to the share sheet on iPhone Safari without leaving the 
   expect(await sharedFiles()).toHaveLength(2);
   expect(page.url()).toBe(editorUrl);
   await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
+});
+
+test('shares the file alone when the browser cannot share text alongside it on iPhone Safari', async ({ page }, testInfo) => {
+  // 文面をファイルと一緒に渡せないブラウザでは、共有が失敗しないようにファイルだけへ戻す（#474）。
+  const { sharedFiles, sharedCredits } = await stubShareSheet(page, testInfo, false);
+  await page.reload();
+  await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
+
+  await page.getByRole('button', { name: '出力' }).click();
+  await page.getByRole('button', { name: 'PNGを保存' }).click();
+  const dialog = page.getByRole('dialog', { name: '「新しい編み図.png」の準備ができました' });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: '共有・保存' }).click();
+  await expect(dialog).toBeHidden();
+  expect(await sharedFiles()).toEqual([[['新しい編み図.png', 'image/png']]]);
+  expect(await sharedCredits()).toEqual([{ title: undefined, text: undefined }]);
 });
 
 // 保存済みのセル全体を比べ、空として貼り付ける退行や余分なセルの変更も検出する。

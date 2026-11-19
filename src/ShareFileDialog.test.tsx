@@ -2,6 +2,7 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useShareOffer } from './ShareFileDialog';
+import { SHARE_CREDIT } from './platform';
 
 declare global {
   // eslint-disable-next-line no-var
@@ -58,11 +59,25 @@ describe('ShareFileDialog', () => {
 
   it('opens the share sheet only when the button is tapped, then closes', async () => {
     const share = vi.fn(async (_data: ShareData) => {});
-    vi.stubGlobal('navigator', { ...navigator, share });
+    vi.stubGlobal('navigator', { ...navigator, canShare: () => true, share });
     await renderWithOffer(file);
 
     expect(document.querySelector('[role="dialog"]')?.textContent).toContain('「新しい編み図.pdf」の準備ができました');
     expect(share).not.toHaveBeenCalled();
+
+    await act(async () => { button('共有・保存').click(); });
+    // サイト名とURLをファイルに添えて渡す。編み図の内容やファイル名は文面に入れない。
+    expect(share).toHaveBeenCalledWith({ files: [file], ...SHARE_CREDIT });
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    await expect(result).resolves.toBe(true);
+  });
+
+  it('shares the file alone when the browser cannot share text alongside it', async () => {
+    // 文面付きの`canShare`が偽を返すブラウザでは、共有が失敗しないようにファイルだけに戻す。
+    const share = vi.fn(async (_data: ShareData) => {});
+    const canShare = vi.fn((data: ShareData) => data.title === undefined && data.text === undefined);
+    vi.stubGlobal('navigator', { ...navigator, canShare, share });
+    await renderWithOffer(file);
 
     await act(async () => { button('共有・保存').click(); });
     expect(share).toHaveBeenCalledWith({ files: [file] });
@@ -71,7 +86,7 @@ describe('ShareFileDialog', () => {
   });
 
   it('closes without downloading when the share sheet is dismissed', async () => {
-    vi.stubGlobal('navigator', { ...navigator, share: async () => { throw new DOMException('cancelled', 'AbortError'); } });
+    vi.stubGlobal('navigator', { ...navigator, canShare: () => true, share: async () => { throw new DOMException('cancelled', 'AbortError'); } });
     const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
     await renderWithOffer(file);
 
@@ -167,7 +182,7 @@ describe('ShareFileDialog', () => {
     const share = vi.fn()
       .mockImplementationOnce(() => new Promise<void>((resolve) => { finishFirst = resolve; }))
       .mockImplementation(async () => {});
-    vi.stubGlobal('navigator', { ...navigator, share });
+    vi.stubGlobal('navigator', { ...navigator, canShare: () => true, share });
     await renderWithOffer(file);
     const first = result!;
     await act(async () => { button('共有・保存').click(); });
@@ -186,7 +201,7 @@ describe('ShareFileDialog', () => {
     expect(secondSettled()).toBe('pending');
 
     await act(async () => { button('共有・保存').click(); });
-    expect(share).toHaveBeenLastCalledWith({ files: [backup] });
+    expect(share).toHaveBeenLastCalledWith({ files: [backup], ...SHARE_CREDIT });
     expect(document.querySelector('[role="dialog"]')).toBeNull();
     await expect(second).resolves.toBe(true);
   });

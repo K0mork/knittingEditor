@@ -356,7 +356,12 @@ struct WebViewContainer: UIViewRepresentable {
                         self.finishPendingExport(saved: false)
                         return
                     }
-                    let activity = UIActivityViewController(activityItems: [pendingExportURL], applicationActivities: nil)
+                    // ファイルにサイト名とURLの文面を添える（#474）。ファイルをそのまま扱う操作へは
+                    // `ShareCreditItemSource`が文面を出さないので、保存・送信される項目は変わらない。
+                    let activity = UIActivityViewController(
+                        activityItems: [pendingExportURL, ShareCreditItemSource()],
+                        applicationActivities: nil
+                    )
                     activity.completionWithItemsHandler = { [weak self] activityType, completed, _, error in
                         self?.finishSharing(completed: completed, error: error, activityType: activityType)
                     }
