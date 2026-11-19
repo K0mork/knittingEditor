@@ -1078,7 +1078,10 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertEqual(grayBackground.value as? String, "1", app.debugDescription)
         app.buttons["閉じる"].tap()
         // 色付きのセルは、記号の色の一覧に保存した色の見本（青緑 #264653）として残っている。
-        let colourTool = app.buttons
+        // 道具列の色と記号の道具は`aria-haspopup="dialog"`を持つため、WebKitの読み上げでは
+        // 種類が`Button`にならず`Other`になる（iOS 27.2のSimulatorで確認）。記号の選択画面
+        // （`編み目記号を選ぶ`）と同じく、種類を問わず名前で探す。
+        let colourTool = app.descendants(matching: .any)
             .matching(NSPredicate(format: "label BEGINSWITH %@", "記号の色を選ぶ"))
             .firstMatch
         XCTAssertTrue(colourTool.waitForExistence(timeout: 10), app.debugDescription)
