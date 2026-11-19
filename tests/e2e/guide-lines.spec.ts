@@ -44,6 +44,8 @@ for (const input of ['tap', 'drag'] as const) {
     await expect.poll(() => savedLines(page)).toHaveLength(1);
     const lines = await savedLines(page);
     expect(lines[0].bottom - lines[0].top).toBe(4);
+    // 線は盤面の読み上げにも本数として出る。
+    await expect(canvas).toHaveAttribute('aria-label', /ガイド線1本。/);
     await page.getByRole('button', { name: '出力', exact: true }).click();
     const download = page.waitForEvent('download');
     await page.getByRole('button', { name: 'PNGを保存', exact: true }).click();

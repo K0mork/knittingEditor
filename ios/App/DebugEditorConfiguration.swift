@@ -12,6 +12,10 @@ enum DebugEditorConfiguration {
         if let size = environment["KNITTING_EDITOR_BRIDGE_IO_SIZE"], ["small", "medium", "large"].contains(size) {
             values["bridgeIOSize"] = size
         }
+        // アプリ更新シミュレーションの更新前アプリがfixtureを書き込む（#446）。値は「1」だけを受け入れる。
+        if environment["KNITTING_EDITOR_APP_UPDATE_FIXTURE"] == "1" {
+            values["appUpdateFixture"] = true
+        }
         guard !values.isEmpty,
               let data = try? JSONSerialization.data(withJSONObject: values, options: [.sortedKeys]),
               let json = String(data: data, encoding: .utf8) else { return nil }

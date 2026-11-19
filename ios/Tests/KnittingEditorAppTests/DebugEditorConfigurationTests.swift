@@ -25,5 +25,15 @@ final class DebugEditorConfigurationTests: XCTestCase {
             )
         }
     }
+
+    func testAppUpdateFixtureFlagIsInjectedAsBoolean() {
+        XCTAssertEqual(
+            DebugEditorConfiguration.userScriptSource(environment: ["KNITTING_EDITOR_APP_UPDATE_FIXTURE": "1"]),
+            "window.knittingEditorDebugConfiguration=Object.freeze({\"appUpdateFixture\":true});"
+        )
+        for value in ["", "0", "true", "1;alert(1)"] {
+            XCTAssertNil(DebugEditorConfiguration.userScriptSource(environment: ["KNITTING_EDITOR_APP_UPDATE_FIXTURE": value]))
+        }
+    }
 }
 #endif

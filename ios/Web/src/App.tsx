@@ -35,6 +35,11 @@ function initialize() {
         if (typeof size === 'string') {
           await (await import('./debugBridgeIO')).seedBridgeMeasurement(size);
         }
+        // アプリ更新シミュレーションの更新前アプリが、fixtureを端末内データとして書き込む。
+        // 通常の読み出しと同じ形の文書になるよう、初期化より前に入れる。
+        if (window.knittingEditorDebugConfiguration?.appUpdateFixture === true) {
+          await (await import('./debugAppUpdateSeed')).seedAppUpdateFixture();
+        }
       }
       const storage = await initializeStorage();
       return { ...storage, blocks: await listBlocks() };

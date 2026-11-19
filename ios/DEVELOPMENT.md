@@ -162,6 +162,10 @@ XCUITestは起動前に`app.launchEnvironment["KNITTING_EDITOR_AUTOSAVE_DELAY_MS
 
 `testDocumentSwitchSavesWithoutAutosave`と`testHomeSavesWithoutAutosave`は編集後の「保存中」を確認し、切替・Home移行の後にDBから再起動復元する。前面へ戻るときも`inactive`を通って`flushPendingSave()`が呼ばれるため、Home移行のテストはアプリを前面へ戻さず、バックグラウンドのまま終了する。検証時には文書切替の`saveNow()`、ネイティブの`flushPendingSave()`経路（Home移行時には呼ばず、前面へ戻ったときだけ呼ぶ変更を含む）をそれぞれ一時的に外し、対応するテストが失敗することを確かめてから必ず戻す。実機でサスペンドまでに保存が完了する保証は別の確認とする。
 
+### UIテスト用のDEBUG設定：アプリ更新確認のfixture（#446）
+
+`testSeedDocumentForAppUpdateProbe`は起動前に`app.launchEnvironment["KNITTING_EDITOR_APP_UPDATE_FIXTURE"] = "1"`を設定できる。DEBUGネイティブがこの値を`appUpdateFixture: true`としてWebViewへ渡し、iOS Webは初期化より前に`seedAppUpdateFixture()`でfixtureをIndexedDBへ書き込む。fixtureは編み図2つ（色・幅2目の記号・点線・背景色を含む「アプリ更新復元fixture」と、目印かつ幅2目の記号1個の「アプリ更新復元fixture2」）と保存済みブロック1つで、内容は`packages/editor-core/storage/appUpdateFixtureData.ts`が1つの関数で作る。書き込みは自動保存と同じレコードを通る。既存文書があるときは何も書かないため、テストの再試行でも追記しない。Releaseにはこの経路が入らない（`DebugEditorConfiguration`と動的importが`#if DEBUG`・DEBUG bundleだけになる）。更新後のテストは目印の編み図でfixtureの版を区別し、前のリリースが保存した最小fixture（記号1個）も引き続き読めることを確かめる。
+
 ### CIの結果の確かめ方
 
 確かめる対象と完了の条件は[`AGENTS.md`](AGENTS.md)の「CI確認」に従う。PRのCIは次の手順で待つ。
