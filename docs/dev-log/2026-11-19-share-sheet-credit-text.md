@@ -1,15 +1,14 @@
-# 2026-11-19 — 共有シートの文面にサイト名とURLを入れる
+# 2026-11-19 — iOSの共有シートにサイト名とURLの文面を添える
 
-- 影響: 共有シートから出たファイルに、何のアプリで作った図かが分かる文面を添える（#474）。文面はWeb版の`navigator.share`へ`title: '棒針編み図エディタ'`・`text: '棒針編み図エディタで作成 https://knittingeditor.com/'`として渡し、iOS版の共有シート（`UIActivityViewController`）にも同じ文面を渡す。編み図の内容やファイル名は文面に入れない。Web版では`canShare`を渡す内容そのもの（ファイル＋文面）で確かめ、文面を一緒に渡せないブラウザでは共有が失敗しないように従来どおりファイルだけへ戻す。iOS版では`String`を`activityItems`へ直接並べると「ファイルに保存」・AirDrop・コピーのような操作が文面を余分な項目として保存・送ってしまうため、`ShareCreditItemSource`（`UIActivityItemSource`）を作り、メール・メッセージ・外部の共有機能にだけ文面を渡し、`.saveToCameraRoll`・`.airDrop`・`.copyToPasteboard`・`.print`・`.assignToContact`・`.addToReadingList`・`.openInIBooks`・`.markupAsPDF`・「ファイルに保存」（`SaveToFiles`）では`nil`を返してファイルだけを渡す。共有の完了ハンドラー（`finishSharing`）と取り消しの扱い、閉じる・取り消しでバックアップ日時を記録しない挙動、評価の依頼の条件は変えていない。文面の定数はWeb版が`src/platform.ts`の`SHARE_CREDIT`、iOS版が`ShareCreditItemSource`の1か所ずつ（iOSのWeb層は`navigator.share`を使わないため共通パッケージへは置かない）。
-- 主なファイル: `src/platform.ts`、`src/ShareFileDialog.tsx`、`ios/App/ShareCreditItemSource.swift`（新規）、`ios/App/WebViewContainer.swift`、`ios/Tests/KnittingEditorAppTests/ShareCreditItemSourceTests.swift`（新規）、`ios/knittingEditor.xcodeproj/project.pbxproj`（XcodeGenの再生成）、`tests/e2e/fixtures.ts`、`tests/e2e/editor.spec.ts`、`docs/WEB_SYNC.md`、`ios/SPECIFICATION.md`（2.5へ文面の挙動を記録）
-- テスト: `src/platform.test.ts`で、文面付きの`ShareData`が作られること・`canShare`が渡す内容そのもの（ファイル＋文面）で呼ばれること・文面を拒否するブラウザではファイルだけへ戻しつつ共有シートの導線を保つことを確かめる。`src/ShareFileDialog.test.tsx`で、共有ボタンが文面付きの内容で`navigator.share`を呼ぶこと・文面を渡せないときはファイルだけを渡すこと、取りやめ（AbortError）でダウンロードしないことと置き換えの扱いが変わらないことを確かめる。`tests/e2e/fixtures.ts`の共有シートの模擬に文面の記録と「文面を拒否するブラウザ」の選択を足し、`tests/e2e/editor.spec.ts`でPNG・PDFの共有が文面を添えること、文面を渡せないときはファイルだけを渡すことを確かめる。`ShareCreditItemSourceTests.swift`で、メール・メッセージ・外部の共有機能が文面を受け取ること、ファイルをそのまま扱う9種類の操作が`nil`を受け取ること、種類が定まらない要求とプレースホルダーが文面の型を保つこと、メールの件名がサイト名であることを確かめる。
+- 影響: iOSアプリの共有シートが、共有項目へ文面「棒針編み図エディタで作成 https://knittingeditor.com/」を添える（#474）。メール・メッセージ・ほかの共有機能へは文面が渡り、メールの件名はサイト名「棒針編み図エディタ」になる。「ファイルに保存」・AirDrop・写真への保存・コピー・プリントのようなファイルをそのまま扱う操作へは`ShareCreditItemSource`が文面を渡さないので、保存・送信される項目は変わらない。Web版は変更しない（iOS SafariのWeb Share APIでは文面が全操作へ独立した項目として渡り、「ファイルに保存」が余分なテキストを保存しかねないため）。
+- 主なファイル: `ios/App/ShareCreditItemSource.swift`（新規）、`ios/App/WebViewContainer.swift`、`ios/Tests/KnittingEditorAppTests/ShareCreditItemSourceTests.swift`（新規）、`ios/knittingEditor.xcodeproj/project.pbxproj`（XcodeGenの再生成）、`ios/SPECIFICATION.md`（2.5へ挙動を記録）、`docs/WEB_SYNC.md`（iOS版だけが文面を添える旨を1文で記録）
+- テスト: `ShareCreditItemSourceTests`で、文面がサイト名とURLだけであること、メール・メッセージ・外部の共有機能が文面を受け取ること、「ファイルに保存」2種（rawValueの部分一致）を含むファイルをそのまま扱う操作が`nil`を受け取ること、種類が定まらない要求とプレースホルダーが文面の型を保つこと、メールの件名がサイト名であることを確かめる。
 - 検証:
   - `npm run typecheck`: 成功（出力なし）。
-  - `npm test`: 最初の実行で`src/platform.test.ts`の新規テストが1件失敗した（`canShare`の呼び出し順の期待の誤り）。修正し、`npx vitest run src/platform.test.ts src/ShareFileDialog.test.tsx`は17件成功。以後の全体実行では、このPRと無関係の性能しきい値のテスト（`packages/editor-core/model/thumbnail.test.ts`・`packages/editor-core/export/pdf.worker.test.ts`）が並行実行の負荷で失敗することがあり、単独再実行ではどちらも成功した（直前のPRの記録にも同じ現象がある）。
+  - `npm test`: 91ファイル・1179件成功。
   - `npm run build`: 成功。
-  - `npm run check:dist`: `dist verified: 3172.1 KiB`。
-  - `xcodegen generate --spec ios/project.yml`: 成功（追加2ファイルぶんの8行）。
-  - Swiftの型検査（Simulatorを起動しない）: `xcrun --sdk iphonesimulator swiftc -swift-version 5 -target arm64-apple-ios17.0-simulator -typecheck`で`ios/App/ShareCreditItemSource.swift`が成功。同じモジュールを`-emit-module -enable-testing`で作り、`ios/Tests/KnittingEditorAppTests/ShareCreditItemSourceTests.swift`も成功。
-  - `xcodebuild -project ios/knittingEditor.xcodeproj -scheme knittingEditor -destination 'generic/platform=iOS Simulator' build-for-testing`は失敗。失敗は既存の`WebViewModel.swift`の`@Observable`マクロのプラグインサーバーがこのサンドボックスで動かないこと（`swift-plugin-server produced malformed response`）によるもので、追加した`ShareCreditItemSource.swift`・`ShareCreditItemSourceTests.swift`に由来するエラーは無い。XcodeでのビルドとSimulatorでの単体テストはリーダーが実施する。
-  - `npm run test:e2e`（Playwright）とiOS Simulator・Xcodeの検査、実機の共有シートの確認はリーダーが実施する。
-- デプロイ影響: あり（Pagesへ配信される。iOS版は次のリリースに含まれる）。配信後にiPhone・iPadのSafariでPNG・PDF・`.knit`を共有し、文面が添えられてURLが開けること、「ファイルに保存」ではファイルだけが保存されることを確かめる。iOSアプリは次の提出前に実機で、メール・メッセージで文面が送られること、AirDrop・「ファイルに保存」・写真・コピーでファイルだけが渡ることを`ios/docs/DEVICE_TESTING.md`のとおり確かめる。
+  - `npm run check:dist`: `dist verified: 3170.4 KiB`。
+  - `xcodegen generate --spec ios/project.yml`: 成功（`project.pbxproj`は無変化）。
+  - `xcrun --sdk iphonesimulator swiftc … -typecheck ios/App/ShareCreditItemSource.swift`: 成功。`ShareCreditItemSourceTests.swift`の型検査は、このサンドボックスでXCTestのモジュールが解決できないため実施できなかった。Xcodeでのビルドと単体テストの実行はPRのCIに任せる。
+  - Playwright E2E（`npm run test:e2e`）とiOS Simulator・Xcode・実機の検査はリーダーが実施する。
+- デプロイ影響: iOSのみ（次のアプリリリースに含まれる）。Pagesへ配信される成果物は変わらない。実機の共有シートで、メール・メッセージに文面が出てURLが開けること、「ファイルに保存」・AirDrop・写真・コピーでファイルだけが渡ることの確認は #474 に残す。

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { downloadBlob } from '@knitting-editor/editor-core/export/exporters';
 import { useModalFocus } from '@knitting-editor/editor-core/ui/hooks';
-import { shareData } from './platform';
 
 /** 共有したら`true`、閉じる・取り消しなら`false`、共有できずダウンロードへ切り替えたら`undefined`。 */
 type ShareResult = boolean | undefined;
@@ -56,7 +55,7 @@ function ShareFileDialog({ id, file, onClose }: { id: number; file: File; onClos
     setSharing(true);
     let result: ShareResult = true;
     try {
-      await navigator.share(shareData(file));
+      await navigator.share({ files: [file] });
     } catch (error) {
       // 共有シートを閉じただけなら何もしない。共有できなかったときは従来のダウンロードへ戻す。
       if (isShareCancel(error)) result = false;
