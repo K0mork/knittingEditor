@@ -8,6 +8,9 @@
  * `<script type="module" src="/analytics.js" data-analytics-entry></script>`で読み込む。
  *
  * 測定IDと送信の条件は`src/analytics.ts`とそろえる。ずれると`src/staticPageAnalytics.test.ts`が落ちる。
+ *
+ * 同じタブへ移るリンクのクリックは、gtag.jsがイベントをまとめて後で送る間にページが切り替わると失われる。
+ * そのため既定の動作を止め、beaconで送ってから移る。修飾キーや新しいタブのクリックは既定の動作のままにする。
  */
 
 /** 編集画面と同じGA4の測定ID。 */
@@ -18,6 +21,26 @@ export const ANALYTICS_OPT_OUT_KEY = 'knitting-editor:analytics-opt-out';
 
 /** 計測するのは本番のドメインだけ。開発サーバーやプレビューでは送らない。 */
 export const PRODUCTION_HOST = 'knittingeditor.com';
+
+/**
+ * 同じタブで移るリンクを押したとき、gtag.jsの`event_callback`を待つ猶予（ミリ秒）。
+ * gtag.jsが止められていても、この時間のあとに必ず移動する。
+ */
+export const SAME_TAB_NAVIGATE_TIMEOUT_MS = 500;
+
+/**
+ * 押したリンクをこのタブで開くか。修飾キー、主以外のボタン、`target`による新しいタブ・別フレーム、
+ * `download`、既定の動作を止められたクリック、`href`のないリンクはブラウザの既定の動作に任せるため`false`。
+ */
+export function opensInSameTab(event, link) {
+  if (event.defaultPrevented) return false;
+  if (event.button !== 0) return false;
+  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return false;
+  if (link.getAttribute('href') === null) return false;
+  if (link.hasAttribute('download')) return false;
+  const target = link.getAttribute('target');
+  return target === null || target === '_self';
+}
 
 /**
  * 本番の通常ブラウザだけで計測する。判定に使う情報は送信しない。
@@ -77,7 +100,30 @@ export function start(environment = {}) {
     const target = event.target instanceof Element ? event.target : null;
     const link = target?.closest('a[data-analytics]');
     if (!link) return;
-    gtag('event', 'link_clicked', { link_name: link.getAttribute('data-analytics') });
+    const linkName = link.getAttribute('data-analytics');
+    if (!opensInSameTab(event, link)) {
+      // 新しいタブやダウンロードではページが切り替わらないため、そのまま送る。
+      gtag('event', 'link_clicked', { link_name: linkName });
+      return;
+    }
+    // 同じタブで移るときは、gtag.jsがイベントをまとめて後で送る間にページが切り替わり、イベントが失われる。
+    // 既定の動作を止め、beaconで送ってから移る。コールバックが来なくても猶予の時間で必ず移る。
+    event.preventDefault();
+    const href = link.href;
+    let navigated = false;
+    const navigate = () => {
+      if (navigated) return;
+      navigated = true;
+      clearTimeout(timer);
+      location.assign(href);
+    };
+    const timer = setTimeout(navigate, SAME_TAB_NAVIGATE_TIMEOUT_MS);
+    gtag('event', 'link_clicked', {
+      link_name: linkName,
+      transport_type: 'beacon',
+      event_callback: navigate,
+      event_timeout: SAME_TAB_NAVIGATE_TIMEOUT_MS,
+    });
   }, { capture: true });
   return true;
 }

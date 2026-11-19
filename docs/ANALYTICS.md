@@ -39,6 +39,7 @@
 | `link_clicked` | `data-analytics`を付けたリンクを押したとき | `link_name`: `editor`（編集画面へ進む）、`app_store`（App Storeの製品ページへ進む）、`template_<名前>`（テンプレートのダウンロード。名前は`seed`や`cable-2x2`など） |
 
 - 送るのは本番のドメイン`knittingeditor.com`のページだけである。開発サーバーとプレビューでは送らない。
+- 同じタブで移るリンクでは、gtag.jsがイベントをまとめて後で送る間にページが切り替わるとイベントが失われる。そのため既定の動作を止め、`transport_type: 'beacon'`で送ってから、gtag.jsが送った後に呼ぶ`event_callback`で移動する。コールバックが来なくても（gtag.jsが止められている・読み込めないときも）、短い猶予の時間（`event_timeout`）のあとに必ず1回だけ移動する。修飾キー、主以外のボタン、`target`による新しいタブ、`download`、既定の動作が止められたクリックは移動しないため、ブラウザの既定の動作のまま送るだけにする。計測しない環境では既定の動作を止めない。
 - 除外の条件は編集画面と同じ（`navigator.webdriver`、User-Agentの`Claude/`、`knitting-editor:analytics-opt-out`）。
 - 静的なページのイベントには`app_build`を付けない。ページは版ごとに変わらず、公開の版を識別する必要がないためである。
 - GA4が自動で収集するイベントは、プロパティの設定に従う。この実装からは送らない。
