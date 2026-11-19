@@ -1,0 +1,7 @@
+# 2026-11-19 — 使い方からテンプレートへのリンクと、全テンプレートの出力E2E
+
+- 影響: `/guide/`（使い方）の冒頭とフッターから`/templates/`（編み図のテンプレート）へ内部リンクを張った。#467で#481に含めず残していた内部リンクのうち、記号一覧（`/stitches/`）からのリンクは#482でページを追加した時点で本文・フッターともに入っていたため、今回の修正は使い方だけである。編集画面（`/`）のどこにリンクを置くかは利用者が決めておらず、#467の完了条件にも含まれないため入れず、issueへ残す。リンクの文言は`/chart-basics/`・`/stitches/`と同じ「すぐに使える模様は…テンプレートにまとめています」とし、既存の内部リンクと同じく`data-analytics`は付けない（測るのは編集画面とテンプレートのダウンロードへの導線で、静的なページ間の移動は計測しない）。iOS版の同梱の使い方には、Web版だけのページであるテンプレートへのリンクを置かない。
+- 主なファイル: `public/guide/index.html`、`tests/e2e/templates.spec.ts`、`scripts/templates.test.mjs`
+- テスト: `scripts/templates.test.mjs`で、使い方と記号一覧の両方から`/templates/`へリンクしていること、iOS版の使い方にはリンクしていないことを確かめる。`tests/e2e/templates.spec.ts`で、8種類すべての`.knit`を出力パネルの「バックアップから復元」で開き、編み図名（「（復元）」付き）と20段20目の盤面、PNGの署名と寸法（どのテンプレートも同じになる）、PDFの署名と盤面の描画命令（`pdfStreams`で全ストリームを展開して確かめる）を1つのテストで順に確かめる。ダウンロードは`downloadInsteadOfShare`で実際のダウンロードとして受け取る。
+- 検証: Node.js v26.8.1で、`npm ci`、`npm run typecheck`、`npm test`（1180件成功）、`npm run build`、`npm run check:dist`（`dist verified: 3170.7 KiB`）が成功した。`npx vitest run scripts/templates.test.mjs scripts/guide-content.test.mjs scripts/static-page-analytics.test.mjs scripts/stitches-page.test.mjs`も成功した（65件）。Playwright E2E（`npm run test:e2e`、Chromiumモバイル・デスクトップとWebKitモバイルの3構成）とiOS Simulator・Xcodeの検証はこの環境で実行できないため、リーダーが実行する。
+- デプロイ影響: あり（Pagesへ配信される）。配信後に`https://knittingeditor.com/guide/`を開き、冒頭とフッターのリンクから`/templates/`へ移動できることを確かめる。`smoke`は`/guide/`のHTMLを配信物と比べる。
