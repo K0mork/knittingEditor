@@ -115,6 +115,7 @@ GA4が自動で集める`page_view`、`session_start`、`first_visit`、`user_en
 | `customEvent:touched_cells_bucket` | `chart_progress` | 値が変わったマス数の区分（上限側の参考値） |
 | `customEvent:cohort_week` | `chart_progress`、`chart_progress_exported` | 閾値に到達した週（端末のローカル日付のISO週） |
 | `customEvent:export_lag_bucket` | `chart_progress_exported` | 到達から出力までの日数の区分 |
+| `customEvent:link_name` | `link_clicked` | 押したリンク（`editor`、`app_store`、`template_<名前>`）。2026-11-19に登録したので、それより前は`(not set)`になる |
 
 あるパラメータを送らないイベントでは、そのディメンションは`(not set)`になる。仕様どおりの`(not set)`と、送るはずのイベントでの`(not set)`を区別する。カスタムディメンションは登録した時点より前のデータには付かない。
 
