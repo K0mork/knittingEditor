@@ -52,28 +52,38 @@ test('restores a downloaded template in the editor', async ({ page }) => {
 });
 
 test('restores every template and exports it as PNG and PDF', async ({ page }) => {
+  // 8回の復元と16回の書き出しを1つのテストで行うので、既定の45秒では足りない。
+  test.setTimeout(120_000);
   await downloadInsteadOfShare(page);
   await page.goto('/');
   await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
   await page.getByRole('button', { name: '出力', exact: true }).click();
 
-  // どのテンプレートも20段20目なので、PNGの寸法はすべて同じになる。
-  let expectedPngSize: { width: number; height: number } | undefined;
   for (const { slug, name } of TEMPLATES) {
-    // 出力パネルを開いたまま「バックアップから復元」でテンプレートを開く。
+    // 「バックアップから復元」のファイル入力は出力パネルの外に置いてあるので、パネルが開いていなくても差し込める。
     await page.locator('input[type=file]').setInputFiles(fileURLToPath(new URL(`../../public/templates/${slug}.knit`, import.meta.url)));
     await expect(page.locator('.app-header')).toContainText(`${name}（復元）`, { timeout: 60_000 });
     await expect(page.getByLabel('編み図編集盤面')).toHaveAttribute('aria-label', /20段、20目/);
+    // 復元は編み図の切り替えを伴い、開いていたパネルを閉じる。閉じたことを確かめてから開き直す。
+    await expect(page.locator('#app-drawer')).toHaveCount(0);
+    await page.getByRole('button', { name: '出力', exact: true }).click();
+    const pngButton = page.getByRole('button', { name: 'PNGを保存', exact: true });
+    await expect(pngButton).toBeVisible();
 
+    // 出力パネルに表示した寸法と、実際に保存したPNGの寸法が一致することを確かめる。
+    // PNGの寸法は既定では段数・列数と1セルの画素数だけで決まるが、記号の一覧を入れると
+    // 使った記号の種類によって高さが変わるため、寸法の同じこと自体はここでは保証しない。
+    const sizeText = await page.getByText(/^\d+×\d+px/).textContent();
     const pngDownload = page.waitForEvent('download');
-    await page.getByRole('button', { name: 'PNGを保存', exact: true }).click();
+    await pngButton.click();
     const png = await pngDownload;
     expect(await png.failure()).toBeNull();
     const pngBytes = readFileSync((await png.path())!);
     expect(pngBytes.subarray(1, 4).toString()).toBe('PNG');
     const pngSize = { width: pngBytes.readUInt32BE(16), height: pngBytes.readUInt32BE(20) };
-    if (expectedPngSize) expect(pngSize).toEqual(expectedPngSize);
-    else expectedPngSize = pngSize;
+    expect(pngSize.width).toBeGreaterThan(0);
+    expect(pngSize.height).toBeGreaterThan(0);
+    expect(sizeText).toContain(`${pngSize.width}×${pngSize.height}px`);
 
     const pdfDownload = page.waitForEvent('download');
     await page.getByRole('button', { name: 'PDFを保存', exact: true }).click();
