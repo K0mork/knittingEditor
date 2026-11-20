@@ -26,6 +26,7 @@
 		492BA9E4F0CD05403413C7F5 /* PickedBackupFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0525CBC2C945A8C222C416B2 /* PickedBackupFile.swift */; };
 		4C2C861608AD1B104C9DB85F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 594A6F94A2E8CE6BB9AB667E /* Assets.xcassets */; };
 		59A9148D359B433D6C65D747 /* ReviewRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0EFAC03FE6BC45A5DA5823E /* ReviewRequest.swift */; };
+		68FCD9D9F8DD078BA2A82A87 /* ShareCreditItemSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B785F31D64193A8ACF7E599 /* ShareCreditItemSource.swift */; };
 		72A7C34CF22FD0138A1E8FE7 /* KnittingEditorUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 049604E8F16625AD6FE9AA3F /* KnittingEditorUITests.swift */; };
 		79639A7ABA8D77F463DE6AEF /* knitting-editor-v2-interop.knit.b64 in Resources */ = {isa = PBXBuildFile; fileRef = 81817C83F1B327D22010A448 /* knitting-editor-v2-interop.knit.b64 */; };
 		80BB0B545C49794374C7C699 /* KnittingEditorApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79CFD1A36C16A062BF1E7D49 /* KnittingEditorApp.swift */; };
@@ -47,6 +48,7 @@
 		DA9BED17DD090F6AE8270C7A /* AppAppearanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4FB5A4B7A1BE555D1AC9899 /* AppAppearanceTests.swift */; };
 		E0EFF7BEEF040AF9BD12FE82 /* KnittingEditorUTTypeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8552AECC9B947C62C1E8D5EA /* KnittingEditorUTTypeTests.swift */; };
 		E12262CE2F3E18D05768F37F /* FoldRegion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96055397BDD5D49A99659128 /* FoldRegion.swift */; };
+		ED7818AE153FBA2EA3A24837 /* ShareCreditItemSourceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F32C043D7456C90B9BB0C53 /* ShareCreditItemSourceTests.swift */; };
 		F892932BE7BC991009235A25 /* LocalWebSchemeHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2454BC6D34F2448DF141412 /* LocalWebSchemeHandler.swift */; };
 		FB30A9460946E8C504C37373 /* KeyboardCommandUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53DD446B472E9C0F9AFA3887 /* KeyboardCommandUITests.swift */; };
 /* End PBXBuildFile section */
@@ -90,9 +92,11 @@
 		5155DE6CD05137C69E63FE74 /* ExportSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportSession.swift; sourceTree = "<group>"; };
 		53DD446B472E9C0F9AFA3887 /* KeyboardCommandUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardCommandUITests.swift; sourceTree = "<group>"; };
 		594A6F94A2E8CE6BB9AB667E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		6F32C043D7456C90B9BB0C53 /* ShareCreditItemSourceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareCreditItemSourceTests.swift; sourceTree = "<group>"; };
 		79CFD1A36C16A062BF1E7D49 /* KnittingEditorApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnittingEditorApp.swift; sourceTree = "<group>"; };
 		81817C83F1B327D22010A448 /* knitting-editor-v2-interop.knit.b64 */ = {isa = PBXFileReference; path = "knitting-editor-v2-interop.knit.b64"; sourceTree = "<group>"; };
 		8552AECC9B947C62C1E8D5EA /* KnittingEditorUTTypeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnittingEditorUTTypeTests.swift; sourceTree = "<group>"; };
+		8B785F31D64193A8ACF7E599 /* ShareCreditItemSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareCreditItemSource.swift; sourceTree = "<group>"; };
 		8D40BDC62512CFC6F6D66BE6 /* knittingEditorUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = knittingEditorUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9402DFD62B28E439CE5D3569 /* NativeExportResultTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeExportResultTests.swift; sourceTree = "<group>"; };
 		96055397BDD5D49A99659128 /* FoldRegion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoldRegion.swift; sourceTree = "<group>"; };
@@ -144,6 +148,7 @@
 				9D2F05AF7ECD85F71858476E /* PencilDoubleTapTests.swift */,
 				28C75CE32321B186A6C63482 /* PhotoLibraryPermissionTests.swift */,
 				0DEBB9093EE26F31F21EBE11 /* ReviewRequestTests.swift */,
+				6F32C043D7456C90B9BB0C53 /* ShareCreditItemSourceTests.swift */,
 				B62B4079E61D9D2020ED7720 /* TrackpadZoomTests.swift */,
 			);
 			path = KnittingEditorAppTests;
@@ -219,6 +224,7 @@
 				0525CBC2C945A8C222C416B2 /* PickedBackupFile.swift */,
 				105A34342230A6B324A75809 /* PrivacyInfo.xcprivacy */,
 				C0EFAC03FE6BC45A5DA5823E /* ReviewRequest.swift */,
+				8B785F31D64193A8ACF7E599 /* ShareCreditItemSource.swift */,
 				C68B9DF653DF140ABC00F4C4 /* TrackpadZoom.swift */,
 				4E643EAB3D8627886E3EDCB9 /* WebViewContainer.swift */,
 				4BC3D7F26008C9C37E8A0F46 /* WebViewModel.swift */,
@@ -405,6 +411,7 @@
 				C0A5BFED6459B0D28F9C8572 /* PencilDoubleTap.swift in Sources */,
 				492BA9E4F0CD05403413C7F5 /* PickedBackupFile.swift in Sources */,
 				59A9148D359B433D6C65D747 /* ReviewRequest.swift in Sources */,
+				68FCD9D9F8DD078BA2A82A87 /* ShareCreditItemSource.swift in Sources */,
 				C179D7EED17F204AB53E5C0C /* TrackpadZoom.swift in Sources */,
 				399AE0908FE88F56457A7A54 /* WebViewContainer.swift in Sources */,
 				26204E24594376CF2218B1C2 /* WebViewModel.swift in Sources */,
@@ -430,6 +437,7 @@
 				D9892238D542E5CB61C45169 /* PencilDoubleTapTests.swift in Sources */,
 				1E4A2AD0715766290D4EC91E /* PhotoLibraryPermissionTests.swift in Sources */,
 				A86536A01BCEF6CFFA6086E9 /* ReviewRequestTests.swift in Sources */,
+				ED7818AE153FBA2EA3A24837 /* ShareCreditItemSourceTests.swift in Sources */,
 				1600697B59A74E2D0A8A5756 /* TrackpadZoomTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
