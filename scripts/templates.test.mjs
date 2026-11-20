@@ -161,4 +161,12 @@ describe('テンプレートの公開ページ', () => {
     expect(readText('public/sitemap.xml')).toContain('<loc>https://knittingeditor.com/templates/</loc>');
     expect(readText('public/llms.txt')).toContain('https://knittingeditor.com/templates/');
   });
+
+  it('使い方・記号一覧からリンクする', () => {
+    for (const path of ['public/guide/index.html', 'public/stitches/index.html']) {
+      expect(readText(path), path).toContain('href="/templates/"');
+    }
+    // テンプレートはWeb版だけのページなので、iOS版の同梱の使い方にはリンクしない。
+    expect(readText('ios/Web/public/guide/index.html')).not.toContain('href="/templates/"');
+  });
 });
