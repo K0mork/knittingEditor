@@ -1,4 +1,37 @@
-import { expect, test } from './fixtures';
+import { expect, test, type Page } from './fixtures';
+
+/*
+ * `watchHeaderLayout`（`packages/editor-core/ui/EditorView.tsx`）は、`ResizeObserver`でヘッダーを
+ * 測り直すときにルートの文字サイズを読み、21px以上なら`.app-shell`へ`data-large-text`（値は空）を
+ * 付ける。この測り直しは文字サイズの書き換えより後なので、直後の測定ではまだ反映されていない
+ * ことがある（#425）。測定の前には、反映が終わるまで待つ。
+ */
+
+/** `watchHeaderLayout`が`data-large-text`を付けるルートの文字サイズの境界（`packages/editor-core/ui/EditorView.tsx`と同じ値）。 */
+const LARGE_TEXT_ROOT_FONT_SIZE = 21;
+
+/**
+ * ルートの文字サイズを変え、大きな文字向けのレイアウトが反映し切るのを待つ。まず予定した
+ * `data-large-text`の付け外しを確かめ、次に操作帯の位置が2フレームを挟んで変わらなくなるのを
+ * 待つ。属性が付くとヘッダーが折り返して`--app-header-height`も書き換わるので、属性が付いた
+ * 直後でもまだ動くことがある。
+ */
+async function setRootFontSizeAndSettle(page: Page, fontSize: number) {
+  await page.evaluate((size) => { document.documentElement.style.fontSize = `${size}px`; }, fontSize);
+  const shell = page.locator('.app-shell');
+  if (fontSize >= LARGE_TEXT_ROOT_FONT_SIZE) await expect(shell).toHaveAttribute('data-large-text', '');
+  else await expect(shell).not.toHaveAttribute('data-large-text');
+  // 2フレームを挟んで操作帯が同じ位置なら、`ResizeObserver`の反映は終わっている。
+  await expect.poll(async () => {
+    const box = () => page.locator('.action-bar').evaluate((element) => {
+      const { x, y, width, height } = element.getBoundingClientRect();
+      return `${x},${y},${width},${height}`;
+    });
+    const first = await box();
+    await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    return (await box()) === first ? 'settled' : 'moving';
+  }).toBe('settled');
+}
 
 for (const width of [390, 760, 1024, 1280]) {
   for (const fontSize of [16, 28, 48]) {
@@ -9,7 +42,7 @@ for (const width of [390, 760, 1024, 1280]) {
       await page.goto('/');
       const canvas = page.getByLabel('編み図編集盤面');
       await expect(canvas).toBeVisible();
-      await page.evaluate((size) => { document.documentElement.style.fontSize = `${size}px`; }, fontSize);
+      await setRootFontSizeAndSettle(page, fontSize);
       const actionBar = page.locator('.action-bar');
       const normal = await actionBar.boundingBox();
       await page.getByRole('button', { name: '範囲', exact: true }).click();
