@@ -1,0 +1,12 @@
+# 2026-11-19 — Webアプリマニフェストと端末内データの永続化をAndroid Chromeへ入れる
+
+- 影響: Web版にWebアプリマニフェスト（`public/manifest.webmanifest`）を置いて`index.html`から読み込み、AndroidのChromeでホーム画面に追加してアプリのように開けるようにした（#486）。Service Worker（オフライン動作）はこの変更に入れず、アイコンは既存の`icon-192.png`（`any`）に、新しく作った`icon-512.png`（`any`）と`icon-512-maskable.png`（`maskable`）を加えた。あわせて、Chromeが空き容量の足りないときに永続化していないサイトのIndexedDBを消すことがあるため、最初の編み図の保存が成功した後で`navigator.storage.persist()`を1回だけ呼び、端末内データの永続化を求める。拒否・未対応・失敗では何も表示せず、iOS版（`ios/Web/`）の同梱ページにはmanifestも`persist()`も入れない。
+- 主なファイル: `public/manifest.webmanifest`（新規）、`public/icon-512.png`（新規）、`public/icon-512-maskable.png`（新規）、`index.html`、`scripts/generate-web-icons.mjs`（512pxとmaskableの出力を追加）、`src/persistentStorage.ts`（新規）、`src/App.tsx`、`packages/editor-core/ui/useEditorController.ts`（保存成功の通知`onSaveSuccess`を省略可能な引数にする）、`scripts/content-security-policy.mjs`（`manifest-src 'self'`を明示）、`scripts/check-dist.mjs`（manifestの検査を`verifyWebAppManifest`として出す）、`scripts/check-live-site.mjs`、`docs/WEB_SYNC.md`
+- テスト: `src/persistentStorage.test.ts`（新規）で、最初の保存の後に1回だけ求めること、既に永続化されていれば求めないこと、未対応・拒否・失敗で何も表示せず投げないことを確かめる。`src/App.persistence.test.tsx`（新規）で`App`が保存成功の通知を`requestPersistentStorageOnce`へつなぐことを、`packages/editor-core/ui/useEditorController.test.tsx`で保存が成功するたびに`onSaveSuccess`が呼ばれ、失敗のあとには呼ばれないことを確かめる。`scripts/check-dist.test.mjs`（新規）で、リポジトリのmanifestが検査を通り、名前・色・`start_url`・`display`・アイコンの変更を検査が報告することを確かめる。`scripts/check-live-site.test.mjs`でmanifestが誤ったcontent-typeで返るときとmaskableアイコンが404のときを、`scripts/content-security-policy.test.mjs`で`manifest-src 'self'`を、`tests/e2e/seo.spec.ts`で`<link rel="manifest">`とmanifestのJSON（名前・`display`・テーマ色・3つのアイコン）とアイコンの寸法を確かめる。
+- 検証:
+  - 512pxとmaskableのアイコンは`node scripts/generate-web-icons.mjs`で作った。このスクリプトが2つのアイコンも出力するようになり、既存のアイコンを作り直しても変わらないことを確認した。
+  - `npm run typecheck`、`npm test`、`npm run build`、`npm run check:dist`が成功した。
+  - 共有コード（`packages/editor-core/ui/useEditorController.ts`）を変えたので、`ios/Web`でも`../../node_modules/.bin/tsc -p tsconfig.app.json --noEmit`と`../../node_modules/.bin/vitest run --config vite.config.ts`が成功した。
+  - `npm run test:e2e`を3つのPlaywright構成（Chromium mobile・desktop、WebKit mobile）すべてで実行し、692件成功した。
+  - `npx vite preview`で配信物を`curl`で確かめ、`/manifest.webmanifest`が`application/manifest+json`で返ることを確認した。
+- デプロイ影響: あり（Pagesへ配信される）。配信後は`smoke`（`scripts/check-live-site.mjs`）が`/manifest.webmanifest`と2つの新しいアイコンを確かめる。Chrome DevToolsのApplication > Manifestでのインストール条件の確認、Android実機かエミュレーターでのホーム画面への追加と`navigator.storage.persisted()`の結果、iPhone・iPadのSafariでの「ホーム画面に追加」は、この変更だけでは確かめられないので#486に残す。

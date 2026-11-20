@@ -233,11 +233,46 @@ test('serves the app icon as the favicon and touch icons', async ({ page }) => {
   const ico = await favicon.body();
   expect(ico.readUInt16LE(2)).toBe(1);
   expect(ico.readUInt16LE(4)).toBe(3);
-  for (const [path, size] of [['/icon-192.png', 192], ['/apple-touch-icon.png', 180]] as const) {
+  for (const [path, size] of [['/icon-192.png', 192], ['/icon-512.png', 512], ['/icon-512-maskable.png', 512], ['/apple-touch-icon.png', 180]] as const) {
     const response = await page.request.get(path);
     expect(response.status()).toBe(200);
     expect(response.headers()['content-type']).toBe('image/png');
     const png = await response.body();
+    expect(png.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a');
+    expect(png.readUInt32BE(16)).toBe(size);
+    expect(png.readUInt32BE(20)).toBe(size);
+  }
+});
+
+test('links the web app manifest for home-screen installs', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', '/manifest.webmanifest');
+  const response = await page.request.get('/manifest.webmanifest');
+  expect(response.status()).toBe(200);
+  expect(response.headers()['content-type']).toMatch(/^application\/manifest\+json/);
+  const manifest = await response.json() as {
+    name: string; short_name: string; lang: string; start_url: string; scope: string;
+    display: string; theme_color: string; background_color: string;
+    icons: { src: string; sizes: string; type: string; purpose: string }[];
+  };
+  expect(manifest.name).toBe('棒針編み図エディタ');
+  expect(manifest.short_name).toBe('棒針編み図エディタ');
+  expect(manifest.lang).toBe('ja');
+  expect(manifest.start_url).toBe('/');
+  expect(manifest.scope).toBe('/');
+  expect(manifest.display).toBe('standalone');
+  expect(manifest.theme_color).toBe('#3d7a4a');
+  expect(manifest.background_color).toBe('#f3f0e8');
+  expect(manifest.icons).toEqual([
+    { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+    { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+    { src: '/icon-512-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+  ]);
+  for (const icon of manifest.icons) {
+    const iconResponse = await page.request.get(icon.src);
+    expect(iconResponse.status()).toBe(200);
+    const png = await iconResponse.body();
+    const size = Number(icon.sizes.split('x')[0]);
     expect(png.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a');
     expect(png.readUInt32BE(16)).toBe(size);
     expect(png.readUInt32BE(20)).toBe(size);

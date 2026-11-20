@@ -1,78 +1,130 @@
 import { readFile, readdir, stat } from 'node:fs/promises';
-import { join, relative } from 'node:path';
+import { join, relative, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { ASSET_HISTORY_FILE, assetHistoryFiles, isRetainedAsset, parseAssetHistory } from './asset-history.mjs';
 import { htmlFiles, verifyContentSecurityPolicy } from './content-security-policy.mjs';
 
-const required = ['index.html', 'robots.txt', 'sitemap.xml', 'llms.txt', 'favicon.ico', 'icon-192.png', 'apple-touch-icon.png', 'og-image.png', 'app-store-badge.svg', 'analytics.js', 'guide/index.html', 'templates/index.html', 'stitches/index.html', 'chart-basics/index.html', 'support/index.html', 'privacy/index.html', 'privacy/app/index.html', 'third-party-notices/index.html'];
-for (const file of required) await stat(join('dist', file));
-const assets = await readdir(join('dist', 'assets'));
+// Webアプリマニフェスト（#486）の期待する中身。index.htmlの名前・背景色・テーマ色とそろえる。
+const MANIFEST = {
+  name: '棒針編み図エディタ',
+  short_name: '棒針編み図エディタ',
+  lang: 'ja',
+  start_url: '/',
+  scope: '/',
+  display: 'standalone',
+  theme_color: '#3d7a4a',
+  background_color: '#f3f0e8',
+  icons: [
+    { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+    { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+    { src: '/icon-512-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+  ],
+};
 
-const ogImage = await readFile(join('dist', 'og-image.png'));
-if (ogImage.subarray(0, 8).toString('hex') !== '89504e470d0a1a0a') throw new Error('og-image.png がPNGではありません');
-if (ogImage.readUInt32BE(16) !== 1200 || ogImage.readUInt32BE(20) !== 630) throw new Error('og-image.png が1200×630ではありません');
-for (const page of ['index.html', 'guide/index.html', 'templates/index.html', 'stitches/index.html', 'chart-basics/index.html', 'support/index.html', 'privacy/index.html', 'privacy/app/index.html']) {
-  const html = await readFile(join('dist', page), 'utf8');
-  if (!html.includes('<meta property="og:image" content="https://knittingeditor.com/og-image.png" />')) throw new Error(`${page} にog:imageがありません`);
-}
-async function checkPng(file, width, height) {
-  const png = await readFile(join('dist', file));
-  if (png.subarray(0, 8).toString('hex') !== '89504e470d0a1a0a') throw new Error(`${file} がPNGではありません`);
-  if (png.readUInt32BE(16) !== width || png.readUInt32BE(20) !== height) throw new Error(`${file} が${width}×${height}ではありません`);
-}
-await checkPng('icon-192.png', 192, 192);
-await checkPng('apple-touch-icon.png', 180, 180);
-const favicon = await readFile(join('dist', 'favicon.ico'));
-if (favicon.readUInt16LE(0) !== 0 || favicon.readUInt16LE(2) !== 1 || favicon.readUInt16LE(4) < 1) throw new Error('favicon.ico がICOではありません');
-for (const page of ['index.html', 'guide/index.html', 'templates/index.html', 'stitches/index.html', 'chart-basics/index.html', 'support/index.html', 'privacy/index.html', 'privacy/app/index.html']) {
-  const html = await readFile(join('dist', page), 'utf8');
-  for (const link of ['<link rel="icon" href="/favicon.ico"', '<link rel="icon" href="/icon-192.png"', '<link rel="apple-touch-icon" href="/apple-touch-icon.png"']) {
-    if (!html.includes(link)) throw new Error(`${page} に ${link} がありません`);
+/** 配信物のmanifestの内容を確かめる。問題の説明を返す（問題がなければ`undefined`）。 */
+export function verifyWebAppManifest(text) {
+  let manifest;
+  try {
+    manifest = JSON.parse(text);
+  } catch {
+    return 'manifest.webmanifest がJSONではありません';
   }
-}
-const notices = await readFile(join('dist', 'third-party-notices', 'index.html'), 'utf8');
-for (const name of ['fflate', 'idb', 'react', 'react-dom', 'scheduler', 'uqr']) {
-  if (!new RegExp(`<h2>${name} [^<]+</h2>`).test(notices)) throw new Error(`third-party-notices/index.html に ${name} のライセンス表記がありません`);
-}
-// 後から足したページも含め、配信するすべてのHTMLにCSPのmetaがあることを確かめる。
-for (const file of await htmlFiles('dist')) {
-  const problem = verifyContentSecurityPolicy(await readFile(file, 'utf8'));
-  if (problem) throw new Error(`${relative('dist', file)}: ${problem}`);
-}
-if (!assets.some((file) => file.startsWith('pdf.worker-') && file.endsWith('.js'))) throw new Error('PDF Workerが出力されていません');
-
-// `scripts/retain-previous-assets.mjs`が前の版のファイルを加えたあとは、一覧と`assets/`が食い違わないこと。
-// 加える前（PRのビルドや手元）は一覧がないので、この確認は飛ばす。
-let previousAssets = new Set();
-const historyText = await readFile(join('dist', ASSET_HISTORY_FILE), 'utf8').catch((error) => {
-  if (error.code === 'ENOENT') return undefined;
-  throw error;
-});
-if (historyText !== undefined) {
-  const history = parseAssetHistory(historyText);
-  const listed = assetHistoryFiles(history);
-  for (const file of listed) {
-    if (!assets.includes(file)) throw new Error(`${ASSET_HISTORY_FILE} の ${file} がassets/にありません`);
+  const problems = [];
+  for (const [key, expected] of Object.entries(MANIFEST)) {
+    if (JSON.stringify(manifest[key]) !== JSON.stringify(expected)) problems.push(key);
   }
-  for (const file of assets.filter(isRetainedAsset)) {
-    if (!listed.has(file)) throw new Error(`assets/${file} が${ASSET_HISTORY_FILE}にありません`);
-  }
-  const current = new Set(history.generations[0].files);
-  previousAssets = new Set([...listed].filter((file) => !current.has(file)));
+  return problems.length > 0 ? `manifest.webmanifestの${problems.join('・')}が想定と違います` : undefined;
 }
 
-async function totalSize(directory) {
-  let total = 0;
-  for (const entry of await readdir(directory, { withFileTypes: true })) {
-    const path = join(directory, entry.name);
-    total += entry.isDirectory() ? await totalSize(path) : (await stat(path)).size;
+async function main() {
+  const required = ['index.html', 'robots.txt', 'sitemap.xml', 'llms.txt', 'favicon.ico', 'icon-192.png', 'icon-512.png', 'icon-512-maskable.png', 'apple-touch-icon.png', 'og-image.png', 'app-store-badge.svg', 'analytics.js', 'manifest.webmanifest', 'guide/index.html', 'templates/index.html', 'stitches/index.html', 'chart-basics/index.html', 'support/index.html', 'privacy/index.html', 'privacy/app/index.html', 'third-party-notices/index.html'];
+  for (const file of required) await stat(join('dist', file));
+  const assets = await readdir(join('dist', 'assets'));
+
+  const ogImage = await readFile(join('dist', 'og-image.png'));
+  if (ogImage.subarray(0, 8).toString('hex') !== '89504e470d0a1a0a') throw new Error('og-image.png がPNGではありません');
+  if (ogImage.readUInt32BE(16) !== 1200 || ogImage.readUInt32BE(20) !== 630) throw new Error('og-image.png が1200×630ではありません');
+  for (const page of ['index.html', 'guide/index.html', 'templates/index.html', 'stitches/index.html', 'chart-basics/index.html', 'support/index.html', 'privacy/index.html', 'privacy/app/index.html']) {
+    const html = await readFile(join('dist', page), 'utf8');
+    if (!html.includes('<meta property="og:image" content="https://knittingeditor.com/og-image.png" />')) throw new Error(`${page} にog:imageがありません`);
   }
-  return total;
+  async function checkPng(file, width, height) {
+    const png = await readFile(join('dist', file));
+    if (png.subarray(0, 8).toString('hex') !== '89504e470d0a1a0a') throw new Error(`${file} がPNGではありません`);
+    if (png.readUInt32BE(16) !== width || png.readUInt32BE(20) !== height) throw new Error(`${file} が${width}×${height}ではありません`);
+  }
+  await checkPng('icon-192.png', 192, 192);
+  await checkPng('icon-512.png', 512, 512);
+  await checkPng('icon-512-maskable.png', 512, 512);
+  await checkPng('apple-touch-icon.png', 180, 180);
+  const favicon = await readFile(join('dist', 'favicon.ico'));
+  if (favicon.readUInt16LE(0) !== 0 || favicon.readUInt16LE(2) !== 1 || favicon.readUInt16LE(4) < 1) throw new Error('favicon.ico がICOではありません');
+  for (const page of ['index.html', 'guide/index.html', 'templates/index.html', 'stitches/index.html', 'chart-basics/index.html', 'support/index.html', 'privacy/index.html', 'privacy/app/index.html']) {
+    const html = await readFile(join('dist', page), 'utf8');
+    for (const link of ['<link rel="icon" href="/favicon.ico"', '<link rel="icon" href="/icon-192.png"', '<link rel="apple-touch-icon" href="/apple-touch-icon.png"']) {
+      if (!html.includes(link)) throw new Error(`${page} に ${link} がありません`);
+    }
+  }
+  // マニフェストは編集画面（`index.html`）だけから読み込む。ホーム画面へ追加するときの起点は`/`。
+  const indexHtml = await readFile(join('dist', 'index.html'), 'utf8');
+  if (!indexHtml.includes('<link rel="manifest" href="/manifest.webmanifest" />')) throw new Error('index.html にmanifestへの<link>がありません');
+  const manifestProblem = verifyWebAppManifest(await readFile(join('dist', 'manifest.webmanifest'), 'utf8'));
+  if (manifestProblem) throw new Error(manifestProblem);
+  // マニフェストのアイコンはホーム画面用の参照先で、`index.html`の`<link>`とは別。存在だけ確かめる。
+  for (const icon of MANIFEST.icons) {
+    try {
+      await stat(join('dist', icon.src.replace(/^\//, '')));
+    } catch {
+      throw new Error(`manifestのアイコン ${icon.src} がdistにありません`);
+    }
+  }
+  const notices = await readFile(join('dist', 'third-party-notices', 'index.html'), 'utf8');
+  for (const name of ['fflate', 'idb', 'react', 'react-dom', 'scheduler', 'uqr']) {
+    if (!new RegExp(`<h2>${name} [^<]+</h2>`).test(notices)) throw new Error(`third-party-notices/index.html に ${name} のライセンス表記がありません`);
+  }
+  // 後から足したページも含め、配信するすべてのHTMLにCSPのmetaがあることを確かめる。
+  for (const file of await htmlFiles('dist')) {
+    const problem = verifyContentSecurityPolicy(await readFile(file, 'utf8'));
+    if (problem) throw new Error(`${relative('dist', file)}: ${problem}`);
+  }
+  if (!assets.some((file) => file.startsWith('pdf.worker-') && file.endsWith('.js'))) throw new Error('PDF Workerが出力されていません');
+
+  // `scripts/retain-previous-assets.mjs`が前の版のファイルを加えたあとは、一覧と`assets/`が食い違わないこと。
+  // 加える前（PRのビルドや手元）は一覧がないので、この確認は飛ばす。
+  let previousAssets = new Set();
+  const historyText = await readFile(join('dist', ASSET_HISTORY_FILE), 'utf8').catch((error) => {
+    if (error.code === 'ENOENT') return undefined;
+    throw error;
+  });
+  if (historyText !== undefined) {
+    const history = parseAssetHistory(historyText);
+    const listed = assetHistoryFiles(history);
+    for (const file of listed) {
+      if (!assets.includes(file)) throw new Error(`${ASSET_HISTORY_FILE} の ${file} がassets/にありません`);
+    }
+    for (const file of assets.filter(isRetainedAsset)) {
+      if (!listed.has(file)) throw new Error(`assets/${file} が${ASSET_HISTORY_FILE}にありません`);
+    }
+    const current = new Set(history.generations[0].files);
+    previousAssets = new Set([...listed].filter((file) => !current.has(file)));
+  }
+
+  async function totalSize(directory) {
+    let total = 0;
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      const path = join(directory, entry.name);
+      total += entry.isDirectory() ? await totalSize(path) : (await stat(path)).size;
+    }
+    return total;
+  }
+
+  // 今回の版の配信物は5MBまで。前の版のファイルは別に数え、最大10世代分で10MBまでとする。
+  let previousBytes = 0;
+  for (const file of previousAssets) previousBytes += (await stat(join('dist', 'assets', file))).size;
+  const bytes = (await totalSize('dist')) - previousBytes;
+  if (bytes > 5 * 1024 * 1024) throw new Error(`配信物が5MBを超えています: ${bytes}`);
+  if (previousBytes > 10 * 1024 * 1024) throw new Error(`前の版のファイルが10MBを超えています: ${previousBytes}`);
+  console.log(`dist verified: ${(bytes / 1024).toFixed(1)} KiB${previousAssets.size > 0 ? `, previous versions: ${previousAssets.size} file(s), ${(previousBytes / 1024).toFixed(1)} KiB` : ''}`);
 }
 
-// 今回の版の配信物は5MBまで。前の版のファイルは別に数え、最大10世代分で10MBまでとする。
-let previousBytes = 0;
-for (const file of previousAssets) previousBytes += (await stat(join('dist', 'assets', file))).size;
-const bytes = (await totalSize('dist')) - previousBytes;
-if (bytes > 5 * 1024 * 1024) throw new Error(`配信物が5MBを超えています: ${bytes}`);
-if (previousBytes > 10 * 1024 * 1024) throw new Error(`前の版のファイルが10MBを超えています: ${previousBytes}`);
-console.log(`dist verified: ${(bytes / 1024).toFixed(1)} KiB${previousAssets.size > 0 ? `, previous versions: ${previousAssets.size} file(s), ${(previousBytes / 1024).toFixed(1)} KiB` : ''}`);
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) await main();

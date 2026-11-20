@@ -10,9 +10,13 @@ import { chromium } from '@playwright/test';
 
 const ICON = new URL('../ios/App/AppIcon.icon/', import.meta.url);
 const PUBLIC = fileURLToPath(new URL('../public/', import.meta.url));
+// `maskable`は、Webアプリマニフェストのマスク可能アイコン（#486）。層を中央80%へ縮め、
+// 周囲を背景色で満たす。Androidのホーム画面は円形などへ切り抜くため、端まで描かない。
 const PNG_OUTPUTS = [
   { file: 'apple-touch-icon.png', size: 180 },
   { file: 'icon-192.png', size: 192 },
+  { file: 'icon-512.png', size: 512 },
+  { file: 'icon-512-maskable.png', size: 512, maskable: true },
 ];
 const ICO_SIZES = [16, 32, 48];
 
@@ -34,13 +38,15 @@ async function layerImages(document) {
   return Promise.all(names.map(async name => 'data:image/svg+xml;base64,' + (await readFile(new URL(`Assets/${name}`, ICON))).toString('base64')));
 }
 
-async function renderFlatIcon(output) {
+async function renderFlatIcon(output, { maskable = false } = {}) {
   const document = JSON.parse(await readFile(new URL('icon.json', ICON), 'utf8'));
   const layers = (await layerImages(document)).map(src => `<img src="${src}">`).join('');
+  // マスク可能アイコンでは層を中央80%（安全圏）へ収め、外側は背景色のままにする。
+  const imageStyle = maskable ? 'position:absolute;inset:10%;width:80%;height:80%' : 'position:absolute;inset:0;width:1024px;height:1024px';
   const browser = await chromium.launch();
   try {
     const page = await browser.newPage({ viewport: { width: 1024, height: 1024 } });
-    await page.setContent(`<style>body{margin:0;width:1024px;height:1024px;background:${backgroundColor(document)}}img{position:absolute;inset:0;width:1024px;height:1024px}</style>${layers}`);
+    await page.setContent(`<style>body{margin:0;width:1024px;height:1024px;background:${backgroundColor(document)}}img{${imageStyle}}</style>${layers}`);
     await page.evaluate(() => Promise.all([...document.images].map(image => image.decode())));
     await page.screenshot({ path: output, omitBackground: false });
   } finally {
@@ -78,9 +84,11 @@ const directory = await mkdtemp(join(tmpdir(), 'knitting-icons-'));
 try {
   const source = join(directory, 'icon-1024.png');
   await renderFlatIcon(source);
-  for (const { file, size } of PNG_OUTPUTS) {
-    await writeFile(join(PUBLIC, file), await resizePng(source, directory, size));
-    console.log(`public/${file} (${size}x${size})`);
+  for (const { file, size, maskable } of PNG_OUTPUTS) {
+    const image = maskable ? join(directory, `maskable-1024.png`) : source;
+    if (maskable) await renderFlatIcon(image, { maskable: true });
+    await writeFile(join(PUBLIC, file), await resizePng(image, directory, size));
+    console.log(`public/${file} (${size}x${size}${maskable ? ', maskable' : ''})`);
   }
   const icoImages = [];
   for (const size of ICO_SIZES) icoImages.push({ size, png: await resizePng(source, directory, size) });

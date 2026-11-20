@@ -9,6 +9,8 @@ import { join, relative, resolve } from 'node:path';
  * gtag.jsは`www.googletagmanager.com`からだけ読み込む（`src/analytics.ts`）。
  * `style-src`は、記号SVGの`style`属性（`packages/editor-core/stitches/glyphs.ts`）と、使い方などのページの
  * `<style>`要素をそのまま使うため`'unsafe-inline'`を許す。スクリプトにはインラインを許さない。
+ * `manifest-src`はWebアプリマニフェスト（`public/manifest.webmanifest`、#486）を`<link rel="manifest">`で
+ * 読み込むため`'self'`を許す。`default-src 'self'`でも同じだが、読み込み先として明示する。
  */
 export const CONTENT_SECURITY_POLICY_DIRECTIVES = {
   'default-src': ["'self'"],
@@ -20,6 +22,7 @@ export const CONTENT_SECURITY_POLICY_DIRECTIVES = {
   'object-src': ["'none'"],
   'base-uri': ["'self'"],
   'form-action': ["'self'"],
+  'manifest-src': ["'self'"],
 };
 
 export const CONTENT_SECURITY_POLICY = Object.entries(CONTENT_SECURITY_POLICY_DIRECTIVES)

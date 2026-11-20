@@ -20,7 +20,7 @@ ${head}
 `;
 
 describe('CONTENT_SECURITY_POLICY', () => {
-  it('limits scripts, connections, workers, plugins, the base URL and forms', () => {
+  it('limits scripts, connections, workers, plugins, the base URL, forms and the app manifest', () => {
     expect(CONTENT_SECURITY_POLICY.split('; ')).toEqual([
       "default-src 'self'",
       "script-src 'self' https://www.googletagmanager.com",
@@ -31,6 +31,7 @@ describe('CONTENT_SECURITY_POLICY', () => {
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",
+      "manifest-src 'self'",
     ]);
     expect(CONTENT_SECURITY_POLICY).not.toContain('frame-ancestors');
   });

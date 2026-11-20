@@ -522,3 +522,33 @@ describe('save failure analytics', () => {
     expect(editor.message).toContain('保存');
   });
 });
+
+describe('save success notification', () => {
+  // Web版はこの通知を最初の保存の後の`navigator.storage.persist()`（#486）に使う。
+  it('notifies the host after each successful save and not after a failed one', async () => {
+    const onSaveSuccess = vi.fn();
+    function SaveProbe() {
+      editor = useEditorController({
+        initialize: async () => ({ documents: [source], activeId: source.id, blocks: [] }),
+        platform: { saveFile: async () => ({ saved: Promise.resolve(undefined) }) },
+        askText: async () => null,
+        askConfirm,
+        onSaveSuccess,
+      });
+      return null;
+    }
+    await act(async () => { root.render(<SaveProbe />); });
+    await edit();
+    await act(async () => { await editor.session.saveNow(); });
+    expect(onSaveSuccess).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      editor.session.changed();
+      vi.spyOn(database, 'saveDocument').mockRejectedValueOnce(quota);
+      await editor.session.saveNow();
+    });
+    expect(onSaveSuccess).toHaveBeenCalledTimes(1);
+    // 保存に成功するたびに呼ぶ。1回だけにすることはホスト側（Webの`requestPersistentStorageOnce`）の役割。
+    await act(async () => { await editor.session.saveNow(); });
+    expect(onSaveSuccess).toHaveBeenCalledTimes(2);
+  });
+});
