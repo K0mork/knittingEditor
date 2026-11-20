@@ -1002,31 +1002,42 @@ final class KnittingEditorUITests: XCTestCase {
         )
     }
 
+    /// アプリ更新シミュレーションの更新前アプリでfixtureを保存する（#446）。
+    ///
+    /// fixtureはUIで組み立てず、起動時のDEBUG専用フックで端末内データへ書き込む。色・幅のある記号・
+    /// 点線・背景色をUIで置こうとすると、遅いランナーで1操作に数十秒かかった実績（#441）から
+    /// 実行時間の上限（240秒）を超える恐れがある。フックは利用者が編み図を作って保存するときと
+    /// 同じ保存の公開APIでIndexedDBへ書くので、更新後のアプリが読む内容は利用者が保存した編み図と同じ形になる。
+    /// このテストとフックが`app_update`ジョブの更新前アプリで動くのは、次のリリースのタグを
+    /// 付けたあと。それまでは前のリリースのタグのこのテストが、記号1個の最小fixtureを保存する。
     func testSeedDocumentForAppUpdateProbe() throws {
         try requireAppUpdateProbe()
         let app = XCUIApplication()
         let appUpdateElementTimeout: TimeInterval = 60
+        app.launchEnvironment["KNITTING_EDITOR_APP_UPDATE_FIXTURE"] = "1"
         app.launch()
 
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: appUpdateElementTimeout))
-        openDocumentsPanel(in: app, timeout: appUpdateElementTimeout).tap()
-        let nameField = app.textFields["入力"]
-        XCTAssertTrue(nameField.waitForExistence(timeout: appUpdateElementTimeout))
-        replaceText("アプリ更新復元fixture", in: nameField, app: app)
-        confirmDialog(closing: nameField, in: app)
-
+        // 起動時にfixtureが読み込まれていれば、最初の編み図は増えた内容で開いている。
         let webView = app.webViews.firstMatch
-        let canvas = webView.otherElements
-            .matching(NSPredicate(format: "label CONTAINS %@", "記号0個"))
+        let seededCanvas = webView.otherElements
+            .matching(NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", "記号3個", "ガイド線1本"))
             .firstMatch
-        XCTAssertTrue(canvas.waitForExistence(timeout: appUpdateElementTimeout), app.debugDescription)
-        // 押し直しは同じマスへの描画なので、遅れて2回効いても記号は1個のまま。
-        tapChangingStitchCount("盤面の中央", from: 0, to: 1, in: app, timeout: appUpdateElementTimeout) {
-            canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        XCTAssertTrue(seededCanvas.waitForExistence(timeout: appUpdateElementTimeout), app.debugDescription)
+        // 2つ目の編み図も一覧へ入っている。更新後のテストはこの名前でfixtureの版を区別する。
+        _ = openDocumentsPanel(in: app, timeout: appUpdateElementTimeout)
+        for prefix in ["アプリ更新復元fixture、", "アプリ更新復元fixture2、"] {
+            let item = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", prefix)).firstMatch
+            XCTAssertTrue(item.waitForExistence(timeout: 10), "\(prefix)が一覧に無い: \(app.debugDescription)")
         }
-        waitForDocumentSave(named: "アプリ更新復元fixture", in: webView)
+        app.buttons["閉じる"].tap()
     }
 
+    /// 更新後のアプリで、更新前のアプリが保存したfixtureを読めることを確認する（#446）。
+    ///
+    /// 前のリリースのタグが保存するのは最小fixture（記号1個）なので、中央の記号は常に確かめる。
+    /// 目印の編み図「アプリ更新復元fixture2」が一覧にあるときはfixtureを増やした版なので、
+    /// さらに色・幅のある記号・点線・背景色・ブロック・2つ目の編み図が同じ内容で残っていることを確かめる。
     func testUpdatedAppRestoresSeedDocument() throws {
         try requireAppUpdateProbe()
         let app = XCUIApplication()
@@ -1034,13 +1045,70 @@ final class KnittingEditorUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: appUpdateElementTimeout))
-        openDocumentsPanel(in: app, timeout: appUpdateElementTimeout)
+        _ = openDocumentsPanel(in: app, timeout: appUpdateElementTimeout)
+        let richMarker = app.buttons
+            .matching(NSPredicate(format: "label BEGINSWITH %@", "アプリ更新復元fixture2、"))
+            .firstMatch
+        let richFixtureSeeded = richMarker.waitForExistence(timeout: 10)
         let restoredDocument = app.buttons
             .matching(NSPredicate(format: "label BEGINSWITH %@", "アプリ更新復元fixture、"))
             .firstMatch
         XCTAssertTrue(restoredDocument.waitForExistence(timeout: appUpdateElementTimeout), app.debugDescription)
         restoredDocument.tap()
 
+        // 中央の記号は最小fixtureでも常に確かめる。増えたfixtureでは、点線の本数が
+        // 盤面の読み上げに記号数と並んで残っていることも同じ盤面で確かめる。
+        let stitchCountLabel = richFixtureSeeded ? "記号3個" : "記号1個"
+        let restoredCanvasQuery = richFixtureSeeded
+            ? NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", stitchCountLabel, "ガイド線1本")
+            : NSPredicate(format: "label CONTAINS %@", stitchCountLabel)
+        let restoredCanvas = app.webViews.firstMatch.otherElements
+            .matching(restoredCanvasQuery)
+            .firstMatch
+        XCTAssertTrue(
+            restoredCanvas.waitForExistence(timeout: appUpdateElementTimeout),
+            app.debugDescription
+        )
+        if !richFixtureSeeded { return }
+
+        // 背景色は、盤面パネルのプリセット「グレー」が押された状態で残っている。
+        app.buttons["盤面"].tap()
+        let grayBackground = app.switches["グレー"]
+        XCTAssertTrue(grayBackground.waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertEqual(grayBackground.value as? String, "1", app.debugDescription)
+        app.buttons["閉じる"].tap()
+        // 色付きのセルは、記号の色の一覧に保存した色の見本（青緑 #264653）として残っている。
+        // 道具列の色と記号の道具は`aria-haspopup="dialog"`を持つため、WebKitの読み上げでは
+        // 種類が`Button`にならず`Other`になる（iOS 27.2のSimulatorで確認）。記号の選択画面
+        // （`編み目記号を選ぶ`）と同じく、種類を問わず名前で探す。
+        let colourTool = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label BEGINSWITH %@", "記号の色を選ぶ"))
+            .firstMatch
+        XCTAssertTrue(colourTool.waitForExistence(timeout: 10), app.debugDescription)
+        colourTool.tap()
+        // 色見本は`aria-pressed`を持つためスイッチとして見えるが、一覧の作りに寄らず
+        // 種類を問わず保存した色の見本を探す。
+        let distinctColor = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label CONTAINS %@", "#264653"))
+            .firstMatch
+        XCTAssertTrue(distinctColor.waitForExistence(timeout: 10), app.debugDescription)
+        app.buttons["閉じる"].firstMatch.tap()
+        // 保存済みブロックも一覧に残っている。
+        app.buttons["ブロック"].tap()
+        let restoredBlock = app.buttons
+            .matching(NSPredicate(format: "label BEGINSWITH %@", "アプリ更新復元ブロック"))
+            .firstMatch
+        XCTAssertTrue(restoredBlock.waitForExistence(timeout: 10), app.debugDescription)
+        app.buttons["閉じる"].tap()
+        // 2つ目の編み図には幅2目の記号を1個だけ入れてある。隣のマスを1回消して記号全体が
+        // 消えれば、幅のある記号として残っていたことになる。幅が失われて1マスの記号に
+        // なっていれば、隣のマスを消しても記号は1個のまま残る。
+        _ = openDocumentsPanel(in: app, timeout: appUpdateElementTimeout)
+        let markerDocument = app.buttons
+            .matching(NSPredicate(format: "label BEGINSWITH %@", "アプリ更新復元fixture2、"))
+            .firstMatch
+        XCTAssertTrue(markerDocument.waitForExistence(timeout: 10), app.debugDescription)
+        markerDocument.tap()
         XCTAssertTrue(
             app.webViews.firstMatch.otherElements
                 .matching(NSPredicate(format: "label CONTAINS %@", "記号1個"))
@@ -1048,6 +1116,11 @@ final class KnittingEditorUITests: XCTestCase {
                 .waitForExistence(timeout: appUpdateElementTimeout),
             app.debugDescription
         )
+        app.switches["消す"].tap()
+        let canvas = positionSaveProbeCanvas(count: 1, in: app)
+        tapChangingStitchCount("幅のある記号の隣のマス", from: 1, to: 0, in: app, timeout: appUpdateElementTimeout) {
+            saveProbeCell(row: 10, col: 11, on: canvas).tap()
+        }
     }
 
     /// 出力パネルからネイティブの復元Pickerを開き、取り消して編集へ戻る。

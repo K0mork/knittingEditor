@@ -751,6 +751,8 @@ export function BoardCanvas(props: Props) {
   const selectionLabel = props.selection
     ? `選択範囲は${props.selection.bottom - props.selection.top + 1}段、${props.selection.right - props.selection.left + 1}目`
     : '選択範囲なし';
+  // ガイド線は盤面に残る内容なので、数を記号数のあとに読み上げる。線が無い盤面では読み上げを伸ばさない。
+  const linesLabel = props.board.lines.length ? `ガイド線${props.board.lines.length}本。` : '';
 
   return <>
     <p id="board-instructions" className="visually-hidden">盤面をタップまたはドラッグして編集します。2本指またはトラックパッドで移動・拡大できます。現在は{modeLabel}モードです。</p>
@@ -758,7 +760,7 @@ export function BoardCanvas(props: Props) {
       ref={canvasRef}
       className={`board-canvas mode-${props.mode}`}
       role="region"
-      aria-label={`編み図編集盤面。${props.board.rows}段、${props.board.cols}目。記号${props.board.occupiedStitchCount}個。${modeLabel}モード。${selectionLabel}`}
+      aria-label={`編み図編集盤面。${props.board.rows}段、${props.board.cols}目。記号${props.board.occupiedStitchCount}個。${linesLabel}${modeLabel}モード。${selectionLabel}`}
       aria-describedby="board-instructions"
       onContextMenu={(event) => event.preventDefault()}
       onPointerDown={handlePointerDown}

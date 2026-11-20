@@ -168,7 +168,7 @@ describe('initialViewport', () => {
 
 // 描画APIは使わず、Reactの実際のポインタ処理を検証する。
 
-function pointerTest(mode: CanvasMode, run: (board: Board, send: (type: string, x: number, y: number, button: number, buttons: number) => void, canvas: HTMLCanvasElement) => void, zoomRef?: RefObject<BoardZoom | null>) {
+function pointerTest(mode: CanvasMode, run: (board: Board, send: (type: string, x: number, y: number, button: number, buttons: number) => void, canvas: HTMLCanvasElement) => void, zoomRef?: RefObject<BoardZoom | null>, board: Board = new Board(20, 20)) {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });
   vi.stubGlobal('requestAnimationFrame', () => 1);
@@ -176,7 +176,6 @@ function pointerTest(mode: CanvasMode, run: (board: Board, send: (type: string, 
   const host = document.createElement('div');
   document.body.append(host);
   const root = createRoot(host);
-  const board = new Board(20, 20);
   act(() => root.render(createElement(BoardCanvas, {
     zoomRef, board, revision: 0, mode, stitchKey: 'knit', color: '#000000',
     onChange: () => {}, onSelectionChange: () => {}, onPasteComplete: () => {},
@@ -241,8 +240,19 @@ describe('canvas mouse sequences', () => {
     expect(canvas.getAttribute('role')).toBe('region');
     expect(canvas.hasAttribute('tabindex')).toBe(false);
     expect(canvas.getAttribute('aria-label')).toContain('20段、20目');
+    // 線を引いていない盤面では、読み上げを伸ばさない。
+    expect(canvas.getAttribute('aria-label')).not.toContain('ガイド線');
     expect(document.getElementById(canvas.getAttribute('aria-describedby')!)?.textContent).toContain('タップまたはドラッグ');
   }));
+
+  it('reads out the guide-line count after the stitch count', () => {
+    const board = new Board(20, 20);
+    board.place(2, 2, 'knit', '#000000');
+    board.addLine(4, 3, 10);
+    return pointerTest('draw', (_board, _send, canvas) => {
+      expect(canvas.getAttribute('aria-label')).toBe('編み図編集盤面。20段、20目。記号1個。ガイド線1本。描画モード。選択範囲なし');
+    }, undefined, board);
+  });
 });
 
 describe('initial view timing', () => {
