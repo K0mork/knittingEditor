@@ -8,12 +8,13 @@
   - ページが実際に読み直された証拠として、共有シート・保存画面のテストは終了後に出力パネルの「PNGを保存」または「この編み図を書き出す」と「閉じる」が消えていることを確かめ、バックグラウンドのテストは終了前に「盤面」パネルを開いて復帰後に「上に段」が消えていることを確かめる。
   - スクリプトは、xcodebuildが0で終わっても、選んだ各テストの`Test Case ... passed`がログにあり、`Test Case ... skipped`が無いことを確かめてから成功を報告する。
 - 検証:
-  - KE verify iPhone（iPhone 17、iOS 27.2、Xcode 27.2）で`ios/scripts/run-webcontent-termination-ui-test.sh "KE verify iPhone"`を、この変更を入れる前の版で実行し、4件とも1回目で成功した。この変更後の実行は未実施。
+  - KE verify iPhone（iPhone 17、iOS 27.2、Xcode 27.2）で`ios/scripts/run-webcontent-termination-ui-test.sh "KE verify iPhone"`を実行し、4件とも1回目で成功した（スクリプトの表示は`passed 4/4, skipped 0`）。レビューを受けて、ページの読み直しの証拠と結果の検証を足した後のコードで実行した。
   - 途中で見つけて直したテストの問題:
     - 共有シートの枠外のタップは、シートを閉じると同時に背後の要素にも届いた。再読み込みで出力パネルが消えると枠外は盤面になり、記号が1個増えた。下へのドラッグでは共有シートは閉じなかったため、ヘッダーの題名を叩いて閉じる。
     - 保存画面のテストの編み図名が「保存中」を含み、保存状態の表示の判定に当たっていた。名前を変えた。
     - 再読み込みが速いと準備中の表示は1秒ほどで消え、`waitForExistence`（約1秒ごと）では見落とした。表示の中のラベルを間を空けずに探す。
   - `xcodegen generate --spec ios/project.yml`と、`OTHER_SWIFT_FLAGS='-disable-sandbox'`を付けた`xcodebuild build-for-testing`が成功した（実装した担当のサンドボックスでの確認）。
   - `bash -n ios/scripts/run-webcontent-termination-ui-test.sh`、`node scripts/check-pr-smoke-ui-tests.mjs`、`npm test -- scripts/check-pr-smoke-ui-tests.test.mjs`、`npm test -- scripts/japanese-punctuation.test.mjs`が成功した。
+  - 単体テストの`WebContentRecoveryTests`（13件）と`NativeExportResultTests`（24件）は、このPRのCIの`ios`ジョブで成功した。
   - 実機では確かめていない。実機でWebContentが終わる原因（メモリ不足など）はSimulatorと違うが、終了後の処理は`webViewWebContentProcessDidTerminate`から始まり、原因によらず同じ。Simulatorでは本物のWebContentプロセスを終了させてこの処理を通した。
 - デプロイ影響: なし。テストと手順のみで、アプリの挙動、TestFlight、App Storeの提出物は変わらない。
