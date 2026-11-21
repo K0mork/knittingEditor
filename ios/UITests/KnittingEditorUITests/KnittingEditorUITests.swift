@@ -2309,13 +2309,24 @@ final class KnittingEditorUITests: XCTestCase {
         scrollHorizontallyUntilHittable(rangeSwitch, in: app, row: primaryToolsRow(in: app))
         rangeSwitch.tap()
         let canvasForSelection = positionSaveProbeCanvas(count: 1, in: app)
-        let boardHeightBeforePaste = canvasForSelection.frame.height
+        let boardHeightBeforeSelection = canvasForSelection.frame.height
+        let isPhoneAX5 = prefix == "AX5" && UIDevice.current.userInterfaceIdiom == .phone
         // 記号のある1段だけを選ぶ。貼り付けは空のマスも上書きするので、選ぶ段が多いと
         // 貼り付け先が元の記号に重なりやすい。
         visibleBoardCell(row: 1, col: 1, on: canvasForSelection)
             .press(forDuration: 0.05, thenDragTo: visibleBoardCell(row: 1, col: 10, on: canvasForSelection))
         let selectionBar = selectionActionsRow(in: app)
         XCTAssertTrue(selectionBar.waitForExistence(timeout: 10), app.debugDescription)
+        // AX5のiPhoneでは、選択の帯が出ると盤面に1段分も残らない（#389の残り）。既知の失敗として
+        // 記録して進む。ほかの端末・文字サイズで起きたら失敗にする。
+        let boardHeightWithSelection = canvasForSelection.frame.height
+        if boardHeightWithSelection < Self.largeTextBoardBand + 30 {
+            add(screenshotAttachment(named: "\(prefix)-06-select-no-room"))
+            XCTAssertTrue(isPhoneAX5, "AX5のiPhone以外で範囲選択中の盤面が\(boardHeightWithSelection)ptしかない")
+            XCTExpectFailure("#389: 範囲選択中の盤面に1段分も残らない") {
+                XCTFail("範囲選択中の盤面の高さが\(boardHeightWithSelection)ptしかない")
+            }
+        }
         // 帯全体と帯の中のボタンが、下の操作列のボタンに重ならないことを確かめる。
         func assertClearOfBottomActions(_ bar: XCUIElement, _ name: String) {
             let elements = [bar] + bar.buttons.allElementsBoundByIndex
@@ -2352,15 +2363,13 @@ final class KnittingEditorUITests: XCTestCase {
             // ほかの端末・文字サイズで同じことが起きたり、貼付の前から盤面が狭かったりしたときは、
             // 既知の問題ではないので失敗にする。
             add(screenshotAttachment(named: "\(prefix)-07-paste-no-room"))
-            XCTAssertTrue(
-                prefix == "AX5" && UIDevice.current.userInterfaceIdiom == .phone,
-                "AX5のiPhone以外で貼付中の盤面が\(canvasForPaste.frame.height)ptしかない"
-            )
+            XCTAssertTrue(isPhoneAX5, "AX5のiPhone以外で貼付中の盤面が\(canvasForPaste.frame.height)ptしかない")
             XCTAssertGreaterThanOrEqual(
-                boardHeightBeforePaste,
+                boardHeightBeforeSelection,
                 Self.largeTextBoardBand + 30,
-                "貼付の前から盤面が狭い: \(app.debugDescription)"
+                "範囲を選ぶ前から盤面が狭い: \(app.debugDescription)"
             )
+            XCTAssertLessThan(canvasForPaste.frame.height, boardHeightWithSelection, "貼付の帯で盤面が縮んでいない")
             XCTExpectFailure("#389: 貼付中の盤面に貼り付け先のマスが見えない") {
                 XCTFail("貼付中の盤面の高さが\(canvasForPaste.frame.height)ptしかない")
             }
@@ -2381,7 +2390,7 @@ final class KnittingEditorUITests: XCTestCase {
         scrollHorizontallyUntilHittable(stopPaste, in: app, row: pasteBar)
         assertWithinWindow(stopPaste, in: app)
         if pasteHasNoRoom {
-            // 同じ#389の残り。AX5のiPhoneでは「やめる」が下の操作列（盤面・ブロック）の後ろに入る。
+            // 同じ#389の残り。AX5のiPhoneでは「やめる」が下の操作列（盤面・ブロック）に重なる。
             // 想定するのは重なりの失敗だけで、ほかの失敗は通常どおり失敗にする。
             let options = XCTExpectedFailure.Options()
             options.isStrict = false
@@ -2394,7 +2403,18 @@ final class KnittingEditorUITests: XCTestCase {
             assertClearOfBottomActions(pasteBar, "貼付の操作帯")
         }
         add(screenshotAttachment(named: "\(prefix)-07-paste"))
-        stopPaste.tap()
+        if pasteHasNoRoom {
+            // 「やめる」の中央は下の操作列に重なり、押すと操作列のボタンに当たる。重なっていない上側を押す。
+            let barTop = ["盤面", "ブロック", "出力"].map { app.buttons[$0].frame.minY }.min() ?? stopPaste.frame.maxY
+            let top = stopPaste.frame.minY
+            let bottom = min(stopPaste.frame.maxY, barTop)
+            XCTAssertGreaterThan(bottom - top, 4, "「やめる」の押せる部分が無い: \(app.debugDescription)")
+            app.coordinate(withNormalizedOffset: .zero)
+                .withOffset(CGVector(dx: stopPaste.frame.midX, dy: (top + bottom) / 2))
+                .tap()
+        } else {
+            stopPaste.tap()
+        }
         XCTAssertTrue(waitForDisappearance(of: pasteBand, timeout: 10), app.debugDescription)
         XCTAssertEqual(app.switches["描く"].value as? String, "1", app.debugDescription)
 
@@ -3237,8 +3257,19 @@ final class KnittingEditorUITests: XCTestCase {
     /// 動きが止まってから、パネルの中で見えている部分の中央を押す。
     private func tapVisiblePart(of element: XCUIElement, in app: XCUIApplication, maximumDrags: Int = 20) {
         let webView = app.webViews.firstMatch
-        // 盤面の上で動かしたり押したりすると、盤面が動いたり記号を置いたりする。パネルの枠で判断する。
-        let container = (panelFrame(in: app) ?? webView.frame).intersection(webView.frame)
+        // 盤面の上で動かしたり押したりすると、盤面が動いたり記号を置いたりする。パネルの枠で判断し、
+        // 枠が取れないときは項目と同じ列の中だけを使う。
+        let column = CGRect(
+            x: element.frame.minX,
+            y: webView.frame.minY,
+            width: element.frame.width,
+            height: webView.frame.height
+        )
+        let container = (panelFrame(in: app) ?? column).intersection(webView.frame)
+        XCTAssertTrue(
+            container.minX <= element.frame.midX && element.frame.midX <= container.maxX,
+            "項目がパネルの列の外 要素=\(element.frame) パネル=\(container)"
+        )
         let minimumVisible: CGFloat = 44
         var drags = 0
         while element.frame.intersection(container).height < minimumVisible, drags < maximumDrags {
