@@ -31,8 +31,8 @@ The app is in Japanese only. Below, each button is written as "English (日本�
 
 ### New in version 1.2
 
-1. In "Export (出力)", "Include credit (クレジットを入れる)" is on by default: PNG and PDF get the site name, https://knittingeditor.com/ and a QR code at the bottom.
-2. When saving, "Share (共有)" adds "棒針編み図エディタで作成 https://knittingeditor.com/" for Mail or Messages. "Save to Files (ファイルに保存)" saves only the file.
+1. In "Export (出力)", "Include credit (クレジットを入れる（サイト名・URL・QRコード）)" is on by default: PNG and PDF get the site name, https://knittingeditor.com/ and a QR code at the bottom.
+2. When saving, "Share (共有)" adds "棒針編み図エディタで作成 https://knittingeditor.com/" for Mail, Messages and other apps. "Save to Files (ファイルに保存)", AirDrop and Copy get only the file.
 3. On iPad with a keyboard, delete erases the range selected with "Select (範囲)".
 
 ### Other input methods
@@ -68,8 +68,8 @@ These have no on-screen button. They are optional, do the same as existing butto
 
 ### バージョン1.2の変更点
 
-1. 「出力」の「クレジットを入れる」は既定でオンで、PNGとPDFの下端にサイト名・https://knittingeditor.com/・QRコードが入ります。
-2. 保存の確認で「共有」を選ぶと、メールやメッセージに文面「棒針編み図エディタで作成 https://knittingeditor.com/」が付きます。「ファイルに保存」ではファイルだけを保存します。
+1. 「出力」の「クレジットを入れる（サイト名・URL・QRコード）」は既定でオンで、PNGとPDFの下端にサイト名・https://knittingeditor.com/・QRコードが入ります。
+2. 保存の確認で「共有」を選ぶと、メール・メッセージなどの共有先に文面「棒針編み図エディタで作成 https://knittingeditor.com/」が付きます。「ファイルに保存」・AirDrop・コピーにはファイルだけを渡します。
 3. キーボードを接続したiPadでは、「範囲」で選んだ部分をdeleteキーで消せます。
 
 ### 画面のボタン以外の操作
