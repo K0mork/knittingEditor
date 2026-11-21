@@ -1,3 +1,4 @@
+import UIKit
 import XCTest
 
 @MainActor
@@ -1458,6 +1459,133 @@ final class KnittingEditorUITests: XCTestCase {
         }
     }
 
+    /// 共有シートの「ファイルに保存」と「コピー」が、PNGだけを渡して文面を渡さないことを
+    /// Simulatorで確かめる（#474）。メール・メッセージはSimulatorに無いので実機で確かめる。
+    ///
+    ///     TEST_RUNNER_KNITTING_EDITOR_SHARE_SHEET_PROBE=1 xcodebuild test \
+    ///       -project ios/knittingEditor.xcodeproj -scheme knittingEditor \
+    ///       -destination 'platform=iOS Simulator,name=KE verify iPhone' \
+    ///       -only-testing:knittingEditorUITests/KnittingEditorUITests/testShareSheetProbeSavesOnlyTheFileAndCopiesNoText
+    ///
+    /// 保存したPNGは、ホスト側のSimulatorのFile Provider Local Storageで確かめる。
+    func testShareSheetProbeSavesOnlyTheFileAndCopiesNoText() throws {
+        try XCTSkipUnless(
+            ProcessInfo.processInfo.environment["KNITTING_EDITOR_SHARE_SHEET_PROBE"] == "1",
+            "Simulatorで共有シートのファイル操作を確かめるときだけ、TEST_RUNNER_KNITTING_EDITOR_SHARE_SHEET_PROBE=1を付けて実行する"
+        )
+        executionTimeAllowance = 600
+
+        let app = XCUIApplication()
+        app.launch()
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
+
+        // 保存したファイルをホスト側で探せるよう、編み図名とファイル名を実行ごとに変える。
+        let suffix = String(UUID().uuidString.prefix(8))
+        let documentName = "共有確認-\(suffix)"
+        let filenamePrefix = "share-probe-\(suffix)"
+        let probeNote = "SHARE_SHEET_PROBE document=\(documentName) filenamePrefix=\(filenamePrefix)"
+        print(probeNote)
+        XCTContext.runActivity(named: probeNote) { _ in }
+        createDocument(named: documentName, in: app)
+
+        // 「コピー」はPNGだけをペーストボードへ渡す。前回の内容と混ざらないよう空にしてから共有する。
+        UIPasteboard.general.items = []
+        guard openPNGShareSheet(in: app, step: "コピー") else { return }
+        let copySheet = shareSheet(in: app)
+        let copy = shareSheetAction(labels: ["コピー", "Copy"], in: app, sheet: copySheet)
+        XCTAssertTrue(waitForHittable(copy, timeout: 20), "共有シートに「コピー」が無い: \(app.debugDescription)")
+        waitUntilStill(copy)
+        add(screenshotAttachment(named: "共有シート-PNG-コピー"))
+        copy.tap()
+        assertDisappears(copySheet, from: app, note: "コピー後")
+
+        // 文面が入っていれば、アプリから見える`UIPasteboard`の文字列に残る。
+        // ファイルだけなら文字列は空か、ファイルの場所・名前であり、文面は含まない。
+        let pasteboard = UIPasteboard.general
+        let copiedText = pasteboard.string
+        let copiedTypes = pasteboard.types
+        let copyNote = "SHARE_SHEET_PROBE copy items=\(pasteboard.numberOfItems) hasStrings=\(pasteboard.hasStrings) types=[\(copiedTypes.joined(separator: ", "))] string=\(copiedText ?? "nil")"
+        print(copyNote)
+        XCTContext.runActivity(named: copyNote) { _ in }
+        let copyAttachment = XCTAttachment(string: copyNote)
+        copyAttachment.name = "コピー後のペーストボード"
+        copyAttachment.lifetime = .keepAlways
+        add(copyAttachment)
+        XCTAssertFalse(
+            copiedText?.contains("棒針編み図エディタで作成") ?? false,
+            "コピーに共有の文面が入っている: \(copyNote)"
+        )
+
+        // 「ファイルに保存」はPNGだけを端末内へ保存する。一意な名前で保存し、Filesでも確かめる。
+        guard openPNGShareSheet(in: app, step: "ファイルに保存") else { return }
+        let saveSheet = shareSheet(in: app)
+        let saveToFiles = shareSheetAction(labels: ["ファイルに保存", "“ファイル”に保存", "Save to Files"], in: app, sheet: saveSheet)
+        XCTAssertTrue(
+            waitForHittable(saveToFiles, timeout: 20),
+            "共有シートに「ファイルに保存」が無い: \(app.debugDescription)"
+        )
+        waitUntilStill(saveToFiles)
+        add(screenshotAttachment(named: "共有シート-PNG-ファイルに保存"))
+        saveToFiles.tap()
+
+        let picker = SystemSheet.element(in: app)
+        XCTAssertTrue(picker.waitForExistence(timeout: 20), app.debugDescription)
+        add(screenshotAttachment(named: "ファイルに保存-保存先の選択"))
+        XCTAssertTrue(
+            selectOnDeviceLocationForSaving(in: app),
+            "「このiPhone内」/「このiPad内」を選べない: \(app.debugDescription)"
+        )
+
+        // 名前を変えられる環境では一意な接頭辞を付け、変えられない環境では一意な編み図名の提案名を使う。
+        var savedPrefix = documentName
+        let filenameField = app.textFields["DOCPicker.filenameTextField"]
+        if filenameField.waitForExistence(timeout: 10) {
+            replaceText(filenamePrefix, in: filenameField, app: app)
+            savedPrefix = filenamePrefix
+        } else {
+            print("SHARE_SHEET_PROBE filenameField=none default=\(documentName)")
+        }
+        let saveButton = app.buttons.matching(NSPredicate(format: "label IN %@", ["保存", "Save"])).firstMatch
+        XCTAssertTrue(waitForHittable(saveButton, timeout: 20), "保存先を決められない: \(app.debugDescription)")
+        add(screenshotAttachment(named: "ファイルに保存-保存先と名前"))
+        saveButton.tap()
+
+        let exportFinished = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == false"),
+            object: picker
+        )
+        if XCTWaiter.wait(for: [exportFinished], timeout: Self.editorAppearanceTimeout) != .completed {
+            let replace = app.buttons.matching(NSPredicate(format: "label IN %@", ["置き換え", "Replace"])).firstMatch
+            if replace.waitForExistence(timeout: 5) {
+                waitUntilStill(replace)
+                replace.tap()
+            }
+        }
+        XCTAssertTrue(
+            waitForDisappearance(of: picker, timeout: Self.editorAppearanceTimeout),
+            "保存画面が閉じない: \(app.debugDescription)"
+        )
+        add(screenshotAttachment(named: "ファイルに保存-保存後"))
+
+        // Filesの「このiPhone内」に、保存したPNGがあることを画面で確かめる。
+        let files = XCUIApplication(bundleIdentifier: "com.apple.DocumentsApp")
+        files.launch()
+        if let browse = waitForFirstHittable(in: files, labels: ["ブラウズ", "Browse"], timeout: 20) {
+            browse.tap()
+        }
+        let locations = ["このiPhone内", "このiPad内", "On My iPhone", "On My iPad"]
+        if let location = waitForFirstHittable(in: files, labels: locations, timeout: 20) {
+            waitUntilStill(location)
+            location.tap()
+        }
+        let saved = files.descendants(matching: .any)
+            .matching(NSPredicate(format: "label BEGINSWITH %@ OR identifier BEGINSWITH %@", savedPrefix, savedPrefix))
+            .firstMatch
+        let found = saved.waitForExistence(timeout: 20)
+        add(screenshotAttachment(named: "ファイル-保存したPNG-\(savedPrefix)"))
+        XCTAssertTrue(found, "Filesの「このiPhone内」に\(savedPrefix).pngが見つからない: \(files.debugDescription)")
+    }
+
     func testBackslashDocumentNameReachesAllNativeExportActions() {
         // 普段は約40〜70秒。CIでは前のテストのアプリの終了で約30秒、起動時の自動化セッションの準備で
         // 約1分止まることがあり、約160秒まで延びた（#358）。
@@ -2763,6 +2891,121 @@ final class KnittingEditorUITests: XCTestCase {
         window.coordinate(withNormalizedOffset: .zero)
             .withOffset(CGVector(dx: widest.point.x - bounds.minX, dy: widest.point.y - bounds.minY))
             .tap()
+    }
+
+    /// 「出力」からPNGを書き出し、確認アラートの「共有」で共有シートを開く。
+    /// 前の操作で出力パネルが開いたままなら、そのパネルを使う。
+    private func openPNGShareSheet(in app: XCUIApplication, step: String) -> Bool {
+        let png = app.buttons["PNGを保存"]
+        if !png.waitForExistence(timeout: 2) {
+            let save = app.buttons["出力"]
+            XCTAssertTrue(save.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+            openSavePanel(with: save, showing: png, in: app)
+        }
+        assertHittableAfterScrolling(png, in: app)
+        waitUntilStill(png)
+        png.tap()
+        let share = app.buttons["共有"]
+        XCTAssertTrue(share.waitForExistence(timeout: Self.editorAppearanceTimeout), "\(step): \(app.debugDescription)")
+        guard tapExportAlertButton(share, in: app, step: step) else { return false }
+        let sheet = shareSheet(in: app)
+        guard sheet.waitForExistence(timeout: 20) else {
+            XCTFail("共有シートが開かない（\(step)）: \(app.debugDescription)")
+            return false
+        }
+        return true
+    }
+
+    /// 共有シートの中から、指定した名前の操作を探す。見えなければシートを送って探す。
+    private func shareSheetAction(
+        labels: [String],
+        in app: XCUIApplication,
+        sheet: XCUIElement
+    ) -> XCUIElement {
+        let predicate = NSPredicate(format: "label IN %@", labels)
+        func candidate() -> XCUIElement {
+            let cell = sheet.cells.matching(predicate).firstMatch
+            if cell.exists { return cell }
+            let inSheet = sheet.descendants(matching: .any).matching(predicate).firstMatch
+            // 「表示を増やす」で開く一覧は、共有シートの外の要素として出ることがある。
+            return inSheet.exists ? inSheet : app.cells.matching(predicate).firstMatch
+        }
+        // iOS 27の共有シートは、操作の行に数個だけ出し、残り（「ファイルに保存」など）を
+        // 「表示を増やす」の先に置く。
+        let showMore = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label IN %@", ["表示を増やす", "Show More"])).firstMatch
+        var action = candidate()
+        for _ in 0..<5 {
+            if action.exists, waitForHittable(action, timeout: 2) { return action }
+            if showMore.exists, isHittableWithoutFailing(showMore) {
+                showMore.tap()
+            } else if isHittableWithoutFailing(sheet) {
+                sheet.swipeUp()
+            }
+            action = candidate()
+        }
+        return action
+    }
+
+    /// 保存画面で「このiPhone内」/「このiPad内」を開く。iPadのサイドバーとiPhoneの
+    /// 「ブラウズ」タブのどちらでも選べるようにする。
+    private func selectOnDeviceLocationForSaving(in app: XCUIApplication) -> Bool {
+        let labels = ["このiPhone内", "このiPad内", "On My iPhone", "On My iPad"]
+        if let location = waitForFirstHittable(in: app, labels: labels, timeout: 10) {
+            waitUntilStill(location)
+            location.tap()
+            return true
+        }
+        let browseLabels = ["ブラウズ", "Browse"]
+        if let browse = waitForFirstHittable(in: app, labels: browseLabels, timeout: 5) {
+            browse.tap()
+            if let location = waitForFirstHittable(in: app, labels: labels, timeout: 10) {
+                waitUntilStill(location)
+                location.tap()
+                return true
+            }
+            // もう一度押すと「ブラウズ」の先頭へ戻り、保存場所の一覧が出る。
+            if let browseAgain = waitForFirstHittable(in: app, labels: browseLabels, timeout: 3) {
+                browseAgain.tap()
+                if let location = waitForFirstHittable(in: app, labels: labels, timeout: 10) {
+                    waitUntilStill(location)
+                    location.tap()
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
+    /// 指定したラベルの押せる要素が現れるまで待つ。
+    private func waitForFirstHittable(
+        in app: XCUIApplication,
+        labels: [String],
+        timeout: TimeInterval
+    ) -> XCUIElement? {
+        var found: XCUIElement?
+        let appears = XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in
+                found = self.firstHittable(in: app, labels: labels)
+                return found != nil
+            },
+            object: app
+        )
+        guard XCTWaiter.wait(for: [appears], timeout: timeout) == .completed else { return nil }
+        return found
+    }
+
+    /// システムシートやFilesの中で、指定したラベルの押せる要素を探す。
+    /// 別プロセスの要素でも`isHittable`が失敗しないよう、枠を確かめてから読む。
+    private func firstHittable(in app: XCUIApplication, labels: [String]) -> XCUIElement? {
+        let candidates = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label IN %@", labels))
+        let window = app.windows.firstMatch.frame
+        return candidates.allElementsBoundByIndex.first { element in
+            guard element.exists else { return false }
+            let frame = element.frame
+            return !frame.isEmpty && window.intersects(frame) && isHittableWithoutFailing(element)
+        }
     }
 
     /// 要素の位置が続けて同じになるまで待つ。表示の動きが終わる前のタップは外れることがある。
