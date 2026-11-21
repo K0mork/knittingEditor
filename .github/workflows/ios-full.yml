@@ -25,7 +25,7 @@ on:
 permissions:
   contents: read
 
-# マージのたびに5つのmacOSジョブを積むと、PRのCIの順番待ちが増える。同じブランチでは最新の
+# マージのたびに6つのmacOSジョブを積むと、PRのCIの順番待ちが増える。同じブランチでは最新の
 # 実行だけを残し、古い実行は取り消す。最新のコミットはそれ以前の変更をすべて含む。
 concurrency:
   group: ios-full-${{ github.ref }}
@@ -38,9 +38,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        device:
-          - 'iPhone 17'
-          - 'iPad (A16)'
+        include:
+          - device: 'iPhone 17'
+          - device: 'iPad (A16)'
+          # 小さい画面のiPhoneでは、全テストではなく`device-ui-tests.txt`の一覧だけを流す。
+          - device: 'iPhone SE (3rd generation)'
+            ui_list: ios/UITests/device-ui-tests.txt
     runs-on: macos-26
     # App Store提出に要るiOS 26 SDKを持ち、イメージにあるSimulatorのランタイムと版が揃うXcodeに固定する。
     # イメージの既定Xcodeが替わってもビルドとテストのXcodeが変わらないよう、明示的に選ぶ。
@@ -76,8 +79,23 @@ jobs:
       - name: Wait for simulator boot
         run: xcrun simctl bootstatus '${{ steps.simulator.outputs.udid }}' -b
       - name: Run iOS tests
+        env:
+          UI_LIST: ${{ matrix.ui_list }}
         run: |
-          set -o pipefail
+          set -eo pipefail
+          # 一覧がある組は、その1行を1つの`-only-testing`にして、一覧のテストだけを流す。
+          # コメント行と空行は除く（ios/scripts/run-device-ui-tests.shと同じ組み立て方）。
+          only=""
+          if [[ -n "$UI_LIST" ]]; then
+            only=$(grep -v -e '^[[:space:]]*#' -e '^[[:space:]]*$' "$UI_LIST" \
+              | sed 's|^|-only-testing:knittingEditorUITests/|') || only=""
+          fi
+          # 一覧があるのに選ぶテストが無ければ、全テストを流さずに失敗させる。
+          if [[ -n "$UI_LIST" && -z "$only" ]]; then
+            echo "UI_LIST=$UI_LIST から -only-testing を1件も組み立てられない。一覧が空か、読めない。" >&2
+            exit 1
+          fi
+          # shellcheck disable=SC2086
           xcodebuild test \
             -project ios/knittingEditor.xcodeproj \
             -scheme knittingEditor \
@@ -89,7 +107,13 @@ jobs:
             -test-timeouts-enabled YES \
             -default-test-execution-time-allowance 150 \
             -maximum-test-execution-time-allowance 240 \
+            $only \
             CODE_SIGNING_ALLOWED=NO 2>&1 | tee "$RUNNER_TEMP/ios-tests.log"
+          # 一覧の`-only-testing`が1件も一致しないと、xcodebuildは0件で終わることがある。
+          if [[ -n "$UI_LIST" ]] && ! grep -Eq 'Executed [1-9][0-9]* tests?,' "$RUNNER_TEMP/ios-tests.log"; then
+            echo "UI_LIST=$UI_LIST の -only-testing が1件も一致せず、テストが実行されなかった。" >&2
+            exit 1
+          fi
       # 再試行で成功したケースも、初回失敗の画面写真を調べられるように残す。
       - name: Detect test case failures
         id: test_failures

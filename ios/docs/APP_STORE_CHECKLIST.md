@@ -34,7 +34,7 @@
 - [x] App Store Connectでスクリーンショットを登録するときに、次を確かめて[`SCREENSHOTS.md`](SCREENSHOTS.md)を直す（#353）。2027年4月以降に提出するときは、iPhone Duoのスクリーンショットも登録する。（2026-11-03に確かめた）
   - iPhoneで必須のmedium displayの欄を、6.9インチ（1320×2868）の画像だけで満たせるか。→ 満たせない。6.9インチの画像は大きさが無効として登録できなかったので、縮小した6.3インチ（1206×2622）の5枚を登録した。
   - iPhone Duoの外側・内側のどちらが必須か、縦と横のどちらでもよいか、何枚から登録できるか。→ 欄は1つで、外側・内側のどちらの大きさも、縦横どちらの向きも受け付け、必須の表示は無い。最大10枚。v1.0では外側の5枚を登録した。
-- 「提出ビルドで」で始まる項目と、TestFlight内部テストの項目は、審査への提出と並行して確かめ、公開の前に終える。提出の前に終えなくてよいが、そのときは手動公開で提出する（[`RELEASE_RUNBOOK.md`](RELEASE_RUNBOOK.md)の手順7〜9）。
+- 以下の「提出ビルドで」で始まる項目とTestFlight内部テストの項目はv1.0で行った記録で、以降の版では行わない。実機の確認は[`DEVICE_TESTING.md`](DEVICE_TESTING.md#提出前)の条件に当たる版だけ行う。
 - [x] 提出ビルドで実機の機内モードのP0フローを再確認する。開発ビルドではiPad Air（第5世代、2026-09-22）とiPhone 17（2026-10-09）の主要フロー、iPadの機内モード前後の通信監視（2026-10-02）は確認済み。2026-11-03に、TestFlightの提出ビルド1.0 (1)でiPhone 17とiPad Air 第5世代の両方を確かめた（[`REAL_DEVICE_RELEASE_CHECKLIST.md`](REAL_DEVICE_RELEASE_CHECKLIST.md)のM0・M6、[記録](RELEASE_VERIFICATION_RECORDS.md#2026-11-03-testflightでの提出ビルドの確認2526)）。
 - [x] 提出ビルドでFiles、AirDrop、共有先、外部`.knit`の往復と残りの異常系を実機で確認する。開発ビルドでのiPhone・iPadの保存・共有・復元は確認済みだが、2026-11-03にTestFlightの提出ビルド1.0 (1)で、両端末の往復と、キャンセル・上書き・不正形式・巨大解凍データ・オフラインのiCloud Driveでクラッシュしないことを確かめた。同日、読み込み直前のファイル削除を、提出ビルドとアプリのコードが同じ開発ビルドとLLDBで両端末で確かめ、クラッシュしなかった。オフラインのiCloud Driveの理由の表示は、利用者の判断でv1.0ではクラッシュしないことで合格とし、#387で扱う（[`REAL_DEVICE_RELEASE_CHECKLIST.md`](REAL_DEVICE_RELEASE_CHECKLIST.md)のM3）。
 - [x] 提出ビルドで、1000×1000盤面のメモリ、PNG拒否、PDF出力時間を記録する。（2026-11-03、1.0 (1)で両端末とも、PNGの上限超過で保存が押せなくなること、出力が測れないほど短いこと、メモリ不足による終了の記録が無いことを確かめた。メモリの値は測っていない）開発ビルドでの記録は[`REAL_DEVICE_RELEASE_CHECKLIST.md`](REAL_DEVICE_RELEASE_CHECKLIST.md)のM2にある。
@@ -51,5 +51,5 @@
 - [x] App Store Connectの配信地域からEU加盟国と中国本土を外す（[`docs/APP_STORE_METADATA.md`](APP_STORE_METADATA.md)の「配信地域」）。（2026-11-03）
 - [x] アップロードのたびに、同じバージョンの中で前回より大きいビルド番号を付ける（[`docs/APP_STORE_METADATA.md`](APP_STORE_METADATA.md)の「バージョンとビルド番号」）。（2026-11-06、1.1 (1)をアップロードして提出した）
 - [x] App名、サブタイトル、プロモーションテキスト、説明文、キーワードの文字数をApp Store Connectの画面で確かめる（[`APP_STORE_METADATA.md`](APP_STORE_METADATA.md)の「基本情報」「説明文案」）。（2026-11-03）
-- [x] [`APP_STORE_METADATA.md`](APP_STORE_METADATA.md)の「アクセシビリティの表示」の回答を実機で確かめ直してから、App Store Connectへ入力する。（2026-11-03に回答を決めた。ダーク・コントラスト・色以外でも区別・視差効果を減らすは「対応」、VoiceOver・音声コントロール・さらに大きな文字（#389）は「対応」と答えない。同日、iPhone・iPadともApp Store Connectへ入力した。2026-11-11にiPhone・iPadとも公開し、日本の製品ページの「アクセシビリティ」に、ダークインターフェイス・カラーだけによらない区別・十分なコントラスト・視差効果を減らすが「サポートされている機能」として出ることを確かめた（[記録](RELEASE_VERIFICATION_RECORDS.md#2026-11-21-v11の公開後の確認438)）。公開は[`RELEASE_RUNBOOK.md`](RELEASE_RUNBOOK.md)の手順9で行う）
+- [x] [`APP_STORE_METADATA.md`](APP_STORE_METADATA.md)の「アクセシビリティの表示」の回答を実機で確かめ直してから、App Store Connectへ入力する。（2026-11-03に回答を決めた。ダーク・コントラスト・色以外でも区別・視差効果を減らすは「対応」、VoiceOver・音声コントロール・さらに大きな文字（#389）は「対応」と答えない。同日、iPhone・iPadともApp Store Connectへ入力した。2026-11-11にiPhone・iPadとも公開し、日本の製品ページの「アクセシビリティ」に、ダークインターフェイス・カラーだけによらない区別・十分なコントラスト・視差効果を減らすが「サポートされている機能」として出ることを確かめた（[記録](RELEASE_VERIFICATION_RECORDS.md#2026-11-21-v11の公開後の確認438)）。公開は[`RELEASE_RUNBOOK.md`](RELEASE_RUNBOOK.md)の手順8で行う）
 - [x] 提出後の承認を確認するまで、App Store配布完了とは報告しない。（v1.0は2026-11-06、v1.1 (1)は2026-11-07に承認・公開された（利用者の報告）。2026-11-10に製品ページで版1.1を確かめた）

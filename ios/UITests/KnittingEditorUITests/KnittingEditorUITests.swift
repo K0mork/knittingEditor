@@ -2070,11 +2070,15 @@ final class KnittingEditorUITests: XCTestCase {
 
     // 最大文字の縦向き操作は1起動にまとめる。回転の高コストを避けるため横向きは別起動を維持する。
 
-    func testAccessibilityExtraExtraExtraLargeKeepsPrimaryControlsUsable() {
+    func testAccessibilityExtraExtraExtraLargeKeepsPrimaryControlsUsable() throws {
         // 普段でも約65秒かかる。CIでは起動時の自動化セッションの準備がときどき約1分止まり、既定の3分を超えた（#355）。
         executionTimeAllowance = 240
         let app = launchWithAccessibilityExtraExtraExtraLarge()
-
+        // #389を直したらこのスキップを外す。
+        try XCTSkipIf(
+            isSmallPhone(app),
+            "#389: 小さいiPhoneのAX5では、パネルの見える部分に操作が収まらない"
+        )
         assertPrimaryControlsAreUsable(in: app)
         openDocumentsPanel(in: app)
         XCTAssertTrue(app.buttons["閉じる"].isHittable, app.debugDescription)
@@ -2088,8 +2092,13 @@ final class KnittingEditorUITests: XCTestCase {
     }
 
     /// iPhone・iPad、可変幅で選択操作帯が操作メニューを覆わないことを確認する。
-    func testAccessibilityExtraExtraExtraLargeKeepsSelectionActionsSeparate() {
+    func testAccessibilityExtraExtraExtraLargeKeepsSelectionActionsSeparate() throws {
         let app = launchWithAccessibilityExtraExtraExtraLarge()
+        // #389を直したらこのスキップを外す。
+        try XCTSkipIf(
+            isSmallPhone(app),
+            "#389: 小さいiPhoneのAX5では、範囲選択中に盤面と選択操作の帯が収まらない"
+        )
         assertPrimaryControlsAreUsable(in: app)
         add(screenshotAttachment(named: "最大文字・通常の操作列"))
         // 上の確認は道具列を「線」まで送った状態で終わるため、「範囲」を押せる位置へ戻す。
@@ -2624,6 +2633,12 @@ final class KnittingEditorUITests: XCTestCase {
     /// 文字サイズをAX3（アクセシビリティL）にして起動する。
     private func launchWithAccessibilityExtraLarge() -> XCUIApplication {
         launchWithContentSizeCategory("UICTContentSizeCategoryAccessibilityL")
+    }
+
+    /// #389の症状が出る小さいiPhoneかどうか。向きによらず、ウインドウの幅と高さの大きい方が850pt未満のiPhoneを対象にする。
+    private func isSmallPhone(_ app: XCUIApplication) -> Bool {
+        let frame = app.windows.firstMatch.frame
+        return UIDevice.current.userInterfaceIdiom == .phone && max(frame.width, frame.height) < 850
     }
 
     /// 要素がウィンドウの内側に収まっていることを確認する。

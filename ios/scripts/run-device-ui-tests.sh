@@ -1,5 +1,5 @@
 #!/bin/sh
-# 版の提出前に、実機でUIテストの一覧を流す（ios/docs/DEVICE_TESTING.mdの①）。
+# 提出前の実機確認（ios/docs/DEVICE_TESTING.mdの「提出前」）で、実機でUIテストの一覧を流す。
 #
 #   KNITTING_EDITOR_DEVELOPMENT_TEAM=XXXXXXXXXX ios/scripts/run-device-ui-tests.sh <UDID> [output directory]
 #

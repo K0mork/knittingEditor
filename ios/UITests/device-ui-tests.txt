@@ -1,5 +1,5 @@
-# 版の提出前に実機（iPhone・iPad）で流すUIテスト。手順は ios/docs/DEVICE_TESTING.md。
-# Simulatorと実機で結果が変わりうるもの（システムの画面、保存、回転、キーボード、文字サイズ）を選ぶ。
+# Simulatorと実機で結果が変わりうるUIテスト（システムの画面、保存、回転、キーボード、文字サイズ）。
+# Full iOS validationでiPhone SE (3rd generation)のSimulatorで流し、ios/docs/DEVICE_TESTING.mdの条件に当たる版では提出前に実機でも流す。
 # 起動して編集画面を表示
 KnittingEditorUITests/testLaunchShowsLocalEditorContainer
 # WKWebView入力のフォーカス・キーボードと文字選択
