@@ -53,7 +53,7 @@
 
 `.github/workflows/ios-full.yml`は、関連する`main`へのマージ後、毎晩（18:23 UTC）、手動実行時に、Pagesのゲートとは別に実行する。
 
-- `ios_full`: iPhone 17・iPad (A16)の全単体／UIテストとDebug bundle検査。iPadのUI除外一覧は使わない。
+- `ios_full`: iPhone 17・iPad (A16)の全単体／UIテストとDebug bundle検査、iPhone SE (3rd generation)での`ios/UITests/device-ui-tests.txt`の一覧のUIテスト。iPadのUI除外一覧は使わない。
 - `app_update`: 両端末で、最新のリリースのタグから作ったアプリが保存した編み図を、今のコミットのアプリへ更新したあとに読めることを確認する。
 - `release_archive`: unsigned Release Archiveを作り、同梱資産を検査する。
 

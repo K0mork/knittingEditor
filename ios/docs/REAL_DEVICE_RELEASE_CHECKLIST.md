@@ -52,7 +52,7 @@ KNITTING_EDITOR_DEVELOPMENT_TEAM=XXXXXXXXXX KNITTING_EDITOR_REQUIRE_WIRED=1 ios/
 - 一方、開発ツール経由の導入と起動は機内モードで失敗する。`xcodebuild test`は再インストールを伴うため`The application could not be launched because the Developer App Certificate is not trusted`となり、`devicectl device process launch`も`profile has not been explicitly trusted by the user`で拒否された。したがって**機内モードでの自動テストは実行できない**。
 - 開発者証明書の信頼が外れた状態でオフライン起動を試みると復旧できない。ネットワークを復帰させ、設定から信頼し直すか再インストールするまで起動できなかった。機内モードを解除してもWi-Fiが自動で戻らないことがある。
 - **有料のTeamでも同じだった。** 2026-11-02にiPhone 17とiPad Air 第5世代（どちらも27.2、有線）で試した。オンラインで同じテストを流して起動できたことを確かめてから機内モードにしても、`xcodebuild test`が入れ直したアプリの起動は`profile has not been explicitly trusted by the user`で拒否され、端末に「デベロッパの信用を確認するにはインターネット接続が必要です」と出た（[記録](RELEASE_VERIFICATION_RECORDS.md#2026-11-02-有料teamでの署名と実機導入iphone-17--ios-272ipad-air-第5世代--ipados-272有線)）。入れ直した開発ビルドは起動の前にiOSがオンラインで開発元を確かめるので、開発ツールで入れるかぎり機内モードでは起動できない。
-- このため、提出ビルドでの機内モードの確認は、TestFlightで入れたビルドを手で操作して行う（M6、#25）。
+- このため、提出ビルドでの機内モードの確認は、TestFlightで入れたビルドを手で操作して行った（v1.0、M6、#25）。
 
 機内モードで実行するテストは用意してあり、既定ではスキップされる。上のとおり実機の機内モードでは起動できないので、今は使えない。開発ツールのままオフラインで起動できる手段が見つかったときのために、手順を残す。`navigator.onLine`がfalseであることを先に検査するため、機内モードでない状態で成功したことにはならない。
 
@@ -257,7 +257,7 @@ TEST_RUNNER_KNITTING_EDITOR_MANUAL_WINDOW=1 xcodebuild test \
 
 ## M6: TestFlight・App Store
 
-提出ビルドの実機確認（TestFlightでのクラッシュログ・メモリ警告・出力時間、最終画面）は、審査への提出と並行して行い、公開の前に終える。v1.0は手動公開で提出した（[`RELEASE_RUNBOOK.md`](RELEASE_RUNBOOK.md)の手順7・8）。
+提出ビルドの実機確認（TestFlightでのクラッシュログ・メモリ警告・出力時間、最終画面）は、審査への提出と並行して行い、公開の前に終える。v1.0は手動公開で提出した（[`RELEASE_RUNBOOK.md`](RELEASE_RUNBOOK.md)の手順7）。
 
 - [x] 署名済みArchiveを作成し、App Store ConnectへTestFlight内部配布する。（2026-11-03、`b0a7f26`の署名済みArchiveをアップロードし、版1.0のビルド1が登録された。同日、内部テストグループに入れ、iPhone 17とiPad Air 第5世代へTestFlightから1.0 (1)を入れた）
 - [x] iPhone／iPadで機内モードの主要フローを実施する。（iPadは2026-09-22（M0）。iPhone 17は2026-10-09に、機内モードでアプリを起動し直し、新しい編み図を作って記号を置き、PNG・PDF・`.knit`を「このiPhone内」へ保存できた。2026-11-03に、TestFlightの提出ビルド1.0 (1)で両端末とも確かめ直した）

@@ -17,7 +17,7 @@
 | 販売元 | 加入者の法的氏名（個人加入のため。下記「販売元と著作権表記」） |
 | 著作権 | 2026 K0mork |
 
-2026-11-03に、オフラインで使えることをアプリの売りにしない方針にした。サブタイトル、プロモーションテキスト、説明文、審査メモ（[`APP_REVIEW_NOTES.md`](APP_REVIEW_NOTES.md)）、製品ページのヘッダの画像（[`SCREENSHOTS.md`](SCREENSHOTS.md)）では、オフラインや通信なしで使えることを打ち出さず、何ができるかと手軽さを先に書く。オフラインで動くことは製品の要件としてそのまま守り（`ios/AGENTS.md`）、実機での機内モードの確認も続ける。
+2026-11-03に、オフラインで使えることをアプリの売りにしない方針にした。サブタイトル、プロモーションテキスト、説明文、審査メモ（[`APP_REVIEW_NOTES.md`](APP_REVIEW_NOTES.md)）、製品ページのヘッダの画像（[`SCREENSHOTS.md`](SCREENSHOTS.md)）では、オフラインや通信なしで使えることを打ち出さず、何ができるかと手軽さを先に書く。オフラインで動くことは製品の要件としてそのまま守る（`ios/AGENTS.md`）。
 
 2026-11-05に、v1.0の審査でガイドライン5.2.5（法的事項：知的財産）により却下された。サブタイトル「iPhone・iPadで簡単に編み図を作成」の「iPhone」「iPad」が、Appleの製品名の不適切な使い方とされた（[記録](RELEASE_VERIFICATION_RECORDS.md#2026-11-05-審査の却下ガイドライン525とサブタイトルの変更)）。サブタイトルは「編み図を簡単に作成・印刷」に変えた（利用者が決定）。
 
@@ -166,7 +166,7 @@ App Store Connectの年齢制限は、質問票への回答から決まる（202
 - サポートURL: `https://knittingeditor.com/support/`。下記「サポート窓口」
 - プライバシーポリシーURL: `https://knittingeditor.com/privacy/app/`（App Store Connect登録前に公開状態と表示を確認）。正本はリポジトリルートの`public/privacy/app/index.html`。登録は#27で行う。
 - 審査メモ: [`APP_REVIEW_NOTES.md`](APP_REVIEW_NOTES.md)のアプリの説明と確認手順を、英語と日本語の両方で転記する。
-- スクリーンショット: 提出に使う最終版（説明文入り各5枚）は[`SCREENSHOTS.md`](SCREENSHOTS.md#app-store-connect提出用最終版)のとおり用意済み（#290）。App Store ConnectのiPhoneの欄はmedium displayの大きさしか受け付けないので、6.9インチから縮小した6.3インチ（1206×2622）の5枚を登録する。iPadの欄には13インチの5枚を登録する。2027年4月以降の提出に要るiPhone Duoは、外側・内側の各5枚を用意済みで、欄にはどちらか片方の5枚を登録する（#353）。実機での撮り直しは任意。提出ビルドでは、最終版と同じ画面になることを確かめる（[`RELEASE_RUNBOOK.md`](RELEASE_RUNBOOK.md)の手順8）。
+- スクリーンショット: 提出に使う最終版（説明文入り各5枚）は[`SCREENSHOTS.md`](SCREENSHOTS.md#app-store-connect提出用最終版)のとおり用意済み（#290）。App Store ConnectのiPhoneの欄はmedium displayの大きさしか受け付けないので、6.9インチから縮小した6.3インチ（1206×2622）の5枚を登録する。iPadの欄には13インチの5枚を登録する。2027年4月以降の提出に要るiPhone Duoは、外側・内側の各5枚を用意済みで、欄にはどちらか片方の5枚を登録する（#353）。実機での撮り直しは任意。提出ビルドでは、最終版と同じ画面になることを確かめる。
 
 ## 配信地域
 

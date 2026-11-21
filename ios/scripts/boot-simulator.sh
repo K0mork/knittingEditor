@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # 指定した名前のSimulatorを、最新のiOSランタイムから選んで起動し、UDIDを標準出力へ出す。
+# 指定した名前の端末が無ければ、同じ名前の機種と最新のiOSランタイムから作って起動する。
 #
 #   udid="$(ios/scripts/boot-simulator.sh 'iPhone 17')"
 #   xcrun simctl bootstatus "$udid" -b
@@ -35,6 +36,44 @@ if candidates:
     print(udid)
 '
 )"
+if [[ -z "$udid" ]]; then
+  # 端末が無ければ、同じ名前の機種と、それを支える最新のiOSランタイムから作る。
+  devicetype="$(
+    xcrun simctl list devicetypes --json | SIMULATOR_NAME="$simulator_name" /usr/bin/python3 -c '
+import json, os, sys
+name = os.environ["SIMULATOR_NAME"]
+for device_type in json.load(sys.stdin)["devicetypes"]:
+    if device_type["name"] == name:
+        print(device_type["identifier"])
+        break
+'
+  )"
+  if [[ -n "$devicetype" ]]; then
+    runtime="$(
+      xcrun simctl list runtimes --json | SIMULATOR_DEVICETYPE="$devicetype" /usr/bin/python3 -c '
+import json, os, re, sys
+device_type = os.environ["SIMULATOR_DEVICETYPE"]
+candidates = []
+for runtime in json.load(sys.stdin)["runtimes"]:
+    match = re.search(r"\.iOS-(\d+(?:-\d+)*)$", runtime["identifier"])
+    if not match or not runtime.get("isAvailable"):
+        continue
+    supported = {item["identifier"] for item in runtime.get("supportedDeviceTypes", [])}
+    if device_type not in supported:
+        continue
+    version = tuple(int(part) for part in match.group(1).split("-"))
+    candidates.append((version, runtime["identifier"]))
+if candidates:
+    print(max(candidates)[1])
+'
+    )"
+    if [[ -n "$runtime" ]]; then
+      udid="$(xcrun simctl create "$simulator_name" "$devicetype" "$runtime")"
+      # 標準出力はUDIDだけにする。作ったことは標準エラーに出す。
+      echo "Simulatorが無かったため作成しました: $simulator_name ($runtime)" >&2
+    fi
+  fi
+fi
 if [[ -z "$udid" ]]; then
   echo "Simulatorが見つかりません: $simulator_name" >&2
   exit 1

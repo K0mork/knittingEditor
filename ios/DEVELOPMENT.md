@@ -117,7 +117,7 @@ SwiftDataへの移行は初回リリース後の選択肢とします。初回�
 
 ## 7. オフライン要件
 
-機内モードかつキャッシュを持たない新規インストール状態で、以下を完了できることをリリース条件にします。
+機内モードかつキャッシュを持たない新規インストール状態で、以下を完了できることを要件にします。この要件は、CIの`ios/Tests/KnittingEditorAppTests/LocalWebSchemeHandlerTests.swift`の`testLocalEditorDoesNotInvokeRuntimeNetworkAPIs`と、`ios/scripts/check-app-bundle.sh`（CIの`ios`ジョブと`Full iOS validation`で実行）で確かめ、版ごとの実機の機内モードの試験はしません。
 
 - 起動
 - 新規編み図作成
@@ -226,7 +226,7 @@ runが現れない場合は、`gh pr view --json url,headRefOid,state`でPRがop
 
 ## 10. 現在の実装状況
 
-ローカルWebView、共通編集基盤、永続保存、scene phase、Files、UTType、共有、PNG/PDF、`.knit`、iPhone／iPad UI、自動テスト、unsigned Release Archive、プライバシー文書は実装済みです。App Storeではv1.0（2026-11-06）とv1.1（2026-11-07）を公開しました。加入・署名・App Store Connectへのアプリの登録は初回の提出で済んでいます。更新版の提出・公開は[`docs/RELEASE_RUNBOOK.md`](docs/RELEASE_RUNBOOK.md)の手順5〜10、版ごとの実機確認は[`docs/DEVICE_TESTING.md`](docs/DEVICE_TESTING.md)に従います。残っている実機確認や版ごとの作業はGitHub Issues（リリースごとの作業は版の名前の[マイルストーン](https://github.com/K0mork/knittingEditor/milestones)）で管理します。
+ローカルWebView、共通編集基盤、永続保存、scene phase、Files、UTType、共有、PNG/PDF、`.knit`、iPhone／iPad UI、自動テスト、unsigned Release Archive、プライバシー文書は実装済みです。App Storeではv1.0（2026-11-06）とv1.1（2026-11-07）を公開しました。加入・署名・App Store Connectへのアプリの登録は初回の提出で済んでいます。更新版の提出・公開は[`docs/RELEASE_RUNBOOK.md`](docs/RELEASE_RUNBOOK.md)の手順5〜9、提出前の実機確認は[`docs/DEVICE_TESTING.md`](docs/DEVICE_TESTING.md)に従います。残っている実機確認や版ごとの作業はGitHub Issues（リリースごとの作業は版の名前の[マイルストーン](https://github.com/K0mork/knittingEditor/milestones)）で管理します。
 
 ## 11. リリース判定
 

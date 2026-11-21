@@ -60,7 +60,7 @@ export function checkPrSmokeUiTests(root = defaultRoot()) {
   return validateSmokeList(readFileSync(join(root, 'ios/UITests/pr-smoke-ui-tests.txt'), 'utf8'), uiTestMethods(root));
 }
 
-/** 実機で流すUIテストの一覧（`ios/docs/DEVICE_TESTING.md`）。書式と検査はPRスモークと同じ。 */
+/** Full iOS validationのiPhone SE (3rd generation)のSimulatorと、条件に当たる版では実機でも流すUIテストの一覧（`ios/docs/DEVICE_TESTING.md`）。書式と検査はPRスモークと同じ。 */
 export function checkDeviceUiTests(root = defaultRoot()) {
   return validateSmokeList(readFileSync(join(root, 'ios/UITests/device-ui-tests.txt'), 'utf8'), uiTestMethods(root), 'device UI test');
 }
