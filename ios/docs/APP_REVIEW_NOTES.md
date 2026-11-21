@@ -29,12 +29,11 @@ The app is in Japanese only. Below, each button is written as "English (日本�
 5. In the same panel, tap "Restore from backup (バックアップから復元)", choose the .knit file from step 4, and check the restored chart.
 6. Tap "Guide (使い方)" at the top right. "Privacy (プライバシー)" explains data handling. Its privacy policy link and the support page link in "Support (サポート)" open in Safari.
 
-### New in version 1.1
+### New in version 1.2
 
-1. Tap "Select (範囲)" and drag on the grid. In the bar below, "Erase (消去)" clears the stitches and lines in the area, and "Save (保存)" saves it as a block.
-2. After "Copy (コピー)", each tap on the grid pastes again until "Stop (やめる)".
-3. Larger Text (Settings > Accessibility > Display & Text Size) now enlarges the editor and the guide.
-4. If an iCloud Drive file cannot be downloaded offline, the app asks to go online.
+1. In "Export (出力)", "Include credit (クレジットを入れる)" is on by default: PNG and PDF get the site name, https://knittingeditor.com/ and a QR code at the bottom.
+2. When saving, "Share (共有)" adds "棒針編み図エディタで作成 https://knittingeditor.com/" for Mail or Messages. "Save to Files (ファイルに保存)" saves only the file.
+3. On iPad with a keyboard, delete erases the range selected with "Select (範囲)".
 
 ### Other input methods
 
@@ -67,12 +66,11 @@ These have no on-screen button. They are optional, do the same as existing butto
 5. 同じ画面の「バックアップから復元」を押し、手順4の.knitファイルを選んで、編み図が復元されることを確認してください。
 6. 右上の「使い方」を開くと、「プライバシー」にデータの扱いが書かれています。そこにあるプライバシーポリシーと、「サポート」のサポートページへのリンクはSafariで開きます。
 
-### バージョン1.1の変更点
+### バージョン1.2の変更点
 
-1. 「範囲」を選んで盤面をなぞると、下の「消去」で範囲の記号と線を消し、「保存」で範囲をブロックとして保存できます。
-2. 「コピー」のあとは、「やめる」を押すまで、盤面をタップするたびに貼付します。
-3. 「設定」>「アクセシビリティ」>「画面表示とテキストサイズ」の「さらに大きな文字」で、編集画面と「使い方」の文字が大きくなります。
-4. オフラインでiCloud Driveのファイルをダウンロードできないときは、接続を促します。
+1. 「出力」の「クレジットを入れる」は既定でオンで、PNGとPDFの下端にサイト名・https://knittingeditor.com/・QRコードが入ります。
+2. 保存の確認で「共有」を選ぶと、メールやメッセージに文面「棒針編み図エディタで作成 https://knittingeditor.com/」が付きます。「ファイルに保存」ではファイルだけを保存します。
+3. キーボードを接続したiPadでは、「範囲」で選んだ部分をdeleteキーで消せます。
 
 ### 画面のボタン以外の操作
 
