@@ -235,13 +235,12 @@ final class KeyboardCommandUITests: XCTestCase {
         // 実行する回数に合わせて上限を広げる（このテストは環境変数があるときだけ動く）。
         executionTimeAllowance = TimeInterval(max(900, runs * 240))
 
-        var tallies: [FirstPressKey: FirstPressTally] = [:]
-        var lines: [String] = []
+        let record = FirstPressRecord()
         var failure: String?
         let suffix = UUID().uuidString.prefix(8)
         // 途中のassertでテストが止まっても、それまでの集計表と添付を残す。
         addTeardownBlock {
-            self.addFirstPressSummary(tallies: tallies, lines: lines, runs: runs)
+            self.addFirstPressSummary(record, runs: runs)
         }
 
         for run in 1...runs {
@@ -256,8 +255,7 @@ final class KeyboardCommandUITests: XCTestCase {
                 app: app,
                 canvas: canvas,
                 seedHistory: true,
-                tallies: &tallies,
-                lines: &lines
+                record: record
             ) {
                 failure = "\(run)回目の起動直後、\(action.shortcut)が2回押しても効かない"
                 app.terminate()
@@ -271,8 +269,7 @@ final class KeyboardCommandUITests: XCTestCase {
                 app: app,
                 canvas: editedCanvas,
                 seedHistory: false,
-                tallies: &tallies,
-                lines: &lines
+                record: record
             ) {
                 failure = "\(run)回目の編集後、\(action.shortcut)が2回押しても効かない"
                 app.terminate()
@@ -287,11 +284,7 @@ final class KeyboardCommandUITests: XCTestCase {
     }
 
     /// 途中で終わった回でも結果を残せるよう、`addTeardownBlock`から集計表と添付を出す。
-    private func addFirstPressSummary(
-        tallies: [FirstPressKey: FirstPressTally],
-        lines: [String],
-        runs: Int
-    ) {
+    private func addFirstPressSummary(_ record: FirstPressRecord, runs: Int) {
         // 添付やログは公開され得るため、利用者が付けた端末名ではなくSimulator名か機種名を残す。
         let device = ProcessInfo.processInfo.environment["SIMULATOR_DEVICE_NAME"] ?? UIDevice.current.model
         var summary = [
@@ -302,7 +295,7 @@ final class KeyboardCommandUITests: XCTestCase {
         ]
         for situation in FirstPressSituation.allCases {
             for action in Self.measuredActions {
-                let tally = tallies[FirstPressKey(situation: situation, action: action)] ?? FirstPressTally()
+                let tally = record.tallies[FirstPressKey(situation: situation, action: action)] ?? FirstPressTally()
                 summary.append(
                     "FIRST_PRESS \(situation.rawValue),\(action.shortcut)," +
                         "\(tally.firstPressSuccesses),\(tally.attempts),\(tally.retried)"
@@ -311,7 +304,7 @@ final class KeyboardCommandUITests: XCTestCase {
         }
         for line in summary { print(line) }
 
-        let attachment = XCTAttachment(string: (summary + lines).joined(separator: "\n"))
+        let attachment = XCTAttachment(string: (summary + record.lines).joined(separator: "\n"))
         attachment.name = "FIRST_PRESS summary"
         attachment.lifetime = .keepAlways
         add(attachment)
@@ -420,6 +413,13 @@ final class KeyboardCommandUITests: XCTestCase {
         let action: FirstPressAction
     }
 
+    /// 計測中の集計。`addTeardownBlock`のクロージャ（`@Sendable`）から読むため参照型にする。
+    /// XCTestはテストメソッドと後片付けを同じスレッドで順に呼ぶので、同時には触られない。
+    private final class FirstPressRecord: @unchecked Sendable {
+        var tallies: [FirstPressKey: FirstPressTally] = [:]
+        var lines: [String] = []
+    }
+
     private struct FirstPressTally {
         var attempts = 0
         var firstPressSuccesses = 0
@@ -448,8 +448,7 @@ final class KeyboardCommandUITests: XCTestCase {
         app: XCUIApplication,
         canvas: XCUIElement,
         seedHistory: Bool,
-        tallies: inout [FirstPressKey: FirstPressTally],
-        lines: inout [String]
+        record: FirstPressRecord
     ) -> FirstPressAction? {
         var historySeeded = !seedHistory
         for action in Self.measuredActions {
@@ -490,10 +489,10 @@ final class KeyboardCommandUITests: XCTestCase {
             }
 
             let key = FirstPressKey(situation: situation, action: action)
-            tallies[key, default: FirstPressTally()].record(outcome)
+            record.tallies[key, default: FirstPressTally()].record(outcome)
             let line = "FIRST_PRESS run=\(run) situation=\(situation.rawValue) " +
                 "shortcut=\(action.shortcut) outcome=\(outcome.label)"
-            lines.append(line)
+            record.lines.append(line)
             print(line)
 
             if outcome == .noReaction {
@@ -582,7 +581,8 @@ final class KeyboardCommandUITests: XCTestCase {
 
     /// 1つのショートカットが開いたダイアログやシートを閉じ、次のキーをアプリへ戻す。
     /// 閉じられなかったまま次を測ると、キーが閉じ損ねた画面に吸われて誤った結果になるため、
-    /// どれも有界の再試行のあとで閉じたことを確かめる。
+    /// どれも閉じた・戻れたことを確かめ、できなければその場で失敗にする（使い方ページは1回、
+    /// ほかは3回まで試す）。
     private func reset(_ action: FirstPressAction, in app: XCUIApplication) {
         switch action {
         case .restore:

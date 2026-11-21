@@ -4,7 +4,7 @@
 - 主なファイル: `ios/UITests/KnittingEditorUITests/KeyboardCommandUITests.swift`
 - テスト: `KeyboardCommandUITests/testShortcutsTakeEffectOnFirstPress`を追加した。起動直後と、記号を3個置いて「盤面」パネルを開閉した後の2つの状況で、⌘O・⌘N・⌘S・⌥⌘S・⇧⌘E・⌘P・⌘Z・⇧⌘Z・⇧⌘Hを1回だけ押して測る。計測回数は`KNITTING_EDITOR_KEYBOARD_FIRST_PRESS_RUNS`（既定5）。起動直後の状況だけ、編集画面が準備できてから最初のキーまで1.0秒待つ。
   - 反応の判定: 書き出しは保存画面のファイル名（`.knit`・`knitting-editor-backup.knit`・`.png`・`.pdf`）まで確かめ、押す前に前の保存画面が残っていないことを確かめる。⌘Z・⇧⌘Zは記号数がちょうど1つ減る・増えることで確かめる。保存の待ちで「保存失敗」が出たら失敗にする。
-  - 後片付け: ⌘Oの選択画面、⌘Nのダイアログ、書き出しの保存画面、使い方ページは、それぞれ3回まで閉じる・戻るを試し、できなければ失敗にする。閉じ損ねた画面にキーが吸われて誤った結果になるのを防ぐ。
+  - 後片付け: ⌘Oの選択画面、⌘Nのダイアログ、書き出しの保存画面は3回まで閉じるを試し、使い方ページは1回戻るを試す。閉じられない・戻れないときはその場で失敗にし、閉じ損ねた画面にキーが吸われて誤った結果になるのを防ぐ。
   - 途中で失敗しても、それまでの集計表と添付を`addTeardownBlock`で残す。添付とログの端末名は、利用者が付けた名前ではなくSimulator名か機種名にした。
 - 検証:
   - KE verify iPad（iPad (A16)、iOS 27.2、Xcode 27.2）で、`TEST_RUNNER_KNITTING_EDITOR_KEYBOARD_FIRST_PRESS=1`と`TEST_RUNNER_KNITTING_EDITOR_KEYBOARD_FIRST_PRESS_RUNS=10`を付けて`xcodebuild test -only-testing:knittingEditorUITests/KeyboardCommandUITests/testShortcutsTakeEffectOnFirstPress`を実行し、成功した。最終のコードでの結果は、起動直後の⌘Oが10回中9回1回目で効き（残る1回は2回目で効いた）、そのほかの17の組み合わせは10回とも1回目で効いた。
