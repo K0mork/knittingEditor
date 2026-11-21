@@ -17,6 +17,6 @@
   - `git grep -n '公開前' -- ios/docs/DEVICE_TESTING.md ios/docs/RELEASE_RUNBOOK.md ios/AGENTS.md`で、`DEVICE_TESTING.md`と`RELEASE_RUNBOOK.md`に「公開前」が残っていないことを確かめた。`ios/AGENTS.md`の1件は非公開情報の記述で、今回の対象外。
   - `git grep -n 'RELEASE_RUNBOOK.md#'`と`git grep -n 'DEVICE_TESTING.md#'`で、リンク先（`#9-更新版を提出する`、`#提出前`、`#公開後`、`#記録`）がどれも見出しにあることを確かめた。
   - 手元で実行していないこと: `npm test`（全体）と`npm run test:e2e`（Webのソースを変えていないため）。
-  - 手元のXcode 27.2で、変更前のコードをiOS 27.2のiPhone SE (3rd generation)のSimulatorに流し、一覧の14件のうちAX5の2件だけが#389の症状で失敗することを確かめた。スキップに変えたあとの2件は、手元のディスクの空きが無くなりビルドが止まったため、手元では確かめていない。iPhone 17・iPad (A16)・iPhone SE (3rd generation)での結果は、このブランチで手動実行した`Full iOS validation`で確かめる。
+  - 手元のXcode 27.2で、変更前のコードをiOS 27.2のiPhone SE (3rd generation)のSimulatorに流し、一覧の14件のうちAX5の2件だけが#389の症状で失敗することを確かめた。スキップに変えたあとの2件は、手元のディスクの空きが無くなりビルドが止まったため、手元では確かめていない。このブランチで手動実行した`Full iOS validation`（run 44905251231、`07af51e`）は6ジョブすべてが1回目で成功した。iPhone SE (3rd generation)はランナーに無く、`boot-simulator.sh`がiOS 26.5で作り、一覧が`Executed 14 tests, with 2 tests skipped and 0 failures`になった（スキップはAX5の2件）。iPhone 17とiPad (A16)では、AX5の2件はスキップされずに成功した。前のコミット`67023d6`の実行（run 44902521048）では、変えていない`app_update (iPhone 17)`がテスト開始前の`Timed out waiting for AX loaded notification`で失敗した（ランナーが遅いときの失敗）。
   - `Full iOS validation`をこのブランチで手動実行して確かめる（PRに結果を書く）。
 - デプロイ影響: なし。CIとUIテストの変更だけで、アプリの動作、Pagesの配信物、TestFlightの提出物は変わらない。
