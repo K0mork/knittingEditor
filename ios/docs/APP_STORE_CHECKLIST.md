@@ -51,5 +51,5 @@
 - [x] App Store Connectの配信地域からEU加盟国と中国本土を外す（[`docs/APP_STORE_METADATA.md`](APP_STORE_METADATA.md)の「配信地域」）。（2026-11-03）
 - [x] アップロードのたびに、同じバージョンの中で前回より大きいビルド番号を付ける（[`docs/APP_STORE_METADATA.md`](APP_STORE_METADATA.md)の「バージョンとビルド番号」）。（2026-11-06、1.1 (1)をアップロードして提出した）
 - [x] App名、サブタイトル、プロモーションテキスト、説明文、キーワードの文字数をApp Store Connectの画面で確かめる（[`APP_STORE_METADATA.md`](APP_STORE_METADATA.md)の「基本情報」「説明文案」）。（2026-11-03）
-- [x] [`APP_STORE_METADATA.md`](APP_STORE_METADATA.md)の「アクセシビリティの表示」の回答を実機で確かめ直してから、App Store Connectへ入力する。（2026-11-03に回答を決めた。ダーク・コントラスト・色以外でも区別・視差効果を減らすは「対応」、VoiceOver・音声コントロール・さらに大きな文字（#389）は「対応」と答えない。同日、iPhone・iPadともApp Store Connectへ入力し、下書きとして保存されたことを確かめた。公開できるのはアプリの版がリリースされたあとなので、公開は[`RELEASE_RUNBOOK.md`](RELEASE_RUNBOOK.md)の手順9で行う）
+- [x] [`APP_STORE_METADATA.md`](APP_STORE_METADATA.md)の「アクセシビリティの表示」の回答を実機で確かめ直してから、App Store Connectへ入力する。（2026-11-03に回答を決めた。ダーク・コントラスト・色以外でも区別・視差効果を減らすは「対応」、VoiceOver・音声コントロール・さらに大きな文字（#389）は「対応」と答えない。同日、iPhone・iPadともApp Store Connectへ入力した。2026-11-11にiPhone・iPadとも公開し、日本の製品ページの「アクセシビリティ」に、ダークインターフェイス・カラーだけによらない区別・十分なコントラスト・視差効果を減らすが「サポートされている機能」として出ることを確かめた（[記録](RELEASE_VERIFICATION_RECORDS.md#2026-11-21-v11の公開後の確認438)）。公開は[`RELEASE_RUNBOOK.md`](RELEASE_RUNBOOK.md)の手順9で行う）
 - [x] 提出後の承認を確認するまで、App Store配布完了とは報告しない。（v1.0は2026-11-06、v1.1 (1)は2026-11-07に承認・公開された（利用者の報告）。2026-11-10に製品ページで版1.1を確かめた）
