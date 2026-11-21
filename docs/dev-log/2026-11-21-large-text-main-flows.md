@@ -11,6 +11,7 @@
   - `TEST_RUNNER_KNITTING_EDITOR_LARGE_TEXT_WALKTHROUGH=1 xcodebuild test -project ios/knittingEditor.xcodeproj -scheme knittingEditor -destination 'platform=iOS Simulator,name=<Simulator>' -only-testing:knittingEditorUITests/KnittingEditorUITests/testAccessibilityLargeTextMainOperationsWalkthrough CODE_SIGNING_ALLOWED=NO`を、KE verify iPad（iPad (A16)、iOS 27.2、Xcode 27.2）とKE verify iPhone（iPhone 17、iOS 27.2）で実行し、どちらも成功した。
   - iPadはAX3・AX5とも全段階が既知の問題なしで通った。
   - iPhoneはAX3の全段階が通った。AX5では、貼付中の盤面の高さが10ptになって貼り付け先のマスが見えず、貼付の案内の帯が盤面を覆い、「やめる」が下の操作列に隠れた（#389に記録する）。そのほかの段階は通り、一覧の項目は約490ptと高いが押して切り替えられた。
+  - 上の実行は`main`の`51698ac`から分けたブランチで行った。その後に取り込んだ`main`（`8bc5ad9`まで）の変更は、版番号・文書・ほかのテストだけで、アプリの画面は変わらない。
   - 途中の実行で、iPhone AX5の一覧の送り方（上へ送り続けて項目を通り過ぎた）とiPad AX5の送る位置（盤面の上で動かした）が誤っていたため直し、上の実行はその後のコードで行った。
   - `xcrun --sdk iphonesimulator swiftc -typecheck`（成功。既存の警告のみ）、`git diff --check`、`node scripts/check-pr-smoke-ui-tests.mjs`、`npm test -- scripts/check-pr-smoke-ui-tests.test.mjs`が成功した。
   - 追加したUIテストは環境変数が無いとskipするため、`ios-full.yml`のブランチでの実行は行わない。
