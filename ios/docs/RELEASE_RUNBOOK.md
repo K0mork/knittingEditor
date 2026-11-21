@@ -117,7 +117,7 @@ MacとApple Vision Proは[#86の決定コメント](https://github.com/K0mork/kn
 4. リジェクトされたら、指摘された条項と再現手順を読み、再提出する前に、App Store Connectでアプリの状態を確かめて対応を選ぶ。Appleの案内は状態ごとに違う（[App and submission statuses](https://developer.apple.com/help/app-store-connect/reference/app-and-submission-statuses)、2026-11-05に確認）。審査担当者への返信は再提出するまでしか送れない（[Reply to App Review messages](https://developer.apple.com/help/app-store-connect/manage-submissions-to-app-review/reply-to-app-review-messages/)）ので、返信が要るときは再提出の前に送る。アプリの説明と確認手順は[審査メモ](APP_REVIEW_NOTES.md)にある。
    - 状態が「Metadata Rejected」（メタデータの却下）なら、メタデータを直してから審査担当者に返信し、直したことを伝える。Appleはこの状態では再提出ではなく返信を案内している。
    - 状態が「Rejected」（却下）なら、指摘された項目を直し、提出の詳細画面の「Resubmit to App Review」で再提出する（[Manage a submission with unresolved issues](https://developer.apple.com/help/app-store-connect/manage-submissions-to-app-review/manage-a-submission-with-unresolved-issues/)）。メタデータだけの指摘なら、同じビルドのまま出せる。
-   - コードの修正が要るなら、新しいビルド番号で手順5〜8をやり直して再提出する。
+   - コードの修正が要るなら、新しいビルド番号で手順5〜7をやり直して再提出する。
    - メタデータを直したときは、正本の[メタデータ](APP_STORE_METADATA.md)も直す。
    - 2026-11-05のv1.0の却下（ガイドライン5.2.5、[記録](RELEASE_VERIFICATION_RECORDS.md#2026-11-05-審査の却下ガイドライン525とサブタイトルの変更)）では、状態を確かめないまま再提出した。この手順は案内に沿っているが、状態がMetadata Rejectedだったなら、返信だけで審査が続いた可能性がある。再提出した後で審査から取り下げると、状態は「Developer Rejected」になって再提出し直すしかなく、返信の道には戻れない。
 
