@@ -10,6 +10,9 @@
 # テストが`NSLog`で合図を出すと、このスクリプトが対象Simulatorの
 # `com.apple.WebKit.WebContent`をSIGKILLし、`/tmp/knitting-editor-webcontent-kill-done`を作る。
 # テストはそのファイルを待って、終了が実際に起きたことを確かめる。
+#
+# このスクリプトは対象SimulatorのWebContentプロセスをすべて終了させる。ほかのアプリ
+# （Safariなど）を開いていない、専用の検証用Simulatorで実行する。
 set -euo pipefail
 
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -52,17 +55,35 @@ webcontent_pids() {
 }
 
 kill_webcontent() {
-  local pids pid
+  local pids pid attempt alive
   for _ in {1..50}; do
     pids="$(webcontent_pids)"
     if [[ -n "$pids" ]]; then
       echo "WebContentを終了: $(echo "$pids" | tr '\n' ' ')"
       while IFS= read -r pid; do
         if [[ -n "$pid" ]]; then
-          kill -9 "$pid"
+          # `pgrep`のあとに終了していることがある。`set -e`で止めない。
+          kill -9 "$pid" 2>/dev/null || true
         fi
       done <<< "$pids"
-      return 0
+      # SIGKILLが届いてもプロセス表から消えるまで時間がかかる。消えるまで待つ。
+      for ((attempt = 0; attempt <= 50; attempt++)); do
+        alive=0
+        while IFS= read -r pid; do
+          if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
+            alive=1
+            break
+          fi
+        done <<< "$pids"
+        if [[ $alive -eq 0 ]]; then
+          return 0
+        fi
+        if (( attempt < 50 )); then
+          sleep 0.1
+        fi
+      done
+      echo "WebContentが終了しない: $(echo "$pids" | tr '\n' ' ')" >&2
+      return 1
     fi
     sleep 0.2
   done
@@ -71,8 +92,20 @@ kill_webcontent() {
 }
 
 stream_pid=""
+test_pid=""
 cleanup() {
+  if [[ -n "$test_pid" ]] && kill -0 "$test_pid" 2>/dev/null; then
+    kill "$test_pid" 2>/dev/null || true
+    for _ in {1..20}; do
+      kill -0 "$test_pid" 2>/dev/null || break
+      sleep 0.1
+    done
+    if kill -0 "$test_pid" 2>/dev/null; then
+      kill -9 "$test_pid" 2>/dev/null || true
+    fi
+  fi
   if [[ -n "$stream_pid" ]]; then
+    pkill -P "$stream_pid" 2>/dev/null || true
     kill "$stream_pid" 2>/dev/null || true
   fi
   rm -f "$signal_file" "$signal_file_device"
@@ -87,6 +120,7 @@ stream_pid=$!
 sleep 1
 
 selections=()
+test_methods=()
 for test in "${tests[@]}"; do
   # `-only-testing:`はターゲット名（knittingEditorUITests）から始める。
   case "$test" in
@@ -94,7 +128,50 @@ for test in "${tests[@]}"; do
     */*) selections+=("-only-testing:knittingEditorUITests/$test") ;;
     *) selections+=("-only-testing:knittingEditorUITests/KnittingEditorUITests/$test") ;;
   esac
+  # ログの検証には、引数の3つの形式（method、Class/method、Target/Class/method）の
+  # どれからでもメソッド名だけを取り出す。
+  test_methods+=("${test##*/}")
 done
+
+# xcodebuildが0で終わっても、選んだテストがskipされたり実行されなかったりすると
+# 成功に見えてしまう。各メソッドのpassedとskipの有無をログで確かめる。
+verify_test_results() {
+  local log="$1"
+  local passed=0
+  local method
+  local line
+  local missing=()
+  local skipped=()
+  local skipped_lines
+
+  skipped_lines="$(grep -E "Test Case '.*' skipped" "$log" || true)"
+  if [[ -n "$skipped_lines" ]]; then
+    while IFS= read -r line; do
+      [[ -n "$line" ]] && skipped+=("$line")
+    done <<< "$skipped_lines"
+  fi
+  for method in "${test_methods[@]}"; do
+    if grep -Fq "Test Case '-[knittingEditorUITests.KnittingEditorUITests $method]' passed" "$log"; then
+      passed=$((passed + 1))
+    else
+      missing+=("$method")
+    fi
+  done
+
+  if (( ${#skipped[@]} > 0 )); then
+    echo "skipされたテスト:" >&2
+    printf '  %s\n' "${skipped[@]}" >&2
+  fi
+  if (( ${#missing[@]} > 0 )); then
+    echo "passedを確認できないテスト:" >&2
+    printf '  %s\n' "${missing[@]}" >&2
+  fi
+  if (( ${#skipped[@]} > 0 || ${#missing[@]} > 0 )); then
+    echo "失敗: $simulator_name (passed $passed/${#test_methods[@]}, skipped ${#skipped[@]})" >&2
+    return 1
+  fi
+  echo "成功: $simulator_name (passed $passed/${#test_methods[@]}, skipped 0)"
+}
 
 export TEST_RUNNER_KNITTING_EDITOR_WEBCONTENT_KILL=1
 xcodebuild test \
@@ -135,8 +212,16 @@ done
 
 status=0
 wait "$test_pid" || status=$?
+# waitで回収済みなら、PIDの再利用でcleanupが別のプロセスを止めないよう空にする。
+if ! kill -0 "$test_pid" 2>/dev/null; then
+  test_pid=""
+fi
 if [[ $status -eq 0 ]]; then
-  echo "成功: $simulator_name"
+  if ! verify_test_results "$xcodebuild_log"; then
+    echo "失敗: $simulator_name（ログ: $xcodebuild_log）" >&2
+    tail -n 80 "$xcodebuild_log" >&2
+    exit 1
+  fi
   echo "結果: $result_bundle"
 else
   echo "失敗: $simulator_name（ログ: $xcodebuild_log）" >&2

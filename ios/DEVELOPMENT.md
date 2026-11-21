@@ -170,6 +170,8 @@ XCUITestは起動前に`app.launchEnvironment["KNITTING_EDITOR_AUTOSAVE_DELAY_MS
 
 WebContentプロセスの終了はUIテストのプロセスから起こせない。`ios/scripts/run-webcontent-termination-ui-test.sh`は、テストが`NSLog`で出す合図をSimulatorのログから拾い、対象Simulatorの`launchd_sim`の子プロセスである`com.apple.WebKit.WebContent`をSIGKILLする。テストは`TEST_RUNNER_KNITTING_EDITOR_WEBCONTENT_KILL=1`があるときだけ動作し、CIではskipする。
 
+このスクリプトは対象SimulatorのWebContentプロセスをすべて終了させる。ほかのアプリ（Safariなど）を開いていない、専用の検証用Simulatorで実行する。
+
 ```sh
 ios/scripts/run-webcontent-termination-ui-test.sh "KE verify iPhone"
 ```

@@ -1484,7 +1484,7 @@ final class KnittingEditorUITests: XCTestCase {
         let sheet = shareSheet(in: app)
         XCTAssertTrue(sheet.waitForExistence(timeout: 20), app.debugDescription)
 
-        signalWebContentKill("共有シート")
+        try signalWebContentKill("共有シート")
         // 共有シートはモーダルなので、背後の準備中の表示は読み上げの対象から外れることがある。
         // 終了の合図はホスト側の完了ファイルで確かめ、ここでは表示の有無を必須にしない。
         _ = editorLoadingOverlay(in: app).waitForExistence(timeout: 5)
@@ -1497,7 +1497,7 @@ final class KnittingEditorUITests: XCTestCase {
         assertEditorRecoversAfterTermination(in: app, note: "共有シート表示中")
 
         add(screenshotAttachment(named: "共有シート表示中のWebContent終了から復帰"))
-        closeSavePanelIfNeeded(in: app)
+        assertExportPanelClosedAfterReload(showing: "PNGを保存", in: app)
         assertBecomesHittable(webView, in: app, note: "共有シート表示中の終了")
         assertSavedChart(name: name, stitchCount: 1, in: app)
         assertChartCanBeEdited(in: app)
@@ -1526,7 +1526,7 @@ final class KnittingEditorUITests: XCTestCase {
         let picker = SystemSheet.element(in: app)
         XCTAssertTrue(picker.waitForExistence(timeout: 20), app.debugDescription)
 
-        signalWebContentKill("保存画面")
+        try signalWebContentKill("保存画面")
         _ = editorLoadingOverlay(in: app).waitForExistence(timeout: 5)
         if picker.exists {
             let dismissal = dismissSystemSheet(in: app)
@@ -1535,7 +1535,7 @@ final class KnittingEditorUITests: XCTestCase {
         assertEditorRecoversAfterTermination(in: app, note: "保存画面表示中")
 
         add(screenshotAttachment(named: "保存画面表示中のWebContent終了から復帰"))
-        closeSavePanelIfNeeded(in: app)
+        assertExportPanelClosedAfterReload(showing: "この編み図を書き出す", in: app)
         assertBecomesHittable(webView, in: app, note: "保存画面表示中の終了")
         assertSavedChart(name: name, stitchCount: 1, in: app)
         assertChartCanBeEdited(in: app)
@@ -1556,7 +1556,7 @@ final class KnittingEditorUITests: XCTestCase {
         // 1回目は準備中の表示を出す。読み上げ用のラベルは末尾の「…」を含まない。
         // 再読み込みが速いと準備中の表示は1秒ほどで消えるため、表示の中のラベルを短い間隔で探す。
         // 2回目の終了は、1回目から10秒以内に起こす必要がある。
-        signalWebContentKill("VoiceOver-1回目")
+        try signalWebContentKill("VoiceOver-1回目")
         let overlay = editorLoadingOverlay(in: app)
         XCTAssertTrue(
             pollUntilExists(overlay.staticTexts["編み図を準備しています"], timeout: 30),
@@ -1565,7 +1565,7 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertFalse(app.buttons["再試行"].exists, "復旧できる終了で「再試行」を出さない")
 
         // 2回目を準備完了前に続け、失敗の案内と「再試行」を出す。
-        signalWebContentKill("VoiceOver-2回目")
+        try signalWebContentKill("VoiceOver-2回目")
         let failure = app.staticTexts
             .matching(NSPredicate(
                 format: "label BEGINSWITH %@ AND label CONTAINS %@",
@@ -1622,12 +1622,25 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertTrue(edited.waitForExistence(timeout: 60), app.debugDescription)
         waitForDocumentSave(named: name, in: webView)
 
+        // 再読み込みで閉じる「盤面」パネルを開いたままバックグラウンドへ移す。復帰後に
+        // パネルが閉じていれば、ページが実際に読み直された証拠になる。開いたパネルは
+        // このあとタップしないので、閉じずにそのままにする（再読み込みが閉じる）。
+        app.buttons["盤面"].tap()
+        let rowsUp = app.buttons["上に段"]
+        if !app.buttons["閉じる"].waitForExistence(timeout: 10) {
+            app.buttons["盤面"].tap()
+        }
+        XCTAssertTrue(
+            rowsUp.waitForExistence(timeout: Self.editorAppearanceTimeout),
+            "盤面パネルを開けない: \(app.debugDescription)"
+        )
+
         XCUIDevice.shared.press(.home)
         XCTAssertTrue(
             app.wait(for: .runningBackgroundSuspended, timeout: 30) || app.state == .runningBackground,
             "ホームへ戻ってもバックグラウンドへ移らない state=\(app.state.rawValue)"
         )
-        signalWebContentKill("バックグラウンド")
+        try signalWebContentKill("バックグラウンド")
         app.activate()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 60), app.debugDescription)
         let overlay = editorLoadingOverlay(in: app)
@@ -1641,6 +1654,12 @@ final class KnittingEditorUITests: XCTestCase {
             app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "編み図を読み込めませんでした"))
                 .firstMatch.exists,
             app.debugDescription
+        )
+        // 終了前に開いた「盤面」パネルが残っていれば、ページは読み直されていない。
+        // 復帰直後は再読み込みが終わっていないことがあるため、準備中の表示の待機に合わせて待つ。
+        XCTAssertTrue(
+            waitForDisappearance(of: rowsUp, timeout: 60),
+            "バックグラウンドからの復帰後も盤面パネルが開いたまま（ページが再読み込みされていない）: \(app.debugDescription)"
         )
         let restored = webView.otherElements
             .matching(NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", "300段、300目", "記号1個"))
@@ -2948,10 +2967,18 @@ final class KnittingEditorUITests: XCTestCase {
     /// 下へのドラッグでは共有シートは閉じなかった。
     private func dismissShareSheetWithoutTouchingBoard(_ sheet: XCUIElement, in app: XCUIApplication) -> String {
         waitUntilStill(sheet)
-        let title = app.webViews.firstMatch.coordinate(withNormalizedOffset: .zero)
-            .withOffset(CGVector(dx: 40, dy: 20))
+        let webView = app.webViews.firstMatch
+        let title = webView.staticTexts["棒針編み図エディタ"].firstMatch
+        let window = app.windows.firstMatch.frame
+        let target: XCUICoordinate
+        if title.exists, !title.frame.isEmpty, window.contains(title.frame) {
+            target = title.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        } else {
+            target = webView.coordinate(withNormalizedOffset: .zero)
+                .withOffset(CGVector(dx: 40, dy: 20))
+        }
         for attempt in 1...3 {
-            title.tap()
+            target.tap()
             if waitForDisappearance(of: sheet, timeout: 5) {
                 return "題名のタップ\(attempt)回"
             }
@@ -3014,6 +3041,15 @@ final class KnittingEditorUITests: XCTestCase {
         return ["/tmp/knitting-editor-webcontent-kill-done"]
     }
 
+    /// ホスト側のスクリプトが終了の完了ファイルを作らないときに投げる。`XCTFail`のあとに
+    /// 投げて、以降の確認を続けずにテストを止める。
+    private struct WebContentKillAcknowledgementTimeout: Error, CustomStringConvertible {
+        let step: String
+        var description: String {
+            "ホスト側でWebContentプロセスを終了できない（\(step)）。ios/scripts/run-webcontent-termination-ui-test.shで実行する"
+        }
+    }
+
     /// ホスト側で`com.apple.WebKit.WebContent`を終了するUIテストは、CIでは実行しない。
     private func requireWebContentTermination() throws {
         try XCTSkipUnless(
@@ -3027,9 +3063,10 @@ final class KnittingEditorUITests: XCTestCase {
     /// UIテストのプロセスからWebContentプロセスは終了できないため、`NSLog`を
     /// `ios/scripts/run-webcontent-termination-ui-test.sh`がSimulatorのログから拾う。
     /// スクリプトは終了後に`/tmp/knitting-editor-webcontent-kill-done`を作る。
-    private func signalWebContentKill(_ step: String) {
+    private func signalWebContentKill(_ step: String) throws {
         let ackPaths = Self.webContentKillAckPaths
         for path in ackPaths { try? FileManager.default.removeItem(atPath: path) }
+        defer { for path in ackPaths { try? FileManager.default.removeItem(atPath: path) } }
         // ログが重複して届いてもホスト側が同じ合図を2回処理しないよう、合図ごとに印を付ける。
         NSLog("%@ %@ %@", Self.webContentKillSignal, UUID().uuidString, step)
         let done = XCTNSPredicateExpectation(
@@ -3039,24 +3076,25 @@ final class KnittingEditorUITests: XCTestCase {
             },
             object: ackPaths
         )
-        XCTAssertEqual(
-            XCTWaiter.wait(for: [done], timeout: 60),
-            .completed,
-            "ホスト側でWebContentプロセスを終了できない（\(step)）。ios/scripts/run-webcontent-termination-ui-test.shで実行する"
-        )
-        for path in ackPaths { try? FileManager.default.removeItem(atPath: path) }
+        guard XCTWaiter.wait(for: [done], timeout: 60) == .completed else {
+            XCTFail(
+                "ホスト側でWebContentプロセスを終了できない（\(step)）。ios/scripts/run-webcontent-termination-ui-test.shで実行する"
+            )
+            throw WebContentKillAcknowledgementTimeout(step: step)
+        }
     }
 
     private func editorLoadingOverlay(in app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any)["editorLoadingOverlay"]
     }
 
-    /// 要素が現れるまで、間を空けずに確かめ続ける。`waitForExistence`は約1秒ごとにしか確かめず、
-    /// 1秒ほどで消える表示を見落とす。
+    /// 要素が現れるまで、50ms間隔で確かめ続ける。`waitForExistence`は約1秒ごとにしか確かめず、
+    /// 1秒ほどで消える表示を見落とす。待機は上限で打ち切る。
     private func pollUntilExists(_ element: XCUIElement, timeout: TimeInterval) -> Bool {
         let deadline = Date().addingTimeInterval(timeout)
         repeat {
             if element.exists { return true }
+            Thread.sleep(forTimeInterval: 0.05)
         } while Date() < deadline
         return false
     }
@@ -3111,7 +3149,9 @@ final class KnittingEditorUITests: XCTestCase {
 
     /// 再読み込みしたページに古い書き出しの結果が届いていないことを、利用者に見える範囲で確かめる。
     /// 結果のIDは`webViewWebContentProcessDidTerminate`と`didCommit`が破棄し、Web側の
-    /// `pendingExports`もページの読み直しで消える。ここでは失敗の案内が出ないことを見る。
+    /// `pendingExports`もページの読み直しで消える。ここで見るのは失敗の案内だけであり、
+    /// 古い成功結果や未完了の配信は単体テストの`WebContentRecoveryTests`と
+    /// `NativeExportResultTests`が検証する。
     private func assertNoStaleExportResult(in app: XCUIApplication) {
         for message in ["共有に失敗しました", "出力ファイルを準備できませんでした", "保存画面を表示できませんでした"] {
             XCTAssertFalse(
@@ -3122,17 +3162,18 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertFalse(app.buttons["再試行"].exists, app.debugDescription)
     }
 
-    private func closeSavePanelIfNeeded(in app: XCUIApplication) {
-        let close = app.buttons["閉じる"]
-        guard close.exists else { return }
-        waitUntilStill(close)
-        close.tap()
-        if waitForDisappearance(of: close, timeout: 5) { return }
-        // 共有シートを閉じた直後の最初のタップが消費されることがあるため、まだ押せるときだけ1回押し直す。
-        if close.exists, close.isHittable { close.tap() }
+    /// WebContent終了後に、終了前から開いていた出力パネルが閉じていることを確かめる。
+    ///
+    /// 出力パネルはWeb側の状態なので、ページが読み直されれば必ず閉じる。パネルの
+    /// 「閉じる」だけを消す実装でも通らないよう、出力のボタンと「閉じる」の両方を見る。
+    private func assertExportPanelClosedAfterReload(showing button: String, in app: XCUIApplication) {
         XCTAssertTrue(
-            waitForDisappearance(of: close, timeout: 10),
-            "出力パネルを閉じられない: \(app.debugDescription)"
+            waitForDisappearance(of: app.buttons[button], timeout: 10),
+            "WebContent終了後に出力パネルの「\(button)」が残っている（ページが再読み込みされていない）: \(app.debugDescription)"
+        )
+        XCTAssertTrue(
+            waitForDisappearance(of: app.buttons["閉じる"], timeout: 10),
+            "WebContent終了後に出力パネルの「閉じる」が残っている（ページが再読み込みされていない）: \(app.debugDescription)"
         )
     }
 
