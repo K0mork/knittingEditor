@@ -1,3 +1,4 @@
+import UIKit
 import XCTest
 
 @MainActor
@@ -1458,6 +1459,366 @@ final class KnittingEditorUITests: XCTestCase {
         }
     }
 
+    /// 共有シートの表示中にWebContentプロセスが終了しても、アプリが落ちず、シートを閉じたあと
+    /// 保存済みの編み図で編集を再開できることを確かめる（#336）。
+    ///
+    /// ホスト側で`com.apple.WebKit.WebContent`をSIGKILLする必要があるため、
+    /// `TEST_RUNNER_KNITTING_EDITOR_WEBCONTENT_KILL=1`と
+    /// `ios/scripts/run-webcontent-termination-ui-test.sh`があるときだけ実行する。
+    func testShareSheetSurvivesWebContentTermination() throws {
+        try requireWebContentTermination()
+        // 遅いSimulatorでも、WebContentの再読み込みとシートの後片付けを待てるようにする。
+        executionTimeAllowance = 300
+        let app = XCUIApplication()
+        app.launch()
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
+        let name = "共有中終了-\(UUID().uuidString.prefix(8))"
+        let webView = prepareSavedChart(named: name, in: app)
+
+        let save = app.buttons["出力"]
+        let png = app.buttons["PNGを保存"]
+        openSavePanel(with: save, showing: png, in: app)
+        png.tap()
+        let share = app.buttons["共有"]
+        XCTAssertTrue(share.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+        guard tapExportAlertButton(share, in: app, step: "共有中終了") else { return }
+        let sheet = shareSheet(in: app)
+        XCTAssertTrue(sheet.waitForExistence(timeout: 20), app.debugDescription)
+
+        try signalWebContentKill("共有シート")
+        // 共有シートはモーダルなので、背後の準備中の表示は読み上げの対象から外れることがある。
+        // 終了の合図はホスト側の完了ファイルで確かめ、ここでは表示の有無を必須にしない。
+        _ = editorLoadingOverlay(in: app).waitForExistence(timeout: 5)
+        if sheet.exists {
+            // 再読み込みで出力パネルが消え、シートの外は盤面になる。枠外のタップは盤面にも届いて
+            // 記号を置くため（iOS 27.2 Simulator）、ヘッダーの題名を叩いて閉じる。
+            let dismissal = dismissShareSheetWithoutTouchingBoard(sheet, in: app)
+            assertDisappears(sheet, from: app, note: dismissal)
+        }
+        assertEditorRecoversAfterTermination(in: app, note: "共有シート表示中")
+
+        add(screenshotAttachment(named: "共有シート表示中のWebContent終了から復帰"))
+        assertExportPanelClosedAfterReload(showing: "PNGを保存", in: app)
+        assertBecomesHittable(webView, in: app, note: "共有シート表示中の終了")
+        assertSavedChart(name: name, stitchCount: 1, in: app)
+        assertChartCanBeEdited(in: app)
+        assertNoStaleExportResult(in: app)
+    }
+
+    /// 保存画面（Document Picker）の表示中にWebContentプロセスが終了しても、シートを閉じたあと
+    /// 保存済みの編み図で編集を再開できることを確かめる（#336）。
+    func testDocumentPickerSurvivesWebContentTermination() throws {
+        try requireWebContentTermination()
+        executionTimeAllowance = 300
+        let app = XCUIApplication()
+        app.launch()
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
+        // 名前に「保存中」を含めると、保存状態の表示（「保存中」）の判定に当たってしまう。
+        let name = "書出中終了-\(UUID().uuidString.prefix(8))"
+        let webView = prepareSavedChart(named: name, in: app)
+
+        let save = app.buttons["出力"]
+        let export = app.buttons["この編み図を書き出す"]
+        openSavePanel(with: save, showing: export, in: app)
+        export.tap()
+        let fileSave = app.buttons["ファイルに保存"]
+        XCTAssertTrue(fileSave.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+        guard tapExportAlertButton(fileSave, in: app, step: "書出中終了") else { return }
+        let picker = SystemSheet.element(in: app)
+        XCTAssertTrue(picker.waitForExistence(timeout: 20), app.debugDescription)
+
+        try signalWebContentKill("保存画面")
+        _ = editorLoadingOverlay(in: app).waitForExistence(timeout: 5)
+        if picker.exists {
+            let dismissal = dismissSystemSheet(in: app)
+            assertDisappears(picker, from: app, note: dismissal)
+        }
+        assertEditorRecoversAfterTermination(in: app, note: "保存画面表示中")
+
+        add(screenshotAttachment(named: "保存画面表示中のWebContent終了から復帰"))
+        assertExportPanelClosedAfterReload(showing: "この編み図を書き出す", in: app)
+        assertBecomesHittable(webView, in: app, note: "保存画面表示中の終了")
+        assertSavedChart(name: name, stitchCount: 1, in: app)
+        assertChartCanBeEdited(in: app)
+        assertNoStaleExportResult(in: app)
+    }
+
+    /// 準備中の表示・失敗の案内・「再試行」が読み上げ用の要素として出て、再試行で編集へ戻れることを
+    /// 確かめる（#336）。2回続けて終了させ、10秒以内の再終了として失敗の案内を出す。
+    func testRecoveryAccessibilityExposesPreparingNoticeAndRetry() throws {
+        try requireWebContentTermination()
+        executionTimeAllowance = 300
+        let app = XCUIApplication()
+        app.launch()
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
+        let name = "VoiceOver終了-\(UUID().uuidString.prefix(8))"
+        _ = prepareSavedChart(named: name, in: app)
+
+        // 1回目は準備中の表示を出す。読み上げ用のラベルは末尾の「…」を含まない。
+        // 再読み込みが速いと準備中の表示は1秒ほどで消えるため、表示の中のラベルを短い間隔で探す。
+        // 2回目の終了は、1回目から10秒以内に起こす必要がある。
+        try signalWebContentKill("VoiceOver-1回目")
+        let overlay = editorLoadingOverlay(in: app)
+        XCTAssertTrue(
+            pollUntilExists(overlay.staticTexts["編み図を準備しています"], timeout: 30),
+            "WebContent終了後に、読み上げ用のラベルの付いた準備中の表示が出ない: \(app.debugDescription)"
+        )
+        XCTAssertFalse(app.buttons["再試行"].exists, "復旧できる終了で「再試行」を出さない")
+
+        // 2回目を準備完了前に続け、失敗の案内と「再試行」を出す。
+        try signalWebContentKill("VoiceOver-2回目")
+        let failure = app.staticTexts
+            .matching(NSPredicate(
+                format: "label BEGINSWITH %@ AND label CONTAINS %@",
+                "編み図を読み込めませんでした", "再試行してください"
+            ))
+            .firstMatch
+        XCTAssertTrue(failure.waitForExistence(timeout: 60), app.debugDescription)
+        let retry = app.buttons["再試行"]
+        XCTAssertTrue(retry.exists, app.debugDescription)
+        XCTAssertEqual(retry.elementType, .button, "「再試行」がボタンとして公開されていない")
+        XCTAssertTrue(retry.isHittable, "\(app.debugDescription)")
+        XCTAssertTrue(overlay.exists, "失敗の案内を準備中の表示の一部として出していない: \(app.debugDescription)")
+
+        // この画面は静的な案内とボタンだけなので、ラベルと種類に絞って監査する。
+        // コントラスト・文字サイズ・切り詰め・要素検出・当たり判定は、別の外観・レイアウトの
+        // テストで扱っており、準備中から失敗へ変わる一時的な状態には当てはめない。
+        // 監査はアプリ全体を走査するため、背後に残る編集画面の要素は対象外にする。
+        // 編集画面のラベルと種類は`testCoreEditorControlsExposeAccessibleNamesAndState`で見ている。
+        try app.performAccessibilityAudit(for: [.sufficientElementDescription, .trait]) { issue in
+            guard let element = issue.element else { return false }
+            let isRecoveryNotice = element.identifier == "editorLoadRetryButton"
+                || element.label == "再試行"
+                || element.label.hasPrefix("編み図を読み込めませんでした")
+            return !isRecoveryNotice
+        }
+
+        add(screenshotAttachment(named: "VoiceOver用の再試行画面"))
+        retry.tap()
+        XCTAssertTrue(
+            waitForDisappearance(of: overlay, timeout: 120),
+            "「再試行」で編集画面へ戻らない: \(app.debugDescription)"
+        )
+        XCTAssertFalse(failure.exists, app.debugDescription)
+        assertSavedChart(name: name, stitchCount: 1, in: app)
+    }
+
+    /// 大きな編み図をバックグラウンドへ移したあとWebContentプロセスが終了しても、
+    /// 戻ったときに保存済みの編み図で編集を再開できることを確かめる（#336）。
+    func testLargeChartRecoversFromWebContentTerminationInBackground() throws {
+        try requireWebContentTermination()
+        // 盤面の変更、保存、再読み込みを1本で行う。
+        executionTimeAllowance = 420
+        let app = XCUIApplication()
+        app.launch()
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
+        let name = "大きな編み図終了-\(UUID().uuidString.prefix(8))"
+        createDocument(named: name, in: app)
+        let large = resizeBoard(rows: 300, cols: 300, in: app)
+        large.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        let webView = app.webViews.firstMatch
+        let edited = webView.otherElements
+            .matching(NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", "300段、300目", "記号1個"))
+            .firstMatch
+        XCTAssertTrue(edited.waitForExistence(timeout: 60), app.debugDescription)
+        waitForDocumentSave(named: name, in: webView)
+
+        // 再読み込みで閉じる「盤面」パネルを開いたままバックグラウンドへ移す。復帰後に
+        // パネルが閉じていれば、ページが実際に読み直された証拠になる。開いたパネルは
+        // このあとタップしないので、閉じずにそのままにする（再読み込みが閉じる）。
+        app.buttons["盤面"].tap()
+        let rowsUp = app.buttons["上に段"]
+        if !app.buttons["閉じる"].waitForExistence(timeout: 10) {
+            app.buttons["盤面"].tap()
+        }
+        XCTAssertTrue(
+            rowsUp.waitForExistence(timeout: Self.editorAppearanceTimeout),
+            "盤面パネルを開けない: \(app.debugDescription)"
+        )
+
+        XCUIDevice.shared.press(.home)
+        XCTAssertTrue(
+            app.wait(for: .runningBackgroundSuspended, timeout: 30) || app.state == .runningBackground,
+            "ホームへ戻ってもバックグラウンドへ移らない state=\(app.state.rawValue)"
+        )
+        try signalWebContentKill("バックグラウンド")
+        app.activate()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 60), app.debugDescription)
+        let overlay = editorLoadingOverlay(in: app)
+        if overlay.exists {
+            XCTAssertTrue(
+                waitForDisappearance(of: overlay, timeout: 180),
+                "バックグラウンドからの復帰後に準備中の表示が消えない: \(app.debugDescription)"
+            )
+        }
+        XCTAssertFalse(
+            app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "編み図を読み込めませんでした"))
+                .firstMatch.exists,
+            app.debugDescription
+        )
+        // 終了前に開いた「盤面」パネルが残っていれば、ページは読み直されていない。
+        // 復帰直後は再読み込みが終わっていないことがあるため、準備中の表示の待機に合わせて待つ。
+        XCTAssertTrue(
+            waitForDisappearance(of: rowsUp, timeout: 60),
+            "バックグラウンドからの復帰後も盤面パネルが開いたまま（ページが再読み込みされていない）: \(app.debugDescription)"
+        )
+        let restored = webView.otherElements
+            .matching(NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", "300段、300目", "記号1個"))
+            .firstMatch
+        XCTAssertTrue(restored.waitForExistence(timeout: 180), "復帰後に保存済みの編み図が残っていない: \(app.debugDescription)")
+
+        // 復帰後に編集できることも確かめる。中央のマスへ1個足す。
+        restored.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        let changed = webView.otherElements
+            .matching(NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", "300段、300目", "記号2個"))
+            .firstMatch
+        XCTAssertTrue(changed.waitForExistence(timeout: 60), "復帰後に編集できない: \(app.debugDescription)")
+        add(screenshotAttachment(named: "大きな編み図のバックグラウンド復帰"))
+    }
+
+    /// 共有シートの「ファイルに保存」と「コピー」が、PNGだけを渡して文面を渡さないことを
+    /// Simulatorで確かめる（#474）。メール・メッセージはSimulatorに無いので実機で確かめる。
+    ///
+    ///     TEST_RUNNER_KNITTING_EDITOR_SHARE_SHEET_PROBE=1 xcodebuild test \
+    ///       -project ios/knittingEditor.xcodeproj -scheme knittingEditor \
+    ///       -destination 'platform=iOS Simulator,name=KE verify iPhone' \
+    ///       -only-testing:knittingEditorUITests/KnittingEditorUITests/testShareSheetProbeSavesOnlyTheFileAndCopiesNoText
+    ///
+    /// 保存したファイルはFilesの「このiPhone内」の一覧で確かめる。
+    func testShareSheetProbeSavesOnlyTheFileAndCopiesNoText() throws {
+        try XCTSkipUnless(
+            ProcessInfo.processInfo.environment["KNITTING_EDITOR_SHARE_SHEET_PROBE"] == "1",
+            "Simulatorで共有シートのファイル操作を確かめるときだけ、TEST_RUNNER_KNITTING_EDITOR_SHARE_SHEET_PROBE=1を付けて実行する"
+        )
+        executionTimeAllowance = 600
+
+        let app = XCUIApplication()
+        app.launch()
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
+
+        // 保存したファイルをホスト側で探せるよう、編み図名とファイル名を実行ごとに変える。
+        let suffix = String(UUID().uuidString.prefix(8))
+        let documentName = "共有確認-\(suffix)"
+        let filenamePrefix = "share-probe-\(suffix)"
+        let probeNote = "SHARE_SHEET_PROBE document=\(documentName) filenamePrefix=\(filenamePrefix)"
+        print(probeNote)
+        XCTContext.runActivity(named: probeNote) { _ in }
+        createDocument(named: documentName, in: app)
+
+        // 「コピー」はPNGだけをペーストボードへ渡す。前回の内容と混ざらないよう空にしてから共有する。
+        UIPasteboard.general.items = []
+        guard openPNGShareSheet(in: app, step: "コピー") else { return }
+        let copySheet = shareSheet(in: app)
+        let copy = shareSheetAction(labels: ["コピー", "Copy"], in: app, sheet: copySheet)
+        XCTAssertTrue(waitForHittable(copy, timeout: 20), "共有シートに「コピー」が無い: \(app.debugDescription)")
+        waitUntilStill(copy)
+        add(screenshotAttachment(named: "共有シート-PNG-コピー"))
+        copy.tap()
+        assertDisappears(copySheet, from: app, note: "コピー後")
+
+        // コピーが終わってPNGが入るまで待つ。空のままでは、文面が無いことを確かめたことにならない。
+        let pasteboard = UIPasteboard.general
+        let copied = XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in pasteboard.contains(pasteboardTypes: ["public.png"]) },
+            object: nil
+        )
+        _ = XCTWaiter.wait(for: [copied], timeout: 10)
+        // 文面が入っていれば、文字列の種類としてペーストボードに残る。
+        let copiedText = pasteboard.hasStrings ? pasteboard.string : nil
+        let copiedTypes = pasteboard.types
+        let copyNote = "SHARE_SHEET_PROBE copy items=\(pasteboard.numberOfItems) hasStrings=\(pasteboard.hasStrings) types=[\(copiedTypes.joined(separator: ", "))] string=\(copiedText ?? "nil")"
+        print(copyNote)
+        XCTContext.runActivity(named: copyNote) { _ in }
+        let copyAttachment = XCTAttachment(string: copyNote)
+        copyAttachment.name = "コピー後のペーストボード"
+        copyAttachment.lifetime = .keepAlways
+        add(copyAttachment)
+        XCTAssertTrue(
+            pasteboard.contains(pasteboardTypes: ["public.png"]),
+            "コピーにPNGが入っていない: \(copyNote)"
+        )
+        XCTAssertFalse(pasteboard.hasStrings, "コピーに文字列が入っている: \(copyNote)")
+        XCTAssertFalse(
+            copiedTypes.contains { $0.contains("text") },
+            "コピーに文字の種類が入っている: \(copyNote)"
+        )
+
+        // 「ファイルに保存」はPNGだけを端末内へ保存する。一意な名前で保存し、Filesでも確かめる。
+        guard openPNGShareSheet(in: app, step: "ファイルに保存") else { return }
+        let saveSheet = shareSheet(in: app)
+        let saveToFiles = shareSheetAction(labels: ["ファイルに保存", "“ファイル”に保存", "Save to Files"], in: app, sheet: saveSheet)
+        XCTAssertTrue(
+            waitForHittable(saveToFiles, timeout: 20),
+            "共有シートに「ファイルに保存」が無い: \(app.debugDescription)"
+        )
+        waitUntilStill(saveToFiles)
+        add(screenshotAttachment(named: "共有シート-PNG-ファイルに保存"))
+        saveToFiles.tap()
+
+        let picker = SystemSheet.element(in: app)
+        XCTAssertTrue(picker.waitForExistence(timeout: 20), app.debugDescription)
+        add(screenshotAttachment(named: "ファイルに保存-保存先の選択"))
+        XCTAssertTrue(
+            selectOnDeviceLocationForSaving(in: app),
+            "「このiPhone内」/「このiPad内」を選べない: \(app.debugDescription)"
+        )
+
+        // 名前を変えられる環境では一意な接頭辞を付け、変えられない環境では一意な編み図名の提案名を使う。
+        var savedPrefix = documentName
+        let filenameField = app.textFields["DOCPicker.filenameTextField"]
+        if filenameField.waitForExistence(timeout: 10) {
+            replaceText(filenamePrefix, in: filenameField, app: app)
+            savedPrefix = filenamePrefix
+        } else {
+            print("SHARE_SHEET_PROBE filenameField=none default=\(documentName)")
+        }
+        let saveButton = app.buttons.matching(NSPredicate(format: "label IN %@", ["保存", "Save"])).firstMatch
+        XCTAssertTrue(waitForHittable(saveButton, timeout: 20), "保存先を決められない: \(app.debugDescription)")
+        add(screenshotAttachment(named: "ファイルに保存-保存先と名前"))
+        saveButton.tap()
+
+        let exportFinished = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == false"),
+            object: picker
+        )
+        if XCTWaiter.wait(for: [exportFinished], timeout: Self.editorAppearanceTimeout) != .completed {
+            let replace = app.buttons.matching(NSPredicate(format: "label IN %@", ["置き換え", "Replace"])).firstMatch
+            if replace.waitForExistence(timeout: 5) {
+                waitUntilStill(replace)
+                replace.tap()
+            }
+        }
+        XCTAssertTrue(
+            waitForDisappearance(of: picker, timeout: Self.editorAppearanceTimeout),
+            "保存画面が閉じない: \(app.debugDescription)"
+        )
+        add(screenshotAttachment(named: "ファイルに保存-保存後"))
+
+        // Filesの「このiPhone内」に、保存したPNGがあることを画面で確かめる。
+        let files = XCUIApplication(bundleIdentifier: "com.apple.DocumentsApp")
+        files.launch()
+        if let browse = waitForFirstHittable(in: files, labels: ["ブラウズ", "Browse"], timeout: 20) {
+            browse.tap()
+        }
+        let locations = ["このiPhone内", "このiPad内", "On My iPhone", "On My iPad"]
+        if let location = waitForFirstHittable(in: files, labels: locations, timeout: 20) {
+            waitUntilStill(location)
+            location.tap()
+        }
+        let saved = files.cells
+            .matching(NSPredicate(format: "label BEGINSWITH %@ OR identifier BEGINSWITH %@", savedPrefix, savedPrefix))
+        let found = saved.firstMatch.waitForExistence(timeout: 20)
+        add(screenshotAttachment(named: "ファイル-保存したPNG-\(savedPrefix)"))
+        XCTAssertTrue(found, "Filesの「このiPhone内」に\(savedPrefix).pngが見つからない: \(files.debugDescription)")
+        XCTAssertEqual(saved.count, 1, "同じ名前で2つ以上保存されている: \(files.debugDescription)")
+        // 文面も渡っていれば、テキストのファイルが同じ場所に増える。名前は文面やシステムの既定名になる。
+        let textFiles = files.cells.matching(NSPredicate(
+            format: "label CONTAINS %@ OR label CONTAINS[c] %@ OR label BEGINSWITH %@ OR label BEGINSWITH %@",
+            "棒針編み図エディタ", ".txt", "テキスト", "Text"
+        ))
+        XCTAssertEqual(textFiles.count, 0, "共有の文面がファイルとして保存されている: \(files.debugDescription)")
+    }
+
     func testBackslashDocumentNameReachesAllNativeExportActions() {
         // 普段は約40〜70秒。CIでは前のテストのアプリの終了で約30秒、起動時の自動化セッションの準備で
         // 約1分止まることがあり、約160秒まで延びた（#358）。
@@ -2743,6 +3104,32 @@ final class KnittingEditorUITests: XCTestCase {
         return "枠外のタップ3回でも閉じない"
     }
 
+    /// 共有シートを、編集画面のヘッダーの題名のあたりをタップして閉じる。
+    ///
+    /// 枠外のタップは、シートを閉じると同時に背後の要素にも届く（iOS 27.2 Simulator）。シートの外が
+    /// 盤面になる場面（WebContent終了後の再読み込みなど）では、押しても何も起きない題名を叩く。
+    /// 下へのドラッグでは共有シートは閉じなかった。
+    private func dismissShareSheetWithoutTouchingBoard(_ sheet: XCUIElement, in app: XCUIApplication) -> String {
+        waitUntilStill(sheet)
+        let webView = app.webViews.firstMatch
+        let title = webView.staticTexts["棒針編み図エディタ"].firstMatch
+        let window = app.windows.firstMatch.frame
+        let target: XCUICoordinate
+        if title.exists, !title.frame.isEmpty, window.contains(title.frame) {
+            target = title.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        } else {
+            target = webView.coordinate(withNormalizedOffset: .zero)
+                .withOffset(CGVector(dx: 40, dy: 20))
+        }
+        for attempt in 1...3 {
+            target.tap()
+            if waitForDisappearance(of: sheet, timeout: 5) {
+                return "題名のタップ\(attempt)回"
+            }
+        }
+        return "題名のタップ3回でも閉じない"
+    }
+
     /// 共有シートの枠の外で、いちばん広い余白の中央をタップする。
     ///
     /// iOS 26の共有シートには閉じるボタンが無く、iPhoneでも枠外（`PopoverDismissRegion`）の
@@ -2763,6 +3150,125 @@ final class KnittingEditorUITests: XCTestCase {
         window.coordinate(withNormalizedOffset: .zero)
             .withOffset(CGVector(dx: widest.point.x - bounds.minX, dy: widest.point.y - bounds.minY))
             .tap()
+    }
+
+    /// 「出力」からPNGを書き出し、確認アラートの「共有」で共有シートを開く。
+    /// 前の操作で出力パネルが開いたままなら、そのパネルを使う。
+    private func openPNGShareSheet(in app: XCUIApplication, step: String) -> Bool {
+        let png = app.buttons["PNGを保存"]
+        if !png.waitForExistence(timeout: 2) {
+            let save = app.buttons["出力"]
+            XCTAssertTrue(save.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+            openSavePanel(with: save, showing: png, in: app)
+        }
+        assertHittableAfterScrolling(png, in: app)
+        waitUntilStill(png)
+        png.tap()
+        let share = app.buttons["共有"]
+        XCTAssertTrue(share.waitForExistence(timeout: Self.editorAppearanceTimeout), "\(step): \(app.debugDescription)")
+        guard tapExportAlertButton(share, in: app, step: step) else { return false }
+        let sheet = shareSheet(in: app)
+        guard sheet.waitForExistence(timeout: 20) else {
+            XCTFail("共有シートが開かない（\(step)）: \(app.debugDescription)")
+            return false
+        }
+        return true
+    }
+
+    /// 共有シートの中から、指定した名前の操作を探す。見えなければシートを送って探す。
+    private func shareSheetAction(
+        labels: [String],
+        in app: XCUIApplication,
+        sheet: XCUIElement
+    ) -> XCUIElement {
+        let predicate = NSPredicate(format: "label IN %@", labels)
+        func candidate() -> XCUIElement {
+            let cell = sheet.cells.matching(predicate).firstMatch
+            if cell.exists { return cell }
+            let inSheet = sheet.descendants(matching: .any).matching(predicate).firstMatch
+            // 「表示を増やす」で開く一覧は、共有シートの外の要素として出ることがある。
+            return inSheet.exists ? inSheet : app.cells.matching(predicate).firstMatch
+        }
+        // iOS 27の共有シートは、操作の行に数個だけ出し、残り（「ファイルに保存」など）を
+        // 「表示を増やす」の先に置く。
+        let showMore = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label IN %@", ["表示を増やす", "Show More"])).firstMatch
+        var action = candidate()
+        var expanded = false
+        for _ in 0..<5 {
+            if action.exists, waitForHittable(action, timeout: 2) { return action }
+            // 「表示を増やす」は開閉を切り替えるので、1回だけ押す。
+            if !expanded, showMore.exists, isHittableWithoutFailing(showMore) {
+                showMore.tap()
+                expanded = true
+            } else if isHittableWithoutFailing(sheet) {
+                sheet.swipeUp()
+            }
+            action = candidate()
+        }
+        return action
+    }
+
+    /// 保存画面で「このiPhone内」/「このiPad内」を開く。iPadのサイドバーとiPhoneの
+    /// 「ブラウズ」タブのどちらでも選べるようにする。
+    private func selectOnDeviceLocationForSaving(in app: XCUIApplication) -> Bool {
+        let labels = ["このiPhone内", "このiPad内", "On My iPhone", "On My iPad"]
+        if let location = waitForFirstHittable(in: app, labels: labels, timeout: 10) {
+            waitUntilStill(location)
+            location.tap()
+            return true
+        }
+        let browseLabels = ["ブラウズ", "Browse"]
+        if let browse = waitForFirstHittable(in: app, labels: browseLabels, timeout: 5) {
+            browse.tap()
+            if let location = waitForFirstHittable(in: app, labels: labels, timeout: 10) {
+                waitUntilStill(location)
+                location.tap()
+                return true
+            }
+            // もう一度押すと「ブラウズ」の先頭へ戻り、保存場所の一覧が出る。
+            if let browseAgain = waitForFirstHittable(in: app, labels: browseLabels, timeout: 3) {
+                browseAgain.tap()
+                if let location = waitForFirstHittable(in: app, labels: labels, timeout: 10) {
+                    waitUntilStill(location)
+                    location.tap()
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
+    /// 指定したラベルの押せる要素が現れるまで待つ。
+    private func waitForFirstHittable(
+        in app: XCUIApplication,
+        labels: [String],
+        timeout: TimeInterval
+    ) -> XCUIElement? {
+        var found: XCUIElement?
+        let appears = XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in
+                // 別プロセスの要素の問い合わせが待機の時間切れで打ち切られても、失敗にしない（#44）。
+                found = self.ignoringWaiterInterruption { self.firstHittable(in: app, labels: labels) }
+                return found != nil
+            },
+            object: app
+        )
+        guard XCTWaiter.wait(for: [appears], timeout: timeout) == .completed else { return nil }
+        return found
+    }
+
+    /// システムシートやFilesの中で、指定したラベルの押せる要素を探す。
+    /// 別プロセスの要素でも`isHittable`が失敗しないよう、枠を確かめてから読む。
+    private func firstHittable(in app: XCUIApplication, labels: [String]) -> XCUIElement? {
+        let candidates = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label IN %@", labels))
+        let window = app.windows.firstMatch.frame
+        return candidates.allElementsBoundByIndex.first { element in
+            guard element.exists else { return false }
+            let frame = element.frame
+            return !frame.isEmpty && window.intersects(frame) && isHittableWithoutFailing(element)
+        }
     }
 
     /// 要素の位置が続けて同じになるまで待つ。表示の動きが終わる前のタップは外れることがある。
@@ -2786,6 +3292,152 @@ final class KnittingEditorUITests: XCTestCase {
         )
         let result = XCTWaiter.wait(for: [disappearance], timeout: 15)
         XCTAssertTrue(result == .completed, "\(note): \(app.debugDescription)")
+    }
+
+    // MARK: - WebContent終了のUIテスト
+
+    private static let webContentKillSignal = "KNITTING_EDITOR_WEBCONTENT_KILL_READY"
+    private static var webContentKillAckPaths: [String] {
+        if let udid = ProcessInfo.processInfo.environment["SIMULATOR_UDID"] {
+            return ["/tmp/knitting-editor-webcontent-kill-done-\(udid)"]
+        }
+        return ["/tmp/knitting-editor-webcontent-kill-done"]
+    }
+
+    /// ホスト側のスクリプトが終了の完了ファイルを作らないときに投げる。`XCTFail`のあとに
+    /// 投げて、以降の確認を続けずにテストを止める。
+    private struct WebContentKillAcknowledgementTimeout: Error, CustomStringConvertible {
+        let step: String
+        var description: String {
+            "ホスト側でWebContentプロセスを終了できない（\(step)）。ios/scripts/run-webcontent-termination-ui-test.shで実行する"
+        }
+    }
+
+    /// ホスト側で`com.apple.WebKit.WebContent`を終了するUIテストは、CIでは実行しない。
+    private func requireWebContentTermination() throws {
+        try XCTSkipUnless(
+            ProcessInfo.processInfo.environment["KNITTING_EDITOR_WEBCONTENT_KILL"] == "1",
+            "WebContentプロセスをホスト側で終了するため、TEST_RUNNER_KNITTING_EDITOR_WEBCONTENT_KILL=1とios/scripts/run-webcontent-termination-ui-test.shで実行する"
+        )
+    }
+
+    /// ホスト側のスクリプトへ終了の合図を送り、SIGKILLが届くまで待つ。
+    ///
+    /// UIテストのプロセスからWebContentプロセスは終了できないため、`NSLog`を
+    /// `ios/scripts/run-webcontent-termination-ui-test.sh`がSimulatorのログから拾う。
+    /// スクリプトは終了後に`/tmp/knitting-editor-webcontent-kill-done`を作る。
+    private func signalWebContentKill(_ step: String) throws {
+        let ackPaths = Self.webContentKillAckPaths
+        for path in ackPaths { try? FileManager.default.removeItem(atPath: path) }
+        defer { for path in ackPaths { try? FileManager.default.removeItem(atPath: path) } }
+        // ログが重複して届いてもホスト側が同じ合図を2回処理しないよう、合図ごとに印を付ける。
+        NSLog("%@ %@ %@", Self.webContentKillSignal, UUID().uuidString, step)
+        let done = XCTNSPredicateExpectation(
+            predicate: NSPredicate { object, _ in
+                guard let paths = object as? [String] else { return false }
+                return paths.contains { FileManager.default.fileExists(atPath: $0) }
+            },
+            object: ackPaths
+        )
+        guard XCTWaiter.wait(for: [done], timeout: 60) == .completed else {
+            XCTFail(
+                "ホスト側でWebContentプロセスを終了できない（\(step)）。ios/scripts/run-webcontent-termination-ui-test.shで実行する"
+            )
+            throw WebContentKillAcknowledgementTimeout(step: step)
+        }
+    }
+
+    private func editorLoadingOverlay(in app: XCUIApplication) -> XCUIElement {
+        app.descendants(matching: .any)["editorLoadingOverlay"]
+    }
+
+    /// 要素が現れるまで、50ms間隔で確かめ続ける。`waitForExistence`は約1秒ごとにしか確かめず、
+    /// 1秒ほどで消える表示を見落とす。待機は上限で打ち切る。
+    private func pollUntilExists(_ element: XCUIElement, timeout: TimeInterval) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        repeat {
+            if element.exists { return true }
+            Thread.sleep(forTimeInterval: 0.05)
+        } while Date() < deadline
+        return false
+    }
+
+    /// 空の編み図を作って1個描き、保存が終わるまで待つ。復帰後に同じ編み図を探すために使う。
+    @discardableResult
+    private func prepareSavedChart(named name: String, in app: XCUIApplication) -> XCUIElement {
+        createDocument(named: name, in: app)
+        let canvas = positionSaveProbeCanvas(count: 0, in: app)
+        saveProbeCell(row: 8, col: 12, on: canvas).tap()
+        _ = saveProbeCanvas(count: 1, in: app)
+        let webView = app.webViews.firstMatch
+        waitForDocumentSave(named: name, in: webView)
+        return webView
+    }
+
+    /// WebContent終了後の再読み込みが終わり、失敗の案内が出ていないことを確かめる。
+    private func assertEditorRecoversAfterTermination(in app: XCUIApplication, note: String) {
+        let overlay = editorLoadingOverlay(in: app)
+        XCTAssertTrue(
+            waitForDisappearance(of: overlay, timeout: 180),
+            "\(note): WebContent終了後の準備中の表示が消えない: \(app.debugDescription)"
+        )
+        XCTAssertFalse(
+            app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "編み図を読み込めませんでした"))
+                .firstMatch.exists,
+            "\(note): WebContent終了後の復旧に失敗した: \(app.debugDescription)"
+        )
+        XCTAssertEqual(app.state, .runningForeground, note)
+    }
+
+    /// 保存済みの編み図が開いていて、記号数が変わっていないことを確かめる。
+    private func assertSavedChart(name: String, stitchCount: Int, in app: XCUIApplication) {
+        let webView = app.webViews.firstMatch
+        let title = webView.staticTexts
+            .matching(NSPredicate(format: "label BEGINSWITH %@", name))
+            .firstMatch
+        XCTAssertTrue(title.waitForExistence(timeout: Self.editorAppearanceTimeout), "\(name)が開いていない: \(app.debugDescription)")
+        let canvas = webView.otherElements
+            .matching(NSPredicate(format: "label CONTAINS %@", "記号\(stitchCount)個"))
+            .firstMatch
+        XCTAssertTrue(canvas.waitForExistence(timeout: Self.editorAppearanceTimeout), "\(name)の記号数が違う: \(app.debugDescription)")
+    }
+
+    /// 復帰した編集画面で、保存済みの編み図へもう1個描けることを確かめる。
+    private func assertChartCanBeEdited(in app: XCUIApplication) {
+        let canvas = positionSaveProbeCanvas(count: 1, in: app)
+        tapChangingStitchCount("復帰後の描画", from: 1, to: 2, in: app) {
+            saveProbeCell(row: 8, col: 13, on: canvas).tap()
+        }
+    }
+
+    /// 再読み込みしたページに古い書き出しの結果が届いていないことを、利用者に見える範囲で確かめる。
+    /// 結果のIDは`webViewWebContentProcessDidTerminate`と`didCommit`が破棄し、Web側の
+    /// `pendingExports`もページの読み直しで消える。ここで見るのは失敗の案内だけであり、
+    /// 古い成功結果や未完了の配信は単体テストの`WebContentRecoveryTests`と
+    /// `NativeExportResultTests`が検証する。
+    private func assertNoStaleExportResult(in app: XCUIApplication) {
+        for message in ["共有に失敗しました", "出力ファイルを準備できませんでした", "保存画面を表示できませんでした"] {
+            XCTAssertFalse(
+                app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", message)).firstMatch.exists,
+                "古い書き出しの結果が届いた: \(message): \(app.debugDescription)"
+            )
+        }
+        XCTAssertFalse(app.buttons["再試行"].exists, app.debugDescription)
+    }
+
+    /// WebContent終了後に、終了前から開いていた出力パネルが閉じていることを確かめる。
+    ///
+    /// 出力パネルはWeb側の状態なので、ページが読み直されれば必ず閉じる。パネルの
+    /// 「閉じる」だけを消す実装でも通らないよう、出力のボタンと「閉じる」の両方を見る。
+    private func assertExportPanelClosedAfterReload(showing button: String, in app: XCUIApplication) {
+        XCTAssertTrue(
+            waitForDisappearance(of: app.buttons[button], timeout: 10),
+            "WebContent終了後に出力パネルの「\(button)」が残っている（ページが再読み込みされていない）: \(app.debugDescription)"
+        )
+        XCTAssertTrue(
+            waitForDisappearance(of: app.buttons["閉じる"], timeout: 10),
+            "WebContent終了後に出力パネルの「閉じる」が残っている（ページが再読み込みされていない）: \(app.debugDescription)"
+        )
     }
 
     private func requireAppUpdateProbe() throws {
