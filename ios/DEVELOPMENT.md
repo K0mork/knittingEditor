@@ -166,6 +166,23 @@ XCUITestは起動前に`app.launchEnvironment["KNITTING_EDITOR_AUTOSAVE_DELAY_MS
 
 `testSeedDocumentForAppUpdateProbe`は起動前に`app.launchEnvironment["KNITTING_EDITOR_APP_UPDATE_FIXTURE"] = "1"`を設定できる。DEBUGネイティブがこの値を`appUpdateFixture: true`としてWebViewへ渡し、iOS Webは初期化より前に`seedAppUpdateFixture()`でfixtureをIndexedDBへ書き込む。fixtureは編み図2つ（色・幅2目の記号・点線・背景色を含む「アプリ更新復元fixture」と、目印かつ幅2目の記号1個の「アプリ更新復元fixture2」）と保存済みブロック1つで、内容は`packages/editor-core/storage/appUpdateFixtureData.ts`が1つの関数で作る。書き込みは、利用者が編み図を作って保存するときと同じ保存の公開API（`createDocument`・`saveDocument`・`saveBlock`・`activeDocumentId`の設定）を通る。保存の記録を手作りしないので、本物の保存経路へ将来の項目が加わってもfixtureは同じ形になる。既存文書があるときは何も書かないため、テストの再試行でも追記しない。Releaseにはこの経路が入らない（`DebugEditorConfiguration`と動的importが`#if DEBUG`・DEBUG bundleだけになる）。更新後のテストは目印の編み図でfixtureの版を区別し、前のリリースが保存した最小fixture（記号1個）も引き続き読めることを確かめる。
 
+### WebContent終了時のUIテスト
+
+WebContentプロセスの終了はUIテストのプロセスから起こせない。`ios/scripts/run-webcontent-termination-ui-test.sh`は、テストが`NSLog`で出す合図をSimulatorのログから拾い、対象Simulatorの`launchd_sim`の子プロセスである`com.apple.WebKit.WebContent`をSIGKILLする。テストは`TEST_RUNNER_KNITTING_EDITOR_WEBCONTENT_KILL=1`があるときだけ動作し、CIではskipする。
+
+```sh
+ios/scripts/run-webcontent-termination-ui-test.sh "KE verify iPhone"
+```
+
+- `testShareSheetSurvivesWebContentTermination`: PNGの共有シート表示中に終了し、シートを閉じたあと保存済みの編み図で編集を再開できる。
+- `testDocumentPickerSurvivesWebContentTermination`: `.knit`の保存画面表示中に終了し、同じく編集を再開できる。
+- `testRecoveryAccessibilityExposesPreparingNoticeAndRetry`: 準備中の表示・失敗の案内・「再試行」の読み上げ用ラベルとボタンの種類を確かめ、再試行で編集へ戻る。失敗の案内の画面を`performAccessibilityAudit`（ラベルと種類だけ）にもかける。
+- `testLargeChartRecoversFromWebContentTerminationInBackground`: 300段×300目の編み図を保存してバックグラウンドへ移し、終了後に戻って保存済みの編み図で編集を再開できる。
+
+引数にテストのメソッド名（`testShareSheetSurvivesWebContentTermination`など）か`Class/testMethod`を渡すと、そのテストだけを実行する。
+
+共有シートの枠外のタップは、シートを閉じると同時に背後の要素にも届く（iOS 27.2 Simulator）。再読み込みで出力パネルが消えると枠外は盤面になるため、`testShareSheetSurvivesWebContentTermination`はヘッダーの題名を叩いてシートを閉じる。
+
 ### CIの結果の確かめ方
 
 確かめる対象と完了の条件は[`AGENTS.md`](AGENTS.md)の「CI確認」に従う。PRのCIは次の手順で待つ。
