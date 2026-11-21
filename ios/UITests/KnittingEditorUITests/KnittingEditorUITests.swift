@@ -471,6 +471,20 @@ final class KnittingEditorUITests: XCTestCase {
             .firstMatch.waitForExistence(timeout: 10), app.debugDescription)
     }
 
+    /// 表示中の盤面の左上から数えたマス（0始まり）。盤面は表示範囲より大きいので、見えているマスは
+    /// どれも盤面の中にある。大きな文字で盤面の表示範囲が狭いときに使う。
+    private func visibleBoardCell(row: Int, col: Int, on canvas: XCUIElement) -> XCUICoordinate {
+        let band: CGFloat = 28
+        let cell: CGFloat = 30
+        let size = canvas.frame.size
+        let point = CGVector(dx: band + (CGFloat(col) + 0.5) * cell, dy: band + (CGFloat(row) + 0.5) * cell)
+        XCTAssertTrue(
+            point.dx < size.width && point.dy < size.height,
+            "表示中の盤面の外 row=\(row) col=\(col) frame=\(canvas.frame)"
+        )
+        return canvas.coordinate(withNormalizedOffset: .zero).withOffset(point)
+    }
+
     private func drawSaveProbeCell(row: Int, col: Int, count: Int, in app: XCUIApplication) {
         let canvas = positionSaveProbeCanvas(count: count, in: app)
         saveProbeCell(row: row, col: col, on: canvas).tap()
@@ -1818,6 +1832,363 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertTrue(stitchPicker.isHittable, "記号の選択画面を閉じたあと道具列へ戻れない: \(app.debugDescription)")
     }
 
+    /// AX3・AX5で、Issue #389の主な操作を一通り行い、各段階の画面写真を残す。
+    ///
+    /// WKWebViewの文字描画とDynamic TypeはSimulatorと実機で同じため、Simulatorの画面写真で
+    /// 文字の重なりや意味の分からない切れがないかを確かめられる。通常のCIでは環境変数が
+    /// 無いため実行しない（PRスモーク・実機の一覧にも入れない）。
+    func testAccessibilityLargeTextMainOperationsWalkthrough() throws {
+        try XCTSkipUnless(
+            ProcessInfo.processInfo.environment["KNITTING_EDITOR_LARGE_TEXT_WALKTHROUGH"] == "1",
+            "SimulatorでAX3・AX5の主な操作を画面写真付きで確かめるときだけ実行する"
+        )
+        // 2つの文字サイズで作成・編集・範囲選択・出力・切替・使い方まで行うため、既定の3分では足りない。
+        executionTimeAllowance = 1200
+        for (prefix, category) in [
+            ("AX3", "UICTContentSizeCategoryAccessibilityL"),
+            ("AX5", "UICTContentSizeCategoryAccessibilityXXXL"),
+        ] {
+            let app = launchWithContentSizeCategory(category)
+            walkThroughLargeTextMainOperations(prefix: prefix, in: app)
+            app.terminate()
+        }
+    }
+
+    /// 1つの文字サイズ分の主な操作。画面写真は「AX3-01-create-chart」のように手順の番号を付ける。
+    private func walkThroughLargeTextMainOperations(prefix: String, in app: XCUIApplication) {
+        let suffix = UUID().uuidString.prefix(8)
+        let firstChart = "\(prefix)主操作A-\(suffix)"
+        let secondChart = "\(prefix)主操作B-\(suffix)"
+
+        // 01 新しい編み図を作る。
+        createDocument(named: firstChart, in: app)
+        _ = positionSaveProbeCanvas(count: 0, in: app)
+        assertWalkthroughChrome(in: app)
+        add(screenshotAttachment(named: "\(prefix)-01-create-chart"))
+
+        // 02 記号を選ぶ。色の一覧に出すため、先に1つ置いてから色を選ぶ。
+        let stitchPicker = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label == %@", "編み目記号を選ぶ"))
+            .firstMatch
+        scrollHorizontallyUntilHittable(stitchPicker, in: app, row: primaryToolsRow(in: app))
+        stitchPicker.tap()
+        let stitchHeading = app.staticTexts["編み目記号"]
+        XCTAssertTrue(stitchHeading.waitForExistence(timeout: 10), app.debugDescription)
+        let stitch = app.switches
+            .matching(NSPredicate(format: "label BEGINSWITH %@", "右上2目交差"))
+            .firstMatch
+        assertHittableAfterScrolling(stitch, in: app)
+        add(screenshotAttachment(named: "\(prefix)-02-choose-stitch"))
+        stitch.tap()
+        XCTAssertTrue(waitForDisappearance(of: stitchHeading, timeout: 10), app.debugDescription)
+        // 選んだ記号の名前が道具列に残っているかを、道具列が左端にあるうちに残す。
+        add(screenshotAttachment(named: "\(prefix)-02-choose-stitch-selected"))
+        // 大きな文字では盤面の表示範囲が狭く（AX5のiPhoneで約4段）、`saveProbeCell`が前提とする
+        // 20段×20目が見えない。この走査では、表示中の盤面の左上から数えたマスを使う。
+        let emptyCanvas = positionSaveProbeCanvas(count: 0, in: app)
+        tapChangingStitchCount("1つ目の記号", from: 0, to: 1, in: app) {
+            visibleBoardCell(row: 1, col: 4, on: emptyCanvas).tap()
+        }
+
+        // 03 色を選ぶ。入力欄の色はOSの色選択を開くため、いま置いた記号の色見本を使う。
+        let colorTool = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label BEGINSWITH %@", "記号の色を選ぶ"))
+            .firstMatch
+        scrollHorizontallyUntilHittable(colorTool, in: app, row: primaryToolsRow(in: app))
+        colorTool.tap()
+        let colorHeading = app.staticTexts["記号の色"]
+        XCTAssertTrue(colorHeading.waitForExistence(timeout: 10), app.debugDescription)
+        let usedColor = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", "#d33c32", "、記号"))
+            .firstMatch
+        XCTAssertTrue(usedColor.waitForExistence(timeout: 10), app.debugDescription)
+        assertWithinWindow(usedColor, in: app)
+        XCTAssertTrue(usedColor.isHittable, app.debugDescription)
+        add(screenshotAttachment(named: "\(prefix)-03-choose-colour"))
+        usedColor.tap()
+        XCTAssertTrue(waitForDisappearance(of: colorHeading, timeout: 10), app.debugDescription)
+        assertWithinWindow(colorTool, in: app)
+        XCTAssertTrue(colorTool.isHittable, app.debugDescription)
+
+        // 04 色を変えた記号をもう1つ置く。
+        let oneCanvas = positionSaveProbeCanvas(count: 1, in: app)
+        tapChangingStitchCount("2つ目の記号", from: 1, to: 2, in: app) {
+            visibleBoardCell(row: 3, col: 4, on: oneCanvas).tap()
+        }
+        let twoCanvas = saveProbeCanvas(count: 2, in: app)
+        waitForStitchCount(2, on: twoCanvas, in: app)
+        assertWalkthroughChrome(in: app)
+        add(screenshotAttachment(named: "\(prefix)-04-place-symbols"))
+
+        // 05 消すモードで、後から置いた記号を消す。
+        let eraseSwitch = app.switches["消す"]
+        XCTAssertTrue(eraseSwitch.waitForExistence(timeout: 10), app.debugDescription)
+        scrollHorizontallyUntilHittable(eraseSwitch, in: app, row: primaryToolsRow(in: app))
+        eraseSwitch.tap()
+        let twoForErase = positionSaveProbeCanvas(count: 2, in: app)
+        tapChangingStitchCount("後から置いた記号の消去", from: 2, to: 1, in: app) {
+            visibleBoardCell(row: 3, col: 4, on: twoForErase).tap()
+        }
+        let oneAfterErase = saveProbeCanvas(count: 1, in: app)
+        waitForStitchCount(1, on: oneAfterErase, in: app)
+        let drawSwitch = app.switches["描く"]
+        scrollHorizontallyUntilHittable(drawSwitch, in: app, row: primaryToolsRow(in: app))
+        drawSwitch.tap()
+        XCTAssertEqual(app.switches["描く"].value as? String, "1", app.debugDescription)
+        add(screenshotAttachment(named: "\(prefix)-05-erase"))
+
+        // 06 範囲を選んでコピーする。
+        let rangeSwitch = app.switches["範囲"]
+        scrollHorizontallyUntilHittable(rangeSwitch, in: app, row: primaryToolsRow(in: app))
+        rangeSwitch.tap()
+        let canvasForSelection = positionSaveProbeCanvas(count: 1, in: app)
+        // 記号のある1段だけを選ぶ。貼り付けは空のマスも上書きするので、選ぶ段が多いと
+        // 貼り付け先が元の記号に重なりやすい。
+        visibleBoardCell(row: 1, col: 1, on: canvasForSelection)
+            .press(forDuration: 0.05, thenDragTo: visibleBoardCell(row: 1, col: 10, on: canvasForSelection))
+        let selectionBar = selectionActionsRow(in: app)
+        XCTAssertTrue(selectionBar.waitForExistence(timeout: 10), app.debugDescription)
+        let copy = app.buttons["コピー"]
+        scrollHorizontallyUntilHittable(copy, in: app, row: selectionBar)
+        assertWithinWindow(copy, in: app)
+        XCTAssertTrue(copy.isHittable, app.debugDescription)
+        for name in ["盤面", "ブロック", "出力"] {
+            XCTAssertFalse(copy.frame.intersects(app.buttons[name].frame), "選択操作帯のコピーが\(name)を覆う")
+        }
+        add(screenshotAttachment(named: "\(prefix)-06-select-copy"))
+        copy.tap()
+        let pasteBand = app.staticTexts["貼付中：左上にするマスをタップ"]
+        XCTAssertTrue(pasteBand.waitForExistence(timeout: 10), app.debugDescription)
+
+        // 07 貼り付け先をタップし、貼付をやめる。
+        let canvasForPaste = positionSaveProbeCanvas(count: 1, in: app)
+        var stitchCount = 2
+        let stopPaste = app.buttons["やめる"]
+        let pasteBar = pasteActionsRow(in: app)
+        let pasteHasNoRoom = canvasForPaste.frame.height < 28 + 30
+        if pasteHasNoRoom {
+            // AX5のiPhoneでは、貼付中の帯で盤面が1段分も残らず、貼り付け先を選べない（#389の残り）。
+            // 走査の残りの手順を確かめるため、既知の失敗として記録し、貼付をやめて進む。
+            add(screenshotAttachment(named: "\(prefix)-07-paste-no-room"))
+            XCTExpectFailure("#389: 貼付中の盤面に貼り付け先のマスが見えない") {
+                XCTFail("貼付中の盤面の高さが\(canvasForPaste.frame.height)ptしかない")
+            }
+            stitchCount = 1
+        } else {
+            // 貼付中の帯が盤面の上に入ると、盤面の表示位置がずれる。貼り付けは空のマスも上書きするので、
+            // 元の記号と同じ段に貼ると元の記号が消えて記号数が変わらない。1回目で変わらなければ、
+            // 1段下（元の記号とは違う段）を叩く。
+            var pasteRow = 0
+            tapChangingStitchCount("貼り付け先のタップ", from: 1, to: 2, in: app) {
+                visibleBoardCell(row: pasteRow, col: 1, on: canvasForPaste).tap()
+                pasteRow += 1
+            }
+            let pastedCanvas = saveProbeCanvas(count: 2, in: app)
+            waitForStitchCount(2, on: pastedCanvas, in: app)
+        }
+        XCTAssertTrue(pasteBand.exists, app.debugDescription)
+        scrollHorizontallyUntilHittable(stopPaste, in: app, row: pasteBar)
+        assertWithinWindow(stopPaste, in: app)
+        func assertStopPasteIsClear() {
+            XCTAssertTrue(stopPaste.isHittable, app.debugDescription)
+            for name in ["盤面", "ブロック", "出力"] {
+                XCTAssertFalse(stopPaste.frame.intersects(app.buttons[name].frame), "貼付の操作帯が\(name)を覆う")
+            }
+        }
+        if pasteHasNoRoom {
+            // 同じ#389の残り。AX5のiPhoneでは「やめる」が下の操作列（盤面・ブロック）の後ろに入る。
+            XCTExpectFailure("#389: 貼付中の「やめる」が下の操作列に重なる", strict: false) {
+                assertStopPasteIsClear()
+            }
+        } else {
+            assertStopPasteIsClear()
+        }
+        add(screenshotAttachment(named: "\(prefix)-07-paste"))
+        stopPaste.tap()
+        XCTAssertTrue(waitForDisappearance(of: pasteBand, timeout: 10), app.debugDescription)
+        XCTAssertEqual(app.switches["描く"].value as? String, "1", app.debugDescription)
+
+        // 08 盤面の段数・列数を変える。
+        let resized = resizeBoardForLargeText(
+            rows: 160,
+            cols: 70,
+            in: app,
+            screenshotName: "\(prefix)-08-resize-fields"
+        )
+        XCTAssertTrue(resized.label.contains("記号\(stitchCount)個"), resized.debugDescription)
+        assertWalkthroughChrome(in: app)
+        add(screenshotAttachment(named: "\(prefix)-08-resize-board"))
+
+        // 09〜11 PNG・PDF・.knitをシステムの保存画面まで開き、既存のテストと同じく閉じる。
+        let save = app.buttons["出力"]
+        XCTAssertTrue(save.waitForExistence(timeout: 10), app.debugDescription)
+        openSavePanel(with: save, showing: app.buttons["PNGを保存"], in: app)
+        for (buttonName, step) in [
+            ("PNGを保存", "09-save-png"),
+            ("PDFを保存", "10-save-pdf"),
+            ("この編み図を書き出す", "11-save-knit"),
+        ] {
+            let export = app.buttons[buttonName]
+            // 出力パネルは保存画面を閉じたあとも開いたまま残る。閉じていた場合だけ開き直す。
+            if !app.buttons["閉じる"].exists {
+                openSavePanel(with: save, showing: export, in: app)
+            }
+            assertHittableAfterScrolling(export, in: app)
+            assertWithinWindow(export, in: app)
+            export.tap()
+            let fileSave = app.buttons["ファイルに保存"]
+            XCTAssertTrue(fileSave.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+            XCTAssertTrue(app.buttons["共有"].exists, app.debugDescription)
+            guard tapExportAlertButton(fileSave, in: app, step: "\(prefix)-\(step)") else { return }
+            let systemSheet = SystemSheet.element(in: app)
+            XCTAssertTrue(systemSheet.waitForExistence(timeout: 20), app.debugDescription)
+            add(screenshotAttachment(named: "\(prefix)-\(step)-system-sheet"))
+            let dismissal = dismissSystemSheet(in: app)
+            assertDisappears(systemSheet, from: app, note: "\(prefix) \(step) \(dismissal)")
+            add(screenshotAttachment(named: "\(prefix)-\(step)"))
+        }
+        if app.buttons["閉じる"].exists {
+            let close = app.buttons["閉じる"]
+            assertWithinWindow(close, in: app)
+            XCTAssertTrue(close.isHittable, app.debugDescription)
+            close.tap()
+            XCTAssertTrue(
+                waitForDisappearance(of: app.buttons["この編み図を書き出す"], timeout: 10),
+                app.debugDescription
+            )
+        }
+        assertWalkthroughChrome(in: app)
+
+        // 12 2つ目の編み図を作り、一覧で1つ目へ切り替える。
+        createDocument(named: secondChart, in: app)
+        _ = positionSaveProbeCanvas(count: 0, in: app)
+        _ = openDocumentsPanel(in: app)
+        let firstItem = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", firstChart + "、")).firstMatch
+        let secondItem = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", secondChart + "、")).firstMatch
+        // 大きな文字では一覧の各項目も高く、下の項目はパネルを送らないと押せない。
+        // 上の項目から順に押せる位置まで送り、最後に切り替え先の1つ目を画面内へ残す。
+        // AX5のiPhoneでは編み図名を折り返して、項目がパネルの見える範囲より高くなる
+        // （約490pt）。全体は画面に収まらないので、見える部分を押して切り替わることを確かめる。
+        let isTall = { (item: XCUIElement) in item.frame.height >= app.windows.firstMatch.frame.height / 3 }
+        for item in [secondItem, firstItem] {
+            XCTAssertTrue(item.waitForExistence(timeout: 10), app.debugDescription)
+            if !isTall(item) {
+                assertHittableAfterScrolling(item, in: app)
+                assertWithinWindow(item, in: app)
+                XCTAssertTrue(item.isHittable, app.debugDescription)
+            }
+        }
+        add(screenshotAttachment(named: "\(prefix)-12-switch-chart"))
+        if isTall(firstItem) {
+            tapVisiblePart(of: firstItem, in: app)
+        } else {
+            firstItem.tap()
+        }
+        let firstTitle = app.webViews.firstMatch.staticTexts
+            .matching(NSPredicate(format: "label BEGINSWITH %@", firstChart))
+            .firstMatch
+        XCTAssertTrue(firstTitle.waitForExistence(timeout: 10), app.debugDescription)
+        _ = saveProbeCanvas(count: stitchCount, in: app)
+        waitForDocumentSave(named: firstChart, in: app.webViews.firstMatch)
+        assertWalkthroughChrome(in: app)
+        add(screenshotAttachment(named: "\(prefix)-12-switched-chart"))
+
+        // 13 使い方を開く。
+        let guide = app.links["使い方"]
+        XCTAssertTrue(guide.waitForExistence(timeout: 10), app.debugDescription)
+        assertWithinWindow(guide, in: app)
+        XCTAssertTrue(guide.isHittable, app.debugDescription)
+        openGuide(with: guide, in: app)
+        add(screenshotAttachment(named: "\(prefix)-13-open-guide"))
+
+        // 14 使い方から編集画面へ戻る。
+        let back = app.links.matching(identifier: "編集画面へ戻る").firstMatch
+        XCTAssertTrue(back.waitForExistence(timeout: 10), app.debugDescription)
+        scrollWebViewUntilHittable(back, in: app)
+        back.tap()
+        let output = app.buttons["出力"]
+        if !output.waitForExistence(timeout: 10), back.exists {
+            scrollWebViewUntilHittable(back, in: app)
+            back.tap()
+        }
+        XCTAssertTrue(output.waitForExistence(timeout: 20), "使い方から編集画面へ戻れない: \(app.debugDescription)")
+        XCTAssertFalse(app.otherElements["editorLoadingOverlay"].exists, app.debugDescription)
+        let restoredCanvas = saveProbeCanvas(count: stitchCount, in: app)
+        XCTAssertTrue(restoredCanvas.exists, app.debugDescription)
+        assertWalkthroughChrome(in: app)
+        add(screenshotAttachment(named: "\(prefix)-14-close-guide"))
+    }
+
+    /// 各段階で、ヘッダーと操作メニューの主要なボタンが画面内で押せることを確かめる。
+    private func assertWalkthroughChrome(in app: XCUIApplication) {
+        let window = app.windows.firstMatch.frame.insetBy(dx: -1, dy: -1)
+        for name in ["編み図", "盤面", "ブロック", "出力"] {
+            let button = app.buttons[name]
+            XCTAssertTrue(button.waitForExistence(timeout: 10), "\(name) が見つからない: \(app.debugDescription)")
+            XCTAssertTrue(waitForHittable(button, timeout: 10), "\(name) を操作できない: \(app.debugDescription)")
+            XCTAssertTrue(
+                window.contains(button.frame),
+                "\(name) が画面外 \(button.frame) / \(window): \(app.debugDescription)"
+            )
+        }
+        let guide = app.links["使い方"]
+        XCTAssertTrue(guide.waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertTrue(waitForHittable(guide, timeout: 10), "使い方を操作できない: \(app.debugDescription)")
+        XCTAssertTrue(
+            window.contains(guide.frame),
+            "使い方が画面外 \(guide.frame) / \(window): \(app.debugDescription)"
+        )
+    }
+
+    /// 大きな文字では段数・列数の欄が縦に並び、「変更」がキーボードやパネルの外へ出る。
+    /// キーボードを閉じ、「変更」が押せる位置までパネルを送ってから盤面の大きさを変える。
+    /// `screenshotName`は、値を入れた段数・列数の欄を残すための名前。
+    private func resizeBoardForLargeText(
+        rows: Int,
+        cols: Int,
+        in app: XCUIApplication,
+        screenshotName: String
+    ) -> XCUIElement {
+        app.buttons["盤面"].tap()
+        let rowsField = app.textFields["段数"]
+        XCTAssertTrue(rowsField.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
+        func closeKeyboard() {
+            guard app.keyboards.firstMatch.exists else { return }
+            app.staticTexts["盤面設定"].tap()
+            if !waitForDisappearance(of: app.keyboards.firstMatch, timeout: 5) {
+                // 見出しで閉じないときは、パネルの外のヘッダーを押して入力を外す。
+                // iPhoneとiPadでヘッダーの高さが違うため、ヘッダーの中に収まる位置を使う。
+                let headerY: CGFloat = UIDevice.current.userInterfaceIdiom == .pad ? 0.06 : 0.1
+                app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: headerY)).tap()
+                _ = waitForDisappearance(of: app.keyboards.firstMatch, timeout: 5)
+            }
+        }
+        replaceNumber(rows, in: rowsField, app: app)
+        // AX5のiPhoneでは列数の欄が画面の下にあり、段数の入力で出たキーボードに隠れる。
+        // キーボードを閉じ、欄が押せる位置まで動かしてから入力する。
+        closeKeyboard()
+        let colsField = app.textFields["列数"]
+        assertHittableAfterScrolling(colsField, in: app)
+        replaceNumber(cols, in: colsField, app: app)
+        closeKeyboard()
+        add(screenshotAttachment(named: screenshotName))
+        let change = app.buttons["変更"]
+        XCTAssertTrue(change.waitForExistence(timeout: 10), app.debugDescription)
+        assertHittableAfterScrolling(change, in: app)
+        change.tap()
+
+        let resized = app.webViews.firstMatch.otherElements
+            .matching(NSPredicate(format: "label CONTAINS %@", "\(rows)段、\(cols)目"))
+            .firstMatch
+        XCTAssertTrue(resized.waitForExistence(timeout: 120), "盤面を\(rows)×\(cols)にできない: \(app.debugDescription)")
+        let close = app.buttons["閉じる"]
+        XCTAssertTrue(close.waitForExistence(timeout: 10), app.debugDescription)
+        assertWithinWindow(close, in: app)
+        XCTAssertTrue(close.isHittable, app.debugDescription)
+        close.tap()
+        return resized
+    }
+
     /// 指定した文字サイズ（Dynamic Type）にして起動し、編集画面が`webReady`を送り、
     /// 準備中の表示が消えるまで待ってからWebの内容を探す（#64）。
     private func launchWithContentSizeCategory(_ category: String) -> XCUIApplication {
@@ -1934,6 +2305,13 @@ final class KnittingEditorUITests: XCTestCase {
     private func selectionActionsRow(in app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any)
             .matching(NSPredicate(format: "label BEGINSWITH %@", "選択範囲の操作"))
+            .firstMatch
+    }
+
+    /// 貼付中の操作帯を返す。大きな文字では1行のまま横スクロールする。
+    private func pasteActionsRow(in app: XCUIApplication) -> XCUIElement {
+        app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label BEGINSWITH %@", "貼付の操作"))
             .firstMatch
     }
 
@@ -2467,6 +2845,34 @@ final class KnittingEditorUITests: XCTestCase {
     /// WebViewのページを上へ送り、要素が押せる位置に来るまで待つ。
     /// 実機のiPhoneは1回のスワイプで600pt前後しか送らず、高さ約9,800ptの使い方ページの
     /// 末尾まで14回では届かなかった。押せる位置に来たら止まるので、上限は多めにする。
+    /// 画面より高い項目は全体を画面に収められない。見える部分が44pt以上になるまで
+    /// 項目と同じ列（iPadでは右の列のパネル）の上で短く送り、その中央を押す。
+    private func tapVisiblePart(of element: XCUIElement, in app: XCUIApplication, maximumDrags: Int = 20) {
+        let webView = app.webViews.firstMatch
+        let minimumVisible: CGFloat = 44
+        var drags = 0
+        while element.frame.intersection(webView.frame).height < minimumVisible, drags < maximumDrags {
+            let isBelow = element.frame.minY >= webView.frame.maxY - minimumVisible
+            // 盤面の上で動かすと盤面が動いたり記号を置いたりするため、項目の列の中で動かす。
+            let x = min(max(element.frame.midX, webView.frame.minX + 1), webView.frame.maxX - 1)
+            let start = app.coordinate(withNormalizedOffset: .zero)
+                .withOffset(CGVector(dx: x, dy: webView.frame.midY))
+            let end = start.withOffset(CGVector(dx: 0, dy: isBelow ? -250 : 250))
+            start.press(forDuration: 0.1, thenDragTo: end)
+            drags += 1
+        }
+        let visible = element.frame.intersection(webView.frame)
+        XCTAssertGreaterThanOrEqual(
+            visible.height,
+            minimumVisible,
+            "\(drags)回送っても見える部分が足りない 要素=\(element.frame) WebView=\(webView.frame)"
+        )
+        guard !visible.isNull, visible.height >= minimumVisible else { return }
+        app.coordinate(withNormalizedOffset: .zero)
+            .withOffset(CGVector(dx: visible.midX, dy: visible.midY))
+            .tap()
+    }
+
     private func scrollWebViewUntilHittable(
         _ element: XCUIElement,
         in app: XCUIApplication,
