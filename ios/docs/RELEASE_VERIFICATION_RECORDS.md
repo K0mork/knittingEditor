@@ -502,3 +502,23 @@ v1.0の公開後、審査中に`main`へ入った変更をまとめたv1.1を提
 - App Store Connectの1.2の版で、ビルドに1.2 (1)を選んで保存した。審査には出していない。
 - 1.2の版に登録した枠付きのスクリーンショットを「プレビュー」で確かめた。製品ページのiPhone（縦）、iPad（縦・横）、iPhone Duo（外側・内側）で、説明文の切れや枠の欠けはなかった（#434を閉じた）。ヘッダ画像は、検索結果で左端の文字が切れ、見出しに製品名が入っているため、#507で直し方を決める。
 - 残り: 実機の提出前の確認（`run-device-ui-tests.sh`と#501）、#389と#507の決定、スクリーンショットの撮り直し（#503）、審査への提出。
+
+## 2026-11-21 v1.2の提出前の確認（実機）
+
+| 項目 | 記録 |
+|---|---|
+| 実施日 | 2026-11-21 |
+| 実施者 | Claude Code（`run-device-ui-tests.sh`の実行と判定）、利用者（端末の接続と設定） |
+| Git commit | `8bc5ad9`（1.2 (1)と同じ） |
+| 端末とOSの版 | iPhone 13 mini（iOS 27.2.1）、iPad Air 第5世代（iPadOS 27.2.1）。どちらもケーブル接続 |
+| Xcode | 27.2 (27B52) |
+
+- iPhoneは、利用者の指示で、[手順](DEVICE_TESTING.md#提出前)のiPhone 17ではなくiPhone 13 miniを使った。2台を同時に流した。
+- iPad Air 第5世代: 14件すべてが1回目で成功した。
+- iPhone 13 mini: 14件中13件が成功した。`testAccessibilityExtraExtraExtraLargeKeepsSelectionActionsSeparate`は再試行を含めて2回とも失敗した。AX5で範囲を選ぶと盤面の高さが36pt（テストは120pt以上）になり、目盛りだけが残ってマスが見えない。1.1のコミット（`1fc015f`）でも同じテストが同じ36ptで失敗したので、1.2で悪くなったものではない。[#389](https://github.com/K0mork/knittingEditor/issues/389)の症状で、画面がiPhone 17より62pt低い分、大きく出る。手順3の判定（すべて成功）を満たさないので、#389の判断に含める。
+- iPhone 13 miniの`testAccessibilityExtraExtraExtraLargeKeepsLandscapeHeaderInWindow`は、1回目で横向きの配置に変わる前に待ち時間が切れ、再試行で成功した。同じ時間に、同じMacでiPad用のビルドを流していた。
+- 画面写真: iPadは、文字の切れや重なりがなかった。iPhone 13 miniは、AX5の盤面のほかに問題はなかった。共有シートの画面写真には連絡先などが写るので、記録には載せない。
+- テストのあと、両端末に`8bc5ad9`の開発ビルドを入れ直した。[#501](https://github.com/K0mork/knittingEditor/issues/501)の確認は行っていない。
+- 利用者の判断で、1.2の版の「ヘッダ」と「検索結果」から画像を外した（[#507](https://github.com/K0mork/knittingEditor/issues/507)）。再読み込み後もどちらも0/1で、検索結果にはスクリーンショットが出る。
+- アップロードした1.2 (1)のアーカイブに、Icon Composerのアイコン（ライト・ダーク・色合い）が入っていることを確かめた。1.1のアーカイブはPNGのアイコンだけだった。
+- 残り: #501の確認、#389の決定、スクリーンショットの撮り直し（#503）、審査への提出。
