@@ -1,6 +1,6 @@
 # iOSの提出・公開の手順
 
-iOS版をApp Storeへ提出・公開する手順。手順1〜4は最初の版（v1.0）を出すときだけ行うもので、済んでいる。更新版は、手順5〜9に[手順10](#10-更新版を提出する)を加えて進める。全項目の管理は[提出チェックリスト](APP_STORE_CHECKLIST.md)、入力値の正本は[メタデータ](APP_STORE_METADATA.md)、版ごとの実機確認は[実機確認の標準手順](DEVICE_TESTING.md)に従う。
+iOS版をApp Storeへ提出・公開する手順。手順1〜4は最初の版（v1.0）を出すときだけ行うもので、済んでいる。更新版は、手順5〜8に[手順9](#9-更新版を提出する)を加えて進める。全項目の管理は[提出チェックリスト](APP_STORE_CHECKLIST.md)、入力値の正本は[メタデータ](APP_STORE_METADATA.md)、版ごとの実機確認は[実機確認の標準手順](DEVICE_TESTING.md)に従う。
 
 v1.0（2026-11-06）とv1.1（2026-11-07）は公開済み。各手順を行った日・ビルド・結果は[リリース確認の記録](RELEASE_VERIFICATION_RECORDS.md)にある（v1.0は[2026-11-03の提出](RELEASE_VERIFICATION_RECORDS.md#2026-11-03-提出用アーカイブのアップロードと審査への提出)以降の節、v1.1は[2026-11-06の提出](RELEASE_VERIFICATION_RECORDS.md#2026-11-06-v11のアーカイブ作成と提出)の節）。
 
@@ -22,7 +22,7 @@ Apple Developer Programへ個人で加入し、2026-11-02に有効になった�
 
 ## 3. XcodeでAutomatic署名を設定する（v1.0で済み）
 
-2026-11-02に、有料のTeamのAutomatic署名で`com.k0mork.knittingEditor`の証明書とProvisioning Profileが解決し、iPhone・iPadへ入れて起動し、再起動後もデータが残ることを確かめた（[記録](RELEASE_VERIFICATION_RECORDS.md#2026-11-02-有料teamでの署名と実機導入iphone-17--ios-272ipad-air-第5世代--ipados-272有線)）。開発ビルドは機内モードで自動テストを起動できないため、M0の機内モードの確認は、TestFlightで配る提出ビルドで行う（手順8）。
+2026-11-02に、有料のTeamのAutomatic署名で`com.k0mork.knittingEditor`の証明書とProvisioning Profileが解決し、iPhone・iPadへ入れて起動し、再起動後もデータが残ることを確かめた（[記録](RELEASE_VERIFICATION_RECORDS.md#2026-11-02-有料teamでの署名と実機導入iphone-17--ios-272ipad-air-第5世代--ipados-272有線)）。
 
 Macや端末を替えて設定し直すときは、次のとおりにする。
 
@@ -59,7 +59,7 @@ SKUは製品管理用の一意な文字列を利用者が決め、登録値は�
 
 版ごと（作り直しを含む）に、次のとおりにする。
 
-1. 提出するソースのコミットを固定する。[検証・配布](APP_STORE_CHECKLIST.md#検証配布)に従い、提出候補PRの `ci-gate` と、その候補を含むmainコミットの `Full iOS validation`（iPhone・iPad全テスト、両端末のapp_update、unsigned Release Archive・資産検査）の成功を確認する。失敗Issueがあれば調査・修正する。そのコミットで[実機確認の標準手順の提出前](DEVICE_TESTING.md#提出前)の確認を行う。
+1. 提出するソースのコミットを固定する。[検証・配布](APP_STORE_CHECKLIST.md#検証配布)に従い、提出候補PRの `ci-gate` と、その候補を含むmainコミットの `Full iOS validation`（iPhone・iPad全テスト、両端末のapp_update、iPhone SEでの`device-ui-tests.txt`の一覧、unsigned Release Archive・資産検査）の成功を確認する。失敗Issueがあれば調査・修正する。その版が[実機確認の標準手順の提出前](DEVICE_TESTING.md#提出前)の条件に当たるときは、そのコミットで確認を行う。
 2. **手元のXcode 27.1（iOS 27.1 SDK）以降**を使う。Xcode 26.6固定のCIアーカイブは提出に使わない。iPhone Duoでの全画面表示（#96）に加え、2027年4月からはiOS 27 SDK以降でのビルドがAppleの必須要件になる。版の根拠と検査条件は提出チェックリストの「提出用のアーカイブ」、CIとの違いは[#289](https://github.com/K0mork/knittingEditor/issues/289)を参照する。
 3. Xcodeでscheme `knittingEditor`、実機向けの汎用destination（Simulatorではない）を選び、Archiveの構成がReleaseであることを確認して、Product > Archiveを実行する。構成・destination・検査の参照元は[`release_archive`ジョブ](../../.github/workflows/ios-full.yml)とする。ただし、ローカルの提出用署名を有効にし、CIの `CODE_SIGNING_ALLOWED=NO`／`CODE_SIGNING_REQUIRED=NO` は付けない。
 4. Organizerで対象ArchiveをFinderに表示し、リポジトリルートから次を実行する。パスは実際のArchiveへ置き換える。
@@ -106,13 +106,13 @@ SKUは製品管理用の一意な文字列を利用者が決め、登録値は�
 
 MacとApple Vision Proは[#86の決定コメント](https://github.com/K0mork/knittingEditor/issues/86#issuecomment-6010786273)に従い、**v1.0では既定のまま配信を止めない**。両環境の動作確認はv1.0の必須条件に追加しない。
 
-- **完了の目安:** #27の入力がそろい、[提出チェックリストの「検証・配布」](APP_STORE_CHECKLIST.md#検証配布)と実機ゲートM6の登録内容照合を終え、手順8で審査と並行して確かめる提出ビルドの実機確認のほかに、未解決の必須項目がない。
+- **完了の目安:** #27の入力がそろい、[提出チェックリストの「検証・配布」](APP_STORE_CHECKLIST.md#検証配布)と実機ゲートM6の登録内容照合を終え、未解決の必須項目がない。
 - **関係するIssue／項目:** [#27](https://github.com/K0mork/knittingEditor/issues/27)、[#86](https://github.com/K0mork/knittingEditor/issues/86)、提出チェックリストのApp Privacyから配信地域までの各登録項目、実機ゲートM6。
 
 ## 7. 審査に提出する
 
-1. 手順5でアップロードし、処理済みになったビルド番号を提出する版に選ぶ。[提出チェックリスト](APP_STORE_CHECKLIST.md)を再確認し、任意項目・将来対応と、手順8で審査と並行して確かめる提出ビルドの実機確認とを区別する。それ以外の必須の未完了があれば先に解消する。
-2. 公開方法は**手動公開**にして、提出前にApp Store Connectへ設定する。手順8の確認が承認より後に終わっても、確認の前に公開されないようにするためである。内容を保存して審査へ追加し、最終の提出操作まで進める。
+1. 手順5でアップロードし、処理済みになったビルド番号を提出する版に選ぶ。[提出チェックリスト](APP_STORE_CHECKLIST.md)を再確認し、任意項目・将来対応と必須項目を区別する。それ以外の必須の未完了があれば先に解消する。
+2. 公開方法は**手動公開**にして、提出前にApp Store Connectへ設定する。内容を保存して審査へ追加し、最終の提出操作まで進める。
 3. 審査は通常1〜2日を目安にするが、追加確認等で長くなる場合もある（[Appleの審査案内](https://developer.apple.com/jp/help/app-review/after-submitting-for-review/request-expedited-review/)）。App Store Connectの状態とAppleからの連絡を確認する。
 4. リジェクトされたら、指摘された条項と再現手順を読み、再提出する前に、App Store Connectでアプリの状態を確かめて対応を選ぶ。Appleの案内は状態ごとに違う（[App and submission statuses](https://developer.apple.com/help/app-store-connect/reference/app-and-submission-statuses)、2026-11-05に確認）。審査担当者への返信は再提出するまでしか送れない（[Reply to App Review messages](https://developer.apple.com/help/app-store-connect/manage-submissions-to-app-review/reply-to-app-review-messages/)）ので、返信が要るときは再提出の前に送る。アプリの説明と確認手順は[審査メモ](APP_REVIEW_NOTES.md)にある。
    - 状態が「Metadata Rejected」（メタデータの却下）なら、メタデータを直してから審査担当者に返信し、直したことを伝える。Appleはこの状態では再提出ではなく返信を案内している。
@@ -124,33 +124,22 @@ MacとApple Vision Proは[#86の決定コメント](https://github.com/K0mork/kn
 - **完了の目安:** 提出が受理され、最終的に承認を確認できた。審査待ち・審査中・リジェクトは承認として扱わない。
 - **関係するIssue／項目:** [#27](https://github.com/K0mork/knittingEditor/issues/27)、提出チェックリストの全必須項目と「提出後の承認」、実機ゲートM6。
 
-## 8. 審査と並行して、TestFlightで提出ビルドを実機で確かめる
+## 8. 承認後に公開し、確認と記録を残す
 
-手順7で提出したら、審査の結果を待たずに始める。提出ビルドの実機確認は、提出の条件ではなく公開の条件とする（2026-11-02の決定。提出を早めるため）。Appleは提出の前にTestFlightを通すことを求めていない。手順5でアップロードしたビルドはそのままTestFlightにも出るので、確認のために別のビルドを作らない。
-
-1. 処理済みビルドを内部テストグループへ追加し、TestFlightから入れられるようにする（#25）。以降は**審査に出したのと同じビルド番号**で確認する。
-2. [実機確認の標準手順の公開前](DEVICE_TESTING.md#公開前)の確認を行う。
-3. 問題が見つかったら公開しない。審査中なら審査から取り下げ、承認後の公開待ちならそのビルドを却下して、直した新しいビルド番号で手順5からやり直す。
-
-- **完了の目安:** 標準手順の公開前の確認を終え、結果を記録した。これが済むまで手順9の公開操作をしない。
-- **関係するIssue／項目:** [#25](https://github.com/K0mork/knittingEditor/issues/25)、[実機確認の標準手順](DEVICE_TESTING.md)。
-
-## 9. 承認後に公開し、確認と記録を残す
-
-公開方法は手順7のとおり手動公開にする（[Appleの公開オプション](https://developer.apple.com/help/app-store-connect/manage-your-apps-availability/select-an-app-store-version-release-option/)）。承認後、公開待ちの状態で、手順8の確認が完了し問題がないことを確かめてから、利用者が公開操作を行う。自動公開（日時指定を含む）を使いたい版は、手順8を提出の前に終えてから提出する。自動公開では、手順8の確認より先に公開されることがあるためである。
+公開方法は手順7のとおり手動公開にする（[Appleの公開オプション](https://developer.apple.com/help/app-store-connect/manage-your-apps-availability/select-an-app-store-version-release-option/)）。承認後、公開待ちの状態で、利用者が公開操作を行う。
 
 アクセシビリティの表示は、版がリリースされるまで下書きのまま公開できない。下書きを入力・変更したら、版がリリースされたあとに「アプリのアクセシビリティ」で公開する。v1.1の回答は2026-11-11に公開し、日本の製品ページに表示されることを確かめた（[記録](RELEASE_VERIFICATION_RECORDS.md#2026-11-21-v11の公開後の確認438)）。
 
-公開操作・自動公開の後、ストアへの反映を待つ。Appleの案内では表示まで最大24時間かかる場合がある。反映されたら、[実機確認の標準手順の公開後](DEVICE_TESTING.md#公開後)の確認を行う。承認前に「App Store配布完了」と報告しない。承認後も、公開待ち・反映待ち・公開確認済みを区別して記録する。
+公開操作の後、ストアへの反映を待つ。Appleの案内では表示まで最大24時間かかる場合がある。反映されたら、[実機確認の標準手順の公開後](DEVICE_TESTING.md#公開後)の確認を行う。承認前に「App Store配布完了」と報告しない。承認後も、公開待ち・反映待ち・公開確認済みを区別して記録する。
 
 記録は[実機確認の標準手順の記録](DEVICE_TESTING.md#記録)に従う。個人情報・テスターの識別情報・登録画面等の非公開証跡は公開せず、ルートの `private/` 内の保管場所だけを記す。
 
 - **完了の目安:** 承認とストア公開を確認し、標準手順の公開後の確認を終え、記録のPRがマージされた。
 - **関係するIssue／項目:** [#25](https://github.com/K0mork/knittingEditor/issues/25)・[#26](https://github.com/K0mork/knittingEditor/issues/26)・[#27](https://github.com/K0mork/knittingEditor/issues/27)、提出チェックリスト末尾の承認確認、[実機確認の標準手順](DEVICE_TESTING.md)。
 
-## 10. 更新版を提出する
+## 9. 更新版を提出する
 
-更新版も、手順5〜9に従ってビルド・確認・入力・提出・公開する。2027年4月以降の提出では、iOS 27 SDK以降でのビルドとiPhone Duoのスクリーンショットが必要になる（手順5・6）。UIを変えた版では、iPhone Duoの画像も撮り直す。バージョン番号は[バージョンとビルド番号](APP_STORE_METADATA.md#バージョンとビルド番号)に従って上げる。App Review Guidelinesは、新しい機能を審査メモに具体的に書くよう求めており（2.3.1(a)。一般的な説明はリジェクトの対象になる）、説明のない機能を禁じている（2.5.19）。このため、手順6で審査メモを転記する前に、次のとおり[審査メモ](APP_REVIEW_NOTES.md)を直す。
+更新版も、手順5〜8に従ってビルド・確認・入力・提出・公開する。2027年4月以降の提出では、iOS 27 SDK以降でのビルドとiPhone Duoのスクリーンショットが必要になる（手順5・6）。UIを変えた版では、iPhone Duoの画像も撮り直す。バージョン番号は[バージョンとビルド番号](APP_STORE_METADATA.md#バージョンとビルド番号)に従って上げる。App Review Guidelinesは、新しい機能を審査メモに具体的に書くよう求めており（2.3.1(a)。一般的な説明はリジェクトの対象になる）、説明のない機能を禁じている（2.5.19）。このため、手順6で審査メモを転記する前に、次のとおり[審査メモ](APP_REVIEW_NOTES.md)を直す。
 
 1. 前に公開した版のタグ（`ios-v1.0-build1`など、手順5の7）から提出するコミットまでの、マージ済みPRと `docs/dev-log/` の記録を読み、利用者が使える機能・操作で増えたものと変わったものを書き出す。不具合の修正だけで、操作が変わらないものは除いてよい。
 2. 審査メモの英語・日本語の両方に、その版で増えた機能・変わった操作と、審査担当者が確かめる手順を具体的に書く。「不具合の修正と改善」のような一般的な説明だけにしない。アプリ内課金を加える版では、購入・復元を確かめる手順も書く（[#38](https://github.com/K0mork/knittingEditor/issues/38)）。
