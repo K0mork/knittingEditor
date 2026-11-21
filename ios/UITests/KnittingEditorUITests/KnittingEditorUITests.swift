@@ -1467,7 +1467,7 @@ final class KnittingEditorUITests: XCTestCase {
     ///       -destination 'platform=iOS Simulator,name=KE verify iPhone' \
     ///       -only-testing:knittingEditorUITests/KnittingEditorUITests/testShareSheetProbeSavesOnlyTheFileAndCopiesNoText
     ///
-    /// 保存したPNGは、ホスト側のSimulatorのFile Provider Local Storageで確かめる。
+    /// 保存したファイルはFilesの「このiPhone内」の一覧で確かめる。
     func testShareSheetProbeSavesOnlyTheFileAndCopiesNoText() throws {
         try XCTSkipUnless(
             ProcessInfo.processInfo.environment["KNITTING_EDITOR_SHARE_SHEET_PROBE"] == "1",
@@ -1499,10 +1499,15 @@ final class KnittingEditorUITests: XCTestCase {
         copy.tap()
         assertDisappears(copySheet, from: app, note: "コピー後")
 
-        // 文面が入っていれば、アプリから見える`UIPasteboard`の文字列に残る。
-        // ファイルだけなら文字列は空か、ファイルの場所・名前であり、文面は含まない。
+        // コピーが終わってPNGが入るまで待つ。空のままでは、文面が無いことを確かめたことにならない。
         let pasteboard = UIPasteboard.general
-        let copiedText = pasteboard.string
+        let copied = XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in pasteboard.contains(pasteboardTypes: ["public.png"]) },
+            object: nil
+        )
+        _ = XCTWaiter.wait(for: [copied], timeout: 10)
+        // 文面が入っていれば、文字列の種類としてペーストボードに残る。
+        let copiedText = pasteboard.hasStrings ? pasteboard.string : nil
         let copiedTypes = pasteboard.types
         let copyNote = "SHARE_SHEET_PROBE copy items=\(pasteboard.numberOfItems) hasStrings=\(pasteboard.hasStrings) types=[\(copiedTypes.joined(separator: ", "))] string=\(copiedText ?? "nil")"
         print(copyNote)
@@ -1511,9 +1516,14 @@ final class KnittingEditorUITests: XCTestCase {
         copyAttachment.name = "コピー後のペーストボード"
         copyAttachment.lifetime = .keepAlways
         add(copyAttachment)
+        XCTAssertTrue(
+            pasteboard.contains(pasteboardTypes: ["public.png"]),
+            "コピーにPNGが入っていない: \(copyNote)"
+        )
+        XCTAssertFalse(pasteboard.hasStrings, "コピーに文字列が入っている: \(copyNote)")
         XCTAssertFalse(
-            copiedText?.contains("棒針編み図エディタで作成") ?? false,
-            "コピーに共有の文面が入っている: \(copyNote)"
+            copiedTypes.contains { $0.contains("text") },
+            "コピーに文字の種類が入っている: \(copyNote)"
         )
 
         // 「ファイルに保存」はPNGだけを端末内へ保存する。一意な名前で保存し、Filesでも確かめる。
@@ -1578,12 +1588,18 @@ final class KnittingEditorUITests: XCTestCase {
             waitUntilStill(location)
             location.tap()
         }
-        let saved = files.descendants(matching: .any)
+        let saved = files.cells
             .matching(NSPredicate(format: "label BEGINSWITH %@ OR identifier BEGINSWITH %@", savedPrefix, savedPrefix))
-            .firstMatch
-        let found = saved.waitForExistence(timeout: 20)
+        let found = saved.firstMatch.waitForExistence(timeout: 20)
         add(screenshotAttachment(named: "ファイル-保存したPNG-\(savedPrefix)"))
         XCTAssertTrue(found, "Filesの「このiPhone内」に\(savedPrefix).pngが見つからない: \(files.debugDescription)")
+        XCTAssertEqual(saved.count, 1, "同じ名前で2つ以上保存されている: \(files.debugDescription)")
+        // 文面も渡っていれば、テキストのファイルが同じ場所に増える。名前は文面やシステムの既定名になる。
+        let textFiles = files.cells.matching(NSPredicate(
+            format: "label CONTAINS %@ OR label CONTAINS[c] %@ OR label BEGINSWITH %@ OR label BEGINSWITH %@",
+            "棒針編み図エディタ", ".txt", "テキスト", "Text"
+        ))
+        XCTAssertEqual(textFiles.count, 0, "共有の文面がファイルとして保存されている: \(files.debugDescription)")
     }
 
     func testBackslashDocumentNameReachesAllNativeExportActions() {
@@ -2935,10 +2951,13 @@ final class KnittingEditorUITests: XCTestCase {
         let showMore = app.descendants(matching: .any)
             .matching(NSPredicate(format: "label IN %@", ["表示を増やす", "Show More"])).firstMatch
         var action = candidate()
+        var expanded = false
         for _ in 0..<5 {
             if action.exists, waitForHittable(action, timeout: 2) { return action }
-            if showMore.exists, isHittableWithoutFailing(showMore) {
+            // 「表示を増やす」は開閉を切り替えるので、1回だけ押す。
+            if !expanded, showMore.exists, isHittableWithoutFailing(showMore) {
                 showMore.tap()
+                expanded = true
             } else if isHittableWithoutFailing(sheet) {
                 sheet.swipeUp()
             }
@@ -2986,7 +3005,8 @@ final class KnittingEditorUITests: XCTestCase {
         var found: XCUIElement?
         let appears = XCTNSPredicateExpectation(
             predicate: NSPredicate { _, _ in
-                found = self.firstHittable(in: app, labels: labels)
+                // 別プロセスの要素の問い合わせが待機の時間切れで打ち切られても、失敗にしない（#44）。
+                found = self.ignoringWaiterInterruption { self.firstHittable(in: app, labels: labels) }
                 return found != nil
             },
             object: app

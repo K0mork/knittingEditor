@@ -42,7 +42,6 @@ final class ShareCreditItemSourceTests: XCTestCase {
     /// ある実際のrawValueで、`SaveToFiles`の部分一致が効くことを確かめる。
     func testSaveToFilesActivityFromIOS27DoesNotGetTheText() {
         let saveToFiles = UIActivity.ActivityType("com.apple.DocumentManagerUICore.SaveToFiles")
-        XCTAssertTrue(saveToFiles.rawValue.contains("SaveToFiles"))
         XCTAssertFalse(ShareCreditItemSource.includesText(for: saveToFiles))
         XCTAssertNil(item(for: saveToFiles))
     }
