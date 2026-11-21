@@ -19,6 +19,7 @@ final class ShareCreditItemSource: NSObject, UIActivityItemSource {
     /// 文面を渡すかどうか。メール・メッセージ・外部の共有機能（既知の定数に無い`rawValue`）には渡す。
     /// `nil`は操作の種類が定まらない要求（プレビューなど）で、文面を渡しても保存されないので渡す。
     /// 「ファイルに保存」は公開された定数が無いので、rawValueの部分一致（`SaveToFiles`）で見分ける。
+    /// iOS 27のSimulatorで確認した実際のrawValueは`com.apple.DocumentManagerUICore.SaveToFiles`。
     static func includesText(for activityType: UIActivity.ActivityType?) -> Bool {
         guard let activityType else { return true }
         if activityType.rawValue.contains("SaveToFiles") { return false }

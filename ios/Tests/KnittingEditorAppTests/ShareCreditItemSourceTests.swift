@@ -3,7 +3,7 @@ import XCTest
 @testable import knittingEditor
 
 /// 共有シートへ添える文面が、渡す先の操作ごとに切り替わることを確かめる（#474）。
-/// 実際の共有シートで各操作がどう受け取るかは実機で確かめるので、ここでは判定だけを確かめる。
+/// 実際の共有シートで各操作がどう受け取るかはSimulatorのUIテストと実機で確かめるので、ここでは判定だけを確かめる。
 final class ShareCreditItemSourceTests: XCTestCase {
     private let source = ShareCreditItemSource()
 
@@ -31,12 +31,19 @@ final class ShareCreditItemSourceTests: XCTestCase {
         let fileOnlyTypes: [UIActivity.ActivityType] = [
             .saveToCameraRoll, .airDrop, .copyToPasteboard, .print, .assignToContact,
             .addToReadingList, .openInIBooks, .markupAsPDF,
-            .init("com.apple.DocumentManager.SaveToFiles"), .init("com.apple.DocumentManagerUIService.SaveToFiles"),
         ]
         for activityType in fileOnlyTypes {
             XCTAssertFalse(ShareCreditItemSource.includesText(for: activityType), "\(activityType.rawValue)")
             XCTAssertNil(item(for: activityType), "\(activityType.rawValue)")
         }
+    }
+
+    /// 「ファイルに保存」は公開された定数が無い。iOS 27.2のSimulatorのdyld共有キャッシュに
+    /// ある実際のrawValueで、`SaveToFiles`の部分一致が効くことを確かめる。
+    func testSaveToFilesActivityFromIOS27DoesNotGetTheText() {
+        let saveToFiles = UIActivity.ActivityType("com.apple.DocumentManagerUICore.SaveToFiles")
+        XCTAssertFalse(ShareCreditItemSource.includesText(for: saveToFiles))
+        XCTAssertNil(item(for: saveToFiles))
     }
 
     func testUnspecifiedActivityTypeStillGetsTheText() {
