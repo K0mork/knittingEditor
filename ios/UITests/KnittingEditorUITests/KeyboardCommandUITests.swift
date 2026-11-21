@@ -208,9 +208,10 @@ final class KeyboardCommandUITests: XCTestCase {
         add(screenshot(named: "⌘Oで開いた復元の選択画面"))
     }
 
-    /// ハードウェアキーボードのショートカットが、押した最初の1回で効くかを測る（#303）。
+    /// ハードウェアキーボードのショートカットが、押した最初の1回で効くかをSimulatorで測る（#303）。
     ///
-    /// 実機のiPadにキーボードをつないだ確認の代わりに、SimulatorのXCUITestが送るキーで測る。
+    /// 実機のiPadにキーボードをつないだ確認（#501）の前段として、SimulatorのXCUITestが送るキーで測る。
+    /// 実機のハードウェアキーボードでの確認の代わりにはならない。
     /// キーは送り直さず、1回目で期待する変化が出た回だけを数える。1回目で出ないときは、
     /// アプリがまったく反応しない状態かを見分けるためにもう1回だけ送る。
     /// 100%でなくてもテストは成功させ、結果を`FIRST_PRESS`の行と添付に残す。
@@ -221,7 +222,8 @@ final class KeyboardCommandUITests: XCTestCase {
     ///     xcodebuild test ... \
     ///       -only-testing:knittingEditorUITests/KeyboardCommandUITests/testShortcutsTakeEffectOnFirstPress
     ///
-    /// 編集画面が準備できてから最初のキーまで、1.0秒だけ固定で待つ。
+    /// 起動直後の状況では、編集画面が準備できてから最初のキーまで1.0秒だけ固定で待つ。
+    /// 編集後の状況では待たずに押す。
     func testShortcutsTakeEffectOnFirstPress() throws {
         try XCTSkipUnless(
             ProcessInfo.processInfo.environment["KNITTING_EDITOR_KEYBOARD_FIRST_PRESS"] == "1",
@@ -237,12 +239,16 @@ final class KeyboardCommandUITests: XCTestCase {
         var lines: [String] = []
         var failure: String?
         let suffix = UUID().uuidString.prefix(8)
+        // 途中のassertでテストが止まっても、それまでの集計表と添付を残す。
+        addTeardownBlock {
+            self.addFirstPressSummary(tallies: tallies, lines: lines, runs: runs)
+        }
 
         for run in 1...runs {
             let app = launchEditor()
             let canvas = editorCanvas(in: app)
             XCTAssertTrue(canvas.waitForExistence(timeout: Self.timeout), app.debugDescription)
-            // 編集画面が準備できてから、最初のキーまで固定で1.0秒待つ。
+            // 起動直後の状況だけ、編集画面が準備できてから最初のキーまで固定で1.0秒待つ。
             Thread.sleep(forTimeInterval: Self.firstPressSettleTime)
             if let action = measureFirstPresses(
                 .afterLaunch,
@@ -275,9 +281,22 @@ final class KeyboardCommandUITests: XCTestCase {
             app.terminate()
         }
 
+        if let failure {
+            XCTFail(failure)
+        }
+    }
+
+    /// 途中で終わった回でも結果を残せるよう、`addTeardownBlock`から集計表と添付を出す。
+    private func addFirstPressSummary(
+        tallies: [FirstPressKey: FirstPressTally],
+        lines: [String],
+        runs: Int
+    ) {
+        // 添付やログは公開され得るため、利用者が付けた端末名ではなくSimulator名か機種名を残す。
+        let device = ProcessInfo.processInfo.environment["SIMULATOR_DEVICE_NAME"] ?? UIDevice.current.model
         var summary = [
-            "FIRST_PRESS 結果 device=\(UIDevice.current.name) os=\(UIDevice.current.systemVersion) " +
-                "runs=\(runs) settle=\(Self.firstPressSettleTime)秒",
+            "FIRST_PRESS 結果 device=\(device) os=\(UIDevice.current.systemVersion) " +
+                "runs=\(runs) settle=\(Self.firstPressSettleTime)秒(起動直後のみ)",
             "FIRST_PRESS 注: 試行0は未計測（途中で終了した場合）",
             "FIRST_PRESS 状況,ショートカット,1回目成功,試行,2回目で反応",
         ]
@@ -296,10 +315,6 @@ final class KeyboardCommandUITests: XCTestCase {
         attachment.name = "FIRST_PRESS summary"
         attachment.lifetime = .keepAlways
         add(attachment)
-
-        if let failure {
-            XCTFail(failure)
-        }
     }
 
     // MARK: - 最初の1回の計測
@@ -374,6 +389,16 @@ final class KeyboardCommandUITests: XCTestCase {
                 return [.command, .shift]
             }
         }
+
+        /// 「ファイルを保存」の確認を出す書き出し。押す前に、前の確認が残っていないことを確かめる。
+        var isExport: Bool {
+            switch self {
+            case .exportBackup, .exportAllBackup, .exportPng, .exportPdf:
+                return true
+            default:
+                return false
+            }
+        }
     }
 
     private enum FirstPressOutcome {
@@ -441,7 +466,17 @@ final class KeyboardCommandUITests: XCTestCase {
             // 使い方は、押す前にアプリが保存を待つ（`guideNavigation.ts`）。保存待ちで
             // 開かない回をキーの失敗と数えないよう、保存済みになってから押す。
             if action == .guide {
-                waitForDocumentSaved(in: app)
+                waitForDocumentSaved(before: action.shortcut, in: app)
+            }
+
+            // 書き出しは、前の保存画面が閉じていることを押す前に確かめる。閉じ損ねた
+            // アラートが残っていると、その存在を1回目の反応と誤認する。
+            if action.isExport {
+                XCTAssertFalse(
+                    app.alerts["ファイルを保存"].exists,
+                    "前の書き出しの保存画面が閉じていないため、\(action.shortcut)の1回目を測れない: " +
+                        "\(app.debugDescription)"
+                )
             }
 
             let probe = makeProbe(for: action, app: app, canvas: canvas)
@@ -504,14 +539,20 @@ final class KeyboardCommandUITests: XCTestCase {
                 object: app.textFields["入力"]
             )
         case .exportBackup, .exportAllBackup, .exportPng, .exportPdf:
+            // アラートのメッセージ（ファイル名）まで確かめる。同じアラートが残っているだけの
+            // 状態や、別の書き出しのアラートを反応と数えない。
+            let alert = app.alerts["ファイルを保存"]
+            let filename = alert.staticTexts.matching(Self.filenamePredicate(for: action)).firstMatch
             return FirstPressProbe(
                 predicate: NSPredicate(format: "exists == true"),
-                object: app.alerts["ファイルを保存"]
+                object: filename
             )
         case .undo, .redo:
+            // 1回のキーで履歴が1件だけ戻る・進むことを、記号数で確かめる。
             let before = stitchCount(of: canvas)
+            let after = action == .undo ? before - 1 : before + 1
             return FirstPressProbe(
-                predicate: NSPredicate(format: "NOT (label CONTAINS %@)", "記号\(before)個"),
+                predicate: NSPredicate(format: "label CONTAINS %@", "記号\(after)個"),
                 object: canvas
             )
         case .guide:
@@ -522,50 +563,96 @@ final class KeyboardCommandUITests: XCTestCase {
         }
     }
 
+    /// 書き出しの保存画面に出るファイル名。既存の`testFileAndHelpShortcutsOpenEditorActions`と
+    /// 同じく、現在の編み図名は起動直後に分からないため、⌘Sは拡張子で、全データは固定名で確かめる。
+    private static func filenamePredicate(for action: FirstPressAction) -> NSPredicate {
+        switch action {
+        case .exportBackup:
+            return NSPredicate(format: "label ENDSWITH %@", ".knit")
+        case .exportAllBackup:
+            return NSPredicate(format: "label == %@", "knitting-editor-backup.knit")
+        case .exportPng:
+            return NSPredicate(format: "label ENDSWITH %@", ".png")
+        case .exportPdf:
+            return NSPredicate(format: "label ENDSWITH %@", ".pdf")
+        default:
+            return NSPredicate(value: false)
+        }
+    }
+
     /// 1つのショートカットが開いたダイアログやシートを閉じ、次のキーをアプリへ戻す。
+    /// 閉じられなかったまま次を測ると、キーが閉じ損ねた画面に吸われて誤った結果になるため、
+    /// どれも有界の再試行のあとで閉じたことを確かめる。
     private func reset(_ action: FirstPressAction, in app: XCUIApplication) {
         switch action {
         case .restore:
-            let sheet = SystemSheet.element(in: app)
-            // 閉じるボタンのタップが、表示の動きの途中で効かないことがある（KE verify iPad）。
-            // 閉じないまま次のキーを送ると選択画面が受け取るので、閉じるまで3回まで試す。
-            for _ in 0..<3 where sheet.exists {
-                let close = SystemSheet.closeButton(in: app)
-                if close.waitForExistence(timeout: 2), close.isHittable {
-                    close.tap()
-                } else {
-                    app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.15))
-                        .press(
-                            forDuration: 0.05,
-                            thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.98))
-                        )
-                }
-                if waitForDisappearance(of: sheet, timeout: 5) { break }
-            }
-            XCTAssertFalse(sheet.exists, "⌘Oで開いた選択画面を閉じられない: \(app.debugDescription)")
+            XCTAssertTrue(
+                dismissSystemSheet(in: app),
+                "⌘Oで開いた選択画面を閉じられない: \(app.debugDescription)"
+            )
             focusEditor(in: app)
         case .newDocument:
             let field = app.textFields["入力"]
-            if field.exists {
+            for _ in 0..<3 where field.exists {
                 let cancel = app.buttons["キャンセル"]
                 if cancel.exists && cancel.isHittable { cancel.tap() }
-                _ = waitForDisappearance(of: field, timeout: 10)
+                if waitForDisappearance(of: field, timeout: 5) { break }
             }
+            XCTAssertTrue(
+                waitForDisappearance(of: field, timeout: 5),
+                "⌘Nのダイアログを閉じられない: \(app.debugDescription)"
+            )
             focusEditor(in: app)
         case .exportBackup, .exportAllBackup, .exportPng, .exportPdf:
             let alert = app.alerts["ファイルを保存"]
-            if alert.exists {
+            for _ in 0..<3 where alert.exists {
                 let cancel = alert.buttons["キャンセル"]
-                if cancel.exists { cancel.tap() }
-                _ = waitForDisappearance(of: alert, timeout: 10)
+                if cancel.exists && cancel.isHittable { cancel.tap() }
+                if waitForDisappearance(of: alert, timeout: 5) { break }
             }
+            XCTAssertTrue(
+                waitForDisappearance(of: alert, timeout: 5),
+                "書き出しの保存画面を閉じられない: \(app.debugDescription)"
+            )
             focusEditor(in: app)
         case .undo, .redo:
             // 盤面の状態だけを変える。⌘Zの効果は次の⇧⌘Zで戻す。
             break
         case .guide:
-            _ = returnFromGuide(in: app)
+            XCTAssertTrue(
+                returnFromGuide(in: app),
+                "使い方ページから編集画面へ戻れない: \(app.debugDescription)"
+            )
         }
+    }
+
+    /// ⌘Oで開いたシステムの選択画面を閉じる。
+    ///
+    /// 閉じるボタンは、押せると判定した直後に消えることがある（#44）。`tap()`は対象が
+    /// 消えているとその場でテストを失敗にするため、枠を`snapshot()`で取り、その中心を
+    /// 座標で押す。枠が取れなければ画面の下スワイプへ落とし、3回まで試す。
+    private func dismissSystemSheet(in app: XCUIApplication) -> Bool {
+        let sheet = SystemSheet.element(in: app)
+        for _ in 0..<3 where sheet.exists {
+            let close = SystemSheet.closeButton(in: app)
+            let closeExists = close.waitForExistence(timeout: 2)
+            let closeHittable = closeExists && close.isHittable
+            let closeFrame = closeHittable ? (try? close.snapshot())?.frame : nil
+            if let closeFrame, !closeFrame.isEmpty {
+                app.coordinate(withNormalizedOffset: .zero)
+                    .withOffset(CGVector(dx: closeFrame.midX, dy: closeFrame.midY))
+                    .tap()
+                if waitForDisappearance(of: sheet, timeout: 5) { return true }
+            }
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.15)).press(
+                forDuration: 0.05,
+                thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.98)),
+                withVelocity: .default,
+                thenHoldForDuration: 0.0
+            )
+            if waitForDisappearance(of: sheet, timeout: 5) { return true }
+        }
+        return !sheet.exists
     }
 
     /// 編み図を新しく作り、記号を3個置いて「盤面」パネルを開閉する。
@@ -627,18 +714,46 @@ final class KeyboardCommandUITests: XCTestCase {
     }
 
     /// ヘッダーの保存状態が「保存済み」になり、「保存中」が消えるまで待つ。
-    private func waitForDocumentSaved(in app: XCUIApplication) {
+    /// 自動保存が「保存失敗」になったときは、`timeout`まで待たずにその場で止める。
+    private func waitForDocumentSaved(before shortcut: String, in app: XCUIApplication) {
         let webView = app.webViews.firstMatch
         let saved = webView.staticTexts
             .matching(NSPredicate(format: "label ENDSWITH %@", "保存済み"))
             .firstMatch
+        let failed = webView.staticTexts
+            .matching(NSPredicate(format: "label ENDSWITH %@", "保存失敗"))
+            .firstMatch
         let saving = webView.staticTexts
             .matching(NSPredicate(format: "label CONTAINS %@", "保存中"))
             .firstMatch
-        let savedExpectation = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == true"), object: saved)
+        // 状態は読み上げ用に「、保存済み」のように読点が付くので終わりで照合する
+        // （「保存済みブロックはありません。」には一致しない）。
+        var saveState = ""
+        let deadline = Date().addingTimeInterval(Self.timeout)
+        while Date() < deadline {
+            if failed.exists {
+                saveState = "保存失敗"
+                break
+            }
+            if saved.exists {
+                saveState = "保存済み"
+                break
+            }
+            _ = saved.waitForExistence(timeout: 0.5)
+        }
+        guard saveState == "保存済み" else {
+            add(screenshot(named: "保存の完了を確認できない-\(shortcut)"))
+            let seen = saveState.isEmpty ? "なし" : saveState
+            if saveState == "保存失敗" {
+                XCTFail("保存に失敗したため\(shortcut)を測れない（見えた状態: \(seen)）: \(app.debugDescription)")
+            } else {
+                XCTFail("保存の完了を確認できないため\(shortcut)を測れない（見えた状態: \(seen)）: \(app.debugDescription)")
+            }
+            return
+        }
         let notSaving = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: saving)
         XCTAssertEqual(
-            XCTWaiter.wait(for: [savedExpectation, notSaving], timeout: Self.timeout),
+            XCTWaiter.wait(for: [notSaving], timeout: Self.timeout),
             .completed,
             "自動保存が完了しない: \(app.debugDescription)"
         )
