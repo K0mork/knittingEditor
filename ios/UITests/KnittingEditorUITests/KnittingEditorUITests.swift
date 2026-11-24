@@ -44,7 +44,7 @@ final class KnittingEditorUITests: XCTestCase {
     /// `openGuide(with:in:)`が行う（#401）。
     func testGuideNavigationReturnsToUsableEditor() {
         // 保存待ちとガイドの待機が続いても実行時間の上限に掛からないよう、広げる。
-        executionTimeAllowance = 240
+        executionTimeAllowance = 360
         let app = XCUIApplication()
         app.launch()
 
@@ -324,7 +324,7 @@ final class KnittingEditorUITests: XCTestCase {
     /// 自動保存を1時間遅らせ、文書切替だけで直前の編集がDBへ残ることを確かめる。
     func testDocumentSwitchSavesWithoutAutosave() {
         // 2文書の作成・切替・再起動を1本で行うため、遅いランナーでは既定の3分に近づく。
-        executionTimeAllowance = 240
+        executionTimeAllowance = 360
         let app = XCUIApplication()
         app.launchEnvironment["KNITTING_EDITOR_AUTOSAVE_DELAY_MS"] = "3600000"
         app.launch()
@@ -1174,7 +1174,7 @@ final class KnittingEditorUITests: XCTestCase {
     /// 「全データを書き出す」を「ファイルに保存」で端末へ保存し、「バックアップから復元」で選ぶと、
     /// 既存の編み図は残ったまま「（復元）」の付いた編み図とブロックが追加され、復元した先頭の編み図へ切り替わる。
     func testBlockSaveAndFullBackupRestoreFollowGuide() {
-        executionTimeAllowance = 240
+        executionTimeAllowance = 360
         let app = XCUIApplication()
         app.launch()
         let suffix = UUID().uuidString.prefix(8)
@@ -1376,7 +1376,7 @@ final class KnittingEditorUITests: XCTestCase {
     /// 縦向きは全出力経路、横向きは共通のアンカーとdismissalをPNGで確認する。
     func testShareSheetsDismissBackToEditor() {
         // 4種類の書き出しで共有シートを開いて閉じるため、CIでは普段から約120〜180秒かかり、既定の3分に近い（#358）。
-        executionTimeAllowance = 240
+        executionTimeAllowance = 360
         assertShareSheetsDismissBackToEditor(landscape: false)
     }
 
@@ -1490,7 +1490,7 @@ final class KnittingEditorUITests: XCTestCase {
     func testShareSheetSurvivesWebContentTermination() throws {
         try requireWebContentTermination()
         // 遅いSimulatorでも、WebContentの再読み込みとシートの後片付けを待てるようにする。
-        executionTimeAllowance = 300
+        executionTimeAllowance = 360
         let app = XCUIApplication()
         app.launch()
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
@@ -1531,7 +1531,7 @@ final class KnittingEditorUITests: XCTestCase {
     /// 保存済みの編み図で編集を再開できることを確かめる（#336）。
     func testDocumentPickerSurvivesWebContentTermination() throws {
         try requireWebContentTermination()
-        executionTimeAllowance = 300
+        executionTimeAllowance = 360
         let app = XCUIApplication()
         app.launch()
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
@@ -1569,7 +1569,7 @@ final class KnittingEditorUITests: XCTestCase {
     /// 確かめる（#336）。2回続けて終了させ、10秒以内の再終了として失敗の案内を出す。
     func testRecoveryAccessibilityExposesPreparingNoticeAndRetry() throws {
         try requireWebContentTermination()
-        executionTimeAllowance = 300
+        executionTimeAllowance = 360
         let app = XCUIApplication()
         app.launch()
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
@@ -1844,7 +1844,7 @@ final class KnittingEditorUITests: XCTestCase {
     func testBackslashDocumentNameReachesAllNativeExportActions() {
         // 普段は約40〜70秒。CIでは前のテストのアプリの終了で約30秒、起動時の自動化セッションの準備で
         // 約1分止まることがあり、約160秒まで延びた（#358）。
-        executionTimeAllowance = 240
+        executionTimeAllowance = 360
         assertAllNativeExportActions(documentName: "試作\\修正版")
     }
 
@@ -2165,7 +2165,7 @@ final class KnittingEditorUITests: XCTestCase {
     /// 全ボタンを見せる。道具列は1行のまま横スクロールするため「範囲」「線」は帯を送って出す。
     func testAccessibilityExtraLargeKeepsPrimaryControlsUsable() {
         // AX5のテストと同じく、CIの遅い起動が既定の3分を超えないようにする（#355）。
-        executionTimeAllowance = 240
+        executionTimeAllowance = 360
         let app = launchWithAccessibilityExtraLarge()
 
         assertPrimaryControlsAreUsable(in: app)

@@ -247,7 +247,7 @@ jobs:
             -retry-tests-on-failure \
             -test-iterations 2 \
             -test-timeouts-enabled YES \
-            -default-test-execution-time-allowance 150 \
+            -default-test-execution-time-allowance 300 \
             -maximum-test-execution-time-allowance 360 \
             "${selections[@]}" \
             CODE_SIGNING_ALLOWED=NO
