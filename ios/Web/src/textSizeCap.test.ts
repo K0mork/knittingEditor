@@ -38,6 +38,9 @@ describe('capRootFontSize', () => {
     const cleanup = capRootFontSize(document);
     expect(probe()).not.toBeNull();
     expect(document.documentElement.style.fontSize).toBe('28px');
+    // ページの下へはみ出してWKWebViewをスクロールできるようにしないよう、左上に固定する。
+    const style = (probe() as HTMLElement).style;
+    expect([style.position, style.top, style.left]).toEqual(['fixed', '0px', '0px']);
 
     // システムの文字サイズがAX1以下へ戻ったら、インライン指定を外してCSSへ任せる。
     computed.mockReturnValue({ fontSize: '28px' } as CSSStyleDeclaration);

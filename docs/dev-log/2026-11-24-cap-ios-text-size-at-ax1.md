@@ -14,5 +14,7 @@
   - `grep`で削除したテスト名・補助関数・環境変数を探し、コードと一覧に残っていないことを確認した。
   - XcodeGenとSimulator向けビルドが成功し、iPhone 17 Simulator（iOS 27.2）で`knittingEditorTests`（161件、1件は既存の条件でスキップ）と、UIテスト`testLargestTextSizeIsCappedAndKeepsBoardAndPrimaryControlsUsable`・`testCanvasLabelsWithLargeTextAndErasePinch`が成功した。
   - 同じSimulatorで起動中に文字サイズを標準→AX1→AX3→AX5→特大と変え、AX1以上では編集画面が同じ大きさで止まり、特大へ戻すと小さくなることを画面写真で確かめた。
-  - iPad (A16)とiPhone SEでの実行は、PRのCIとこのブランチで手動実行したFull iOS validationで確かめる。
+  - このブランチで手動実行した1回目のFull iOS validation（コミット`2e64e8d`）は、iPad (A16)の`ios_full`で`KeyboardCommandUITests/testUndoAndRedoShortcutsEditTextFieldInsteadOfBoard`が再試行を含めて2回失敗した（名前入力ダイアログの「キャンセル」で閉じない）。他の5ジョブは成功した。手元のiPad (A16) Simulatorでは同じコードで成功し、再現しなかった。
+  - 調べる中で、文字サイズを読む要素が`#root`の下に置かれ、ページを要素の高さだけ伸ばしていたことが分かった（WebKitで、表示の高さ1180pxに対して`scrollHeight`が1197px）。WKWebViewがその分スクロールできるので、要素を左上に固定し、`textSizeCap.test.ts`で位置を確かめるようにした。修正後、iPhone 17 Simulatorで頭打ちのUIテストと、起動中の文字サイズの変更（標準→AX1→AX5→標準）を確かめ直した。
+  - 修正後のFull iOS validationの結果は、PRに記録する。
 - デプロイ影響: Web版には影響なし。iOS版は次のリリースから反映される。

@@ -17,8 +17,8 @@ export function cappedRootFontSize(systemPx: number, max = MAX_ROOT_FONT_SIZE): 
  * 編集画面の文字サイズをAX1で頭打ちにする。
  *
  * `:root`の`font: -apple-system-body`はシステムのDynamic Type設定をそのまま反映する。
- * 文字サイズを大きくしても盤面のマスは大きくならないため、AX2以上では盤面が画面に
- * 残らなくなる。そこで、システムの文字サイズを読むためだけの不可視の要素を置き、
+ * 文字サイズを大きくしても盤面のマスは大きくならないため、AX3以上では盤面が画面の
+ * 半分を割る。そこで、システムの文字サイズを読むためだけの不可視の要素を置き、
  * その計算済みの文字サイズが上限を超えたらルートへ`28px`を設定する。
  * 要素自身に`font: -apple-system-body`を指定するので、ルートのインライン指定には
  * 影響されず、常に現在のシステムの文字サイズを返す。
@@ -32,8 +32,10 @@ export function capRootFontSize(doc: Document = document): () => void {
 
   const probe = doc.createElement('span');
   probe.setAttribute('aria-hidden', 'true');
+  // 画面の左上に固定する。位置を決めないと`#root`の下に置かれ、ページが要素の高さだけ伸びて
+  // WKWebViewがその分スクロールできてしまう。
   probe.style.cssText =
-    'position:absolute;visibility:hidden;pointer-events:none;font:-apple-system-body;white-space:nowrap;';
+    'position:fixed;top:0;left:0;visibility:hidden;pointer-events:none;font:-apple-system-body;white-space:nowrap;';
   probe.textContent = 'M';
   doc.body.appendChild(probe);
 
