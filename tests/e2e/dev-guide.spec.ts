@@ -14,7 +14,7 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => { await server?.close(); });
 
-test('dev server navigates from editor to guide and reloads the guide', async ({ page }) => {
+test('dev server navigates from editor to guide and reloads the guide', { tag: '@static' }, async ({ page }) => {
   await page.goto(origin);
   await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
   await page.getByRole('link', { name: '使い方', exact: true }).click();

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('removes the editor footer and keeps the guide footer navigation', async ({ page }) => {
+test('removes the editor footer and keeps the guide footer navigation', { tag: '@static' }, async ({ page }) => {
   await page.goto('/');
   await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
   await expect(page.locator('footer')).toHaveCount(0);

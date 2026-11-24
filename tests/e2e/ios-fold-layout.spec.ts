@@ -16,7 +16,7 @@ const surfaces = [
 ];
 
 for (const axis of ['vertical', 'horizontal'] as const) {
-  test(`iOS interactive overlays avoid the ${axis} fold, including a reduced keyboard viewport`, async ({ page }, testInfo) => {
+  test(`iOS interactive overlays avoid the ${axis} fold, including a reduced keyboard viewport`, { tag: '@webkit-only' }, async ({ page }, testInfo) => {
     for (const height of [669, 260]) {
       await page.setViewportSize({ width: 951, height });
       for (const surface of surfaces) {
@@ -43,7 +43,7 @@ for (const axis of ['vertical', 'horizontal'] as const) {
 }
 
 
-test('iOS fold preserves a wide drawer below the header and flush with the right edge', async ({ page }, testInfo) => {
+test('iOS fold preserves a wide drawer below the header and flush with the right edge', { tag: '@webkit-only' }, async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 951, height: 669 });
   await page.setContent('<html><body><header class="app-header">使い方 / 編み図</header><aside class="drawer"><h2>盤面</h2><button>閉じる</button></aside></body></html>');
   await page.addStyleTag({ content: css });
@@ -76,7 +76,7 @@ test('iOS fold preserves a wide drawer below the header and flush with the right
 });
 
 for (const selector of ['toast', 'busy', 'selection-actions']) {
-  test(`iOS ${selector} preserves overlays clear of either side and moves intersections only`, async ({ page }) => {
+  test(`iOS ${selector} preserves overlays clear of either side and moves intersections only`, { tag: '@webkit-only' }, async ({ page }) => {
     await page.setViewportSize({ width: 951, height: 669 });
     for (const axis of ['vertical', 'horizontal']) {
       for (const position of [100, 450, 600]) {
