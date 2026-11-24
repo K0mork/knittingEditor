@@ -16,5 +16,5 @@
   - 同じSimulatorで起動中に文字サイズを標準→AX1→AX3→AX5→特大と変え、AX1以上では編集画面が同じ大きさで止まり、特大へ戻すと小さくなることを画面写真で確かめた。
   - このブランチで手動実行した1回目のFull iOS validation（コミット`2e64e8d`）は、iPad (A16)の`ios_full`で`KeyboardCommandUITests/testUndoAndRedoShortcutsEditTextFieldInsteadOfBoard`が再試行を含めて2回失敗した（名前入力ダイアログの「キャンセル」で閉じない）。他の5ジョブは成功した。手元のiPad (A16) Simulatorでは同じコードで成功し、再現しなかった。
   - 調べる中で、文字サイズを読む要素が`#root`の下に置かれ、ページを要素の高さだけ伸ばしていたことが分かった（WebKitで、表示の高さ1180pxに対して`scrollHeight`が1197px）。WKWebViewがその分スクロールできるので、要素を左上に固定し、`textSizeCap.test.ts`で位置を確かめるようにした。修正後、iPhone 17 Simulatorで頭打ちのUIテストと、起動中の文字サイズの変更（標準→AX1→AX5→標準）を確かめ直した。
-  - 修正後のFull iOS validationの結果は、PRに記録する。
+  - 修正後のFull iOS validation（コミット`f0e5a51`）は、全6ジョブが1回目で成功した。iPadで失敗した`testUndoAndRedoShortcutsEditTextFieldInsteadOfBoard`も成功した。iPadの`testShareSheetStaysUsableAfterRotatingWhileOpen`が1回目に失敗し（共有シートの枠外を1回叩いても閉じない）、組み込みの再試行で成功した。このテストは共有シートを扱い、この変更の対象ではない。
 - デプロイ影響: Web版には影響なし。iOS版は次のリリースから反映される。
