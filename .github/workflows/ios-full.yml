@@ -44,11 +44,11 @@ jobs:
           # 小さい画面のiPhoneでは、全テストではなく`device-ui-tests.txt`の一覧だけを流す。
           - device: 'iPhone SE (3rd generation)'
             ui_list: ios/UITests/device-ui-tests.txt
-    runs-on: macos-26
-    # App Store提出に要るiOS 26 SDKを持ち、イメージにあるSimulatorのランタイムと版が揃うXcodeに固定する。
-    # イメージの既定Xcodeが替わってもビルドとテストのXcodeが変わらないよう、明示的に選ぶ。
+    runs-on: xcode-27
+    # ci.ymlの`ios`ジョブと同じく、提出用のアーカイブを作る手元のXcodeと同じ27.2に固定する。
+    # イメージにiPhone SE (3rd generation)の端末は無いが、boot-simulator.shがiOS 27.2のランタイムから作る。
     env:
-      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+      DEVELOPER_DIR: /Applications/Xcode_27.2.app/Contents/Developer
     # 遅いランナーではUIテストが一様に延び、全テストが成功したあとに45分で取り消された
     # ことがある（#447）。止まったテストは、テストごとの上限（最大240秒）で先に打ち切られる。
     timeout-minutes: 60
@@ -149,10 +149,10 @@ jobs:
         device:
           - 'iPhone 17'
           - 'iPad (A16)'
-    runs-on: macos-26
+    runs-on: xcode-27
     # `ios`ジョブと同じXcodeに固定する。
     env:
-      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+      DEVELOPER_DIR: /Applications/Xcode_27.2.app/Contents/Developer
     # 前のリリースのアプリも作るため、実作業は15分ほど。ランナーの後片付けが5分以上
     # かかって、検証が全部成功しているのにcancelled扱いになったことがある。
     timeout-minutes: 40
@@ -218,10 +218,10 @@ jobs:
           if-no-files-found: ignore
 
   release_archive:
-    runs-on: macos-26
+    runs-on: xcode-27
     # `ios`ジョブと同じXcodeに固定する。
     env:
-      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+      DEVELOPER_DIR: /Applications/Xcode_27.2.app/Contents/Developer
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       # `ios_full`ジョブと同じ理由で、`.node-version`の版のNodeを使う。
