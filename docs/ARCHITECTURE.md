@@ -8,7 +8,7 @@
 
 `model/`はReactにもDOMにも依存させない。`export/`と`canvas/`はブラウザAPIを使うが、Web固有・iOS固有の分岐を持たない。共通化しないファイルとその理由は[`WEB_SYNC.md`](WEB_SYNC.md)の表を正とする。
 
-`packages/*`またはルートの依存・共通ビルド設定に変更がある場合は、WebとiOSの両方を検証する。Web固有コードはWeb検証、iOS固有コードはiOS検証を行う。IndexedDBのDB名、アプリの固定origin、`.knit`の形式・バージョン・カタログバージョン、永続記号IDは互換試験なしに変更しない。
+`packages/*`またはルートの依存・共通ビルド設定に変更がある場合は、マージ前にWeb検証とiOS Webの型検査・Vitestを行い、Simulatorを使うiOS検証はマージ後のFull iOS validationで行う（iOSアプリは手動リリースなので、マージ前のSimulatorは省く）。Web固有コードはWeb検証、iOS固有コードはiOS検証を行う。IndexedDBのDB名、アプリの固定origin、`.knit`の形式・バージョン・カタログバージョン、永続記号IDは互換試験なしに変更しない。
 
 ## 実行環境の境界
 
@@ -43,18 +43,18 @@
 
 `.github/workflows/ci.yml`は変更範囲を判定し、必要なジョブだけを実行する。
 
-- `changes`: 変更範囲を判定する。判定できないときはWeb・iOSの両方をtrueにして通す。
+- `changes`: 変更範囲を判定する。判定できないときはWeb・iOS Web・Simulatorのすべてをtrueにして通す。Simulatorの要否は`ios_native`で分ける。
 - `web`: `npm run typecheck`、`npm test`、`npm run build`、`npm run check:dist`、`npm run test:e2e`を実行する。`npm test`は`packages/**`、`src/**`、`scripts/**`のテストを対象とし、Playwrightは`chromium-mobile`・`webkit-mobile`・`chromium-desktop`で実行する。
-- `ios_web`: `ios/Web`の型検査とVitestを実行する。
-- `ios`: iPhone 17で、`ios/project.yml`から得たすべての`bundle.unit-test`ターゲット、`ios/UITests/pr-smoke-ui-tests.txt`のUIスモークテスト、Debugオフラインbundle検査を実行する。
+- `ios_web`: `ios/Web`の型検査とVitestを実行する。共通コード、iOS、ワークフローの変更で走る。
+- `ios`: `ios/`または`.github/workflows/`の変更があるときだけ、iPhone 17で、`ios/project.yml`から得たすべての`bundle.unit-test`ターゲット、`ios/UITests/pr-smoke-ui-tests.txt`のUIスモークテスト、Debugオフラインbundle検査を実行する。共通コードだけの変更は、マージ後のFull iOS validationで確かめる。
 - `app_store_docs`: 変更範囲によらず常に実行し、App Store提出文書とPR UIスモーク一覧を検査する。
-- `ci-gate`: `changes`、`app_store_docs`、変更範囲に応じた`web`・`ios_web`・`ios`の結果を検査する。必要なジョブのskip・失敗・キャンセルも失敗として扱う。
+- `ci-gate`: `changes`、`app_store_docs`、変更範囲に応じた`web`・`ios_web`・`ios`の結果を検査する。`ios_web`は共通コード・iOS・ワークフローの変更、`ios`は`ios/`またはワークフローの変更のときに必須とする。必要なジョブのskip・失敗・キャンセルも失敗として扱う。
 - `main`へのpushでWebまたは共通コードの変更を含むときは、`ci-gate`成功後にPages artifactをデプロイし、`deploy`の後に`smoke`で本番を確認する。iOS専用更新では再公開しない。
 
-`.github/workflows/ios-full.yml`は、関連する`main`へのマージ後、毎晩（18:23 UTC）、手動実行時に、Pagesのゲートとは別に実行する。
+`.github/workflows/ios-full.yml`は、関連する`main`へのマージ後、毎晩（18:23 UTC）、手動実行時に、Pagesのゲートとは別に実行する。夜間は、同じコミットの成功した実行があれば走らせない。
 
 - `ios_full`: iPhone 17・iPad (A16)の全単体／UIテストとDebug bundle検査、iPhone SE (3rd generation)での`ios/UITests/device-ui-tests.txt`の一覧のUIテスト。iPadのUI除外一覧は使わない。
-- `app_update`: 両端末で、最新のリリースのタグから作ったアプリが保存した編み図を、今のコミットのアプリへ更新したあとに読めることを確認する。
+- `app_update`: iPhone 17で、最新のリリースのタグから作ったアプリが保存した編み図を、今のコミットのアプリへ更新したあとに読めることを確認する。端末の形に依存しないため、iPadでは繰り返さない。
 - `release_archive`: unsigned Release Archiveを作り、同梱資産を検査する。
 
 `.github/workflows/ios-full-failure.yml`は、Full iOS validationが`main`（push・夜間・手動実行）で失敗して終わったときに動く。判断は`scripts/ios-full-failure.mjs`が行う。
