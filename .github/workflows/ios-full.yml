@@ -50,8 +50,9 @@ jobs:
     env:
       DEVELOPER_DIR: /Applications/Xcode_27.2.app/Contents/Developer
     # 遅いランナーではUIテストが一様に延び、全テストが成功したあとに45分で取り消された
-    # ことがある（#447）。止まったテストは、テストごとの上限（最大240秒）で先に打ち切られる。
-    timeout-minutes: 60
+    # ことがある（#447）。Xcode 27.2のイメージではUIテストが全体に遅く、iPadは58.6分かかった（#289）。
+    # 止まったテストは、テストごとの上限（最大360秒）で先に打ち切られる。
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       # Xcodeのビルドフェーズ（ios/scripts/build-web.sh）がnpmとViteを実行する。ランナーに
@@ -106,7 +107,7 @@ jobs:
             -test-iterations 2 \
             -test-timeouts-enabled YES \
             -default-test-execution-time-allowance 150 \
-            -maximum-test-execution-time-allowance 240 \
+            -maximum-test-execution-time-allowance 360 \
             $only \
             CODE_SIGNING_ALLOWED=NO 2>&1 | tee "$RUNNER_TEMP/ios-tests.log"
           # 一覧の`-only-testing`が1件も一致しないと、xcodebuildは0件で終わることがある。

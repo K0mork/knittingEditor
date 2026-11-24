@@ -285,7 +285,8 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
         let guideLink = app.links["使い方"]
         XCTAssertTrue(guideLink.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
-        guideLink.tap()
+        waitForEditorLoadingToFinish(in: app)
+        openGuide(with: guideLink, in: app)
 
         let supportLink = app.links["サポートページ"]
         XCTAssertTrue(supportLink.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
@@ -1144,6 +1145,9 @@ final class KnittingEditorUITests: XCTestCase {
 
     /// 出力パネルからネイティブの復元Pickerを開き、取り消して編集へ戻る。
     func testRestorePickerDismissesBackToEditor() {
+        // 普段は30秒ほどだが、Xcode 27.2のイメージでは選択画面の要素を探す1回が10〜35秒かかり、
+        // 既定の上限を超えた（#289）。
+        executionTimeAllowance = 360
         let app = XCUIApplication()
         app.launch()
         let restore = app.buttons["バックアップから復元"]
@@ -1962,7 +1966,7 @@ final class KnittingEditorUITests: XCTestCase {
         let picker = app.descendants(matching: .any)
             .matching(NSPredicate(format: "label == %@", "編み目記号を選ぶ")).firstMatch
         XCTAssertTrue(picker.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
-        picker.tap()
+        tapAfterEditorLoads(picker, named: "編み目記号を選ぶ", until: app.buttons["閉じる"], in: app)
         // 記号の選択肢は`aria-pressed`を持つため、XCUITestではスイッチとして見える。
         let stitch = app.switches.matching(NSPredicate(format: "label BEGINSWITH %@", "右上2目交差")).firstMatch
         XCTAssertTrue(stitch.waitForExistence(timeout: 10), app.debugDescription)
@@ -2072,7 +2076,8 @@ final class KnittingEditorUITests: XCTestCase {
 
     func testAccessibilityExtraExtraExtraLargeKeepsPrimaryControlsUsable() throws {
         // 普段でも約65秒かかる。CIでは起動時の自動化セッションの準備がときどき約1分止まり、既定の3分を超えた（#355）。
-        executionTimeAllowance = 240
+        // Xcode 27.2のイメージのiPhone 17では、240秒でも超えた（#289）。
+        executionTimeAllowance = 360
         let app = launchWithAccessibilityExtraExtraExtraLarge()
         // #389を直したらこのスキップを外す。
         try XCTSkipIf(
@@ -2914,6 +2919,54 @@ final class KnittingEditorUITests: XCTestCase {
             object: element
         )
         return XCTWaiter.wait(for: [gone], timeout: timeout) == .completed
+    }
+
+    /// 準備中の表示（`editorLoadingOverlay`）が消えるまで待つ。表示が覆っている間も下の操作は
+    /// XCUITestから見えて押せてしまうので、起動直後に押す前に使う（#441）。
+    private func waitForEditorLoadingToFinish(in app: XCUIApplication) {
+        XCTAssertTrue(
+            waitForDisappearance(of: editorLoadingOverlay(in: app), timeout: Self.editorAppearanceTimeout),
+            "準備中の表示が消えない: \(app.debugDescription)"
+        )
+    }
+
+    /// 起動直後の操作を、準備中の表示が消えてから押す。押して10秒たっても`opened`が出ず、
+    /// `target`が残っていれば1回だけ押し直す。押し直したときと表示が消えなかったときは、
+    /// `openDocumentsPanel`と同じく経過を`TAPRETRY`としてジョブログとxcresultに残す（#441）。
+    private func tapAfterEditorLoads(
+        _ target: XCUIElement,
+        named name: String,
+        until opened: XCUIElement,
+        in app: XCUIApplication
+    ) {
+        let loadingOverlay = editorLoadingOverlay(in: app)
+        let started = Date()
+        var events: [String] = []
+        func record(_ event: String) {
+            events.append(String(format: "%.1f秒 ", Date().timeIntervalSince(started)) + event)
+        }
+        func tapTarget(_ action: String) {
+            let state = "準備中=\(loadingOverlay.exists)、押せる=\(target.exists && isHittableWithoutFailing(target))"
+            target.tap()
+            record("「\(name)」を\(action)（押す前: \(state)）")
+        }
+
+        if !waitForDisappearance(of: loadingOverlay, timeout: Self.editorAppearanceTimeout) {
+            record("\(Int(Self.editorAppearanceTimeout))秒待っても準備中の表示が消えない")
+        }
+        tapTarget("タップ")
+        var shown = opened.waitForExistence(timeout: 10)
+        if !shown, target.exists {
+            record("10秒待っても開かない")
+            add(screenshotAttachment(named: "「\(name)」が効かず押し直す"))
+            tapTarget("押し直した")
+            shown = opened.waitForExistence(timeout: 10)
+        }
+        if events.count > 1 {
+            let summary = "TAPRETRY \(name) " + events.joined(separator: " → ") + (shown ? " → 開いた" : " → 開かない")
+            print(summary)
+            XCTContext.runActivity(named: summary) { _ in }
+        }
     }
 
     /// ダイアログの入力欄を確実に置き換える。

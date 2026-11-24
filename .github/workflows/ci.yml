@@ -248,7 +248,7 @@ jobs:
             -test-iterations 2 \
             -test-timeouts-enabled YES \
             -default-test-execution-time-allowance 150 \
-            -maximum-test-execution-time-allowance 240 \
+            -maximum-test-execution-time-allowance 360 \
             "${selections[@]}" \
             CODE_SIGNING_ALLOWED=NO
       # テストのためにビルドしたDebugのアプリをそのまま検査する。ビルドし直すと1〜2分かかる。
