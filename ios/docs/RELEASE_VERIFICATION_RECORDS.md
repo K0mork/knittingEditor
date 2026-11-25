@@ -460,3 +460,66 @@ v1.0の公開後、審査中に`main`へ入った変更をまとめたv1.1を提
 - 日本の製品ページ（`trackViewUrl`）をcurlで取得し、版が1.1であること、バージョン履歴の1.1の文が[`APP_STORE_METADATA.md`](APP_STORE_METADATA.md)の「1.1」の「このバージョンの新機能」と一致することを確かめた。
 - 製品ページの「アクセシビリティ」に、「サポートされている機能」としてダークインターフェイス・カラーだけによらない区別（回答の「カラー以外で区別」）・十分なコントラスト・視差効果を減らすの4つが出ていることを確かめた（2026-11-11に公開、#438のコメント）。
 - 端末は使っていない。#438は、App Storeから入れた1.1で主要フローを確かめることを求めていたが、今の[実機確認の標準手順](DEVICE_TESTING.md#公開後)は、公開後には端末で確かめない。App Storeで配るのは提出したビルドと同じで、タグ`ios-v1.1-build1`のビルドから`main`への更新で編み図が残ることはCIの`app_update`がSimulatorで確かめている。主要フローは、1.2の[提出前](DEVICE_TESTING.md#提出前)の実機UIテストと[公開前](DEVICE_TESTING.md)の機内モードでの確認で行う（2026-11-21の利用者の決定）。1.2で直したIssueのうち実機でしか確かめられない項目は、#501にまとめた。
+
+## 2026-11-21 v1.2の提出前の確認（Simulator）
+
+1.2で直した`needs-device`のIssueを、2026-11-21の利用者の決定に沿って確かめた。Simulatorで足りる部分はSimulatorで確かめてIssueを閉じ、実機でしか確かめられない項目は#501にまとめた。
+
+| 項目 | 記録 |
+|---|---|
+| 実施日 | 2026-11-21 |
+| 実施者 | Claude Code |
+| 端末とOSの版 | KE verify iPhone（iPhone 17）、KE verify iPad（iPad (A16)）、iOS 27.2のSimulator、Xcode 27.2 (27B52) |
+| 実機 | 使っていない |
+
+| Issue | 確かめたこと | 結果 |
+|---|---|---|
+| #336 | WebContentの終了中に共有シート・保存画面・VoiceOverの表示が保たれる（#504） | 4件のUIテストが成功。閉じた |
+| #474 | 共有シートの「ファイルに保存」「コピー」にファイルだけが渡る（#500） | 成功。メール・メッセージ・AirDropは#501へ。閉じた |
+| #387 | ダウンロードされていないiCloud Driveの`.knit`の文言 | Simulatorで再現できないため、すべて#501へ。閉じた |
+| #303 | ハードウェアキーボードのショートカットが1回目で効く（#505） | 起動直後の⌘Oが24回中22回、ほかは毎回1回目で効いた。実機は#501へ。閉じた |
+| #389 | AX3・AX5で主な操作を一巡（#506） | iPadはAX3・AX5、iPhoneはAX3で全段階が通った。iPhoneのAX5で貼付中に盤面が見えない問題があり、直し方を決めるまで開いたまま |
+
+- [提出前](DEVICE_TESTING.md#提出前)の実機の手順（`run-device-ui-tests.sh`と、#501の確認）は行っていない。提出の前に行う。
+- 残り: 実機の提出前の確認、#389の直し方の決定、スクリーンショットの撮り直し（#503）。
+
+## 2026-11-21 v1.2のアーカイブ作成とアップロード
+
+| 項目 | 記録 |
+|---|---|
+| 実施日 | 2026-11-21 |
+| 実施者 | Claude Code（アーカイブ、検査、アップロード、App Store Connectの入力） |
+| Git commit | `8bc5ad9`（`main`） |
+| Xcode / SDK | Xcode 27.2 (27B52) / iphoneos27.2 |
+| 版・ビルド | 1.2 (1) |
+| アーカイブ | `~/Library/Developer/Xcode/Archives/2026-11-21/knittingEditor 1.2 8bc5ad9.xcarchive` |
+| タグ | `ios-v1.2-build1`（`8bc5ad9`） |
+| 提出 | 未提出（実機の提出前の確認が残る） |
+
+- `8bc5ad9`で、`CI and deploy Pages`のrun [44866639186](https://github.com/K0mork/knittingEditor/actions/runs/44866639186)（`ci-gate`が成功。iOSとテストだけの変更のため`deploy`・`smoke`はskip）と、`Full iOS validation`のrun [44866639279](https://github.com/K0mork/knittingEditor/actions/runs/44866639279)（iPhone 17・iPad (A16)の全テスト、両端末のapp_update、release_archive）が成功した。
+- Xcode 27.2のReleaseで、汎用のiOS実機向けにアーカイブを作り、`ios/scripts/check-release-assets.sh`が成功した。アーカイブのアプリは`CFBundleShortVersionString=1.2`、`CFBundleVersion=1`、`DTSDKName=iphoneos27.2`、`DTXcodeBuild=27B52`、`CFBundlePackageType=APPL`、`ITSAppUsesNonExemptEncryption=false`。
+- `xcodebuild -exportArchive`（`method`が`app-store-connect`、`destination`が`upload`、Automatic署名、`manageAppVersionAndBuildNumber`をオン）でアップロードした。キーチェーンの確認は出なかった。TestFlightで1.2 (1)が処理済み（提出準備完了）になり、内部テストのグループに入った。
+- App Store Connectの1.2の版で、ビルドに1.2 (1)を選んで保存した。審査には出していない。
+- 1.2の版に登録した枠付きのスクリーンショットを「プレビュー」で確かめた。製品ページのiPhone（縦）、iPad（縦・横）、iPhone Duo（外側・内側）で、説明文の切れや枠の欠けはなかった（#434を閉じた）。ヘッダ画像は、検索結果で左端の文字が切れ、見出しに製品名が入っているため、#507で直し方を決める。
+- 残り: 実機の提出前の確認（`run-device-ui-tests.sh`と#501）、#389と#507の決定、スクリーンショットの撮り直し（#503）、審査への提出。
+
+## 2026-11-21 v1.2の提出前の確認（実機）
+
+| 項目 | 記録 |
+|---|---|
+| 実施日 | 2026-11-21 |
+| 実施者 | Claude Code（`run-device-ui-tests.sh`の実行と判定）、利用者（端末の接続と設定） |
+| Git commit | `8bc5ad9`（1.2 (1)と同じ） |
+| 端末とOSの版 | iPhone 13 mini（iOS 27.2.1）、iPad Air 第5世代（iPadOS 27.2.1）。どちらもケーブル接続 |
+| Xcode | 27.2 (27B52) |
+
+- iPhoneは、利用者の指示で、[手順](DEVICE_TESTING.md#提出前)のiPhone 17ではなくiPhone 13 miniを使った。2台を同時に流した。
+- iPad Air 第5世代: 14件すべてが1回目で成功した。
+- iPhone 13 mini: 14件中13件が成功した。`testAccessibilityExtraExtraExtraLargeKeepsSelectionActionsSeparate`は再試行を含めて2回とも失敗した。AX5で範囲を選ぶと盤面の高さが36pt（テストは120pt以上）になり、目盛りだけが残ってマスが見えない。1.1のコミット（`1fc015f`）でも同じテストが同じ36ptで失敗したので、1.2で悪くなったものではない。[#389](https://github.com/K0mork/knittingEditor/issues/389)の症状で、画面がiPhone 17より62pt低い分、大きく出る。手順3の判定（すべて成功）を満たさないので、#389の判断に含める。
+- iPhone 13 miniの`testAccessibilityExtraExtraExtraLargeKeepsLandscapeHeaderInWindow`は、1回目で横向きの配置に変わる前に待ち時間が切れ、再試行で成功した。同じ時間に、同じMacでiPad用のビルドを流していた。
+- 画面写真: iPadは、文字の切れや重なりがなかった。iPhone 13 miniは、AX5の盤面のほかに問題はなかった。共有シートの画面写真には連絡先などが写るので、記録には載せない。
+- テストのあと、両端末に`8bc5ad9`の開発ビルドを入れ直した。[#501](https://github.com/K0mork/knittingEditor/issues/501)の確認は行っていない。
+- 利用者の判断で、1.2の版の「ヘッダ」と「検索結果」から画像を外した（[#507](https://github.com/K0mork/knittingEditor/issues/507)）。再読み込み後もどちらも0/1で、検索結果にはスクリーンショットが出る。
+- アップロードした1.2 (1)のアーカイブに、Icon Composerのアイコン（ライト・ダーク・色合い）が入っていることを確かめた。1.1のアーカイブはPNGのアイコンだけだった。
+- 同じ日に利用者の判断で、提出前の実機確認は条件に当たる版だけ行い、公開前の機内モードの確認はやめることにした。[#501](https://github.com/K0mork/knittingEditor/issues/501)の確認は行わずに閉じた（[#508](https://github.com/K0mork/knittingEditor/pull/508)）。
+- 残り: #389の決定、スクリーンショットの撮り直し（#503）、審査への提出。
