@@ -1,7 +1,7 @@
 import { expect, test } from './fixtures';
 
 for (const width of [390, 430]) {
-  test(`keeps range and paste controls visible with a long stitch name at ${width}px`, async ({ page }) => {
+  test(`keeps range and paste controls visible with a long stitch name at ${width}px`, { tag: '@phone' }, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });
     await page.goto('/');
     const canvas = page.getByLabel('編み図編集盤面');
@@ -40,7 +40,7 @@ for (const width of [390, 430]) {
   });
 }
 
-test('shows export and document panels in a right column at 844x390', async ({ page }) => {
+test('shows export and document panels in a right column at 844x390', { tag: '@phone' }, async ({ page }) => {
   await page.setViewportSize({ width: 844, height: 390 });
   await page.goto('/');
   await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
@@ -64,8 +64,12 @@ test('shows export and document panels in a right column at 844x390', async ({ p
   }
 });
 
-for (const size of [{ width: 390, height: 844 }, { width: 844, height: 390 }, { width: 1440, height: 900 }]) {
-  test(`keeps each backup button label on one line at ${size.width}x${size.height}`, async ({ page }) => {
+for (const size of [
+  { width: 390, height: 844, tag: '@phone' },
+  { width: 844, height: 390, tag: '@phone' },
+  { width: 1440, height: 900, tag: '@wide' },
+]) {
+  test(`keeps each backup button label on one line at ${size.width}x${size.height}`, { tag: size.tag }, async ({ page }) => {
     await page.setViewportSize(size);
     await page.goto('/');
     await expect(page.getByLabel('編み図編集盤面')).toBeVisible();

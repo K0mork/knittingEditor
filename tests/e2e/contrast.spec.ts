@@ -125,8 +125,9 @@ for (const colorScheme of ['light', 'dark'] as const) {
 }
 
 for (const colorScheme of ['light', 'dark'] as const) {
-  for (const width of [390, 1280]) {
-    test(`keeps keyboard focus visible in ${colorScheme} at ${width}px`, async ({ page, browserName }) => {
+  // スマホにキーボードを付けて操作する状況は想定しないので、PC幅の1280pxだけで確かめる。
+  for (const width of [1280]) {
+    test(`keeps keyboard focus visible in ${colorScheme} at ${width}px`, { tag: '@wide' }, async ({ page, browserName }) => {
       await page.setViewportSize({ width, height: 800 });
       await page.emulateMedia({ colorScheme });
       await page.goto('/');

@@ -20,7 +20,7 @@ async function savedLines(page: Page) {
 }
 
 for (const input of ['tap', 'drag'] as const) {
-  test(`線を${input}で引き、保存・再読み込み・消去・履歴に反映する`, async ({ page }) => {
+  test(`線を${input}で引き、保存・再読み込み・消去・履歴に反映する`, { tag: '@wide' }, async ({ page }) => {
     await downloadInsteadOfShare(page);
     await page.setViewportSize({ width: 1200, height: 900 });
     await page.goto('/');
@@ -107,8 +107,9 @@ test('タッチでは1本指のタップ2回で線を引き、間のマスのタ
   await expect.poll(() => savedLines(page)).toEqual([]);
 });
 
-for (const width of [320, 375, 390, 429, 430, 1200]) {
-  test(`${width}px幅で線ボタンが収まり、375px以上では表目が省略されない`, async ({ page }) => {
+// 320pxは現行のiPhoneになく、360pxはAndroidの最小幅。428pxは429pxの折り返しの手前にあるiPhone Pro Maxの幅。
+for (const width of [360, 375, 390, 428, 430, 1200]) {
+  test(`${width}px幅で線ボタンが収まり、375px以上では表目が省略されない`, { tag: width <= 430 ? '@phone' : '@wide' }, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 900 });
     await page.goto('/');
     await expect(page.getByLabel('編み図編集盤面')).toBeVisible();

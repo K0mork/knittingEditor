@@ -1,7 +1,7 @@
 import { expect, test } from './fixtures';
 
 for (const width of [390, 1280]) {
-  test(`saves an edit made immediately before opening the guide at width ${width}`, async ({ page }) => {
+  test(`saves an edit made immediately before opening the guide at width ${width}`, { tag: width <= 430 ? '@phone' : '@wide' }, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });
     await page.goto('/');
     const canvas = page.getByLabel('編み図編集盤面', { exact: false });

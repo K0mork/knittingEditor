@@ -30,7 +30,7 @@ async function selectArea(page: Page, from: [number, number], to: [number, numbe
   await expect(page.getByRole('toolbar', { name: '選択範囲の操作' })).toBeVisible();
 }
 
-test('erases the stitches and lines in a selection as one undoable step and keeps the result after reload', async ({ page }) => {
+test('erases the stitches and lines in a selection as one undoable step and keeps the result after reload', { tag: '@wide' }, async ({ page }) => {
   await page.setViewportSize({ width: 1200, height: 900 });
   await page.goto('/');
   const canvas = page.getByLabel('編み図編集盤面');
@@ -75,7 +75,7 @@ test('erases the stitches and lines in a selection as one undoable step and keep
   expect(await savedLines(page)).toEqual([]);
 });
 
-test('erases a selection with Delete or Backspace except while typing', async ({ page }) => {
+test('erases a selection with Delete or Backspace except while typing', { tag: '@wide' }, async ({ page }) => {
   await page.setViewportSize({ width: 1200, height: 900 });
   await page.goto('/');
   const canvas = page.getByLabel('編み図編集盤面');

@@ -1,6 +1,6 @@
 import { expect, test } from './fixtures';
 
-test('lists every stitch symbol in the app order', async ({ page }) => {
+test('lists every stitch symbol in the app order', { tag: '@static' }, async ({ page }) => {
   const response = await page.goto('/stitches/');
   expect(response?.status()).toBe(200);
   await expect(page).toHaveTitle('編み目記号の一覧｜棒針編み図エディタ');
@@ -35,7 +35,7 @@ test('jumps to a category and opens the editor', async ({ page }) => {
   await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
 });
 
-test('is linked from the editor page, the guide and the template gallery', async ({ page }) => {
+test('is linked from the editor page, the guide and the template gallery', { tag: '@static' }, async ({ page }) => {
   // トップページのリンクは、JavaScriptで描き替える前のHTMLにある（検索から来た人と、noscriptのため）。
   const home = await (await page.request.get('/')).text();
   expect(home).toContain('<a href="/stitches/">編み目記号の一覧</a>');
@@ -49,7 +49,7 @@ test('is linked from the editor page, the guide and the template gallery', async
   await expect(page).toHaveURL(/\/stitches\/$/);
 });
 
-test('does not scroll horizontally on a narrow viewport', async ({ page }) => {
+test('does not scroll horizontally on a narrow viewport', { tag: '@phone' }, async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 800 });
   await page.goto('/stitches/');
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
