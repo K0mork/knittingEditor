@@ -1393,9 +1393,10 @@ final class KnittingEditorUITests: XCTestCase {
 
     /// 共有先が見えることと、閉じた直後の最初のタップが編集画面へ届くことを確かめる（#158、#191）。
     ///
-    /// 共有シートはどの形式も同じUIActivityViewControllerなので、共有先と閉じ方はPNGで確かめる。
-    /// ほかの書き出し形式は`testBackslashDocumentNameReachesAllNativeExportActions`、
-    /// バックアップの保存シートは`testBackupExportSheetDismissesBackToEditor`で確かめる。
+    /// 共有シートはどの書き出し形式も同じUIActivityViewControllerなので、PNGだけで開いて閉じる。
+    /// PNG・PDF・「この編み図を書き出す」が確認ダイアログの「共有」まで届くことは
+    /// `testBackslashDocumentNameReachesAllNativeExportActions`、1つの編み図の保存シート（Document Picker）は
+    /// `testBackupExportSheetDismissesBackToEditor`で確かめる。
     func testShareSheetsDismissBackToEditor() {
         assertShareSheetsDismissBackToEditor(landscape: false)
     }
@@ -1415,9 +1416,9 @@ final class KnittingEditorUITests: XCTestCase {
         let save = app.buttons["出力"]
         XCTAssertTrue(save.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
         if landscape { rotateToLandscape(app) }
-        // 共有シートはどの書き出し形式も同じUIActivityViewControllerなので、共有先と閉じ方はPNGで確かめる。
-        // ほかの書き出し形式は`testBackslashDocumentNameReachesAllNativeExportActions`、
-        // バックアップは`testBackupExportSheetDismissesBackToEditor`で確かめる。
+        // 共有シートはどの書き出し形式も同じUIActivityViewControllerなので、PNGだけで開いて閉じる。
+        // PNG・PDF・「この編み図を書き出す」が「共有」まで届くことは`testBackslashDocumentNameReachesAllNativeExportActions`、
+        // 1つの編み図の保存シート（Document Picker）は`testBackupExportSheetDismissesBackToEditor`で確かめる。
         let exports = ["PNGを保存"]
         for export in exports {
             let step = "\(export)-\(landscape ? "横" : "縦")"

@@ -1,9 +1,15 @@
 # 2026-11-24 — iOSのUIテストの重複とiPhone横向きの組み合わせを減らす
 
 - 影響: テストだけの変更で、アプリの動作は変わらない。Full iOS validationで最も長いiPadのジョブを短くする。
-  - 共有シートはどの書き出し形式も同じ`UIActivityViewController`なので、`testShareSheetsDismissBackToEditor`は`PNGを保存`だけで確かめる。4形式のネイティブ操作へ届くことは`testBackslashDocumentNameReachesAllNativeExportActions`、バックアップの保存シートは`testBackupExportSheetDismissesBackToEditor`が確かめる。
-  - iPhoneの横向きは基本の操作（`testPrimaryControlsRemainUsableInPortraitAndLandscape`）だけを確かめる。横向きの共有シート・名前入力とキーボード・出力パネルの右列は、横向きが普通のiPadでだけ確かめる。共有シートを開いたまま回転させる`testShareSheetStaysUsableAfterRotatingWhileOpen`は削除した。
+  - 共有シートはどの書き出し形式も同じ`UIActivityViewController`なので、`testShareSheetsDismissBackToEditor`は`PNGを保存`だけで開いて閉じる。`testBackslashDocumentNameReachesAllNativeExportActions`はPNG・PDF・「この編み図を書き出す」が確認ダイアログの「共有」まで届くこと（共有シートは開かない）、`testBackupExportSheetDismissesBackToEditor`は1つの編み図の保存シート（Document Picker）を確かめる。
+  - iPhoneの横向きは基本の操作（`testPrimaryControlsRemainUsableInPortraitAndLandscape`）だけを確かめる。横向きの共有シートと出力パネルの右列はiPadでだけ確かめる。名前ダイアログのテストもiPadでだけ実行し、キーボードの表示は要求しない。共有シートを開いたまま回転させる`testShareSheetStaysUsableAfterRotatingWhileOpen`は削除した。
   - 端末の形に依存しない保存・復元・ジェスチャーのテスト6件は、iPhoneでだけ実行する。
+- CIで確かめなくなること:
+  - iPhone横向きでキーボードを出したときの名前ダイアログ（#151）。Simulatorでは修正前も通っていて、実機（iPhone 17）でだけ再現した。iPadではキーボードが出ないことがあり、残したテストはキーボードの表示を要求しない。
+  - iPhone横向きの共有シートと出力パネル。
+  - 共有シートを開いたまま回転させたときのポップオーバーの再配置（#158）。`shareAnchor`と`willRepositionPopoverTo`の計算は`ios/Tests/KnittingEditorAppTests/NativeExportResultTests.swift`の`testShareAnchorUsesSmallCenterRectAtAnyWindowSize`と`testSharePopoverRepositionUsesCurrentBoundsAndKeepsSourceView`が引き続き確かめるが、表示したまま回転させる統合は確かめない。
+  - PDF・1つの編み図・全データを書き出すときの共有シート。
+  - iPadで全データを書き出し、ファイルピッカーから復元する経路。保存・復元のアプリコードにiPadの分岐はない。
 - 主なファイル: `ios/UITests/KnittingEditorUITests/KnittingEditorUITests.swift`
 - テスト:
   - iPhoneでスキップ: `testShareSheetsDismissBackToEditorInLandscape`、`testNameDialogButtonsStayAboveKeyboardInLandscape`、`testLandscapeExportPanelUsesRightColumn`
@@ -13,4 +19,5 @@
   - `node scripts/check-pr-smoke-ui-tests.mjs`、`npm test -- scripts/check-pr-smoke-ui-tests.test.mjs`、`xcrun swiftc -frontend -parse`（構文のみ）が成功した。
   - PRのCI（`ci-gate`、iPhone 17の`ios`を含む）が成功した。
   - このブランチで手動実行したFull iOS validation（コミット`afb66ef`）は、iPhone 17・iPad (A16)・iPhone SE (3rd generation)の`ios_full`、`app_update`の2台、`release_archive`の全6ジョブが1回目で成功した。iPadの`ios_full`は29分で、直近の`main`の3回（41〜47分）より短くなった。
-- デプロイ影響: なし。
+- 検証（レビュー後の修正）: `xcrun swiftc -frontend -parse ios/UITests/KnittingEditorUITests/KnittingEditorUITests.swift`（構文のみ）、`node scripts/check-pr-smoke-ui-tests.mjs`（PRスモーク11件・実機14件）、`sh ios/scripts/check-app-store-docs.sh`、`git diff --check`が成功した。
+- デプロイ影響: なし。テストのみの変更で、TestFlight・App Storeの提出物も変わらない。
