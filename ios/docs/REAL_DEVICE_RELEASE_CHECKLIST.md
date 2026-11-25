@@ -230,13 +230,13 @@ iCloudのreadFailedの自動テスト範囲（`ios/Tests/KnittingEditorAppTests/
 
 ## M4: 画面・入力・アクセシビリティ
 
-- [x] iPhone狭幅の縦／横、キーボード表示中、Safe Area端でヘッダー・ツールバー・ダイアログが欠けない。（2026-10-09、iPhone 17 / iOS 27.0。`testPrimaryControlsRemainUsableInPortraitAndLandscape`、`testDocumentDialogRemainsUsableAfterFocusingInput`、文字サイズ最大の3件が成功。横向きで左右のセーフエリアに黒い帯が出るのは見た目の問題として#146で扱う。帯の内側のヘッダー・ツールバー・ダイアログは欠けない）
+- [x] iPhone狭幅の縦／横、キーボード表示中、Safe Area端でヘッダー・ツールバー・ダイアログが欠けない。（2026-10-09、iPhone 17 / iOS 27.0。`testPrimaryControlsRemainUsableInPortraitAndLandscape`、`testDocumentDialogRemainsUsableAfterFocusingInput`、当時の文字サイズ最大の3件が成功。横向きで左右のセーフエリアに黒い帯が出るのは見た目の問題として#146で扱う。帯の内側のヘッダー・ツールバー・ダイアログは欠けない）
 - [x] iPad全画面、Split View、可変ウィンドウで編集盤面・保存パネルが操作できる。（2026-09-22、iPad Air 第5世代 / iPadOS 27.0。全画面954x1373・可変ウィンドウ584x861・Split View 681.5x954の3配置で`testManualWindowKeepsPrimaryFlowsUsable`が成功）
 - [x] タッチ描画、2本指パン／ピンチ、マウス／トラックパッドを確認する。（2026-09-22、iPad Air 第5世代でタッチ描画・2本指パン・ピンチ・消去・範囲選択と貼り付けを確認。2本指ジェスチャで記号が入る不具合を発見し、修正後の動作も同端末で確認した。2026-10-09にiPhone 17でも、1本指のなぞり描き、2本指の移動・拡大で記号が入らないこと、消去、範囲選択とコピー・貼り付けを確かめた。2026-10-15に同じiPad（iPadOS 27.0.1）でトラックパッドを確かめた。クリック・ドラッグでの描画と消去、範囲選択と貼り付け、2本指スクロールでの移動、記号の一覧と出力パネルの操作はできたが、⌘＋スクロールとピンチでは拡大・縮小できなかった。WKWebViewがピンチをページへ渡さず、wheelに⌘が付かないためで、ネイティブでピンチを受けて盤面へ渡し、「表示」メニューに拡大（⌘+）・縮小（⌘−）を足した後、ピンチ・メニュー・⌘＋／⌘−での拡大縮小と、指のピンチ・描画が変わらないことを確かめた（#21、#80）。マウスは機材が無く未確認）
 - [x] Apple Pencilで描画・選択・スクロールを確認する。（2026-09-22、iPad Air 第5世代。2026-10-15に、`main`の`ffb662d`と同じアプリ（iPadOS 27.0.1）で確かめ直した。ペンのタップで記号が1つ入り、なぞると続けて入る。手のひらを盤面に置いたままでも止まらず、拡大・移動に変わらない。1回なぞった分は「戻す」1回でまとめて消える。消去のタップ・なぞり、範囲のドラッグ、貼り付け位置の表示がペンについてくること、タップした位置への貼り付け、記号の一覧と出力パネルのスクロール、ボタンを押すことがペンでできる。ペンで描いたあとの指2本の移動・拡大では記号が入らない。7項目とも利用者が確かめた（#22））
 - [x] VoiceOverで、道具・パネル・ダイアログのボタンの名前と状態が読み上げで分かる。（2026-10-09、iPhone 17 / iOS 27.0で`testCoreEditorControlsExposeAccessibleNamesAndState`が成功）
   - 2026-10-09に、この項目を見直した。以前は「見出し、記号選択、描画／消去／範囲、保存、ダイアログのラベル・状態・フォーカス順」をVoiceOverで手で確かめる項目だったが、盤面はVoiceOverで記号を置けない作り（1つのCanvas）で、VoiceOverだけでは編み図を作れない。App Storeのアクセシビリティの表示でも「VoiceOverに対応」とは答えない（[`APP_STORE_METADATA.md`](APP_STORE_METADATA.md)）。盤面以外のフォーカス順だけを整えても得られるものが小さいので、項目がアプリの作りに合っていなかったとして、v1.0では手動のフォーカス順の確認を外し、名前と状態の自動テストにした。盤面をVoiceOverで操作できるようにするときに、改めて確かめる。
-- [x] Dynamic Type最大設定で主要操作44pt以上、文字の切れ・重なりがない。（iPhone 17とiPad Air 第5世代で文字の切れ・重なりが無いことを確認済み（#23）。2026-10-09にiPhone 17で文字サイズ最大の3件のUIテストを各3回流し、すべて成功した。44ptは、iOS版のCSSで操作の最小の大きさを44pxにしていること（`ios/Web/src/styles.css`の`--tap-size`など）で担保する）
+- [x] Dynamic Type最大設定で、編集画面はAX1（本文28px）で止まり、主要操作は44pt以上で文字の切れ・重なりがない。使い方ページはすべての文字サイズに追従し、文字の切れ・重なりがない。（iPhone 17とiPad Air 第5世代で文字の切れ・重なりが無いことを確認済み（#23）。2026-10-09にiPhone 17で、当時の文字サイズ最大の3件のUIテストを各3回流し、すべて成功した。3件は編集画面をAX1で止める変更で`testLargestTextSizeIsCappedAndKeepsBoardAndPrimaryControlsUsable`に置き換えた。44ptは、iOS版のCSSで操作の最小の大きさを44pxにしていること（`ios/Web/src/styles.css`の`--tap-size`など）で担保する）
 - [x] 「拡大表示」（設定 > 画面表示と明るさ > 画面表示を拡大）と太字テキストで、ホーム画面の表示名「棒針編み図」が切れないことを、iPhoneとiPadの実機で確かめる（[`APP_STORE_METADATA.md`](APP_STORE_METADATA.md)の「App名とホーム画面の表示名」。無料Personal Teamの開発ビルドでも確かめられる）。（2026-11-03、TestFlightの提出ビルド1.0 (1)で、iPhone 17とiPad Air 第5世代の両方で切れないことを確かめた）
 
 証跡: 端末設定（表示サイズ、Dynamic Type、VoiceOver）、画面収録、問題のある画面のスクリーンショット、再現手順。
