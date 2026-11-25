@@ -31,10 +31,10 @@ Macや端末を替えて設定し直すときは、次のとおりにする。
 3. Bundle IDが `com.k0mork.knittingEditor` のままで、そのTeamのIdentifiersに登録され、証明書・Provisioning Profileが解決されることを確かめる。既存の登録との衝突があれば、別のBundle IDに変えず原因を確認する。
 4. [実施前の固定情報・接続確認](REAL_DEVICE_RELEASE_CHECKLIST.md#実施前の固定情報)に従い、接続確認スクリプトとiPhone・iPadへの署名済みビルドの導入を行う。Team IDや署名情報はリポジトリへ保存しない。
 
-CIは署名なしのまま変更しない。CIのXcode更新は[#289](https://github.com/K0mork/knittingEditor/issues/289)で別管理されており、提出のために待つ必要はない。
+CIは署名なしのまま変更しない。
 
 - **完了の目安:** Automaticで署名が解決し、iPhone・iPadでローカル資産から起動して再起動後もデータが残る。
-- **関係するIssue／項目:** [#17](https://github.com/K0mork/knittingEditor/issues/17)、#289、提出チェックリストの署名項目、実機ゲートM0。
+- **関係するIssue／項目:** [#17](https://github.com/K0mork/knittingEditor/issues/17)、提出チェックリストの署名項目、実機ゲートM0。
 
 ## 4. App Store Connectでアプリを登録する（v1.0で済み）
 
@@ -83,7 +83,7 @@ SKUは製品管理用の一意な文字列を利用者が決め、登録値は�
    pushしたタグは動かしたり消したりしない。同じコミットから作り直してアップロードしても、ビルド番号が変わるので新しいタグを付ける。タグの名前は手順8以降の記録にも書く。
 
 - **完了の目安:** SDK・Xcode・同梱資産の検査が通り、対象コミットに対応するビルドがApp Store Connectで処理済みになり、そのコミットにバージョンとビルド番号のタグが付いた。
-- **関係するIssue／項目:** [#25](https://github.com/K0mork/knittingEditor/issues/25)、#289、提出チェックリストの候補CI・提出用アーカイブ・ビルド番号、実機ゲート[M6](REAL_DEVICE_RELEASE_CHECKLIST.md#m6-testflightapp-store)。
+- **関係するIssue／項目:** [#25](https://github.com/K0mork/knittingEditor/issues/25)、提出チェックリストの候補CI・提出用アーカイブ・ビルド番号、実機ゲート[M6](REAL_DEVICE_RELEASE_CHECKLIST.md#m6-testflightapp-store)。
 
 ## 6. App Store Connectの提出情報を入力する
 

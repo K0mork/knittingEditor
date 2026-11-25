@@ -323,7 +323,7 @@ final class KnittingEditorUITests: XCTestCase {
 
     /// 自動保存を1時間遅らせ、文書切替だけで直前の編集がDBへ残ることを確かめる。
     func testDocumentSwitchSavesWithoutAutosave() {
-        // 2文書の作成・切替・再起動を1本で行うため、遅いランナーでは既定の3分に近づく。
+        // 2文書の作成・切替・再起動を1本で行うため、遅いランナーではCIの既定の上限に近づく。
         executionTimeAllowance = 360
         let app = XCUIApplication()
         app.launchEnvironment["KNITTING_EDITOR_AUTOSAVE_DELAY_MS"] = "3600000"
@@ -1375,7 +1375,7 @@ final class KnittingEditorUITests: XCTestCase {
     ///
     /// 縦向きは全出力経路、横向きは共通のアンカーとdismissalをPNGで確認する。
     func testShareSheetsDismissBackToEditor() {
-        // 4種類の書き出しで共有シートを開いて閉じるため、CIでは普段から約120〜180秒かかり、既定の3分に近い（#358）。
+        // 4種類の書き出しで共有シートを開いて閉じるため、CIでは普段から約120〜180秒かかり、CIの既定の上限に近い（#358）。
         executionTimeAllowance = 360
         assertShareSheetsDismissBackToEditor(landscape: false)
     }
@@ -2075,7 +2075,7 @@ final class KnittingEditorUITests: XCTestCase {
     // 最大文字の縦向き操作は1起動にまとめる。回転の高コストを避けるため横向きは別起動を維持する。
 
     func testAccessibilityExtraExtraExtraLargeKeepsPrimaryControlsUsable() throws {
-        // 普段でも約65秒かかる。CIでは起動時の自動化セッションの準備がときどき約1分止まり、既定の3分を超えた（#355）。
+        // 普段でも約65秒かかる。CIでは起動時の自動化セッションの準備がときどき約1分止まり、CIの既定の上限を超えた（#355）。
         // Xcode 27.2のイメージのiPhone 17では、240秒でも超えた（#289）。
         executionTimeAllowance = 360
         let app = launchWithAccessibilityExtraExtraExtraLarge()
@@ -2164,7 +2164,7 @@ final class KnittingEditorUITests: XCTestCase {
     /// ヘッダーは折り返して「使い方」「編み図」を画面内に残し、操作メニューは折り返して
     /// 全ボタンを見せる。道具列は1行のまま横スクロールするため「範囲」「線」は帯を送って出す。
     func testAccessibilityExtraLargeKeepsPrimaryControlsUsable() {
-        // AX5のテストと同じく、CIの遅い起動が既定の3分を超えないようにする（#355）。
+        // AX5のテストと同じく、CIの遅い起動で既定の上限を超えないようにする（#355）。
         executionTimeAllowance = 360
         let app = launchWithAccessibilityExtraLarge()
 
@@ -2221,7 +2221,7 @@ final class KnittingEditorUITests: XCTestCase {
             ProcessInfo.processInfo.environment["KNITTING_EDITOR_LARGE_TEXT_WALKTHROUGH"] == "1",
             "SimulatorでAX3・AX5の主な操作を画面写真付きで確かめるときだけ実行する"
         )
-        // 2つの文字サイズで作成・編集・範囲選択・出力・切替・使い方まで行うため、既定の3分では足りない。
+        // 2つの文字サイズで作成・編集・範囲選択・出力・切替・使い方まで行うため、既定の上限では足りない。
         executionTimeAllowance = 1200
         for (prefix, category) in [
             ("AX3", "UICTContentSizeCategoryAccessibilityL"),
@@ -2930,9 +2930,11 @@ final class KnittingEditorUITests: XCTestCase {
         )
     }
 
-    /// 起動直後の操作を、準備中の表示が消えてから押す。押して10秒たっても`opened`が出ず、
-    /// `target`が残っていれば1回だけ押し直す。押し直したときと表示が消えなかったときは、
-    /// `openDocumentsPanel`と同じく経過を`TAPRETRY`としてジョブログとxcresultに残す（#441）。
+    /// 起動直後の操作を、準備中の表示が消えてから押す。押して10秒たっても`opened`が出ないときは、
+    /// 押し直す直前に`opened`を確かめ、遅れて開いていれば押し直さない（開いたパネルを閉じてしまうため）。
+    /// 開いておらず`target`が残っていれば1回だけ押し直す。押し直したとき、開くのが遅れたとき、
+    /// 表示が消えなかったときは、`openDocumentsPanel`と同じく経過を`TAPRETRY`としてジョブログと
+    /// xcresultに残す（#441）。
     private func tapAfterEditorLoads(
         _ target: XCUIElement,
         named name: String,
@@ -2957,10 +2959,15 @@ final class KnittingEditorUITests: XCTestCase {
         tapTarget("タップ")
         var shown = opened.waitForExistence(timeout: 10)
         if !shown, target.exists {
-            record("10秒待っても開かない")
-            add(screenshotAttachment(named: "「\(name)」が効かず押し直す"))
-            tapTarget("押し直した")
-            shown = opened.waitForExistence(timeout: 10)
+            record("10秒待っても開かない（開いた印=\(opened.exists)）")
+            if opened.exists {
+                record("押し直す直前に開いたので押し直さない")
+                shown = true
+            } else {
+                add(screenshotAttachment(named: "「\(name)」が効かず押し直す"))
+                tapTarget("押し直した")
+                shown = opened.waitForExistence(timeout: 10)
+            }
         }
         if events.count > 1 {
             let summary = "TAPRETRY \(name) " + events.joined(separator: " → ") + (shown ? " → 開いた" : " → 開かない")
