@@ -9,7 +9,7 @@
 Web版は別リポジトリの参照元ではなく、このリポジトリのルートに統合されています。`packages/editor-core`が盤面・記号の正本であり、`Web/src`へコピー同期しません。
 
 - ルートの`dist/`、`ios/AppResources/Web/`、依存関係キャッシュは生成物であり、直接編集・コミットしない。
-- 共通コードの変更はWebとiOSの両方を検証する。
+- 共通コードの変更はWebとiOSの両方を検証する。同じPRではWeb（`web`）とiOS Web（`ios_web`）を検証し、Simulatorはマージ後のFull iOS validationで検証する（[`docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md)の「ビルドと公開」）。
 - 記号定義は`packages/editor-core/stitches/catalog.ts`と`packages/editor-core/stitches/glyphs.ts`を一体として扱う。
 - 永続記号IDを変更・再利用・配列位置から再採番しない。
 - Web版の変更を機械的に全部コピーせず、SEO、GitHub Pages、分析、旧Safari移行などアプリ不要部分を除外する。

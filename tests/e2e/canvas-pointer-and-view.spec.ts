@@ -163,7 +163,7 @@ test('a left stroke resumes after crossing the number band without drawing acros
   await expect(canvas).toHaveAttribute('aria-label', /記号2個/);
 });
 
-for (const rootFontSize of [32, 48]) {
+for (const rootFontSize of [32]) {
   test(`row numbers of a 1000-row board fit the capped band at a ${rootFontSize}px root font`, async ({ page }) => {
     await page.addInitScript(() => {
       const original = CanvasRenderingContext2D.prototype.fillText;

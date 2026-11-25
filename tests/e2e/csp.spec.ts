@@ -9,7 +9,7 @@ async function policyOf(page: Page) {
 }
 
 for (const path of PAGES) {
-  test(`applies the Content-Security-Policy on ${path} without breaking its styles`, async ({ page }) => {
+  test(`applies the Content-Security-Policy on ${path} without breaking its styles`, { tag: '@engine' }, async ({ page }) => {
     await page.goto(path);
     const policy = await policyOf(page);
     for (const directive of ["object-src 'none'", "base-uri 'self'", "form-action 'self'", "worker-src 'self'"]) {
@@ -24,7 +24,7 @@ for (const path of PAGES) {
   });
 }
 
-test('shows the stitch symbols, whose SVG markup sizes itself with a style attribute, at full size', async ({ page }) => {
+test('shows the stitch symbols, whose SVG markup sizes itself with a style attribute, at full size', { tag: '@engine' }, async ({ page }) => {
   await page.goto('/');
   const symbol = page.locator('.stitch-tool > span:first-child svg');
   await expect(symbol).toBeVisible();
@@ -33,7 +33,7 @@ test('shows the stitch symbols, whose SVG markup sizes itself with a style attri
   expect(svgBox!.height).toBeCloseTo(spanBox!.height, 0);
 });
 
-test('blocks injected scripts and unknown destinations and reports them to the violation check', async ({ page, cspViolations }) => {
+test('blocks injected scripts and unknown destinations and reports them to the violation check', { tag: '@engine' }, async ({ page, cspViolations }) => {
   await page.route('https://example.com/**', (route) => route.fulfill({ status: 204 }));
   await page.goto('/');
   await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
@@ -54,7 +54,7 @@ test('blocks injected scripts and unknown destinations and reports them to the v
   cspViolations.length = 0;
 });
 
-test('allows the gtag script and the GA4 collection endpoint', async ({ page }) => {
+test('allows the gtag script and the GA4 collection endpoint', { tag: '@engine' }, async ({ page }) => {
   // 実際のGoogleへは送らない。読み込みと送信がCSPで止められないことだけを確かめる。
   await page.route('https://www.googletagmanager.com/**', (route) => route.fulfill({ contentType: 'text/javascript', body: 'window.__gtagLoaded = true;' }));
   await page.route('https://*.google-analytics.com/**', (route) => route.fulfill({ status: 204 }));

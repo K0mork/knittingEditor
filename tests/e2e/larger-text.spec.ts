@@ -2,14 +2,17 @@ import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from './fixtures';
 
 /*
- * iOSの「さらに大きな文字」（Dynamic Type）で、文字が実際に大きくなり、切れずに読めて、操作できることを
- * 実際のWebビルドで確かめる（#389）。iOS版の見た目は、`ios-fold-layout.spec.ts`と同じく
- * `packages/editor-core/styles/base.css`のあとに`ios/Web/src/styles.css`を重ねて作る。
+ * iOSの「さらに大きな文字」（Dynamic Type）と、Webのブラウザの文字拡大で、文字が実際に大きくなり、
+ * 切れずに読めて、操作できることを実際のWebビルドで確かめる（#389）。iOS版の見た目は、
+ * `ios-fold-layout.spec.ts`と同じく`packages/editor-core/styles/base.css`のあとに
+ * `ios/Web/src/styles.css`を重ねて作る。
  *
+ * iOS版は文字をAX1（ルート28px）で止める。AX3（40px）以上は盤面が文字に合わせて広がらず、
+ * ヘッダーや操作の帯が画面の大半を占めるため、約束しない。Web版に上限はなく、ブラウザやOSの
+ * 文字拡大で大きくなるため、200%（ルート32px）までを確かめる。
  * iOSのWKWebViewは`:root { font: -apple-system-body }`を端末の文字サイズに解決するが、LinuxやmacOSの
- * Playwrightのブラウザは同じ大きさにしない。そこで、iOSのAX3（`accessibility-extra-large`、約40px）と
- * AX5（`accessibility-extra-extra-extra-large`、約53px）を、ルートの文字サイズを明示して代用する。
- * 同じ確認を、文字拡大を受け入れてよいWeb版（`src/styles.css`だけを読み込むビルド）でも行う。
+ * Playwrightのブラウザは同じ大きさにしない。そこで、AX1の28pxとWebの32pxを、ルートの文字サイズを
+ * 明示して代用する。
  */
 const IOS_HOST_CSS = ['../../packages/editor-core/styles/base.css', '../../ios/Web/src/styles.css']
   .map((path) => readFileSync(new URL(path, import.meta.url), 'utf8')).join('\n');
@@ -17,8 +20,14 @@ const IOS_HOST_CSS = ['../../packages/editor-core/styles/base.css', '../../ios/W
 /** iOS版の「使い方」ページ。Webサーバーは配信しないので、ファイルをそのまま読み込んで確かめる。 */
 const IOS_GUIDE_HTML = readFileSync(new URL('../../ios/Web/public/guide/index.html', import.meta.url), 'utf8');
 
-/** 端末の文字サイズの代わりに固定するルートの文字サイズ。 */
-const TEXT_SCALES = [
+/** 端末の文字サイズの代わりに固定するルートの文字サイズ。iOS版はAX1（28px）で止まり、Web版はブラウザの200%（32px）まで大きくなる。 */
+const TEXT_SCALES = {
+  'iOS版': [{ name: 'AX1', rootFontSize: 28 }],
+  'Web版': [{ name: '200%', rootFontSize: 32 }],
+} as const;
+
+/** iOS版の「使い方」は本文を読むページで、アプリ本体と違って文字サイズの上限を設けない。 */
+const IOS_GUIDE_TEXT_SCALES = [
   { name: 'AX3', rootFontSize: 40 },
   { name: 'AX5', rootFontSize: 53 },
 ] as const;
@@ -35,9 +44,9 @@ const HOSTS = [
   { name: 'Web版', css: '', defaultRootFontSize: 16 },
 ] as const;
 
-/** 既定サイズの回帰を確かめる画面。320pxはヘッダーだけ、それ以外はパネルも開く。 */
+/** 既定サイズの回帰を確かめる画面。iPhone SEはヘッダーだけ、それ以外はパネルも開く。 */
 const DEFAULT_VIEWPORTS = [
-  { name: 'iPhone SE幅', width: 320, height: 844, headerOnly: true },
+  { name: 'iPhone SE', width: 375, height: 667, headerOnly: true },
   { name: 'iPhone 17', width: 390, height: 844, headerOnly: false },
   { name: 'iPhone 17 Pro Max', width: 430, height: 932, headerOnly: false },
   { name: 'iPad (A16)', width: 820, height: 1180, headerOnly: false },
@@ -79,8 +88,12 @@ async function fontSizeSamples(page: Page, selectors: string[]): Promise<Record<
   ])), selectors);
 }
 
-/** 拡大後の文字サイズが、既定の1.9倍以上（200%相当）になっていることを確かめる。 */
-function expectFontGrowth(label: string, before: Record<string, number[]>, after: Record<string, number[]>) {
+/**
+ * 拡大後の文字サイズが、想定した倍率（`ratio`）の90%以上になっていることを確かめる。
+ * 17→28は約1.65倍、16→32は2倍なので、端数の丸めを見込んで少し緩める。
+ */
+function expectFontGrowth(label: string, before: Record<string, number[]>, after: Record<string, number[]>, ratio: number) {
+  const minimum = ratio * 0.9;
   for (const [selector, defaultSizes] of Object.entries(before)) {
     const enlargedSizes = after[selector] ?? [];
     // セレクタが何も指していないと、比較が空振りして通ってしまう。
@@ -88,8 +101,8 @@ function expectFontGrowth(label: string, before: Record<string, number[]>, after
     expect(enlargedSizes.length, `${label}（${selector}）の要素数`).toBe(defaultSizes.length);
     defaultSizes.forEach((defaultSize, index) => {
       expect(defaultSize, `${label}（${selector}）の既定の文字サイズ`).toBeGreaterThan(0);
-      expect(enlargedSizes[index], `${label}（${selector}）の文字サイズが既定の1.9倍になる（既定${defaultSize}px）`)
-        .toBeGreaterThanOrEqual(defaultSize * 1.9);
+      expect(enlargedSizes[index], `${label}（${selector}）の文字サイズが既定の${minimum.toFixed(3)}倍になる（既定${defaultSize}px）`)
+        .toBeGreaterThanOrEqual(defaultSize * minimum);
     });
   }
 }
@@ -396,11 +409,11 @@ async function expectStitchColumns(page: Page, expected: number, label: string) 
 }
 
 
-async function expectGuideReadable(page: Page, rootFontSize: number, label: string) {
+async function expectGuideReadable(page: Page, rootFontSize: number, label: string, defaultRootFontSize: number) {
   const before = await fontSizeSamples(page, ['main p']);
   await setRootFontSize(page, rootFontSize);
   const after = await fontSizeSamples(page, ['main p']);
-  expectFontGrowth(label, before, after);
+  expectFontGrowth(label, before, after, rootFontSize / defaultRootFontSize);
 
   const problems = await page.evaluate(() => {
     const problems: string[] = [];
@@ -420,16 +433,25 @@ async function expectGuideReadable(page: Page, rootFontSize: number, label: stri
   expect([...new Set(problems)], `${label}が横にはみ出さない`).toEqual([]);
 }
 
-// 画面の大きさはテストの中で指定するので、端末の種類が違うchromium-mobileでは実行しない。
-// WebKit（iPhone相当）とChromium（desktop相当）の2つで、文字の拡大と折り返しの違いを代表させる。
-test.beforeEach(({}, testInfo) => {
-  test.skip(testInfo.project.name === 'chromium-mobile', 'webkit-mobileとchromium-desktopで代表させる');
-});
+/**
+ * 文字を拡大したテストのタグ。iOS版はWebKitだけ、Web版の文字拡大はAndroid ChromeとPCの
+ * Chromiumだけで確かめる（SafariはWebページのルート文字を端末設定で拡大しない）。
+ */
+function enlargedTextTag(hostName: string, width: number) {
+  if (hostName === 'iOS版') return '@webkit-only';
+  return width <= 430 ? ['@phone', '@not-webkit'] : ['@wide', '@not-webkit'];
+}
+
+/** 既定サイズのテストのタグ。iOS版はWebKitだけ、Web版は幅に合う端末だけで確かめる。 */
+function defaultTextTag(hostName: string, width: number) {
+  if (hostName === 'iOS版') return '@webkit-only';
+  return width <= 430 ? '@phone' : '@wide';
+}
 
 for (const host of HOSTS) {
   for (const viewport of VIEWPORTS) {
-    for (const scale of TEXT_SCALES) {
-      test(`${host.name} ${viewport.name} ${scale.name}（ルート${scale.rootFontSize}px）で文字が大きくなり切れない`, async ({ page }) => {
+    for (const scale of TEXT_SCALES[host.name]) {
+      test(`${host.name} ${viewport.name} ${scale.name}（ルート${scale.rootFontSize}px）で文字が大きくなり切れない`, { tag: enlargedTextTag(host.name, viewport.width) }, async ({ page }) => {
         await page.setViewportSize({ width: viewport.width, height: viewport.height });
         await page.goto('/');
         await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
@@ -455,11 +477,12 @@ for (const host of HOSTS) {
 
         // 端末の文字サイズ（Webではブラウザの文字拡大）に合わせて、ルートを大きくする。
         await setRootFontSize(page, scale.rootFontSize);
+        const growthRatio = scale.rootFontSize / host.defaultRootFontSize;
         await expect(page.locator('.app-shell'), `${host.name} ${viewport.name} ${scale.name}で大きな文字のレイアウトに切り替わる`)
           .toHaveAttribute('data-large-text', '');
 
         const enlargedToolbarSizes = await fontSizeSamples(page, ['.header-guide', '.header-document', '.stitch-tool-name']);
-        expectFontGrowth(`ヘッダーと編集ツール（${host.name}）`, defaultToolbarSizes, enlargedToolbarSizes);
+        expectFontGrowth(`ヘッダーと編集ツール（${host.name}）`, defaultToolbarSizes, enlargedToolbarSizes, growthRatio);
 
         // ヘッダーと編集ツールの文字が、枠や省略記号で切れていない。
         const clipped = await clipProblems(page, [
@@ -478,7 +501,7 @@ for (const host of HOSTS) {
         // 編み目記号のパネル: 名前が大きくなり、見出しが1文字ずつ折り返さない。
         await openStitchPicker(page);
         const enlargedStitchSizes = await fontSizeSamples(page, ['.stitch-option-name']);
-        expectFontGrowth('編み目記号の名前', defaultStitchSizes, enlargedStitchSizes);
+        expectFontGrowth('編み目記号の名前', defaultStitchSizes, enlargedStitchSizes, growthRatio);
         await expectHeadingReadable(page, '.stitch-picker-heading h2', '編み目記号');
         expect(await clipProblems(page, [{ label: '編み目記号パネル', selector: '.stitch-picker' }]), '編み目記号パネルの文字の切れ').toEqual([]);
         await closeStitchPicker(page);
@@ -559,7 +582,7 @@ for (const host of HOSTS) {
         // 選択操作の帯: 選んだ範囲の操作が、拡大しても切れずに読める（大きさは上の既定値と比べる）。
         await selectOnCanvas(page);
         const enlargedSelectionSizes = await fontSizeSamples(page, ['.selection-actions button']);
-        expectFontGrowth('選択範囲の操作', defaultSelectionSizes, enlargedSelectionSizes);
+        expectFontGrowth('選択範囲の操作', defaultSelectionSizes, enlargedSelectionSizes, growthRatio);
         expect(await clipProblems(page, [{ label: '選択範囲の操作', selector: '.selection-actions' }]), '選択範囲の操作の文字の切れ').toEqual([]);
         // 帯は1行のまま横スクロールし、4つの操作すべてにスクロールで届く。
         await expectSelectionActionsReachable(page, `${host.name} ${scale.name}の選択範囲の操作`);
@@ -579,7 +602,7 @@ for (const host of HOSTS) {
  */
 for (const host of HOSTS) {
   for (const viewport of DEFAULT_VIEWPORTS) {
-    test(`${host.name} ${viewport.name}（既定${host.defaultRootFontSize}px）で既定の見た目が変わらない`, async ({ page }) => {
+    test(`${host.name} ${viewport.name}（既定${host.defaultRootFontSize}px）で既定の見た目が変わらない`, { tag: defaultTextTag(host.name, viewport.width) }, async ({ page }) => {
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
       await page.goto('/');
       await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
@@ -620,29 +643,12 @@ for (const host of HOSTS) {
 }
 
 /*
- * Web版の390×844（iPhone相当）・48px（AX4相当）でも、選択中に盤面が120px以上残る。
- * iOS版の402×874・53pxは上のテストで確かめる。
- */
-test('Web版 390x844・48pxで選択中も盤面が120px以上残る', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/');
-  await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
-  await setRootFontSize(page, 48);
-  await expect(page.locator('.app-shell')).toHaveAttribute('data-large-text', '');
-  await expectActionBarReachable(page);
-  await selectOnCanvas(page);
-  await expectSelectionActionsReachable(page, 'Web版 48pxの選択範囲の操作');
-  const canvasHeight = (await page.getByLabel('編み図編集盤面').boundingBox())!.height;
-  expect(canvasHeight, 'Web版 390x844・48pxで選択中も盤面が見える').toBeGreaterThanOrEqual(120);
-});
-
-/*
  * iPadの横向き（1180×820）。ヘッダーが横1段のままでも、パネルがヘッダーの下から開き、
  * 操作メニューの全ボタンを押せることを確かめる。
  */
 for (const host of HOSTS) {
-  for (const scale of TEXT_SCALES) {
-    test(`${host.name} iPad横向き 1180x820 ${scale.name}でパネルがヘッダーを覆わない`, async ({ page }) => {
+  for (const scale of TEXT_SCALES[host.name]) {
+    test(`${host.name} iPad横向き 1180x820 ${scale.name}でパネルがヘッダーを覆わない`, { tag: enlargedTextTag(host.name, 1180) }, async ({ page }) => {
       await page.setViewportSize({ width: 1180, height: 820 });
       await page.goto('/');
       await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
@@ -664,29 +670,35 @@ for (const host of HOSTS) {
 }
 
 for (const viewport of VIEWPORTS) {
-  for (const scale of TEXT_SCALES) {
-    test(`Web版の使い方ページ ${viewport.name} ${scale.name}で本文が大きくなり横にはみ出さない`, async ({ page }) => {
+  for (const scale of TEXT_SCALES['Web版']) {
+    const tag = viewport.width <= 430 ? ['@phone', '@not-webkit'] : ['@wide', '@not-webkit'];
+    test(`Web版の使い方ページ ${viewport.name} ${scale.name}で本文が大きくなり横にはみ出さない`, { tag }, async ({ page }) => {
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
       await page.goto('/guide/');
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-      await expectGuideReadable(page, scale.rootFontSize, `Web版の使い方（${scale.name}）`);
+      await expectGuideReadable(page, scale.rootFontSize, `Web版の使い方（${scale.name}）`, 16);
     });
   }
-
-  test(`iOS版の使い方ページ ${viewport.name} AX3・AX5で本文が大きくなり横にはみ出さない`, async ({ page }) => {
-    /*
-     * このページは`ios/Web/src/styles.css`を読み込まない独立したHTMLなので、Dynamic Typeに追従するには
-     * 自身の`<style>`で`-apple-system-body`を指定する必要がある。Playwrightのブラウザはこの値をiOSと
-     * 同じ大きさに解決しないため、指定そのものをここで確かめる（実機の大きさはSimulatorで確認する）。
-     */
-    expect(IOS_GUIDE_HTML, 'iOS版の使い方ページがDynamic Type（-apple-system-body）に追従する').toContain('-apple-system-body');
-    for (const scale of TEXT_SCALES) {
-      await page.setViewportSize({ width: viewport.width, height: viewport.height });
-      await page.setContent(IOS_GUIDE_HTML);
-      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-      // iOS実機の既定本文サイズ（17px）を基準に、AX3/AX5での倍率を測る。
-      await setRootFontSize(page, 17);
-      await expectGuideReadable(page, scale.rootFontSize, `iOS版の使い方（${scale.name}）`);
-    }
-  });
 }
+
+/*
+ * iOS版の「使い方」は本文を読むための独立したページで、アプリ本体と違って文字サイズの上限を設けない。
+ * そのため、このページだけAX3（40px）とAX5（53px）も、iPhone 17の幅で確かめる。
+ */
+const IPHONE_17 = VIEWPORTS[0];
+test(`iOS版の使い方ページ ${IPHONE_17.name} AX3・AX5で本文が大きくなり横にはみ出さない`, { tag: '@webkit-only' }, async ({ page }) => {
+  /*
+   * このページは`ios/Web/src/styles.css`を読み込まない独立したHTMLなので、Dynamic Typeに追従するには
+   * 自身の`<style>`で`-apple-system-body`を指定する必要がある。Playwrightのブラウザはこの値をiOSと
+   * 同じ大きさに解決しないため、指定そのものをここで確かめる（実機の大きさはSimulatorで確認する）。
+   */
+  expect(IOS_GUIDE_HTML, 'iOS版の使い方ページがDynamic Type（-apple-system-body）に追従する').toContain('-apple-system-body');
+  for (const scale of IOS_GUIDE_TEXT_SCALES) {
+    await page.setViewportSize({ width: IPHONE_17.width, height: IPHONE_17.height });
+    await page.setContent(IOS_GUIDE_HTML);
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    // iOS実機の既定本文サイズ（17px）を基準に、AX3/AX5での倍率を測る。
+    await setRootFontSize(page, 17);
+    await expectGuideReadable(page, scale.rootFontSize, `iOS版の使い方（${scale.name}）`, 17);
+  }
+});

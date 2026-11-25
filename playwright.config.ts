@@ -29,9 +29,22 @@ export default defineConfig({
     reuseExistingServer: false,
     timeout: 120_000,
   },
+  /*
+   * 端末・画面幅・ブラウザに依存するE2Eは、その状況が実在するプロジェクトだけで実行する。
+   * 複数の画面幅を1つのテストで扱うものや、どのプロジェクトでも確かめるもの（データ保護など）はタグを付けない。
+   * `@phone`: テスト自身がスマホの幅（縦向き430px以下、横向き844×390など）にする。
+   * `@wide`: テスト自身がタブレットかPCの幅（760px以上、スマホ横向きを除く）にする。
+   * `@webkit-only`: WebKitでしか存在しない状況（iOS版のCSS、iOSの折り返し配置、iPhoneのUser-Agent）。
+   * `@not-webkit`: Web版でルートの文字を拡大する状況（SafariはWebページのルート文字を端末設定で拡大しない）。
+   * `@static`: 配信されたHTML・テキスト・ファイル・リンク・メタデータと、ブラウザに依存しない確認だけを行う（要素の大きさの測定を含む）。
+   * `@engine`: 端末ごとではなくブラウザエンジンごとに1回だけ確かめる。
+   */
   projects: [
-    { name: 'chromium-mobile', use: { ...devices['Pixel 7'] } },
-    { name: 'webkit-mobile', use: { ...devices['iPhone 14'] } },
-    { name: 'chromium-desktop', use: { ...devices['Desktop Chrome'] } },
+    // `@wide`はスマホになく、`@webkit-only`・`@static`・`@engine`はChromium mobileにない状況。
+    { name: 'chromium-mobile', use: { ...devices['Pixel 7'] }, grepInvert: /@wide|@webkit-only|@static|@engine/ },
+    // `@static`は配信内容だけで、`@not-webkit`はSafariにない文字拡大の状況。
+    { name: 'webkit-mobile', use: { ...devices['iPhone 14'] }, grepInvert: /@static|@not-webkit/ },
+    // `@phone`はPCになく、`@webkit-only`はChromiumにない状況。
+    { name: 'chromium-desktop', use: { ...devices['Desktop Chrome'] }, grepInvert: /@phone|@webkit-only/ },
   ],
 });

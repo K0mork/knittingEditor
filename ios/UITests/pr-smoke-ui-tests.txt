@@ -1,4 +1,4 @@
-# PRでは単体テスト全件とこのUIリストを実行。全UIは両端末の全検証で実行。
+# ios/か.github/workflows/を変えるPRでは単体テスト全件とこのUIリストを実行。全UIは両端末の全検証で実行。
 # 起動して編集画面を表示
 KnittingEditorUITests/testLaunchShowsLocalEditorContainer
 # WKWebView入力のフォーカス・キーボードと文字選択
@@ -17,7 +17,7 @@ KnittingEditorUITests/testBackupExportSheetDismissesBackToEditor
 KnittingEditorUITests/testGuideNavigationReturnsToUsableEditor
 # 復元Pickerを閉じて編集へ復帰
 KnittingEditorUITests/testRestorePickerDismissesBackToEditor
-# 最大文字サイズで主要操作を維持
-KnittingEditorUITests/testAccessibilityExtraExtraExtraLargeKeepsPrimaryControlsUsable
+# 最大の文字サイズでもAX1で頭打ちになり主要操作を維持
+KnittingEditorUITests/testLargestTextSizeIsCappedAndKeepsBoardAndPrimaryControlsUsable
 # 描画モードと主要パネルの状態
 KnittingEditorUITests/testCoreEditorControlsExposeAccessibleNamesAndState

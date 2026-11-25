@@ -15,7 +15,7 @@ const TEMPLATES = [
   { slug: 'checker', name: '市松（配色）' },
 ];
 
-test('lists every template with a preview and a download link', async ({ page }) => {
+test('lists every template with a preview and a download link', { tag: '@static' }, async ({ page }) => {
   await page.goto('/templates/');
   await expect(page).toHaveTitle('編み図テンプレート｜棒針編み図エディタ');
   await expect(page.locator('article.template')).toHaveCount(TEMPLATES.length);
@@ -31,7 +31,7 @@ test('lists every template with a preview and a download link', async ({ page })
   )).toBe(true);
 });
 
-test('serves each template as a gzip backup', async ({ request }) => {
+test('serves each template as a gzip backup', { tag: '@static' }, async ({ request }) => {
   for (const { slug } of TEMPLATES) {
     const response = await request.get(`/templates/${slug}.knit`);
     expect(response.status()).toBe(200);
@@ -51,7 +51,11 @@ test('restores a downloaded template in the editor', async ({ page }) => {
   await expect(page.locator('.app-header')).toContainText('鹿の子編み（復元）');
 });
 
-for (const { slug, name } of TEMPLATES) {
+/*
+ * 復元からPNG・PDF出力までを8種類すべてで繰り返すと、同じ経路を8回通すだけになる。
+ * 2/2ケーブルは複数マスにまたがる記号を、北欧の小モチーフは配色を含むので、この2つに絞る。
+ */
+for (const { slug, name } of TEMPLATES.filter(({ slug }) => slug === 'cable-2x2' || slug === 'nordic')) {
   test(`restores the ${slug} template and exports it as PNG and PDF`, async ({ page }) => {
     await downloadInsteadOfShare(page);
     await page.goto('/');

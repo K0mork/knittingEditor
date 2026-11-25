@@ -1,6 +1,6 @@
 import { expect, test } from './fixtures';
 
-test('explains how to draw a chart and where to start', async ({ page }) => {
+test('explains how to draw a chart and where to start', { tag: '@static' }, async ({ page }) => {
   const response = await page.goto('/chart-basics/');
   expect(response?.status()).toBe(200);
   await expect(page).toHaveTitle('編み図の作り方｜描く手段の選び方とA4印刷｜棒針編み図エディタ');
@@ -15,7 +15,7 @@ test('explains how to draw a chart and where to start', async ({ page }) => {
   await expect(page.locator('h1')).toHaveText('編み図の作り方');
 });
 
-test('opens the editor and links both ways with the guide', async ({ page }) => {
+test('opens the editor and links both ways with the guide', { tag: '@static' }, async ({ page }) => {
   await page.goto('/chart-basics/');
   await page.getByRole('link', { name: '編み図エディタを開く', exact: true }).click();
   await expect(page).toHaveURL(/\/$/);
@@ -28,7 +28,7 @@ test('opens the editor and links both ways with the guide', async ({ page }) => 
   await expect(page).toHaveURL(/\/guide\/$/);
 });
 
-test('does not scroll horizontally on a narrow viewport', async ({ page }) => {
+test('does not scroll horizontally on a narrow viewport', { tag: '@phone' }, async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 800 });
   await page.goto('/chart-basics/');
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);

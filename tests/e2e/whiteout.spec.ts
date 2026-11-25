@@ -7,7 +7,7 @@ test.beforeEach(async ({ page }) => {
 
 for (const width of [390, 820, 1280]) {
   for (const fontSize of [16, 24]) {
-    test(`keeps every picker SVG inside its symbol slot at ${width}px and ${fontSize}px text`, async ({ page }) => {
+    test(`keeps every picker SVG inside its symbol slot at ${width}px and ${fontSize}px text`, { tag: width <= 430 ? '@phone' : '@wide' }, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 });
       await page.evaluate((size) => { document.documentElement.style.fontSize = `${size}px`; }, fontSize);
       await page.getByRole('button', { name: '編み目記号を選ぶ' }).click();
