@@ -44,7 +44,7 @@ final class KnittingEditorUITests: XCTestCase {
     /// `openGuide(with:in:)`が行う（#401）。
     func testGuideNavigationReturnsToUsableEditor() {
         // 保存待ちとガイドの待機が続いても実行時間の上限に掛からないよう、広げる。
-        executionTimeAllowance = 240
+        executionTimeAllowance = 360
         let app = XCUIApplication()
         app.launch()
 
@@ -289,7 +289,8 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
         let guideLink = app.links["使い方"]
         XCTAssertTrue(guideLink.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
-        guideLink.tap()
+        waitForEditorLoadingToFinish(in: app)
+        openGuide(with: guideLink, in: app)
 
         let supportLink = app.links["サポートページ"]
         XCTAssertTrue(supportLink.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
@@ -330,8 +331,8 @@ final class KnittingEditorUITests: XCTestCase {
             UIDevice.current.userInterfaceIdiom == .pad,
             "端末の形に依存しない確認なので、iPhoneで確かめる"
         )
-        // 2文書の作成・切替・再起動を1本で行うため、遅いランナーでは既定の3分に近づく。
-        executionTimeAllowance = 240
+        // 2文書の作成・切替・再起動を1本で行うため、遅いランナーではCIの既定の上限に近づく。
+        executionTimeAllowance = 360
         let app = XCUIApplication()
         app.launchEnvironment["KNITTING_EDITOR_AUTOSAVE_DELAY_MS"] = "3600000"
         app.launch()
@@ -1146,6 +1147,9 @@ final class KnittingEditorUITests: XCTestCase {
 
     /// 出力パネルからネイティブの復元Pickerを開き、取り消して編集へ戻る。
     func testRestorePickerDismissesBackToEditor() {
+        // 普段は30秒ほどだが、Xcode 27.2のイメージでは選択画面の要素を探す1回が10〜35秒かかり、
+        // 既定の上限を超えた（#289）。
+        executionTimeAllowance = 360
         let app = XCUIApplication()
         app.launch()
         let restore = app.buttons["バックアップから復元"]
@@ -1176,7 +1180,7 @@ final class KnittingEditorUITests: XCTestCase {
             UIDevice.current.userInterfaceIdiom == .pad,
             "端末の形に依存しない確認なので、iPhoneで確かめる"
         )
-        executionTimeAllowance = 240
+        executionTimeAllowance = 360
         let app = XCUIApplication()
         app.launch()
         let suffix = UUID().uuidString.prefix(8)
@@ -1446,7 +1450,7 @@ final class KnittingEditorUITests: XCTestCase {
     func testShareSheetSurvivesWebContentTermination() throws {
         try requireWebContentTermination()
         // 遅いSimulatorでも、WebContentの再読み込みとシートの後片付けを待てるようにする。
-        executionTimeAllowance = 300
+        executionTimeAllowance = 360
         let app = XCUIApplication()
         app.launch()
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
@@ -1487,7 +1491,7 @@ final class KnittingEditorUITests: XCTestCase {
     /// 保存済みの編み図で編集を再開できることを確かめる（#336）。
     func testDocumentPickerSurvivesWebContentTermination() throws {
         try requireWebContentTermination()
-        executionTimeAllowance = 300
+        executionTimeAllowance = 360
         let app = XCUIApplication()
         app.launch()
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
@@ -1525,7 +1529,7 @@ final class KnittingEditorUITests: XCTestCase {
     /// 確かめる（#336）。2回続けて終了させ、10秒以内の再終了として失敗の案内を出す。
     func testRecoveryAccessibilityExposesPreparingNoticeAndRetry() throws {
         try requireWebContentTermination()
-        executionTimeAllowance = 300
+        executionTimeAllowance = 360
         let app = XCUIApplication()
         app.launch()
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
@@ -1800,7 +1804,7 @@ final class KnittingEditorUITests: XCTestCase {
     func testBackslashDocumentNameReachesAllNativeExportActions() {
         // 普段は約40〜70秒。CIでは前のテストのアプリの終了で約30秒、起動時の自動化セッションの準備で
         // 約1分止まることがあり、約160秒まで延びた（#358）。
-        executionTimeAllowance = 240
+        executionTimeAllowance = 360
         assertAllNativeExportActions(documentName: "試作\\修正版")
     }
 
@@ -1923,7 +1927,7 @@ final class KnittingEditorUITests: XCTestCase {
         let picker = app.descendants(matching: .any)
             .matching(NSPredicate(format: "label == %@", "編み目記号を選ぶ")).firstMatch
         XCTAssertTrue(picker.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
-        picker.tap()
+        tapAfterEditorLoads(picker, named: "編み目記号を選ぶ", until: app.buttons["閉じる"], in: app)
         // 記号の選択肢は`aria-pressed`を持つため、XCUITestではスイッチとして見える。
         let stitch = app.switches.matching(NSPredicate(format: "label BEGINSWITH %@", "右上2目交差")).firstMatch
         XCTAssertTrue(stitch.waitForExistence(timeout: 10), app.debugDescription)
@@ -2039,8 +2043,9 @@ final class KnittingEditorUITests: XCTestCase {
     /// 頭打ちにしていないAX5では、盤面はiPhone 17で約32%、iPhone SEでは0%まで縮んだ。
     /// 頭打ちにするとiPhone SEでも半分以上残るため、小さいiPhoneも飛ばさずに確かめる。
     func testLargestTextSizeIsCappedAndKeepsBoardAndPrimaryControlsUsable() {
-        // 普段でも約65秒かかる。CIでは起動時の自動化セッションの準備がときどき約1分止まり、既定の3分を超えた（#355）。
-        executionTimeAllowance = 240
+        // 普段でも約65秒かかる。CIでは起動時の自動化セッションの準備がときどき約1分止まり、CIの既定の上限を超えた（#355）。
+        // 置き換えた旧AX5のテストは、Xcode 27.2のイメージのiPhone 17で240秒を超えた（#289）。
+        executionTimeAllowance = 360
         let app = launchWithAccessibilityExtraExtraExtraLarge()
 
         // 文字を大きくしても盤面のマスは大きくならない。盤面が画面の高さの半分を割ると、
@@ -2351,6 +2356,61 @@ final class KnittingEditorUITests: XCTestCase {
             object: element
         )
         return XCTWaiter.wait(for: [gone], timeout: timeout) == .completed
+    }
+
+    /// 準備中の表示（`editorLoadingOverlay`）が消えるまで待つ。表示が覆っている間も下の操作は
+    /// XCUITestから見えて押せてしまうので、起動直後に押す前に使う（#441）。
+    private func waitForEditorLoadingToFinish(in app: XCUIApplication) {
+        XCTAssertTrue(
+            waitForDisappearance(of: editorLoadingOverlay(in: app), timeout: Self.editorAppearanceTimeout),
+            "準備中の表示が消えない: \(app.debugDescription)"
+        )
+    }
+
+    /// 起動直後の操作を、準備中の表示が消えてから押す。押して10秒たっても`opened`が出ないときは、
+    /// 押し直す直前に`opened`を確かめ、遅れて開いていれば押し直さない（開いたパネルを閉じてしまうため）。
+    /// 開いておらず`target`が残っていれば1回だけ押し直す。押し直したとき、開くのが遅れたとき、
+    /// 表示が消えなかったときは、`openDocumentsPanel`と同じく経過を`TAPRETRY`としてジョブログと
+    /// xcresultに残す（#441）。
+    private func tapAfterEditorLoads(
+        _ target: XCUIElement,
+        named name: String,
+        until opened: XCUIElement,
+        in app: XCUIApplication
+    ) {
+        let loadingOverlay = editorLoadingOverlay(in: app)
+        let started = Date()
+        var events: [String] = []
+        func record(_ event: String) {
+            events.append(String(format: "%.1f秒 ", Date().timeIntervalSince(started)) + event)
+        }
+        func tapTarget(_ action: String) {
+            let state = "準備中=\(loadingOverlay.exists)、押せる=\(target.exists && isHittableWithoutFailing(target))"
+            target.tap()
+            record("「\(name)」を\(action)（押す前: \(state)）")
+        }
+
+        if !waitForDisappearance(of: loadingOverlay, timeout: Self.editorAppearanceTimeout) {
+            record("\(Int(Self.editorAppearanceTimeout))秒待っても準備中の表示が消えない")
+        }
+        tapTarget("タップ")
+        var shown = opened.waitForExistence(timeout: 10)
+        if !shown, target.exists {
+            record("10秒待っても開かない（開いた印=\(opened.exists)）")
+            if opened.exists {
+                record("押し直す直前に開いたので押し直さない")
+                shown = true
+            } else {
+                add(screenshotAttachment(named: "「\(name)」が効かず押し直す"))
+                tapTarget("押し直した")
+                shown = opened.waitForExistence(timeout: 10)
+            }
+        }
+        if events.count > 1 {
+            let summary = "TAPRETRY \(name) " + events.joined(separator: " → ") + (shown ? " → 開いた" : " → 開かない")
+            print(summary)
+            XCTContext.runActivity(named: summary) { _ in }
+        }
     }
 
     /// ダイアログの入力欄を確実に置き換える。

@@ -31,10 +31,10 @@ Macや端末を替えて設定し直すときは、次のとおりにする。
 3. Bundle IDが `com.k0mork.knittingEditor` のままで、そのTeamのIdentifiersに登録され、証明書・Provisioning Profileが解決されることを確かめる。既存の登録との衝突があれば、別のBundle IDに変えず原因を確認する。
 4. [実施前の固定情報・接続確認](REAL_DEVICE_RELEASE_CHECKLIST.md#実施前の固定情報)に従い、接続確認スクリプトとiPhone・iPadへの署名済みビルドの導入を行う。Team IDや署名情報はリポジトリへ保存しない。
 
-CIは署名なしのまま変更しない。CIのXcode更新は[#289](https://github.com/K0mork/knittingEditor/issues/289)で別管理されており、提出のために待つ必要はない。
+CIは署名なしのまま変更しない。
 
 - **完了の目安:** Automaticで署名が解決し、iPhone・iPadでローカル資産から起動して再起動後もデータが残る。
-- **関係するIssue／項目:** [#17](https://github.com/K0mork/knittingEditor/issues/17)、#289、提出チェックリストの署名項目、実機ゲートM0。
+- **関係するIssue／項目:** [#17](https://github.com/K0mork/knittingEditor/issues/17)、提出チェックリストの署名項目、実機ゲートM0。
 
 ## 4. App Store Connectでアプリを登録する（v1.0で済み）
 
@@ -60,7 +60,7 @@ SKUは製品管理用の一意な文字列を利用者が決め、登録値は�
 版ごと（作り直しを含む）に、次のとおりにする。
 
 1. 提出するソースのコミットを固定する。[検証・配布](APP_STORE_CHECKLIST.md#検証配布)に従い、提出候補PRの `ci-gate` と、その候補を含むmainコミットの `Full iOS validation`（iPhone・iPad全テスト、iPhone 17でのapp_update、iPhone SEでの`device-ui-tests.txt`の一覧、unsigned Release Archive・資産検査）の成功を確認する。失敗Issueがあれば調査・修正する。その版が[実機確認の標準手順の提出前](DEVICE_TESTING.md#提出前)の条件に当たるときは、そのコミットで確認を行う。
-2. **手元のXcode 27.1（iOS 27.1 SDK）以降**を使う。Xcode 26.6固定のCIアーカイブは提出に使わない。iPhone Duoでの全画面表示（#96）に加え、2027年4月からはiOS 27 SDK以降でのビルドがAppleの必須要件になる。版の根拠と検査条件は提出チェックリストの「提出用のアーカイブ」、CIとの違いは[#289](https://github.com/K0mork/knittingEditor/issues/289)を参照する。
+2. **手元のXcode 27.1（iOS 27.1 SDK）以降**を使う。CIのアーカイブは署名しないので提出に使わない。iPhone Duoでの全画面表示（#96）に加え、2027年4月からはiOS 27 SDK以降でのビルドがAppleの必須要件になる。版の根拠と検査条件は提出チェックリストの「提出用のアーカイブ」を参照する。
 3. Xcodeでscheme `knittingEditor`、実機向けの汎用destination（Simulatorではない）を選び、Archiveの構成がReleaseであることを確認して、Product > Archiveを実行する。構成・destination・検査の参照元は[`release_archive`ジョブ](../../.github/workflows/ios-full.yml)とする。ただし、ローカルの提出用署名を有効にし、CIの `CODE_SIGNING_ALLOWED=NO`／`CODE_SIGNING_REQUIRED=NO` は付けない。
 4. Organizerで対象ArchiveをFinderに表示し、リポジトリルートから次を実行する。パスは実際のArchiveへ置き換える。
 
@@ -83,7 +83,7 @@ SKUは製品管理用の一意な文字列を利用者が決め、登録値は�
    pushしたタグは動かしたり消したりしない。同じコミットから作り直してアップロードしても、ビルド番号が変わるので新しいタグを付ける。タグの名前は手順8以降の記録にも書く。
 
 - **完了の目安:** SDK・Xcode・同梱資産の検査が通り、対象コミットに対応するビルドがApp Store Connectで処理済みになり、そのコミットにバージョンとビルド番号のタグが付いた。
-- **関係するIssue／項目:** [#25](https://github.com/K0mork/knittingEditor/issues/25)、#289、提出チェックリストの候補CI・提出用アーカイブ・ビルド番号、実機ゲート[M6](REAL_DEVICE_RELEASE_CHECKLIST.md#m6-testflightapp-store)。
+- **関係するIssue／項目:** [#25](https://github.com/K0mork/knittingEditor/issues/25)、提出チェックリストの候補CI・提出用アーカイブ・ビルド番号、実機ゲート[M6](REAL_DEVICE_RELEASE_CHECKLIST.md#m6-testflightapp-store)。
 
 ## 6. App Store Connectの提出情報を入力する
 

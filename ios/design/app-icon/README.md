@@ -17,8 +17,6 @@
 
 背景を画面のヘッダーの緑`#346f42`にしないのは、糸と背景の明るさの差が2.8:1から1.6:1に下がり、小さいサイズで糸が背景に沈むため（#433）。App Storeの画像（`../app-store-creative/universal.html`）は、アイコンと同じ深緑とクリームを使う。
 
-CIのXcode 26.6で読めるよう、Icon Composer 2.0で加わった項目（`features`、`refractivity`、`blur-material`、`specular-highlight-placement`）は使わない。
-
 ## 編集と確認
 
 Icon Composer（Xcodeの Open Developer Tool > Icon Composer）で`AppIcon.icon`を開いて編集する。層の形を変えるときは、1024×1024のSVGを書き出して差し替える。

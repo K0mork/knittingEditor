@@ -211,11 +211,12 @@ jobs:
   ios:
     needs: changes
     if: needs.changes.outputs.ios_native == 'true'
-    runs-on: macos-26
-    # App Store提出に要るiOS 26 SDKを持ち、イメージにあるSimulatorのランタイムと版が揃うXcodeに固定する。
-    # イメージの既定Xcodeが替わってもビルドとテストのXcodeが変わらないよう、明示的に選ぶ。
+    runs-on: xcode-27
+    # 提出用のアーカイブを作る手元のXcodeと同じ27.2に固定する。イメージにはiOS 27.2のSimulatorの
+    # ランタイムがあり、版が揃う。イメージの既定Xcode（27.1）が替わってもビルドとテストのXcodeが
+    # 変わらないよう、明示的に選ぶ。
     env:
-      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+      DEVELOPER_DIR: /Applications/Xcode_27.2.app/Contents/Developer
     # 再試行やSimulatorの起動遅延に備え、既存の上限を維持する。
     timeout-minutes: 45
     steps:
@@ -266,8 +267,8 @@ jobs:
             -retry-tests-on-failure \
             -test-iterations 2 \
             -test-timeouts-enabled YES \
-            -default-test-execution-time-allowance 150 \
-            -maximum-test-execution-time-allowance 240 \
+            -default-test-execution-time-allowance 300 \
+            -maximum-test-execution-time-allowance 360 \
             "${selections[@]}" \
             CODE_SIGNING_ALLOWED=NO
       # テストのためにビルドしたDebugのアプリをそのまま検査する。ビルドし直すと1〜2分かかる。
