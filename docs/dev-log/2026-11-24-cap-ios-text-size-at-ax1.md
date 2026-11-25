@@ -1,11 +1,12 @@
 # 2026-11-24 — iOS版の編集画面の文字サイズをAX1で頭打ちにする
 
 - 影響: iOS版の編集画面はDynamic TypeにAX1（本文28px）まで追従し、それより大きい設定ではAX1で止まる。盤面のマスは文字サイズで大きくならず、AX3以上では盤面が画面の半分を割って編み図が見えなくなるため。実行中の変更にも`ResizeObserver`と`resize`で追従する。使い方ページは対象外とし、すべての文字サイズに追従する。#389は対応しないと決め、App Storeの「さらに大きな文字」の回答は「対応と答えない」のまま変えない。
-- 主なファイル: `ios/Web/src/{textSizeCap.ts,textSizeCap.test.ts,main.tsx}`、`ios/UITests/KnittingEditorUITests/KnittingEditorUITests.swift`、`ios/UITests/{pr-smoke-ui-tests.txt,device-ui-tests.txt}`、`ios/SPECIFICATION.md`、`ios/docs/APP_STORE_METADATA.md`
+- 主なファイル: `ios/Web/src/{textSizeCap.ts,textSizeCap.test.ts,main.tsx}`、`ios/UITests/KnittingEditorUITests/KnittingEditorUITests.swift`、`ios/UITests/{pr-smoke-ui-tests.txt,device-ui-tests.txt}`、`ios/SPECIFICATION.md`、`ios/docs/APP_STORE_METADATA.md`、`docs/WEB_SYNC.md`、`ios/docs/REAL_DEVICE_RELEASE_CHECKLIST.md`
 - テスト:
   - `ios/Web/src/textSizeCap.test.ts`を追加した。プローブ要素で実際の文字サイズを読み、上限を超えるときだけ`28px`を設定すること、`ResizeObserver`での再適用、後始末を確かめる。
   - iOSのUIテストは、4件のDynamic TypeテストとAX3・AX5の手動walkthroughを、AX5で起動する1件の`testLargestTextSizeIsCappedAndKeepsBoardAndPrimaryControlsUsable`に置き換えた。盤面が画面の高さの半分以上残り、主要な操作と「編み図」・出力パネルの各ボタンが押せることを確かめる。
   - PRスモークと実機の一覧を更新し、`ios/SPECIFICATION.md`と`ios/docs/APP_STORE_METADATA.md`の記載も頭打ちに合わせた。
+  - レビュー後、`docs/WEB_SYNC.md`のホスト差分を、編集画面は`ios/Web/src/main.tsx`が最初の描画より前に`textSizeCap.ts`でAX1（28px）に頭打ちにし、使い方ページはすべてのDynamic Typeの大きさに追従してページの拡大と文字選択を残す、という現在の挙動に直した。iOS固有テストの一覧に`textSizeCap.test.ts`を足した。`ios/docs/REAL_DEVICE_RELEASE_CHECKLIST.md`のM4は、v1.0時点の記録を残したまま、将来の版が従う確認内容を「編集画面はAX1で止まり、使い方ページはすべての文字サイズに追従する」に直し、当時の「文字サイズ最大の3件」が`testLargestTextSizeIsCappedAndKeepsBoardAndPrimaryControlsUsable`に置き換わったことを記した。
 - 検証:
   - `cd ios/Web && ../../node_modules/.bin/tsc -p tsconfig.app.json --noEmit`: 成功（出力なし）。
   - `cd ios/Web && ../../node_modules/.bin/vitest run --config vite.config.ts`: 21ファイル165件成功。
@@ -17,4 +18,5 @@
   - このブランチで手動実行した1回目のFull iOS validation（コミット`2e64e8d`）は、iPad (A16)の`ios_full`で`KeyboardCommandUITests/testUndoAndRedoShortcutsEditTextFieldInsteadOfBoard`が再試行を含めて2回失敗した（名前入力ダイアログの「キャンセル」で閉じない）。他の5ジョブは成功した。手元のiPad (A16) Simulatorでは同じコードで成功し、再現しなかった。
   - 調べる中で、文字サイズを読む要素が`#root`の下に置かれ、ページを要素の高さだけ伸ばしていたことが分かった（WebKitで、表示の高さ1180pxに対して`scrollHeight`が1197px）。WKWebViewがその分スクロールできるので、要素を左上に固定し、`textSizeCap.test.ts`で位置を確かめるようにした。修正後、iPhone 17 Simulatorで頭打ちのUIテストと、起動中の文字サイズの変更（標準→AX1→AX5→標準）を確かめ直した。
   - 修正後のFull iOS validation（コミット`f0e5a51`）は、全6ジョブが1回目で成功した。iPadで失敗した`testUndoAndRedoShortcutsEditTextFieldInsteadOfBoard`も成功した。iPadの`testShareSheetStaysUsableAfterRotatingWhileOpen`が1回目に失敗し（共有シートの枠外を1回叩いても閉じない）、組み込みの再試行で成功した。このテストは共有シートを扱い、この変更の対象ではない。
+- 検証（レビュー後の修正）: `sh ios/scripts/check-app-store-docs.sh`が「App Store documents are structurally valid」で成功し、`node scripts/check-pr-smoke-ui-tests.mjs`がPRスモーク11件・実機一覧11件で成功し、`git diff --check`が出力なしで成功した。
 - デプロイ影響: Web版には影響なし。iOS版は次のリリースから反映される。
