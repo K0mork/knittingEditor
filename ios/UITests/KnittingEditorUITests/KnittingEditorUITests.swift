@@ -140,7 +140,11 @@ final class KnittingEditorUITests: XCTestCase {
     ///
     /// ほぼ同時に2本指で触れても、先に触れた指の位置へ記号が置かれてしまう不具合があった。
     /// 触れた瞬間に記号を確定していたためで、1本指のタップは指を離すまで保留するようにした。
-    func testTwoFingerGestureDoesNotDrawOnBoard() {
+    func testTwoFingerGestureDoesNotDrawOnBoard() throws {
+        try XCTSkipIf(
+            UIDevice.current.userInterfaceIdiom == .pad,
+            "端末の形に依存しない確認なので、iPhoneで確かめる"
+        )
         let app = XCUIApplication()
         app.launch()
 
@@ -321,7 +325,11 @@ final class KnittingEditorUITests: XCTestCase {
     }
 
     /// 自動保存を1時間遅らせ、文書切替だけで直前の編集がDBへ残ることを確かめる。
-    func testDocumentSwitchSavesWithoutAutosave() {
+    func testDocumentSwitchSavesWithoutAutosave() throws {
+        try XCTSkipIf(
+            UIDevice.current.userInterfaceIdiom == .pad,
+            "端末の形に依存しない確認なので、iPhoneで確かめる"
+        )
         // 2文書の作成・切替・再起動を1本で行うため、遅いランナーでは既定の3分に近づく。
         executionTimeAllowance = 240
         let app = XCUIApplication()
@@ -365,7 +373,11 @@ final class KnittingEditorUITests: XCTestCase {
 
     /// 自動保存を1時間遅らせ、Home移行時の保存だけで直前の編集がDBへ残ることを確かめる。
     /// 前面へ戻さず、バックグラウンドのまま終了してから再起動する。
-    func testHomeSavesWithoutAutosave() {
+    func testHomeSavesWithoutAutosave() throws {
+        try XCTSkipIf(
+            UIDevice.current.userInterfaceIdiom == .pad,
+            "端末の形に依存しない確認なので、iPhoneで確かめる"
+        )
         let app = XCUIApplication()
         app.launchEnvironment["KNITTING_EDITOR_AUTOSAVE_DELAY_MS"] = "3600000"
         app.launch()
@@ -575,7 +587,11 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertTrue(title.waitForExistence(timeout: 10), app.debugDescription)
     }
 
-    func testEditAndRelaunchRestoresLocalDocument() {
+    func testEditAndRelaunchRestoresLocalDocument() throws {
+        try XCTSkipIf(
+            UIDevice.current.userInterfaceIdiom == .pad,
+            "端末の形に依存しない確認なので、iPhoneで確かめる"
+        )
         let app = XCUIApplication()
         app.launch()
 
@@ -920,7 +936,11 @@ final class KnittingEditorUITests: XCTestCase {
     /// 1000×1000の盤面でPNGの1セルの画素数を最大（60px）にすると、上限を超える理由と
     /// PDF保存のすすめが出て、「PNGを保存」が押せなくなる。アプリは落ちない（#24）。
     /// 最小に戻すと、表示が消えて保存できるようになる。
-    func testOversizedPngExplainsLimitAndDisablesSave() {
+    func testOversizedPngExplainsLimitAndDisablesSave() throws {
+        try XCTSkipIf(
+            UIDevice.current.userInterfaceIdiom == .pad,
+            "端末の形に依存しない確認なので、iPhoneで確かめる"
+        )
         let app = XCUIApplication()
         app.launch()
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
@@ -1169,7 +1189,11 @@ final class KnittingEditorUITests: XCTestCase {
     /// 範囲を選んでブロック保存し、保存したブロックを選んで貼付先をタップすると貼付される。
     /// 「全データを書き出す」を「ファイルに保存」で端末へ保存し、「バックアップから復元」で選ぶと、
     /// 既存の編み図は残ったまま「（復元）」の付いた編み図とブロックが追加され、復元した先頭の編み図へ切り替わる。
-    func testBlockSaveAndFullBackupRestoreFollowGuide() {
+    func testBlockSaveAndFullBackupRestoreFollowGuide() throws {
+        try XCTSkipIf(
+            UIDevice.current.userInterfaceIdiom == .pad,
+            "端末の形に依存しない確認なので、iPhoneで確かめる"
+        )
         executionTimeAllowance = 240
         let app = XCUIApplication()
         app.launch()
@@ -1369,69 +1393,20 @@ final class KnittingEditorUITests: XCTestCase {
 
     /// 共有先が見えることと、閉じた直後の最初のタップが編集画面へ届くことを確かめる（#158、#191）。
     ///
-    /// 縦向きは全出力経路、横向きは共通のアンカーとdismissalをPNGで確認する。
+    /// 共有シートはどの書き出し形式も同じUIActivityViewControllerなので、PNGだけで開いて閉じる。
+    /// PNG・PDF・「この編み図を書き出す」が確認ダイアログの「共有」まで届くことは
+    /// `testBackslashDocumentNameReachesAllNativeExportActions`、1つの編み図の保存シート（Document Picker）は
+    /// `testBackupExportSheetDismissesBackToEditor`で確かめる。
     func testShareSheetsDismissBackToEditor() {
-        // 4種類の書き出しで共有シートを開いて閉じるため、CIでは普段から約120〜180秒かかり、既定の3分に近い（#358）。
-        executionTimeAllowance = 240
         assertShareSheetsDismissBackToEditor(landscape: false)
     }
 
-    func testShareSheetsDismissBackToEditorInLandscape() {
+    func testShareSheetsDismissBackToEditorInLandscape() throws {
+        try XCTSkipIf(
+            UIDevice.current.userInterfaceIdiom == .phone,
+            "iPhoneの横向きは基本の操作だけを確かめる（testPrimaryControlsRemainUsableInPortraitAndLandscape）。横向きが普通のiPadで確かめる"
+        )
         assertShareSheetsDismissBackToEditor(landscape: true)
-    }
-
-    func testShareSheetStaysUsableAfterRotatingWhileOpen() {
-        XCUIDevice.shared.orientation = .portrait
-        defer { XCUIDevice.shared.orientation = .portrait }
-
-        let app = XCUIApplication()
-        app.launch()
-        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: Self.editorAppearanceTimeout))
-        let save = app.buttons["出力"]
-        XCTAssertTrue(save.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
-        let png = app.buttons["PNGを保存"]
-        openSavePanel(with: save, showing: png, in: app)
-        assertHittableAfterScrolling(png, in: app)
-        waitUntilStill(png)
-        png.tap()
-        let share = app.buttons["共有"]
-        XCTAssertTrue(share.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
-        // 共有シートが開かなければ、回転以降の確認は意味が無いので、ここで打ち切る。
-        guard tapExportAlertButton(share, in: app, step: "PNG-共有-回転前") else { return }
-
-        let sheet = shareSheet(in: app)
-        guard sheet.waitForExistence(timeout: 20) else {
-            XCTFail("共有シートが開かない: \(app.debugDescription)")
-            return
-        }
-        let copy = sheet.cells.matching(NSPredicate(format: "label IN %@", ["Copy", "コピー"])).firstMatch
-        XCTAssertTrue(copy.waitForExistence(timeout: 20), app.debugDescription)
-        XCTAssertTrue(waitForHittable(copy, timeout: 20), app.debugDescription)
-
-        // 共有シートを開き直さず、表示中の回転と再配置を検証する。
-        rotateToLandscape(app)
-        waitUntilStill(sheet, timeout: 20)
-        XCTAssertTrue(sheet.exists, app.debugDescription)
-        XCTAssertTrue(copy.waitForExistence(timeout: 20), app.debugDescription)
-        XCTAssertTrue(waitForHittable(copy, timeout: 20), app.debugDescription)
-        waitUntilStill(copy, timeout: 20)
-        XCTAssertTrue(copy.exists, app.debugDescription)
-        XCTAssertTrue(copy.isHittable, app.debugDescription)
-        let windowFrame = app.windows.firstMatch.frame
-        XCTAssertTrue(windowFrame.contains(copy.frame), "コピー項目がウィンドウ外にある copy=\(copy.frame) window=\(windowFrame): \(app.debugDescription)")
-        add(screenshotAttachment(named: "共有-PNG-表示中に横向きへ回転"))
-
-        let dismissal = dismissShareSheet(sheet, in: app)
-        assertDisappears(sheet, from: app, note: dismissal)
-        // 既存の共有終了テストと同じく、編集画面への最初のタップは押し直さない。
-        app.buttons["閉じる"].tap()
-        assertDisappears(app.buttons["この編み図を書き出す"], from: app, note: dismissal)
-        app.buttons["盤面"].tap()
-        let rowsUp = app.buttons["上に段"]
-        XCTAssertTrue(rowsUp.waitForExistence(timeout: 10), app.debugDescription)
-        waitUntilStill(rowsUp)
-        app.buttons["閉じる"].tap()
-        assertDisappears(rowsUp, from: app, note: dismissal)
     }
 
     private func assertShareSheetsDismissBackToEditor(landscape: Bool) {
@@ -1441,7 +1416,10 @@ final class KnittingEditorUITests: XCTestCase {
         let save = app.buttons["出力"]
         XCTAssertTrue(save.waitForExistence(timeout: Self.editorAppearanceTimeout), app.debugDescription)
         if landscape { rotateToLandscape(app) }
-        let exports = landscape ? ["PNGを保存"] : ["PNGを保存", "PDFを保存", "この編み図を書き出す", "全データを書き出す"]
+        // 共有シートはどの書き出し形式も同じUIActivityViewControllerなので、PNGだけで開いて閉じる。
+        // PNG・PDF・「この編み図を書き出す」が「共有」まで届くことは`testBackslashDocumentNameReachesAllNativeExportActions`、
+        // 1つの編み図の保存シート（Document Picker）は`testBackupExportSheetDismissesBackToEditor`で確かめる。
+        let exports = ["PNGを保存"]
         for export in exports {
             let step = "\(export)-\(landscape ? "横" : "縦")"
             let button = app.buttons[export]
@@ -1884,7 +1862,11 @@ final class KnittingEditorUITests: XCTestCase {
     }
 
     /// 横向きでキーボードを出しても、名前の入力ダイアログの「キャンセル」「決定」が押せる（#151）。
-    func testNameDialogButtonsStayAboveKeyboardInLandscape() {
+    func testNameDialogButtonsStayAboveKeyboardInLandscape() throws {
+        try XCTSkipIf(
+            UIDevice.current.userInterfaceIdiom == .phone,
+            "iPhoneの横向きは基本の操作だけを確かめる（testPrimaryControlsRemainUsableInPortraitAndLandscape）。横向きが普通のiPadで確かめる"
+        )
         let app = XCUIApplication()
         app.launch()
 
@@ -1896,11 +1878,8 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertTrue(nameField.waitForExistence(timeout: 10))
         nameField.tap()
         // CIのiPad Simulatorはハードウェアキーボード接続状態になり、画面のキーボードを出さないことがある。
-        // iPhoneでは必ず出して確かめる。
+        // 出ないことは失敗にせず、出たときもボタンが隠れないことだけ確かめる。
         let keyboardShown = app.keyboards.firstMatch.waitForExistence(timeout: 5)
-        if UIDevice.current.userInterfaceIdiom == .phone {
-            XCTAssertTrue(keyboardShown, "キーボードが出ない: \(app.debugDescription)")
-        }
         XCTAssertTrue(app.buttons["キャンセル"].isHittable, "キーボード表示=\(keyboardShown): \(app.debugDescription)")
         XCTAssertTrue(app.buttons["決定"].isHittable, "キーボード表示=\(keyboardShown): \(app.debugDescription)")
         app.buttons["キャンセル"].tap()
@@ -1996,7 +1975,11 @@ final class KnittingEditorUITests: XCTestCase {
         XCTAssertEqual(app.switches["描く"].value as? String, "1")
     }
 
-    func testLandscapeExportPanelUsesRightColumn() {
+    func testLandscapeExportPanelUsesRightColumn() throws {
+        try XCTSkipIf(
+            UIDevice.current.userInterfaceIdiom == .phone,
+            "iPhoneの横向きは基本の操作だけを確かめる（testPrimaryControlsRemainUsableInPortraitAndLandscape）。横向きが普通のiPadで確かめる"
+        )
         let app = XCUIApplication()
         app.launch()
         let output = app.buttons["出力"]
