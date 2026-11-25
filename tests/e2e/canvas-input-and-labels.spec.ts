@@ -185,7 +185,7 @@ test('labels stay separated at minimum zoom and grow with the root font', async 
   const defaultLabels = await readLabels(page);
 
   // ルートの文字を大きくすると、番号の文字と帯が大きくなる。
-  await page.evaluate(() => document.documentElement.style.setProperty('font-size', '28px', 'important'));
+  await page.evaluate(() => document.documentElement.style.setProperty('font-size', '32px', 'important'));
   await expect.poll(async () => (await readLabels(page)).band).toBeGreaterThan(defaultLabels.band);
   const largeLabels = await readLabels(page);
   expect(largeLabels.columns[0].fontSize).toBeGreaterThan(defaultLabels.columns[0].fontSize);

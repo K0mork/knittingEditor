@@ -731,6 +731,37 @@ test('does not overwrite a renamed chart with a pending autosave', async ({ page
   await expect(page.locator('.app-document-name')).not.toContainText('保存中');
 });
 
+test('keeps header actions visible when text is enlarged in landscape', { tag: '@phone' }, async ({ page }) => {
+  // iOS版は横向きでもAX1（ルート28px）まで文字が大きくなる。共有するCSSの横向きレイアウトを確かめる。
+  await page.setViewportSize({ width: 667, height: 375 });
+  await page.addStyleTag({ content: 'html { font-size: 28px; }' });
+  // ルートが21px以上になると、ヘッダーを折り返す大きな文字のレイアウトに切り替わる。
+  await expect(page.locator('.app-shell')).toHaveAttribute('data-large-text', '');
+
+  const layout = await page.locator('.app-header').evaluate((header) => {
+    const headerRect = header.getBoundingClientRect();
+    const actions = header.querySelector<HTMLElement>('.header-actions')!.getBoundingClientRect();
+    const button = header.querySelector<HTMLElement>('.header-document')!;
+    return {
+      headerTop: headerRect.top,
+      headerBottom: headerRect.bottom,
+      actionsTop: actions.top,
+      actionsBottom: actions.bottom,
+      buttonFontSize: Number.parseFloat(getComputedStyle(button).fontSize),
+    };
+  });
+  expect(layout.headerTop).toBeGreaterThanOrEqual(0);
+  expect(layout.actionsTop).toBeGreaterThanOrEqual(layout.headerTop);
+  expect(layout.actionsBottom).toBeLessThanOrEqual(layout.headerBottom);
+  // 文字は端末の文字サイズ（ここでは28px、iOS版のAX1）に追従して大きくなる。
+  expect(layout.buttonFontSize).toBeGreaterThanOrEqual(28);
+  // ヘッダーが伸びても画面の下端までは占めず、盤面が残る。
+  expect(layout.headerBottom).toBeLessThanOrEqual(375);
+  const canvas = page.getByLabel('編み図編集盤面');
+  await expect(canvas).toBeVisible();
+  expect((await canvas.boundingBox())!.height, '横向きでも盤面が見える').toBeGreaterThan(0);
+});
+
 test('resizes to one million cells without creating cell DOM nodes', async ({ page }) => {
   await page.getByRole('button', { name: '盤面' }).click();
   await page.getByLabel('段数').fill('1000');

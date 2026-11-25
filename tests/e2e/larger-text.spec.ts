@@ -2,15 +2,17 @@ import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from './fixtures';
 
 /*
- * iOSの「さらに大きな文字」（Dynamic Type）で、文字が実際に大きくなり、切れずに読めて、操作できることを
- * 実際のWebビルドで確かめる（#389）。iOS版の見た目は、`ios-fold-layout.spec.ts`と同じく
- * `packages/editor-core/styles/base.css`のあとに`ios/Web/src/styles.css`を重ねて作る。
+ * iOSの「さらに大きな文字」（Dynamic Type）と、Webのブラウザの文字拡大で、文字が実際に大きくなり、
+ * 切れずに読めて、操作できることを実際のWebビルドで確かめる（#389）。iOS版の見た目は、
+ * `ios-fold-layout.spec.ts`と同じく`packages/editor-core/styles/base.css`のあとに
+ * `ios/Web/src/styles.css`を重ねて作る。
  *
  * iOS版は文字をAX1（ルート28px）で止める。AX3（40px）以上は盤面が文字に合わせて広がらず、
- * ヘッダーや操作の帯が画面の大半を占めるため、約束しない。Web版も同じ28pxまでを確かめる。
+ * ヘッダーや操作の帯が画面の大半を占めるため、約束しない。Web版に上限はなく、ブラウザやOSの
+ * 文字拡大で大きくなるため、200%（ルート32px）までを確かめる。
  * iOSのWKWebViewは`:root { font: -apple-system-body }`を端末の文字サイズに解決するが、LinuxやmacOSの
- * Playwrightのブラウザは同じ大きさにしない。そこで、AX1の28pxをルートの文字サイズを明示して代用する。
- * 同じ確認を、文字拡大を受け入れてよいWeb版（`src/styles.css`だけを読み込むビルド）でも行う。
+ * Playwrightのブラウザは同じ大きさにしない。そこで、AX1の28pxとWebの32pxを、ルートの文字サイズを
+ * 明示して代用する。
  */
 const IOS_HOST_CSS = ['../../packages/editor-core/styles/base.css', '../../ios/Web/src/styles.css']
   .map((path) => readFileSync(new URL(path, import.meta.url), 'utf8')).join('\n');
@@ -18,10 +20,11 @@ const IOS_HOST_CSS = ['../../packages/editor-core/styles/base.css', '../../ios/W
 /** iOS版の「使い方」ページ。Webサーバーは配信しないので、ファイルをそのまま読み込んで確かめる。 */
 const IOS_GUIDE_HTML = readFileSync(new URL('../../ios/Web/public/guide/index.html', import.meta.url), 'utf8');
 
-/** 端末の文字サイズの代わりに固定するルートの文字サイズ。iOS版はAX1（28px）で止める。 */
-const TEXT_SCALES = [
-  { name: 'AX1', rootFontSize: 28 },
-] as const;
+/** 端末の文字サイズの代わりに固定するルートの文字サイズ。iOS版はAX1（28px）で止まり、Web版はブラウザの200%（32px）まで大きくなる。 */
+const TEXT_SCALES = {
+  'iOS版': [{ name: 'AX1', rootFontSize: 28 }],
+  'Web版': [{ name: '200%', rootFontSize: 32 }],
+} as const;
 
 /** iOS版の「使い方」は本文を読むページで、アプリ本体と違って文字サイズの上限を設けない。 */
 const IOS_GUIDE_TEXT_SCALES = [
@@ -87,7 +90,7 @@ async function fontSizeSamples(page: Page, selectors: string[]): Promise<Record<
 
 /**
  * 拡大後の文字サイズが、想定した倍率（`ratio`）の90%以上になっていることを確かめる。
- * 17→28は約1.65倍、16→28は1.75倍なので、端数の丸めを見込んで少し緩める。
+ * 17→28は約1.65倍、16→32は2倍なので、端数の丸めを見込んで少し緩める。
  */
 function expectFontGrowth(label: string, before: Record<string, number[]>, after: Record<string, number[]>, ratio: number) {
   const minimum = ratio * 0.9;
@@ -447,7 +450,7 @@ function defaultTextTag(hostName: string, width: number) {
 
 for (const host of HOSTS) {
   for (const viewport of VIEWPORTS) {
-    for (const scale of TEXT_SCALES) {
+    for (const scale of TEXT_SCALES[host.name]) {
       test(`${host.name} ${viewport.name} ${scale.name}（ルート${scale.rootFontSize}px）で文字が大きくなり切れない`, { tag: enlargedTextTag(host.name, viewport.width) }, async ({ page }) => {
         await page.setViewportSize({ width: viewport.width, height: viewport.height });
         await page.goto('/');
@@ -644,7 +647,7 @@ for (const host of HOSTS) {
  * 操作メニューの全ボタンを押せることを確かめる。
  */
 for (const host of HOSTS) {
-  for (const scale of TEXT_SCALES) {
+  for (const scale of TEXT_SCALES[host.name]) {
     test(`${host.name} iPad横向き 1180x820 ${scale.name}でパネルがヘッダーを覆わない`, { tag: enlargedTextTag(host.name, 1180) }, async ({ page }) => {
       await page.setViewportSize({ width: 1180, height: 820 });
       await page.goto('/');
@@ -667,7 +670,7 @@ for (const host of HOSTS) {
 }
 
 for (const viewport of VIEWPORTS) {
-  for (const scale of TEXT_SCALES) {
+  for (const scale of TEXT_SCALES['Web版']) {
     const tag = viewport.width <= 430 ? ['@phone', '@not-webkit'] : ['@wide', '@not-webkit'];
     test(`Web版の使い方ページ ${viewport.name} ${scale.name}で本文が大きくなり横にはみ出さない`, { tag }, async ({ page }) => {
       await page.setViewportSize({ width: viewport.width, height: viewport.height });

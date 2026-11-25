@@ -69,16 +69,16 @@ test('offers the iPhone and iPad app above the board until it is closed', async 
   await expect(notice).toHaveCount(0);
 });
 
-test.describe('with an iPhone user agent in every browser', { tag: '@webkit-only' }, () => {
+test.describe('with an iPhone user agent', { tag: '@webkit-only' }, () => {
   test.use({ userAgent: devices['iPhone 14'].userAgent });
 
-  test('opens the App Store from the notice, keeps the editor tab and does not offer it again', async ({ page }) => {
+  test('closes the notice and records the dismissal without leaving the editor when the App Store link is clicked', async ({ page }) => {
     await openAsPerson(page);
     const notice = page.getByRole('region', { name: 'アプリの案内' });
     const editorUrl = page.url();
 
-    // 実際のiPhoneではどのブラウザもWebKitなので、Safariと同じくApp Storeの製品ページへのリンクを
-    // App Storeへ渡し、タブを開かない場合だけを確かめる。
+    // 実際のiPhoneではどのブラウザもWebKitなので、WebKitだけで確かめる。App Storeへ渡すかどうかは
+    // ブラウザの役割なので、ここでは案内が閉じ、編集中のタブと盤面が残り、閉じた記録が残ることだけを確かめる。
     await notice.getByRole('link', { name: 'App Storeで見る' }).click();
     await expect(notice).toHaveCount(0);
     expect(page.url()).toBe(editorUrl);

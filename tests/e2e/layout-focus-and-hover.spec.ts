@@ -33,7 +33,7 @@ async function setRootFontSizeAndSettle(page: Page, fontSize: number) {
   }).toBe('settled');
 }
 
-// iPhoneの縦長、iPadの縦長、PCの横長で、標準の文字と拡大した文字（Webの上限28px）を確かめる。
+// iPhoneの縦長、iPadの縦長、PCの横長で、標準の文字と拡大した文字（Webの200%、32px）を確かめる。
 const VIEWPORTS = [
   { width: 390, height: 844, tag: '@phone' },
   { width: 820, height: 1180, tag: '@wide' },
@@ -41,7 +41,7 @@ const VIEWPORTS = [
 ] as const;
 
 for (const viewport of VIEWPORTS) {
-  for (const fontSize of [16, 28]) {
+  for (const fontSize of [16, 32]) {
     test(`keeps selection and action controls separate at ${viewport.width}x${viewport.height} with ${fontSize}px text`, { tag: viewport.tag }, async ({ page }) => {
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
       await page.goto('/');
