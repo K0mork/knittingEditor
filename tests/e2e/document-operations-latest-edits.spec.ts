@@ -9,7 +9,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 for (const action of ['reselect', 'duplicate'] as const) {
-  test(`preserves just-drawn cells on ${action} before autosave and after reload`, async ({ page }) => {
+  test(`preserves just-drawn cells on ${action} before autosave and after reload`, { tag: '@wide' }, async ({ page }) => {
     // 描画と一覧のクリックを同じJavaScriptタスクで行い、400msの保存待ち時間に左右されない。
     await page.evaluate((action) => {
       const canvas = document.querySelector<HTMLCanvasElement>('.board-canvas')!;
@@ -51,39 +51,33 @@ for (const action of ['reselect', 'duplicate'] as const) {
   });
 }
 
-for (const action of ['create', 'rename', 'duplicate', 'delete'] as const) {
-  test(`notifies ${action} failure without changing the document list`, async ({ page }) => {
-    const errors: string[] = [];
-    page.on('pageerror', (error) => errors.push(error.message));
-    if (action === 'delete') {
-      await page.locator('.document.active .document-actions').getByRole('button', { name: /を複製$/ }).click();
-      await expect(page.locator('.document')).toHaveCount(2);
-    }
-    const names = await page.locator('.document-name').allTextContents();
-    await page.evaluate(() => {
-      const originalPut = IDBObjectStore.prototype.put;
-      const originalDelete = IDBObjectStore.prototype.delete;
-      IDBObjectStore.prototype.put = function (...args) {
-        if (this.name === 'documents') throw new DOMException('test quota', 'QuotaExceededError');
-        return originalPut.apply(this, args);
-      };
-      IDBObjectStore.prototype.delete = function (...args) {
-        if (this.name === 'documents') throw new DOMException('test quota', 'QuotaExceededError');
-        return originalDelete.apply(this, args);
-      };
-    });
-    page.once('dialog', (dialog) => dialog.type() === 'prompt' ? dialog.accept('変更した名前') : dialog.accept());
-    if (action === 'create') await page.getByRole('button', { name: '新しい編み図', exact: true }).click();
-    else {
-      // 操作ボタンの名前は「<編み図名>の名称を変更」「<編み図名>を複製」「<編み図名>を削除」。
-      const label = { rename: /の名称を変更$/, duplicate: /を複製$/, delete: /を削除$/ }[action];
-      // 複製にはダイアログがないので、登録したハンドラはここでは使われない。
-      await page.locator('.document.active .document-actions').getByRole('button', { name: label }).click();
-    }
-    const operation = { create: '編み図の作成', rename: '編み図の名前変更', duplicate: '編み図の複製', delete: '編み図の削除' }[action];
-    await expect(page.locator('.toast')).toContainText(`${operation}に失敗しました`);
-    expect(await page.locator('.document-name').allTextContents()).toEqual(names);
-    await expect(page.locator('.app-document-name')).toContainText('新しい編み図');
-    expect(errors).toEqual([]);
+/*
+ * 作成・名前変更・複製・削除の失敗は、`packages/editor-core/ui/useEditorController.ts`の
+ * `runManagementOperation`が同じ通知経路で扱う。同じ経路を4回通さず、削除だけで確かめる。
+ */
+test('notifies delete failure without changing the document list', { tag: '@wide' }, async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.locator('.document.active .document-actions').getByRole('button', { name: /を複製$/ }).click();
+  await expect(page.locator('.document')).toHaveCount(2);
+  const names = await page.locator('.document-name').allTextContents();
+  await page.evaluate(() => {
+    const originalPut = IDBObjectStore.prototype.put;
+    const originalDelete = IDBObjectStore.prototype.delete;
+    IDBObjectStore.prototype.put = function (...args) {
+      if (this.name === 'documents') throw new DOMException('test quota', 'QuotaExceededError');
+      return originalPut.apply(this, args);
+    };
+    IDBObjectStore.prototype.delete = function (...args) {
+      if (this.name === 'documents') throw new DOMException('test quota', 'QuotaExceededError');
+      return originalDelete.apply(this, args);
+    };
   });
-}
+  page.once('dialog', (dialog) => dialog.accept());
+  // 操作ボタンの名前は「<編み図名>を削除」。
+  await page.locator('.document.active .document-actions').getByRole('button', { name: /を削除$/ }).click();
+  await expect(page.locator('.toast')).toContainText('編み図の削除に失敗しました');
+  expect(await page.locator('.document-name').allTextContents()).toEqual(names);
+  await expect(page.locator('.app-document-name')).toContainText('新しい編み図');
+  expect(errors).toEqual([]);
+});

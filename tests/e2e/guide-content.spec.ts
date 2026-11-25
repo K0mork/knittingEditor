@@ -1,6 +1,6 @@
 import { downloadInsteadOfShare, expect, test } from './fixtures';
 
-test('guide explains chart reading, block reuse and backup scope', async ({ page }) => {
+test('guide explains chart reading, block reuse and backup scope', { tag: '@static' }, async ({ page }) => {
   await page.goto('/guide/');
   const main = page.locator('main');
   await expect(main).toContainText('右下が1段め・1目め');
@@ -25,7 +25,7 @@ test('guide explains chart reading, block reuse and backup scope', async ({ page
   await expect(page.getByRole('button', { name: '編み図', exact: true })).toBeVisible();
 });
 
-test('explains how to move Web charts into the iPhone and iPad app', async ({ page }) => {
+test('explains how to move Web charts into the iPhone and iPad app', { tag: '@static' }, async ({ page }) => {
   await page.goto('/guide/');
   const main = page.locator('main');
   await expect(main.getByRole('heading', { name: /iPhone・iPadアプリへ編み図を移す/ })).toBeVisible();

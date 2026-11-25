@@ -25,7 +25,7 @@ on:
 permissions:
   contents: read
 
-# マージのたびに6つのmacOSジョブを積むと、PRのCIの順番待ちが増える。同じブランチでは最新の
+# マージのたびに5つのmacOSジョブを積むと、PRのCIの順番待ちが増える。同じブランチでは最新の
 # 実行だけを残し、古い実行は取り消す。最新のコミットはそれ以前の変更をすべて含む。
 concurrency:
   group: ios-full-${{ github.ref }}
@@ -34,7 +34,44 @@ concurrency:
 # `main`で失敗したときの再実行とIssueの作成は、終わってからios-full-failure.ymlが行う。
 
 jobs:
+  # 夜間は、同じコミットをすでに検証していれば走らせない。GitHubは夜間の開始を数時間
+  # 遅らせることがあり、日中のPRとmacOSランナーを取り合うため。判定できないときは走らせる。
+  decide:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    timeout-minutes: 5
+    outputs:
+      run: ${{ steps.decide.outputs.run }}
+    steps:
+      - name: Decide whether this run is needed
+        id: decide
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" != schedule ]]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # 同じコミットの検証を夜間に繰り返さない。スキップされた夜間も、同じコミットの
+          # 成功した実行があるときだけスキップされているので、この判定で問題ない。
+          if ! total="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ios-full.yml/runs?head_sha=$GITHUB_SHA&status=success&per_page=1" --jq '.total_count')"; then
+            echo "could not check previous runs; running the validation" >&2
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [[ "$total" =~ ^[0-9]+$ ]] && (( total >= 1 )); then
+            echo "commit $GITHUB_SHA was already validated; skipping this nightly run"
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "commit $GITHUB_SHA has not been validated; running"
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
   ios_full:
+    needs: decide
+    if: needs.decide.outputs.run == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -144,12 +181,15 @@ jobs:
         run: ios/scripts/check-app-bundle.sh "$RUNNER_TEMP/DerivedData/Build/Products/Debug-iphonesimulator/knittingEditor.app"
 
   app_update:
+    needs: decide
+    if: needs.decide.outputs.run == 'true'
     strategy:
       fail-fast: false
       matrix:
+        # 前の版のデータが更新後に残るかは端末の形に依存しないので、iPhoneだけで確かめる。
+        # macOSの同時実行枠（5台）に全ジョブを収める。
         device:
           - 'iPhone 17'
-          - 'iPad (A16)'
     runs-on: xcode-27
     # `ios`ジョブと同じXcodeに固定する。
     env:
@@ -219,6 +259,8 @@ jobs:
           if-no-files-found: ignore
 
   release_archive:
+    needs: decide
+    if: needs.decide.outputs.run == 'true'
     runs-on: xcode-27
     # `ios`ジョブと同じXcodeに固定する。
     env:

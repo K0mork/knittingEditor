@@ -20,7 +20,7 @@ async function expectLargeImageCard(page: Page) {
 
 type StructuredDataNode = { '@type': string; url?: string; description?: string; isAccessibleForFree?: boolean; offers?: { price?: string; priceCurrency?: string } };
 
-test('serves crawlable content before JavaScript runs', async ({ page }) => {
+test('serves crawlable content before JavaScript runs', { tag: '@static' }, async ({ page }) => {
   const response = await page.request.get('/');
   expect(response.status()).toBe(200);
   const html = await response.text();
@@ -30,7 +30,7 @@ test('serves crawlable content before JavaScript runs', async ({ page }) => {
   expect(html).toContain('<a href="/privacy/">プライバシーポリシー</a>');
 });
 
-test('serves the site description linked from the head as plain text', async ({ page }) => {
+test('serves the site description linked from the head as plain text', { tag: '@static' }, async ({ page }) => {
   const html = await (await page.request.get('/')).text();
   expect(html).toContain('<link rel="describedby" href="/llms.txt" type="text/plain"');
   await page.goto('/');
@@ -52,7 +52,7 @@ test('serves the site description linked from the head as plain text', async ({ 
   }
 });
 
-test('exposes search and sharing metadata on the editor page', async ({ page }) => {
+test('exposes search and sharing metadata on the editor page', { tag: '@static' }, async ({ page }) => {
   await page.goto('/');
   await expect(page).toHaveTitle('棒針編み図エディタ｜無料の編み図作成サイト');
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://knittingeditor.com/');
@@ -67,7 +67,7 @@ test('exposes search and sharing metadata on the editor page', async ({ page }) 
   await expectLargeImageCard(page);
 });
 
-test('describes the site and the application as structured data', async ({ page }) => {
+test('describes the site and the application as structured data', { tag: '@static' }, async ({ page }) => {
   await page.goto('/');
   const raw = await page.locator('script[type="application/ld+json"]').textContent();
   expect(raw).not.toBeNull();
@@ -82,7 +82,7 @@ test('describes the site and the application as structured data', async ({ page 
   expect(application?.offers?.price).toBe('0');
 });
 
-test('replaces the crawlable fallback with the editor after mounting', async ({ page }) => {
+test('replaces the crawlable fallback with the editor after mounting', { tag: '@static' }, async ({ page }) => {
   await page.goto('/');
   await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
   await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
@@ -91,7 +91,7 @@ test('replaces the crawlable fallback with the editor after mounting', async ({ 
   await expect(page.locator('.app-tagline')).toBeVisible();
 });
 
-test('opens the guide from the editor header', async ({ page }) => {
+test('opens the guide from the editor header', { tag: '@static' }, async ({ page }) => {
   await page.goto('/');
   await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
   await page.getByRole('link', { name: '使い方' }).click();
@@ -99,7 +99,7 @@ test('opens the guide from the editor header', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('ブラウザで棒針編み図を作る方法');
 });
 
-test('serves the guide page directly with its own metadata', async ({ page }) => {
+test('serves the guide page directly with its own metadata', { tag: '@static' }, async ({ page }) => {
   const response = await page.goto('/guide/');
   expect(response?.status()).toBe(200);
   await expect(page).toHaveTitle('棒針編み図の作り方｜棒針編み図エディタ');
@@ -116,7 +116,7 @@ test('serves the guide page directly with its own metadata', async ({ page }) =>
   await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
 });
 
-test('links the guide to the third-party license notices', async ({ page }) => {
+test('links the guide to the third-party license notices', { tag: '@static' }, async ({ page }) => {
   await page.goto('/guide/');
   await page.getByRole('link', { name: '第三者ソフトウェアのライセンス' }).click();
   await expect(page).toHaveURL(/\/third-party-notices\/$/);
@@ -130,7 +130,7 @@ test('links the guide to the third-party license notices', async ({ page }) => {
   await expect(page).toHaveURL(/\/guide\/$/);
 });
 
-test('serves the support page with a private contact and links it from the guide', async ({ page }) => {
+test('serves the support page with a private contact and links it from the guide', { tag: '@static' }, async ({ page }) => {
   await page.goto('/guide/');
   await page.getByRole('link', { name: 'サポート・お問い合わせ' }).click();
   await expect(page).toHaveURL(/\/support\/$/);
@@ -146,7 +146,7 @@ test('serves the support page with a private contact and links it from the guide
   await expect(page).toHaveURL(/\/guide\/$/);
 });
 
-test('serves the privacy policy directly and after a reload', async ({ page }) => {
+test('serves the privacy policy directly and after a reload', { tag: '@static' }, async ({ page }) => {
   const response = await page.goto('/privacy/');
   expect(response?.status()).toBe(200);
   await expect(page).toHaveTitle('プライバシーポリシー｜棒針編み図エディタ');
@@ -168,7 +168,7 @@ test('serves the privacy policy directly and after a reload', async ({ page }) =
   await expect(page).toHaveURL(/\/support\/$/);
 });
 
-test('serves the app policy directly, after reload and from the Web policy', async ({ page }) => {
+test('serves the app policy directly, after reload and from the Web policy', { tag: '@static' }, async ({ page }) => {
   const response = await page.goto('/privacy/app/');
   expect(response?.status()).toBe(200);
   await expect(page).toHaveURL(/\/privacy\/app\/$/);
@@ -197,7 +197,7 @@ test('serves the app policy directly, after reload and from the Web policy', asy
   await expect(page).toHaveURL(/\/support\/$/);
 });
 
-test('links the privacy policy from the chart panel, the guide and the support page', async ({ page }) => {
+test('links the privacy policy from the chart panel, the guide and the support page', { tag: '@static' }, async ({ page }) => {
   await page.goto('/');
   await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
   await page.getByRole('button', { name: '編み図', exact: true }).click();
@@ -214,7 +214,7 @@ test('links the privacy policy from the chart panel, the guide and the support p
   }
 });
 
-test('publishes the guide, the support page and the privacy policy in the sitemap', async ({ page }) => {
+test('publishes the guide, the support page and the privacy policy in the sitemap', { tag: '@static' }, async ({ page }) => {
   const sitemap = await page.request.get('/sitemap.xml');
   expect(sitemap.status()).toBe(200);
   const xml = await sitemap.text();
@@ -227,7 +227,7 @@ test('publishes the guide, the support page and the privacy policy in the sitema
   expect(xml).toContain('<loc>https://knittingeditor.com/privacy/app/</loc>');
 });
 
-test('serves the app icon as the favicon and touch icons', async ({ page }) => {
+test('serves the app icon as the favicon and touch icons', { tag: '@static' }, async ({ page }) => {
   const favicon = await page.request.get('/favicon.ico');
   expect(favicon.status()).toBe(200);
   const ico = await favicon.body();
@@ -244,7 +244,7 @@ test('serves the app icon as the favicon and touch icons', async ({ page }) => {
   }
 });
 
-test('links the web app manifest for home-screen installs', async ({ page }) => {
+test('links the web app manifest for home-screen installs', { tag: '@static' }, async ({ page }) => {
   await page.goto('/');
   await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', '/manifest.webmanifest');
   const response = await page.request.get('/manifest.webmanifest');
@@ -279,7 +279,7 @@ test('links the web app manifest for home-screen installs', async ({ page }) => 
   }
 });
 
-test('serves the sharing image as a 1200x630 PNG', async ({ page }) => {
+test('serves the sharing image as a 1200x630 PNG', { tag: '@static' }, async ({ page }) => {
   const response = await page.request.get(new URL(OG_IMAGE_URL).pathname);
   expect(response.status()).toBe(200);
   expect(response.headers()['content-type']).toBe('image/png');

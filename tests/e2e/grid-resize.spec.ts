@@ -53,7 +53,7 @@ async function changeDimensions(page: Page, rows: string, cols: string) {
 }
 
 for (const width of [390, 1280]) {
-  test(`keeps stitch numbers when resizing columns at the left edge (${width}px)`, async ({ page }) => {
+  test(`keeps stitch numbers when resizing columns at the left edge (${width}px)`, { tag: width <= 430 ? '@phone' : '@wide' }, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });
     const board = new Board();
     board.place(19, 17, 'knit', '#123456');
@@ -70,7 +70,7 @@ for (const width of [390, 1280]) {
     expect(dialogs).toEqual([]);
   });
 
-  test(`confirms lost stitches, cancels safely and undoes with the grid panel open (${width}px)`, async ({ page }) => {
+  test(`confirms lost stitches, cancels safely and undoes with the grid panel open (${width}px)`, { tag: width <= 430 ? '@phone' : '@wide' }, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });
     const board = new Board();
     board.place(0, 10, 'knit', '#123456');

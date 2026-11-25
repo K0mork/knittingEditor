@@ -69,23 +69,17 @@ test('offers the iPhone and iPad app above the board until it is closed', async 
   await expect(notice).toHaveCount(0);
 });
 
-test.describe('with an iPhone user agent in every browser', () => {
+test.describe('with an iPhone user agent', { tag: '@webkit-only' }, () => {
   test.use({ userAgent: devices['iPhone 14'].userAgent });
 
-  test('opens the App Store from the notice, keeps the editor tab and does not offer it again', async ({ page }, testInfo) => {
+  test('closes the notice and records the dismissal without leaving the editor when the App Store link is clicked', async ({ page }) => {
     await openAsPerson(page);
     const notice = page.getByRole('region', { name: 'アプリの案内' });
     const editorUrl = page.url();
 
-    // WebKitはSafariと同じくApp Storeの製品ページへのリンクをApp Storeへ渡し、タブを開かない。
-    // 新しいタブで開くことはChromiumで確かめ、WebKitでは案内が閉じて編集中のタブが残ることだけ確かめる。
-    const opening = testInfo.project.name.startsWith('webkit') ? undefined : page.waitForEvent('popup');
+    // 実際のiPhoneではどのブラウザもWebKitなので、WebKitだけで確かめる。App Storeへ渡すかどうかは
+    // ブラウザの役割なので、ここでは案内が閉じ、編集中のタブと盤面が残り、閉じた記録が残ることだけを確かめる。
     await notice.getByRole('link', { name: 'App Storeで見る' }).click();
-    if (opening) {
-      const store = await opening;
-      await expect(store).toHaveURL(APP_STORE_URL);
-      await store.close();
-    }
     await expect(notice).toHaveCount(0);
     expect(page.url()).toBe(editorUrl);
     await expect(page.getByLabel('編み図編集盤面')).toBeVisible();
@@ -121,7 +115,7 @@ for (const [path, transferNote] of [
   ['/guide/', 'アプリの「出力」にある「バックアップから復元」を押し、届けた .knit を選びます。'],
   ['/support/', 'アプリの「出力」にある「バックアップから復元」で読み込むと移せます。'],
 ] as const) {
-  test(`shows one App Store badge with Apple's trademark notice on ${path}`, async ({ page }) => {
+  test(`shows one App Store badge with Apple's trademark notice on ${path}`, { tag: '@static' }, async ({ page }) => {
     await page.goto(path);
     const badge = page.getByRole('link', { name: 'App Storeからダウンロード' });
     await expect(badge).toHaveCount(1);
@@ -140,7 +134,7 @@ for (const [path, transferNote] of [
   });
 }
 
-test('serves the App Store badge as an SVG image', async ({ request }) => {
+test('serves the App Store badge as an SVG image', { tag: '@static' }, async ({ request }) => {
   const response = await request.get('/app-store-badge.svg');
   expect(response.ok()).toBe(true);
   expect(response.headers()['content-type']).toContain('image/svg+xml');

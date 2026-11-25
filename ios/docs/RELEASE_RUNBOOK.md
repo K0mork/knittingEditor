@@ -59,7 +59,7 @@ SKUは製品管理用の一意な文字列を利用者が決め、登録値は�
 
 版ごと（作り直しを含む）に、次のとおりにする。
 
-1. 提出するソースのコミットを固定する。[検証・配布](APP_STORE_CHECKLIST.md#検証配布)に従い、提出候補PRの `ci-gate` と、その候補を含むmainコミットの `Full iOS validation`（iPhone・iPad全テスト、両端末のapp_update、iPhone SEでの`device-ui-tests.txt`の一覧、unsigned Release Archive・資産検査）の成功を確認する。失敗Issueがあれば調査・修正する。その版が[実機確認の標準手順の提出前](DEVICE_TESTING.md#提出前)の条件に当たるときは、そのコミットで確認を行う。
+1. 提出するソースのコミットを固定する。[検証・配布](APP_STORE_CHECKLIST.md#検証配布)に従い、提出候補PRの `ci-gate` と、その候補を含むmainコミットの `Full iOS validation`（iPhone・iPad全テスト、iPhone 17でのapp_update、iPhone SEでの`device-ui-tests.txt`の一覧、unsigned Release Archive・資産検査）の成功を確認する。失敗Issueがあれば調査・修正する。その版が[実機確認の標準手順の提出前](DEVICE_TESTING.md#提出前)の条件に当たるときは、そのコミットで確認を行う。
 2. **手元のXcode 27.1（iOS 27.1 SDK）以降**を使う。CIのアーカイブは署名しないので提出に使わない。iPhone Duoでの全画面表示（#96）に加え、2027年4月からはiOS 27 SDK以降でのビルドがAppleの必須要件になる。版の根拠と検査条件は提出チェックリストの「提出用のアーカイブ」を参照する。
 3. Xcodeでscheme `knittingEditor`、実機向けの汎用destination（Simulatorではない）を選び、Archiveの構成がReleaseであることを確認して、Product > Archiveを実行する。構成・destination・検査の参照元は[`release_archive`ジョブ](../../.github/workflows/ios-full.yml)とする。ただし、ローカルの提出用署名を有効にし、CIの `CODE_SIGNING_ALLOWED=NO`／`CODE_SIGNING_REQUIRED=NO` は付けない。
 4. Organizerで対象ArchiveをFinderに表示し、リポジトリルートから次を実行する。パスは実際のArchiveへ置き換える。

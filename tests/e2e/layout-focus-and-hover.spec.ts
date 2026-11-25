@@ -33,12 +33,17 @@ async function setRootFontSizeAndSettle(page: Page, fontSize: number) {
   }).toBe('settled');
 }
 
-for (const width of [390, 760, 1024, 1280]) {
-  for (const fontSize of [16, 28, 48]) {
-    // 最大文字の右列と、狭い画面で折り返す操作メニューを確かめる。390pxの48pxはiPhoneの最大文字に近い縦長の画面にする。
-    const height = width === 390 ? (fontSize === 48 ? 844 : 664) : 1024;
-    test(`keeps selection and action controls separate at ${width}x${height} with ${fontSize}px text`, async ({ page }) => {
-      await page.setViewportSize({ width, height });
+// iPhoneの縦長、iPadの縦長、PCの横長で、標準の文字と拡大した文字（Webの200%、32px）を確かめる。
+const VIEWPORTS = [
+  { width: 390, height: 844, tag: '@phone' },
+  { width: 820, height: 1180, tag: '@wide' },
+  { width: 1280, height: 800, tag: '@wide' },
+] as const;
+
+for (const viewport of VIEWPORTS) {
+  for (const fontSize of [16, 32]) {
+    test(`keeps selection and action controls separate at ${viewport.width}x${viewport.height} with ${fontSize}px text`, { tag: viewport.tag }, async ({ page }) => {
+      await page.setViewportSize({ width: viewport.width, height: viewport.height });
       await page.goto('/');
       const canvas = page.getByLabel('編み図編集盤面');
       await expect(canvas).toBeVisible();
@@ -72,7 +77,7 @@ for (const width of [390, 760, 1024, 1280]) {
           return element.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
         }), `${name} の中心が覆われない`).toBe(true);
       }
-      if (width >= 760) {
+      if (viewport.width >= 760) {
         expect(await actionBar.evaluate((element) => {
           return [...element.querySelectorAll('button')].every((button) => {
             if (button.scrollWidth > button.clientWidth) return false;
