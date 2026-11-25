@@ -25,6 +25,7 @@ jobs:
     outputs:
       web: ${{ steps.detect.outputs.web }}
       ios: ${{ steps.detect.outputs.ios }}
+      ios_native: ${{ steps.detect.outputs.ios_native }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -37,6 +38,7 @@ jobs:
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             echo "web=true" >> "$GITHUB_OUTPUT"
             echo "ios=true" >> "$GITHUB_OUTPUT"
+            echo "ios_native=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           base='${{ github.event.pull_request.base.sha }}'
@@ -44,20 +46,27 @@ jobs:
           # 比較対象を決められないとき（新規ブランチの初回pushなど）は範囲を絞らず全部検証する。
           # ここで推測すると、検証を取りこぼしたままci-gateだけ緑になる。
           if [[ -z "$base" ]] || [[ "$base" =~ ^0+$ ]] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
-            echo "base commit is unavailable; validating web and ios"
+            echo "base commit is unavailable; validating web, ios, and ios_native"
             echo "web=true" >> "$GITHUB_OUTPUT"
             echo "ios=true" >> "$GITHUB_OUTPUT"
+            echo "ios_native=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           if ! changed="$(git diff --name-only "$base" "$GITHUB_SHA")"; then
-            echo "could not diff $base..$GITHUB_SHA; validating web and ios" >&2
+            echo "could not diff $base..$GITHUB_SHA; validating web, ios, and ios_native" >&2
             echo "web=true" >> "$GITHUB_OUTPUT"
             echo "ios=true" >> "$GITHUB_OUTPUT"
+            echo "ios_native=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          # `ios_native`はSimulatorを使う`ios`ジョブの要否を表す。iOSアプリは手動リリースで、
+          # 共通コードの変更がiOSだけを壊しても、マージ後のFull iOS validationが確かめてから
+          # リリースするので、PRではSimulatorを走らせない。`ios/`とワークフローの変更は
+          # Simulatorジョブ自体に影響するため、PRでも走らせる。
           classify() {
             web=false
             ios=false
+            ios_native=false
             while IFS= read -r path; do
               [[ -n "$path" ]] || continue
               case "$path" in
@@ -67,8 +76,14 @@ jobs:
                   ;;
                 ios/*)
                   ios=true
+                  ios_native=true
                   ;;
-                packages/*|.node-version|package.json|package-lock.json|vite.config.ts|vite.shared.ts|scripts/third-party-notices.mjs|tsconfig*.json|playwright.config.ts|.github/workflows/*)
+                .github/workflows/*)
+                  web=true
+                  ios=true
+                  ios_native=true
+                  ;;
+                packages/*|.node-version|package.json|package-lock.json|vite.config.ts|vite.shared.ts|scripts/third-party-notices.mjs|tsconfig*.json|playwright.config.ts)
                   web=true
                   ios=true
                   ;;
@@ -84,6 +99,7 @@ jobs:
           # 配信元を確かめられなければ、配信を取りこぼさないよう`web=true`にする。
           if [[ "$GITHUB_EVENT_NAME" == push && "$GITHUB_REF" == refs/heads/main ]]; then
             ios_from_before="$ios"
+            ios_native_from_before="$ios_native"
             deployed=''
             ids="$(gh api "repos/$GITHUB_REPOSITORY/deployments?environment=github-pages&per_page=30" --jq '.[].id')" || ids=''
             for id in $ids; do
@@ -103,10 +119,12 @@ jobs:
               web=true
             fi
             ios="$ios_from_before"
+            ios_native="$ios_native_from_before"
           fi
           echo "web=$web" >> "$GITHUB_OUTPUT"
           echo "ios=$ios" >> "$GITHUB_OUTPUT"
-          echo "web=$web ios=$ios"
+          echo "ios_native=$ios_native" >> "$GITHUB_OUTPUT"
+          echo "web=$web ios=$ios ios_native=$ios_native"
 
   web:
     needs: changes
@@ -188,9 +206,11 @@ jobs:
         working-directory: ios/Web
         run: ../../node_modules/.bin/vitest run --config vite.config.ts
 
+  # 共通コードだけの変更は`ios_web`までをマージ前に確かめる。iOSアプリは手動リリースなので、
+  # Simulatorはマージ後のFull iOS validationが確かめる。
   ios:
     needs: changes
-    if: needs.changes.outputs.ios == 'true'
+    if: needs.changes.outputs.ios_native == 'true'
     runs-on: macos-26
     # App Store提出に要るiOS 26 SDKを持ち、イメージにあるSimulatorのランタイムと版が揃うXcodeに固定する。
     # イメージの既定Xcodeが替わってもビルドとテストのXcodeが変わらないよう、明示的に選ぶ。
@@ -264,6 +284,7 @@ jobs:
           CHANGES_RESULT: ${{ needs.changes.result }}
           WEB_NEEDED: ${{ needs.changes.outputs.web }}
           IOS_NEEDED: ${{ needs.changes.outputs.ios }}
+          IOS_NATIVE_NEEDED: ${{ needs.changes.outputs.ios_native }}
           WEB_RESULT: ${{ needs.web.result }}
           IOS_WEB_RESULT: ${{ needs.ios_web.result }}
           IOS_RESULT: ${{ needs.ios.result }}
@@ -280,18 +301,21 @@ jobs:
             echo "change detection result: $CHANGES_RESULT" >&2
             exit 1
           fi
-          if [[ "$WEB_NEEDED" != true && "$WEB_NEEDED" != false ]] || [[ "$IOS_NEEDED" != true && "$IOS_NEEDED" != false ]]; then
-            echo "change detection produced no decision: web=$WEB_NEEDED ios=$IOS_NEEDED" >&2
+          if [[ "$WEB_NEEDED" != true && "$WEB_NEEDED" != false ]] || [[ "$IOS_NEEDED" != true && "$IOS_NEEDED" != false ]] || [[ "$IOS_NATIVE_NEEDED" != true && "$IOS_NATIVE_NEEDED" != false ]]; then
+            echo "change detection produced no decision: web=$WEB_NEEDED ios=$IOS_NEEDED ios_native=$IOS_NATIVE_NEEDED" >&2
             exit 1
           fi
           if [[ "$WEB_NEEDED" == true && "$WEB_RESULT" != success ]]; then
             echo "Web validation result: $WEB_RESULT" >&2
             exit 1
           fi
-          if [[ "$IOS_NEEDED" == true ]]; then
-            for result in "$IOS_WEB_RESULT" "$IOS_RESULT"; do
-              [[ "$result" == success ]] || { echo "iOS validation result: $result" >&2; exit 1; }
-            done
+          if [[ "$IOS_NEEDED" == true && "$IOS_WEB_RESULT" != success ]]; then
+            echo "iOS Web validation result: $IOS_WEB_RESULT" >&2
+            exit 1
+          fi
+          if [[ "$IOS_NATIVE_NEEDED" == true && "$IOS_RESULT" != success ]]; then
+            echo "iOS Simulator validation result: $IOS_RESULT" >&2
+            exit 1
           fi
 
   deploy:

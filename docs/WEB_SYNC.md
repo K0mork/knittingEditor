@@ -68,7 +68,7 @@ Web版とiOS版は同じリポジトリで管理する。以前の固定コミ�
 
 ## 同期ではなく同時検証
 
-共通コードの変更は、コピーで同期するのではなく、WebとiOSの両方を同じPRで検証する。CIの構成と完了の確かめ方は[`ARCHITECTURE.md`](ARCHITECTURE.md)の「ビルドと公開」を正とする。
+共通コードの変更は、コピーで同期するのではなく、同じPRでWeb（`web`）とiOS Web（`ios_web`）を検証し、Simulatorを使うiOSの検証はマージ後のFull iOS validationで行う。CIの構成と完了の確かめ方は[`ARCHITECTURE.md`](ARCHITECTURE.md)の「ビルドと公開」を正とする。
 
 Web版で生成した`.knit`をiOS版で読み込み、iOS側のブリッジ出力をWeb版で読み込む双方向試験を維持する。
 
