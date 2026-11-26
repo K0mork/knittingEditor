@@ -13,4 +13,5 @@
   - `sh ios/scripts/check-release-assets.sh <上のReleaseの.app>`: 成功。
   - `node scripts/check-pr-smoke-ui-tests.mjs`、`git diff --check`: 成功。
   - `npm test -- scripts`: 24ファイル・333件成功。
-- デプロイ影響: なし。文書と画像だけで、Pagesの配信物もアプリも変わらない。App Store Connectの1.2の版の画像を、この画像に差し替える。
+  - App Store Connectの1.2の版（提出準備中）で、「Dynamic Island搭載iPhone（中型ディスプレイ）」に6.3インチの5枚、「iPad 13インチディスプレイ」に13インチの5枚、「iPhone Duo」に外側の5枚を、古い画像と入れ替えて登録した。読み込み直して、3つの欄に5枚ずつが順に登録されていることを確かめた。デバイスプレビューで、iPhone・iPad・iPhone Duoの製品ページに新しい画像が出て、説明文と枠が切れていないことを確かめた。製品ページ用画像（ヘッダと検索結果）は、1.0のときの判断のまま登録していない。
+- デプロイ影響: なし。文書と画像だけで、Pagesの配信物もアプリも変わらない。App Store Connectの1.2の版の画像は差し替え済み。
