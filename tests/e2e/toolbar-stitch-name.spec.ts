@@ -54,14 +54,17 @@ async function chooseStitch(page: Page, name: string) {
 async function measureToolbar(page: Page) {
   return page.getByRole('region', { name: '編集ツール' }).evaluate((toolbar) => {
     const label = toolbar.querySelector<HTMLElement>('.stitch-tool-name')!;
-    const range = document.createRange();
-    range.selectNodeContents(label);
-    const lines = new Set([...range.getClientRects()].map((rect) => Math.round(rect.top))).size;
+    // 行数は高さから数える。文字の矩形の上端で数えると、かなと漢字で代わりのフォントが違う環境
+    // （LinuxのCI）では、同じ行の矩形の上端がずれて2行に数えてしまう。
+    const style = getComputedStyle(label);
+    const lineHeight = parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.2;
+    const lines = Math.round(label.getBoundingClientRect().height / lineHeight);
     const draw = [...toolbar.querySelectorAll('button')].find((button) => button.textContent === '描く')!;
     const last = toolbar.lastElementChild!.getBoundingClientRect();
     return {
       lines,
       labelWidth: label.getBoundingClientRect().width,
+      labelHeight: label.getBoundingClientRect().height,
       fontSize: parseFloat(getComputedStyle(label).fontSize),
       stitchHeight: toolbar.querySelector('.stitch-tool')!.getBoundingClientRect().height,
       drawHeight: draw.getBoundingClientRect().height,
@@ -86,7 +89,8 @@ async function expectDefaultNameOnOneLine(page: Page, screen: Screen, paste: boo
 async function expectLongNameWrapsByTwoOrMore(page: Page, label: string) {
   const sizes = await measureToolbar(page);
   expect(sizes.labelWidth, `${label}で記号名に2文字分の幅がある`).toBeGreaterThanOrEqual(sizes.fontSize * 2 - 0.5);
-  expect(sizes.lines, `${label}で長い名前が2文字以上ずつ折り返す`).toBeLessThanOrEqual(Math.ceil(LONG_NAME.length / 2));
+  const detail = `幅${sizes.labelWidth}px・高さ${sizes.labelHeight}px・文字${sizes.fontSize}px`;
+  expect(sizes.lines, `${label}で長い名前が2文字以上ずつ折り返す（${detail}）`).toBeLessThanOrEqual(Math.ceil(LONG_NAME.length / 2));
   await expect(page.locator('.stitch-tool-name')).toHaveText(LONG_NAME);
 }
 
