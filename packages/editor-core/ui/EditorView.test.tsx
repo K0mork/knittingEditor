@@ -406,6 +406,18 @@ describe('EditorView', () => {
     expect(container.querySelector('.paste-actions')).not.toBeNull();
   });
 
+  it('marks the toolbar once a copied block can be pasted', async () => {
+    const { container, click, editor } = await renderEditor();
+    const toolbar = () => container.querySelector('.primary-tools')!;
+    expect(toolbar().classList.contains('has-paste')).toBe(false);
+    await act(async () => { editor().setSelection({ top: 0, left: 0, bottom: 0, right: 0 }); });
+    await click('コピー');
+    await click('やめる');
+    // 貼付中をやめても、コピーしたブロックがある間は貼付ボタンと一緒に残る。
+    expect(toolbar().classList.contains('has-paste')).toBe(true);
+    expect(toolbar().querySelector('button:last-child')?.textContent).toBe('貼付');
+  });
+
   it('keeps the paste band after notices expire and lets the user stop', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout'] });
     try {

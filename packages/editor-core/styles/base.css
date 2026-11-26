@@ -305,12 +305,26 @@ button:disabled { opacity: .45; cursor: not-allowed; }
   .app-header h1 { font-size: 1rem; }
   .header-actions { gap: 5px; }
   .header-guide, .header-document { min-width: 0; padding-inline: 9px; }
-  .primary-tools { gap: 5px; padding: 6px max(6px, var(--safe-right)) 6px max(6px, var(--safe-left)); scrollbar-width: thin; }
-  .primary-tools > button { padding-inline: 8px; }
-  .primary-tools > .stitch-tool { flex: 1 1 170px; min-width: 58px; }
-  /* 記号名は省略せず折り返す。既定の「表目」などは元の幅に収まるので見た目は変わらない。 */
-  .stitch-tool-name { min-width: 0; white-space: normal; overflow-wrap: anywhere; line-height: 1.2; }
+  /* 「線」と「貼付」が並んでも収まるよう、中身に使える幅が417px以下（安全領域が無ければ画面幅429px以下）では
+     余白と間隔を詰める。幅は左右の安全領域を除いて測る（iPhone Duoの外側は466ptだが、右のカメラの列を除くと約376pt）。
+     メディアクエリでは安全領域を引けないので、`clamp()`で417pxを境に切り替える。 */
+  .primary-tools {
+    --tools-room: calc(100vw - max(6px, var(--safe-left)) - max(6px, var(--safe-right)));
+    gap: clamp(3px, (var(--tools-room) - 417px) * 1000, 5px);
+    padding: 6px max(6px, var(--safe-right)) 6px max(6px, var(--safe-left)); scrollbar-width: thin;
+  }
+  .primary-tools > button { padding-inline: clamp(4px, (var(--tools-room) - 417px) * 1000, 8px); }
+  /* 記号名は省略せず折り返すが、2文字分の幅は必ず残す（「表目」を1文字ずつに割らない）。
+     ボタンはそれより縮まず、収まらないときはツールバーが横にスクロールする。 */
+  .primary-tools > .stitch-tool { flex: 1 1 170px; min-width: auto; }
+  .stitch-tool-name { min-width: 2em; white-space: normal; overflow-wrap: anywhere; line-height: 1.2; }
   .stitch-tool-chevron { display: none; }
+  /* 貼付が出ている間は幅にかかわらず詰め、色と記号の見本と間隔を小さくして記号名の幅を空ける。 */
+  .primary-tools.has-paste { gap: 3px; }
+  .primary-tools.has-paste > button { padding-inline: 4px; }
+  .has-paste > .color-tool, .has-paste > .stitch-tool { gap: 3px; }
+  .has-paste .color-tool-swatch { width: 24px; height: 24px; }
+  .has-paste > .stitch-tool > span:first-child { flex-basis: 26px; width: 26px; height: 26px; }
 
   /* ここから下は大きな文字のときだけ。既定の16px/17pxではoriginと同じ1行・同じ余白になる。 */
   .app-shell[data-large-text] .app-header { gap: 4px 8px; }
@@ -340,12 +354,6 @@ button:disabled { opacity: .45; cursor: not-allowed; }
   /* 操作メニューは折り返して全部見せる（originの挙動）。余白だけ詰めて盤面を確保する。 */
   .app-shell[data-large-text] .action-bar { gap: 6px; padding-top: 4px; padding-bottom: calc(4px + env(safe-area-inset-bottom)); }
   .app-shell[data-large-text] .action-bar button { padding-inline: max(3px, 8px - .1em); }
-}
-
-/* 「線」と「貼付」が並んでも収まるよう、狭いiPhoneでは余白と間隔を詰める。 */
-@media (max-width: 429px) {
-  .primary-tools { gap: 3px; }
-  .primary-tools > button { padding-inline: 4px; }
 }
 
 /*

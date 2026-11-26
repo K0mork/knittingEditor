@@ -160,7 +160,7 @@ export function EditorView({ editor, renderTitle, onGuideClick, requestRestore, 
     </header>
 
     <main className="workspace">
-      <section className="primary-tools" aria-label="編集ツール">
+      <section className={copiedBlock ? 'primary-tools has-paste' : 'primary-tools'} aria-label="編集ツール">
         <button className="color-tool" aria-label={`記号の色を選ぶ（現在：${describeColor(parseColor(editor.selectedColor))} ${editor.selectedColor}）`} aria-haspopup="dialog" aria-expanded={editor.colorPickerOpen} onClick={(event) => openPicker(event, editor.setColorPickerOpen)}>
           <span>色</span>
           <span className="color-tool-swatch" aria-hidden="true" style={{ backgroundColor: editor.selectedColor }} />
