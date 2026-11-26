@@ -54,15 +54,24 @@ async function chooseStitch(page: Page, name: string) {
 async function measureToolbar(page: Page) {
   return page.getByRole('region', { name: '編集ツール' }).evaluate((toolbar) => {
     const label = toolbar.querySelector<HTMLElement>('.stitch-tool-name')!;
-    // 行数は高さから数える。文字の矩形の上端で数えると、かなと漢字で代わりのフォントが違う環境
-    // （LinuxのCI）では、同じ行の矩形の上端がずれて2行に数えてしまう。
     const style = getComputedStyle(label);
     const lineHeight = parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.2;
     const lines = Math.round(label.getBoundingClientRect().height / lineHeight);
+    // 記号名の1文字ごとの幅。iOS・macOS・Androidの和文フォントでは1文字が1emだが、LinuxのCIの
+    // 代わりのフォントでは、かなが1emより広いことがある。流れから外した要素で、同じ書体で測る。
+    const probe = document.createElement('span');
+    probe.style.cssText = 'position: absolute; visibility: hidden; white-space: nowrap;';
+    label.append(probe);
+    const charWidths = [...(label.firstChild?.textContent ?? '')].map((char) => {
+      probe.textContent = char;
+      return probe.getBoundingClientRect().width;
+    });
+    probe.remove();
     const draw = [...toolbar.querySelectorAll('button')].find((button) => button.textContent === '描く')!;
     const last = toolbar.lastElementChild!.getBoundingClientRect();
     return {
       lines,
+      widestChar: Math.max(...charWidths),
       labelWidth: label.getBoundingClientRect().width,
       labelHeight: label.getBoundingClientRect().height,
       fontSize: parseFloat(getComputedStyle(label).fontSize),
@@ -85,13 +94,18 @@ async function expectDefaultNameOnOneLine(page: Page, screen: Screen, paste: boo
   expect(sizes.lastRight, `${label}で右端のボタンが安全領域の手前にある`).toBeLessThanOrEqual(screen.width - (screen.safeRight ?? 0));
 }
 
-/** 長い名前は省略せず、2文字分以上の幅で折り返す（1文字ずつ縦に並ばない）。 */
+/**
+ * 長い名前は省略せず、2文字分（2em）以上の幅で折り返す。1文字が1emのフォントなら2文字以上ずつ並び、
+ * 1文字ずつ縦に並ばない。行数の上限は、いちばん広い文字が1行に何文字入るかから求める。
+ */
 async function expectLongNameWrapsByTwoOrMore(page: Page, label: string) {
+  await expect(page.locator('.stitch-tool-name')).toHaveText(LONG_NAME);
   const sizes = await measureToolbar(page);
   expect(sizes.labelWidth, `${label}で記号名に2文字分の幅がある`).toBeGreaterThanOrEqual(sizes.fontSize * 2 - 0.5);
-  const detail = `幅${sizes.labelWidth}px・高さ${sizes.labelHeight}px・文字${sizes.fontSize}px`;
-  expect(sizes.lines, `${label}で長い名前が2文字以上ずつ折り返す（${detail}）`).toBeLessThanOrEqual(Math.ceil(LONG_NAME.length / 2));
-  await expect(page.locator('.stitch-tool-name')).toHaveText(LONG_NAME);
+  const perLine = Math.max(1, Math.floor((sizes.labelWidth + 0.01) / sizes.widestChar));
+  if (sizes.widestChar <= sizes.fontSize + 0.01) expect(perLine, `${label}で1行に2文字以上入る`).toBeGreaterThanOrEqual(2);
+  const detail = `幅${sizes.labelWidth}px・高さ${sizes.labelHeight}px・文字${sizes.fontSize}px・最も広い文字${sizes.widestChar}px`;
+  expect(sizes.lines, `${label}で長い名前が1行に${perLine}文字以上ずつ折り返す（${detail}）`).toBeLessThanOrEqual(Math.ceil(LONG_NAME.length / perLine));
 }
 
 // 360pxはAndroidの最小幅、430pxは詰める境目（429px）のすぐ上。
